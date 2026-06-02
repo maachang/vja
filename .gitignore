@@ -1,0 +1,7 @@
+.DS_Store
+
+.settings
+
+build
+bun.lock
+node_modules

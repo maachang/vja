@@ -1,0 +1,3248 @@
+<!doctype html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8" />
+        <title>VJA Form Designer</title>
+        <style>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            :root {
+                --bg: #1e1e2e;
+                --bg2: #252535;
+                --bg3: #2d2d45;
+                --bg4: #363652;
+                --border: #4a4a6a;
+                --border2: #5a5a7a;
+                --accent: #7c9ef8;
+                --accent2: #a78bfa;
+                --text: #e0e0f0;
+                --text2: #a0a0c0;
+                --text3: #6060a0;
+                --panel: 110px;
+                --prop: 420px;
+                --sel-border: #0a84ff;
+                --handle: 6px;
+                --font: "Segoe UI", system-ui, sans-serif;
+            }
+            body {
+                font-family: var(--font);
+                font-size: 12px;
+                background: var(--bg);
+                color: var(--text);
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                user-select: none;
+            }
+
+            /* ── Toolbar ── */
+            #toolbar {
+                height: 36px;
+                background: var(--bg2);
+                border-bottom: 1px solid var(--border);
+                display: flex;
+                align-items: center;
+                gap: 2px;
+                padding: 0 6px;
+                flex-shrink: 0;
+            }
+            .tb-sep {
+                width: 1px;
+                height: 20px;
+                background: var(--border);
+                margin: 0 4px;
+            }
+            .tb-btn {
+                height: 26px;
+                padding: 0 8px;
+                border-radius: 4px;
+                border: 1px solid transparent;
+                background: transparent;
+                color: var(--text);
+                cursor: pointer;
+                font-size: 11px;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                white-space: nowrap;
+            }
+            .tb-btn:hover {
+                background: var(--bg3);
+                border-color: var(--border);
+            }
+            .tb-btn svg {
+                width: 14px;
+                height: 14px;
+                stroke: currentColor;
+                fill: none;
+                stroke-width: 1.5;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+                flex-shrink: 0;
+            }
+            #menu-bar {
+                display: flex;
+                gap: 2px;
+            }
+            .menu-item {
+                padding: 4px 10px;
+                cursor: pointer;
+                border-radius: 3px;
+                font-size: 12px;
+                position: relative;
+            }
+            .menu-item:hover {
+                background: var(--bg3);
+            }
+            .dropdown {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                background: var(--bg2);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                min-width: 170px;
+                z-index: 999;
+                display: none;
+                flex-direction: column;
+                padding: 4px 0;
+                box-shadow: 0 4px 16px #000a;
+            }
+            .dropdown.open {
+                display: flex;
+            }
+            .dd-item {
+                padding: 6px 14px;
+                cursor: pointer;
+                font-size: 12px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .dd-item:hover {
+                background: var(--bg3);
+            }
+            .dd-item .sc {
+                margin-left: auto;
+                color: var(--text3);
+                font-size: 11px;
+            }
+            .dd-sep {
+                height: 1px;
+                background: var(--border);
+                margin: 4px 8px;
+            }
+
+            /* ── Layout ── */
+            #main {
+                flex: 1;
+                display: flex;
+                overflow: hidden;
+            }
+
+            /* ── Toolbox ── */
+            #toolbox {
+                width: var(--panel);
+                background: var(--bg2);
+                border-right: 1px solid var(--border);
+                display: flex;
+                flex-direction: column;
+                flex-shrink: 0;
+                overflow-y: auto;
+            }
+            #toolbox h3 {
+                font-size: 10px;
+                padding: 7px 10px 5px;
+                color: var(--text3);
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                border-bottom: 1px solid var(--border);
+            }
+            .tool-grid {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 1px;
+                padding: 4px;
+            }
+            .tool-item {
+                padding: 5px 8px;
+                cursor: crosshair;
+                border-radius: 3px;
+                border: 1px solid transparent;
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                gap: 6px;
+                font-size: 11px;
+                color: var(--text2);
+                transition: 0.1s;
+                white-space: nowrap;
+                overflow: hidden;
+            }
+            .tool-item:hover {
+                background: var(--bg3);
+                border-color: var(--border);
+                color: var(--text);
+            }
+            .tool-item.active-tool {
+                background: var(--bg4);
+                border-color: var(--accent);
+                color: var(--accent);
+            }
+            .tool-item:first-child {
+                cursor: default;
+            }
+            .ti {
+                font-size: 16px;
+                line-height: 1;
+                flex-shrink: 0;
+            }
+
+            /* ── Canvas ── */
+            #canvas-wrap {
+                flex: 1;
+                background: var(--bg);
+                overflow: auto;
+                padding: 20px 20px 20px 36px;
+                display: flex;
+                align-items: flex-start;
+                justify-content: flex-start;
+                position: relative;
+            }
+            #form-win {
+                display: flex;
+                flex-direction: column;
+                flex-shrink: 0;
+                border: 2px solid var(--border2);
+                box-shadow: 0 4px 24px #0009;
+                position: relative;
+            }
+            #form-resize-br {
+                position: absolute;
+                right: -6px;
+                bottom: -6px;
+                width: 14px;
+                height: 14px;
+                background: var(--accent);
+                border: 2px solid #fff;
+                border-radius: 2px;
+                cursor: se-resize;
+                z-index: 200;
+            }
+            #form-resize-r {
+                position: absolute;
+                right: -5px;
+                top: 28px;
+                bottom: 0;
+                width: 10px;
+                cursor: e-resize;
+                z-index: 199;
+            }
+            #form-resize-b {
+                position: absolute;
+                left: 0;
+                right: 0;
+                bottom: -5px;
+                height: 10px;
+                cursor: s-resize;
+                z-index: 199;
+            }
+            #form-titlebar {
+                background: linear-gradient(90deg, #003f91, #0060c8);
+                color: #fff;
+                height: 24px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 8px;
+                font-size: 12px;
+                flex-shrink: 0;
+                cursor: default;
+            }
+            #form-body {
+                position: relative;
+                overflow: hidden;
+                background: #ececec;
+            }
+            /* ドット グリッド（非表示時は消す） */
+            #form-body.show-grid {
+                background-image: radial-gradient(
+                    circle,
+                    #aaa 1px,
+                    transparent 1px
+                );
+                background-size: 8px 8px;
+                background-color: #ececec;
+            }
+
+            /* ── ルーラー ── */
+            #ruler-h {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 16px;
+                background: var(--bg2);
+                border-bottom: 1px solid var(--border);
+                overflow: hidden;
+                pointer-events: none;
+                z-index: 10;
+            }
+            #ruler-v {
+                position: absolute;
+                top: 16px;
+                left: 0;
+                bottom: 0;
+                width: 16px;
+                background: var(--bg2);
+                border-right: 1px solid var(--border);
+                overflow: hidden;
+                pointer-events: none;
+                z-index: 10;
+            }
+            #ruler-corner {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 16px;
+                height: 16px;
+                background: var(--bg3);
+                border-right: 1px solid var(--border);
+                border-bottom: 1px solid var(--border);
+                z-index: 11;
+            }
+            .ruler-tick {
+                position: absolute;
+                background: var(--text3);
+            }
+            .ruler-label {
+                position: absolute;
+                font-size: 8px;
+                color: var(--text3);
+                font-family: monospace;
+                line-height: 1;
+                pointer-events: none;
+            }
+            /* ── ウィジェット ── */
+            .widget {
+                position: absolute;
+                cursor: move;
+                box-sizing: border-box;
+                overflow: hidden;
+            }
+            .widget.sel {
+                outline: 2px solid var(--sel-border);
+            }
+            .rh {
+                position: absolute;
+                width: var(--handle);
+                height: var(--handle);
+                background: var(--sel-border);
+                border: 1px solid #fff;
+                z-index: 20;
+                display: none;
+            }
+            .widget.sel .rh {
+                display: block;
+            }
+            .rh-tl {
+                top: -3px;
+                left: -3px;
+                cursor: nw-resize;
+            }
+            .rh-tm {
+                top: -3px;
+                left: calc(50% - 3px);
+                cursor: n-resize;
+            }
+            .rh-tr {
+                top: -3px;
+                right: -3px;
+                cursor: ne-resize;
+            }
+            .rh-ml {
+                top: calc(50% - 3px);
+                left: -3px;
+                cursor: w-resize;
+            }
+            .rh-mr {
+                top: calc(50% - 3px);
+                right: -3px;
+                cursor: e-resize;
+            }
+            .rh-bl {
+                bottom: -3px;
+                left: -3px;
+                cursor: sw-resize;
+            }
+            .rh-bm {
+                bottom: -3px;
+                left: calc(50% - 3px);
+                cursor: s-resize;
+            }
+            .rh-br {
+                bottom: -3px;
+                right: -3px;
+                cursor: se-resize;
+            }
+
+            /* ドラッグ中のラバーバンド */
+            #rubber {
+                position: absolute;
+                border: 1px dashed #0a84ff;
+                background: #0a84ff18;
+                pointer-events: none;
+                display: none;
+                z-index: 100;
+            }
+
+            /* ── プロパティパネル ── */
+            #props-panel {
+                width: var(--prop);
+                background: var(--bg2);
+                border-left: 1px solid var(--border);
+                display: flex;
+                flex-direction: column;
+                flex-shrink: 0;
+                overflow: hidden;
+            }
+            #props-panel h3 {
+                font-size: 13px;
+                padding: 7px 10px 5px;
+                color: var(--text3);
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                border-bottom: 1px solid var(--border);
+                flex-shrink: 0;
+            }
+            #prop-obj {
+                padding: 6px 10px;
+                font-size: 14px;
+                color: var(--accent);
+                border-bottom: 1px solid var(--border);
+                flex-shrink: 0;
+            }
+            #ptabs {
+                display: flex;
+                border-bottom: 1px solid var(--border);
+                flex-shrink: 0;
+            }
+            .ptab {
+                flex: 1;
+                padding: 6px 0;
+                text-align: center;
+                cursor: pointer;
+                font-size: 13px;
+                color: var(--text2);
+                border-bottom: 2px solid transparent;
+            }
+            .ptab.on {
+                color: var(--accent);
+                border-bottom-color: var(--accent);
+            }
+            #plist {
+                flex: 1;
+                overflow-y: auto;
+            }
+            #elist {
+                flex: 1;
+                overflow-y: auto;
+                display: none;
+            }
+            .prow {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                min-height: 28px;
+                border-bottom: 1px solid #ffffff08;
+            }
+            .prow:hover {
+                background: #ffffff06;
+            }
+            .pk {
+                padding: 5px 8px;
+                color: var(--text2);
+                font-size: 13px;
+                display: flex;
+                align-items: center;
+                border-right: 1px solid #ffffff08;
+                overflow: hidden;
+                word-break: break-all;
+            }
+            .pv {
+                padding: 2px 3px;
+                display: flex;
+                align-items: center;
+            }
+            .pv input,
+            .pv select {
+                width: 100%;
+                height: 24px;
+                background: transparent;
+                border: none;
+                color: var(--text);
+                font-size: 13px;
+                font-family: var(--font);
+                padding: 0 2px;
+                outline: none;
+            }
+            .pv input:focus,
+            .pv select:focus {
+                background: var(--bg4);
+                outline: 1px solid var(--accent);
+                border-radius: 2px;
+            }
+            .pv select option {
+                background: var(--bg2);
+            }
+            .psec {
+                padding: 5px 8px;
+                font-size: 12px;
+                color: var(--accent2);
+                text-transform: uppercase;
+                letter-spacing: 0.6px;
+                background: var(--bg3);
+            }
+            .erow {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                min-height: 28px;
+                border-bottom: 1px solid #ffffff08;
+                align-items: center;
+            }
+            .erow:hover {
+                background: #ffffff06;
+            }
+            .ek {
+                padding: 5px 8px;
+                color: var(--text2);
+                font-size: 13px;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+            .ek.has-yaml {
+                color: var(--accent);
+            }
+            .ebtn {
+                margin-right: 6px;
+                width: 20px;
+                height: 20px;
+                background: var(--bg3);
+                border: 1px solid var(--border);
+                border-radius: 2px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+            }
+            .ebtn:hover {
+                background: var(--bg4);
+                border-color: var(--accent);
+            }
+            .ebtn svg {
+                width: 11px;
+                height: 11px;
+                stroke: var(--text2);
+                fill: none;
+                stroke-width: 2;
+            }
+
+            /* ── Status ── */
+            #statusbar {
+                height: 22px;
+                background: var(--bg2);
+                border-top: 1px solid var(--border);
+                display: flex;
+                align-items: center;
+                padding: 0 10px;
+                gap: 16px;
+                font-size: 11px;
+                color: var(--text3);
+                flex-shrink: 0;
+            }
+            #statusbar b {
+                color: var(--text2);
+                font-weight: normal;
+            }
+
+            /* ── Modal ── */
+            .ov {
+                position: fixed;
+                inset: 0;
+                background: #0009;
+                z-index: 1000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .modal {
+                background: var(--bg2);
+                border: 1px solid var(--border2);
+                border-radius: 6px;
+                min-width: 480px;
+                max-width: 640px;
+                display: flex;
+                flex-direction: column;
+                box-shadow: 0 8px 40px #000b;
+            }
+            .mhdr {
+                padding: 10px 14px;
+                border-bottom: 1px solid var(--border);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+            .mhdr h4 {
+                font-size: 13px;
+            }
+            .mclose {
+                width: 22px;
+                height: 22px;
+                background: transparent;
+                border: none;
+                color: var(--text2);
+                cursor: pointer;
+                font-size: 16px;
+                border-radius: 3px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .mclose:hover {
+                background: var(--bg4);
+                color: var(--text);
+            }
+            .mbody {
+                padding: 14px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .mfoot {
+                padding: 10px 14px;
+                border-top: 1px solid var(--border);
+                display: flex;
+                justify-content: flex-end;
+                gap: 8px;
+            }
+            .mfoot button {
+                padding: 5px 16px;
+                border-radius: 4px;
+                border: 1px solid var(--border);
+                background: var(--bg3);
+                color: var(--text);
+                cursor: pointer;
+                font-size: 12px;
+            }
+            .mfoot button.pri {
+                background: var(--accent);
+                border-color: var(--accent);
+                color: #fff;
+            }
+            .mfoot button:hover {
+                background: var(--bg4);
+            }
+            .mfoot button.pri:hover {
+                background: #5a7ef0;
+            }
+            textarea.yaml {
+                width: 100%;
+                height: 210px;
+                background: var(--bg3);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                color: var(--text);
+                font-family: monospace;
+                font-size: 12px;
+                padding: 8px;
+                resize: vertical;
+                outline: none;
+                line-height: 1.5;
+            }
+            textarea.yaml:focus {
+                border-color: var(--accent);
+            }
+            .infobox {
+                background: var(--bg3);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 11px;
+                color: var(--text2);
+                line-height: 1.6;
+            }
+            .infobox code {
+                color: var(--accent);
+                background: var(--bg4);
+                padding: 1px 4px;
+                border-radius: 2px;
+                font-family: monospace;
+            }
+            .lbl {
+                font-size: 11px;
+                color: var(--text2);
+            }
+
+            /* ── フォームセレクタ（カスタムドロップダウン） ── */
+            #form-selector-area {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                padding: 0 4px;
+            }
+            #form-label {
+                font-size: 10px;
+                color: var(--text3);
+                white-space: nowrap;
+            }
+            /* カスタムドロップダウン本体 */
+            #fdd-wrap {
+                position: relative;
+                display: inline-block;
+            }
+            #fdd-btn {
+                height: 24px;
+                min-width: 130px;
+                max-width: 200px;
+                background: #2d2d45;
+                border: 1px solid var(--border);
+                border-radius: 3px;
+                color: #e0e0f0;
+                font-size: 11px;
+                padding: 0 24px 0 8px;
+                cursor: pointer;
+                text-align: left;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 4px;
+                user-select: none;
+            }
+            #fdd-btn:hover {
+                border-color: var(--accent);
+            }
+            #fdd-btn .fdd-arrow {
+                flex-shrink: 0;
+                opacity: 0.6;
+                font-size: 9px;
+            }
+            #fdd-list {
+                position: absolute;
+                top: 26px;
+                left: 0;
+                min-width: 100%;
+                max-height: 200px;
+                overflow-y: auto;
+                background: #252535;
+                border: 1px solid var(--accent);
+                border-radius: 3px;
+                z-index: 500;
+                display: none;
+                flex-direction: column;
+                box-shadow: 0 4px 16px #000c;
+            }
+            #fdd-list.open {
+                display: flex;
+            }
+            .fdd-item {
+                padding: 5px 10px;
+                font-size: 11px;
+                color: #e0e0f0;
+                cursor: pointer;
+                white-space: nowrap;
+            }
+            .fdd-item:hover {
+                background: #363652;
+                color: #fff;
+            }
+            .fdd-item.fdd-active {
+                color: var(--accent);
+                background: #2d2d45;
+            }
+            /* アイコンボタン群 */
+            .fs-btn {
+                height: 24px;
+                width: 24px;
+                border-radius: 3px;
+                border: 1px solid var(--border);
+                background: var(--bg3);
+                color: var(--text);
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+            }
+            .fs-btn:hover {
+                background: var(--bg4);
+                border-color: var(--accent);
+            }
+            .fs-btn svg {
+                width: 13px;
+                height: 13px;
+                stroke: currentColor;
+                fill: none;
+                stroke-width: 2;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
+
+            /* ── 閉じる確認ダイアログ ── */
+            #close-confirm {
+                position: fixed;
+                inset: 0;
+                background: #00000088;
+                z-index: 2000;
+                display: none;
+                align-items: center;
+                justify-content: center;
+            }
+            #close-confirm.show {
+                display: flex;
+            }
+            #close-confirm .box {
+                background: var(--bg2);
+                border: 1px solid var(--border2);
+                border-radius: 8px;
+                padding: 28px 32px;
+                min-width: 300px;
+                box-shadow: 0 8px 40px #000c;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 16px;
+            }
+            #close-confirm .box .icon {
+                font-size: 36px;
+                line-height: 1;
+            }
+            #close-confirm .box p {
+                font-size: 14px;
+                color: var(--text);
+                text-align: center;
+                line-height: 1.6;
+            }
+            #close-confirm .box .btns {
+                display: flex;
+                gap: 10px;
+                margin-top: 4px;
+            }
+            #close-confirm .box .btns button {
+                padding: 7px 24px;
+                border-radius: 4px;
+                border: 1px solid var(--border);
+                font-size: 13px;
+                cursor: pointer;
+            }
+            #close-confirm .box .btns .btn-cancel {
+                background: var(--bg3);
+                color: var(--text);
+            }
+            #close-confirm .box .btns .btn-cancel:hover {
+                background: var(--bg4);
+            }
+            #close-confirm .box .btns .btn-close {
+                background: #c0392b;
+                border-color: #c0392b;
+                color: #fff;
+            }
+            #close-confirm .box .btns .btn-close:hover {
+                background: #e74c3c;
+                border-color: #e74c3c;
+            }
+            /* ── Context menu ── */
+            #ctx {
+                position: fixed;
+                background: var(--bg2);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                z-index: 999;
+                display: none;
+                flex-direction: column;
+                padding: 4px 0;
+                min-width: 140px;
+                box-shadow: 0 4px 12px #000a;
+            }
+            .ci {
+                padding: 6px 14px;
+                cursor: pointer;
+                font-size: 12px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .ci:hover {
+                background: var(--bg3);
+            }
+            .ci svg {
+                width: 12px;
+                height: 12px;
+                stroke: currentColor;
+                fill: none;
+                stroke-width: 2;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
+            .csep {
+                height: 1px;
+                background: var(--border);
+                margin: 4px 8px;
+            }
+
+            /* scrollbar */
+            ::-webkit-scrollbar {
+                width: 5px;
+                height: 5px;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: var(--border);
+                border-radius: 3px;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- ■ TOOLBAR -->
+        <div id="toolbar">
+            <div id="menu-bar">
+                <div class="menu-item" onmousedown="toggleMenu('mf', event)">
+                    ファイル
+                    <div class="dropdown" id="mf">
+                        <div class="dd-item" onclick="actNew()">
+                            新規プロジェクト<span class="sc">Ctrl+N</span>
+                        </div>
+                        <div class="dd-item" onclick="actOpen()">
+                            プロジェクトを開く<span class="sc">Ctrl+O</span>
+                        </div>
+                        <div class="dd-sep"></div>
+                        <div class="dd-item" onclick="actSave()">
+                            保存<span class="sc">Ctrl+S</span>
+                        </div>
+                        <div class="dd-item" onclick="actSaveAs()">
+                            名前を付けて保存…
+                        </div>
+                        <div class="dd-sep"></div>
+                        <div class="dd-item" onclick="actExport()">
+                            HTMLエクスポート
+                        </div>
+                    </div>
+                </div>
+                <div class="menu-item" onmousedown="toggleMenu('me', event)">
+                    編集
+                    <div class="dropdown" id="me">
+                        <div class="dd-item" onclick="actUndo()">
+                            元に戻す<span class="sc">Ctrl+Z</span>
+                        </div>
+                        <div class="dd-item" onclick="actRedo()">
+                            やり直し<span class="sc">Ctrl+Y</span>
+                        </div>
+                        <div class="dd-sep"></div>
+                        <div class="dd-item" onclick="actDelete()">
+                            削除<span class="sc">Del</span>
+                        </div>
+                        <div class="dd-item" onclick="actDuplicate()">
+                            複製<span class="sc">Ctrl+D</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="menu-item" onmousedown="toggleMenu('mv', event)">
+                    表示
+                    <div class="dropdown" id="mv">
+                        <div class="dd-item" onclick="toggleGrid()">
+                            グリッド表示切替
+                        </div>
+                        <div class="dd-item" onclick="toggleSnap()">
+                            スナップ切替
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tb-sep"></div>
+            <button class="tb-btn" onclick="actNew()" title="新規">
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                    />
+                    <polyline points="14 2 14 8 20 8" />
+                </svg>
+            </button>
+            <button class="tb-btn" onclick="actOpen()" title="開く">
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+                    />
+                </svg>
+            </button>
+            <button class="tb-btn" onclick="actSave()" title="保存">
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
+                    />
+                    <polyline points="17 21 17 13 7 13 7 21" />
+                    <polyline points="7 3 7 8 15 8" />
+                </svg>
+            </button>
+            <div class="tb-sep"></div>
+            <button class="tb-btn" onclick="actUndo()" title="元に戻す">
+                <svg viewBox="0 0 24 24">
+                    <polyline points="9 14 4 9 9 4" />
+                    <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
+                </svg>
+            </button>
+            <button class="tb-btn" onclick="actRedo()" title="やり直し">
+                <svg viewBox="0 0 24 24">
+                    <polyline points="15 14 20 9 15 4" />
+                    <path d="M4 20v-7a4 4 0 0 1 4-4h12" />
+                </svg>
+            </button>
+            <div class="tb-sep"></div>
+            <button class="tb-btn" onclick="actDelete()">
+                <svg viewBox="0 0 24 24">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6l-1 14H6L5 6" />
+                    <path d="M9 6V4h6v2" /></svg
+                >削除
+            </button>
+            <button class="tb-btn" onclick="actExport()">
+                <svg viewBox="0 0 24 24">
+                    <polyline points="8 17 12 21 16 17" />
+                    <line x1="12" y1="12" x2="12" y2="21" />
+                    <path
+                        d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"
+                    /></svg
+                >エクスポート
+            </button>
+            <div class="tb-sep"></div>
+            <div id="form-selector-area">
+                <span id="form-label">📋 画面:</span>
+                <div id="fdd-wrap">
+                    <div id="fdd-btn" onclick="toggleFdd(event)">
+                        <span id="fdd-label">Form1</span>
+                        <span class="fdd-arrow">▼</span>
+                    </div>
+                    <div id="fdd-list"></div>
+                </div>
+                <button
+                    class="fs-btn"
+                    onclick="formNew()"
+                    title="新しい画面を追加"
+                >
+                    <svg viewBox="0 0 24 24">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                </button>
+                <button
+                    class="fs-btn"
+                    onclick="formRename()"
+                    title="画面名を変更"
+                >
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                        />
+                        <path
+                            d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                        />
+                    </svg>
+                </button>
+                <button
+                    class="fs-btn"
+                    onclick="formDelete()"
+                    title="この画面を削除"
+                    style="color: #ff6b6b"
+                >
+                    <svg viewBox="0 0 24 24" stroke="#ff6b6b">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6l-1 14H6L5 6" />
+                        <path d="M9 6V4h6v2" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- ■ MAIN -->
+        <div id="main">
+            <!-- ツールボックス -->
+            <div id="toolbox">
+                <h3>ツールボックス</h3>
+                <div class="tool-grid" id="tool-grid"></div>
+            </div>
+
+            <!-- キャンバス -->
+            <div id="canvas-wrap">
+                <div id="ruler-corner"></div>
+                <div id="ruler-h"><canvas id="ruler-h-canvas"></canvas></div>
+                <div id="ruler-v"><canvas id="ruler-v-canvas"></canvas></div>
+                <div id="form-win">
+                    <div id="form-titlebar">
+                        <span id="ftitle">Form1</span>
+                        <span style="display: flex; gap: 4px">
+                            <span
+                                style="
+                                    width: 11px;
+                                    height: 11px;
+                                    background: #f5a623;
+                                    border-radius: 50%;
+                                "
+                            ></span>
+                            <span
+                                style="
+                                    width: 11px;
+                                    height: 11px;
+                                    background: #27c93f;
+                                    border-radius: 50%;
+                                "
+                            ></span>
+                            <span
+                                style="
+                                    width: 11px;
+                                    height: 11px;
+                                    background: #ff5f56;
+                                    border-radius: 50%;
+                                "
+                            ></span>
+                        </span>
+                    </div>
+                    <div id="form-body">
+                        <div id="rubber"></div>
+                    </div>
+                    <div id="form-resize-r"></div>
+                    <div id="form-resize-b"></div>
+                    <div id="form-resize-br"></div>
+                </div>
+            </div>
+
+            <!-- プロパティ -->
+            <div id="props-panel">
+                <h3>プロパティ</h3>
+                <div id="prop-obj">Form1</div>
+                <div id="ptabs">
+                    <div class="ptab on" onclick="switchTab('p')">
+                        プロパティ
+                    </div>
+                    <div class="ptab" onclick="switchTab('e')">イベント</div>
+                </div>
+                <div id="plist"></div>
+                <div id="elist"></div>
+            </div>
+        </div>
+
+        <!-- ■ STATUSBAR -->
+        <div id="statusbar">
+            <span id="st-tool"><b>ポインタ</b></span>
+            <span>|</span>
+            <span id="st-pos">X:<b>0</b> Y:<b>0</b></span>
+            <span>|</span>
+            <span id="st-size">W:<b>-</b> H:<b>-</b></span>
+            <span>|</span>
+            <span id="st-cnt">ウィジェット: <b>0</b></span>
+        </div>
+
+        <!-- ■ CONTEXT MENU -->
+        <div id="ctx">
+            <div class="ci" onclick="ctxYaml()">
+                <svg viewBox="0 0 24 24">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg
+                >イベントを編集…
+            </div>
+            <div class="ci" onclick="actDuplicate()">
+                <svg viewBox="0 0 24 24">
+                    <rect x="9" y="9" width="13" height="13" rx="2" />
+                    <path
+                        d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                    /></svg
+                >複製
+            </div>
+            <div class="csep"></div>
+            <div class="ci" onclick="ctxFront()">
+                <svg viewBox="0 0 24 24">
+                    <polyline points="17 11 12 6 7 11" />
+                    <polyline points="17 18 12 13 7 18" /></svg
+                >前面へ
+            </div>
+            <div class="ci" onclick="ctxBack()">
+                <svg viewBox="0 0 24 24">
+                    <polyline points="17 6 12 11 7 6" />
+                    <polyline points="17 13 12 18 7 13" /></svg
+                >背面へ
+            </div>
+            <div class="csep"></div>
+            <div class="ci" style="color: #ff5f56" onclick="actDelete()">
+                <svg viewBox="0 0 24 24" stroke="#ff5f56">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6l-1 14H6L5 6" /></svg
+                >削除
+            </div>
+        </div>
+
+        <!-- file input for open -->
+        <!-- file input は Bun ネイティブダイアログに置き換え済み -->
+        <!-- 閉じる確認ダイアログ -->
+        <div id="close-confirm">
+            <div class="box">
+                <div class="icon">⚠️</div>
+                <p>
+                    VJA Form Designer を閉じますか？<br /><span
+                        style="font-size: 12px; color: var(--text2)"
+                        >保存していない変更は失われます。</span
+                    >
+                </p>
+                <div class="btns">
+                    <button class="btn-cancel" onclick="hideCloseConfirm()">
+                        キャンセル
+                    </button>
+                    <button class="btn-close" onclick="doClose()">
+                        閉じる
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- modal -->
+        <div id="modal-root"></div>
+
+        <script>
+            /* ═══════════════════════════════════════════
+   TOOLS 定義
+═══════════════════════════════════════════ */
+            const TOOLS = [
+                { id: "pointer", label: "ポインタ", icon: "🖱️" },
+                {
+                    id: "button",
+                    label: "button",
+                    icon: "⬜",
+                    tag: "button",
+                    def: {
+                        w: 96,
+                        h: 28,
+                        text: "Button1",
+                        bg: "#e0e0e0",
+                        fg: "#000",
+                        fontSize: 12,
+                        fontBold: false,
+                        border: "1px solid #888",
+                        borderRadius: 2,
+                        disabled: false,
+                        visible: true,
+                    },
+                },
+                {
+                    id: "label",
+                    label: "label",
+                    icon: "🏷️",
+                    tag: "label",
+                    def: {
+                        w: 100,
+                        h: 24,
+                        text: "Label1",
+                        bg: "transparent",
+                        fg: "#000",
+                        fontSize: 12,
+                        fontBold: false,
+                        align: "left",
+                        visible: true,
+                    },
+                },
+                {
+                    id: "textbox",
+                    label: "text",
+                    icon: "📝",
+                    tag: "input",
+                    def: {
+                        w: 120,
+                        h: 24,
+                        text: "",
+                        placeholder: "",
+                        bg: "#fff",
+                        fg: "#000",
+                        fontSize: 12,
+                        border: "1px solid #888",
+                        multiline: false,
+                        disabled: false,
+                        visible: true,
+                    },
+                },
+                {
+                    id: "inputtype",
+                    label: "inputType",
+                    icon: "🔡",
+                    tag: "inputtype",
+                    def: {
+                        w: 140,
+                        h: 28,
+                        inputType: "text",
+                        text: "",
+                        placeholder: "",
+                        bg: "#fff",
+                        fg: "#000",
+                        fontSize: 12,
+                        border: "1px solid #888",
+                        maxLength: 0,
+                        required: false,
+                        readonly: false,
+                        disabled: false,
+                        visible: true,
+                    },
+                },
+                {
+                    id: "checkbox",
+                    label: "checkbox",
+                    icon: "☑️",
+                    tag: "checkbox",
+                    def: {
+                        w: 100,
+                        h: 22,
+                        text: "CheckBox1",
+                        checked: false,
+                        fg: "#000",
+                        fontSize: 12,
+                        visible: true,
+                    },
+                },
+                {
+                    id: "radio",
+                    label: "radioButton",
+                    icon: "🔘",
+                    tag: "radio",
+                    def: {
+                        w: 100,
+                        h: 22,
+                        text: "RadioButton1",
+                        checked: false,
+                        group: "Group1",
+                        fg: "#000",
+                        fontSize: 12,
+                        visible: true,
+                    },
+                },
+                {
+                    id: "listbox",
+                    label: "listBox",
+                    icon: "📋",
+                    tag: "listbox",
+                    def: {
+                        w: 120,
+                        h: 80,
+                        items: "項目1\n項目2\n項目3",
+                        bg: "#fff",
+                        fg: "#000",
+                        fontSize: 12,
+                        border: "1px solid #888",
+                        visible: true,
+                    },
+                },
+                {
+                    id: "selectBox",
+                    label: "selectBox",
+                    icon: "🔽",
+                    tag: "selectBox",
+                    def: {
+                        w: 120,
+                        h: 24,
+                        items: "項目1\n項目2\n項目3",
+                        bg: "#fff",
+                        fg: "#000",
+                        fontSize: 12,
+                        border: "1px solid #888",
+                        visible: true,
+                    },
+                },
+                {
+                    id: "groupbox",
+                    label: "groupBox",
+                    icon: "🗂️",
+                    tag: "groupbox",
+                    def: {
+                        w: 160,
+                        h: 100,
+                        text: "GroupBox1",
+                        bg: "transparent",
+                        fg: "#000",
+                        fontSize: 12,
+                        border: "1px solid #888",
+                        visible: true,
+                    },
+                },
+                {
+                    id: "picture",
+                    label: "image",
+                    icon: "🖼️",
+                    tag: "picture",
+                    def: {
+                        w: 100,
+                        h: 80,
+                        src: "",
+                        bg: "#ddd",
+                        border: "1px solid #888",
+                        visible: true,
+                    },
+                },
+                {
+                    id: "hscroll",
+                    label: "水平線",
+                    icon: "↔️",
+                    tag: "hscroll",
+                    def: { w: 120, h: 18, bg: "#ddd", visible: true },
+                },
+                {
+                    id: "vscroll",
+                    label: "垂直線",
+                    icon: "↕️",
+                    tag: "vscroll",
+                    def: { w: 18, h: 80, bg: "#ddd", visible: true },
+                },
+            ];
+
+            const EVENTS = {
+                button: [
+                    "Click",
+                    "MouseDown",
+                    "MouseUp",
+                    "MouseEnter",
+                    "MouseLeave",
+                    "GotFocus",
+                    "LostFocus",
+                ],
+                label: ["Click", "MouseEnter", "MouseLeave"],
+                input: [
+                    "TextChanged",
+                    "KeyDown",
+                    "KeyUp",
+                    "GotFocus",
+                    "LostFocus",
+                    "Click",
+                ],
+                checkbox: ["Click", "CheckedChanged"],
+                radio: ["Click", "CheckedChanged"],
+                listbox: ["SelectedIndexChanged", "Click", "MouseDown"],
+                selectBox: ["SelectedIndexChanged", "TextChanged", "DropDown"],
+                groupbox: ["Click"],
+                picture: ["Click", "MouseDown", "MouseUp"],
+                hscroll: ["Scroll", "ValueChanged"],
+                vscroll: ["Scroll", "ValueChanged"],
+                form: [
+                    "Load",
+                    "Resize",
+                    "Click",
+                    "KeyDown",
+                    "KeyUp",
+                    "Closing",
+                ],
+            };
+
+            /* ═══════════════════════════════════════════
+   STATE  （マルチフォーム対応）
+═══════════════════════════════════════════ */
+
+            // フォーム1枚分のデータ構造を生成
+            function makeFormData(title = "Form1") {
+                return {
+                    id:
+                        "f" +
+                        Date.now() +
+                        Math.random().toString(36).slice(2, 6),
+                    cfg: { title, w: 640, h: 420, bg: "#ececec" },
+                    widgets: [],
+                    idCnt: 1,
+                };
+            }
+
+            // プロジェクト全体
+            let forms = [makeFormData("Form1")]; // フォーム配列
+            let curFormIdx = 0; // 現在編集中インデックス
+
+            // 現在フォームへのショートカット（参照）
+            let widgets = forms[0].widgets;
+            let formCfg = forms[0].cfg;
+            let idCnt = forms[0].idCnt;
+
+            let selId = null;
+            let undoStack = [];
+            let redoStack = [];
+            let activeTool = "pointer";
+            let snapOn = true;
+            let ctxId = null;
+            let curTab = "p";
+            const SNAP = 8;
+
+            // 現在フォームの参照を更新する
+            function syncCurForm() {
+                const f = forms[curFormIdx];
+                widgets = f.widgets;
+                formCfg = f.cfg;
+                idCnt = f.idCnt;
+            }
+            // idCnt の書き戻し（追加・削除時）
+            function commitIdCnt() {
+                forms[curFormIdx].idCnt = idCnt;
+            }
+
+            /* ═══════════════════════════════════════════
+   SNAP / HELPERS
+═══════════════════════════════════════════ */
+            const sn = (v) => (snapOn ? Math.round(v / SNAP) * SNAP : v);
+            const esc = (s) =>
+                String(s ?? "")
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;");
+            const $ = (id) => document.getElementById(id);
+            const fb = () => $("form-body");
+
+            /* ═══════════════════════════════════════════
+   TOOL GRID
+═══════════════════════════════════════════ */
+            function buildTools() {
+                const g = $("tool-grid");
+                g.innerHTML = "";
+                TOOLS.forEach((t) => {
+                    const d = document.createElement("div");
+                    d.className =
+                        "tool-item" +
+                        (t.id === "pointer" ? " active-tool" : "");
+                    d.dataset.tid = t.id;
+                    d.innerHTML = `<span class="ti">${t.icon}</span><span>${t.label}</span>`;
+                    d.addEventListener("click", () => setTool(t.id));
+                    g.appendChild(d);
+                });
+            }
+
+            function setTool(id) {
+                activeTool = id;
+                document
+                    .querySelectorAll(".tool-item")
+                    .forEach((el) =>
+                        el.classList.toggle(
+                            "active-tool",
+                            el.dataset.tid === id,
+                        ),
+                    );
+                const tool = TOOLS.find((t) => t.id === id);
+                $("st-tool").innerHTML = `<b>${tool?.label ?? id}</b>`;
+                // フォームボディのカーソル
+                fb().style.cursor = id === "pointer" ? "default" : "crosshair";
+            }
+
+            /* ═══════════════════════════════════════════
+   APPLY FORM CONFIG
+═══════════════════════════════════════════ */
+            function applyForm() {
+                const fw = formCfg.w,
+                    fh = formCfg.h;
+                $("form-win").style.width = fw + 4 + "px";
+                fb().style.width = fw + "px";
+                fb().style.height = fh + "px";
+                fb().style.backgroundColor = formCfg.bg;
+                $("ftitle").textContent = formCfg.title;
+                // ルーラーを再描画（フォームサイズ変更・スクロール後）
+                requestAnimationFrame(drawRulers);
+            }
+
+            /* ═══════════════════════════════════════════
+   WIDGET HTML
+═══════════════════════════════════════════ */
+            function makeInner(w) {
+                const p = w.props;
+                const vis = p.visible === false ? "visibility:hidden" : "";
+                const base = `width:100%;height:100%;box-sizing:border-box;font-family:'Segoe UI',sans-serif;`;
+                switch (w.tag) {
+                    case "button":
+                        return `<button style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-weight:${p.fontBold ? "bold" : "normal"};border:${p.border};border-radius:${p.borderRadius || 2}px;cursor:default;pointer-events:none;${vis}">${esc(p.text)}</button>`;
+                    case "label":
+                        return `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-weight:${p.fontBold ? "bold" : "normal"};text-align:${p.align || "left"};display:flex;align-items:center;overflow:hidden;padding:0 2px;${vis}">${esc(p.text)}</div>`;
+                    case "inputtype": {
+                        const itype = p.inputType || "text";
+                        // type別のプレビュー表示
+                        const typeIcons = {
+                            password: "🔒 password",
+                            email: "📧 email",
+                            number: "🔢 number",
+                            tel: "📞 tel",
+                            url: "🌐 url",
+                            search: "🔍 search",
+                            date: "📅 date",
+                            time: "⏰ time",
+                            month: "📆 month",
+                            week: "🗓 week",
+                            "datetime-local": "📅🕐 datetime",
+                            color: "🎨 color",
+                            range: "↔ range",
+                            file: "📁 file",
+                            text: "📝 text",
+                        };
+                        const needsPreview = [
+                            "date",
+                            "time",
+                            "month",
+                            "week",
+                            "datetime-local",
+                            "color",
+                            "range",
+                            "file",
+                        ].includes(itype);
+                        if (needsPreview) {
+                            return `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};display:flex;align-items:center;padding:0 6px;gap:6px;pointer-events:none;${vis}"><span style="font-size:11px;opacity:.7">${typeIcons[itype] || itype}</span></div>`;
+                        }
+                        return `<input type="${itype}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" ${p.maxLength ? `maxlength="${p.maxLength}"` : ""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};padding:0 4px;pointer-events:none;${vis}">`;
+                    }
+                    case "inputtype": {
+                        const itype2 = p.inputType || "text";
+                        const maxl = p.maxLength
+                            ? ` maxlength="${p.maxLength}"`
+                            : "";
+                        const req = p.required ? " required" : "";
+                        const ro = p.readonly ? " readonly" : "";
+                        const dis = p.disabled ? " disabled" : "";
+                        lines2.push(
+                            `<input type="${itype2}" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};padding:0 4px">`,
+                        );
+                        break;
+                    }
+                    case "input":
+                        if (p.multiline)
+                            return `<textarea style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};resize:none;padding:2px 4px;pointer-events:none;${vis}">${esc(p.text)}</textarea>`;
+                        return `<input type="text" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};padding:0 4px;pointer-events:none;${vis}">`;
+                    case "checkbox":
+                        return `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;pointer-events:none;${vis}"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`;
+                    case "radio":
+                        return `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;pointer-events:none;${vis}"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`;
+                    case "listbox":
+                        return `<select multiple style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};pointer-events:none;${vis}">${(
+                            p.items || ""
+                        )
+                            .split("\n")
+                            .map((i) => `<option>${esc(i)}</option>`)
+                            .join("")}</select>`;
+                    case "selectBox":
+                        return `<select style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};pointer-events:none;${vis}">${(
+                            p.items || ""
+                        )
+                            .split("\n")
+                            .map((i) => `<option>${esc(i)}</option>`)
+                            .join("")}</select>`;
+                    case "groupbox":
+                        return `<fieldset style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};${vis}"><legend style="padding:0 4px;font-size:${p.fontSize}px">${esc(p.text)}</legend></fieldset>`;
+                    case "picture":
+                        return `<div style="${base}background:${p.bg};border:${p.border};display:flex;align-items:center;justify-content:center;color:#888;font-size:11px;${vis}">${p.src ? `<img src="${esc(p.src)}" style="max-width:100%;max-height:100%">` : "📷"}</div>`;
+                    case "hscroll":
+                        return `<div style="${base}background:${p.bg};border:1px solid #999;border-radius:2px;display:flex;align-items:center;justify-content:space-between;padding:0 2px;${vis}"><span style="font-size:9px">◀</span><div style="flex:1;height:50%;background:#999;margin:0 3px;border-radius:1px"></div><span style="font-size:9px">▶</span></div>`;
+                    case "vscroll":
+                        return `<div style="${base}background:${p.bg};border:1px solid #999;border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;${vis}"><span style="font-size:9px">▲</span><div style="width:50%;flex:1;background:#999;margin:3px 0;border-radius:1px"></div><span style="font-size:9px">▼</span></div>`;
+                    default:
+                        return `<div style="${base}background:#eee;border:1px dashed #aaa"></div>`;
+                }
+            }
+
+            const RHS = ["tl", "tm", "tr", "ml", "mr", "bl", "bm", "br"]
+                .map((p) => `<div class="rh rh-${p}" data-h="${p}"></div>`)
+                .join("");
+
+            /* ═══════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════ */
+            function renderWidget(w, isNew) {
+                if (isNew) {
+                    const el = document.createElement("div");
+                    el.id = "w" + w.id;
+                    el.className = "widget";
+                    el.innerHTML = makeInner(w) + RHS;
+                    applyWPos(el, w);
+                    fb().appendChild(el);
+                    bindWidget(el, w.id);
+                    return;
+                }
+                // update existing
+                const el = $("w" + w.id);
+                if (!el) return;
+                applyWPos(el, w);
+                // replace inner (first child = content, rest = rh handles)
+                el.firstChild && el.firstChild.remove();
+                el.insertAdjacentHTML("afterbegin", makeInner(w));
+            }
+
+            function applyWPos(el, w) {
+                el.style.cssText = `left:${w.x}px;top:${w.y}px;width:${w.w}px;height:${w.h}px;z-index:${w.z || 0}`;
+                el.className = "widget" + (w.id === selId ? " sel" : "");
+            }
+
+            function fullRedraw() {
+                // clear widgets from form-body (keep #rubber)
+                [...fb().children].forEach((c) => {
+                    if (c.id !== "rubber") c.remove();
+                });
+                widgets.forEach((w) => renderWidget(w, true));
+                updateSelVisual();
+            }
+
+            function updateSelVisual() {
+                document.querySelectorAll(".widget").forEach((el) => {
+                    el.classList.toggle(
+                        "sel",
+                        parseInt(el.id.slice(1)) === selId,
+                    );
+                });
+            }
+
+            /* ═══════════════════════════════════════════
+   SELECT / DESELECT
+═══════════════════════════════════════════ */
+            function select(id) {
+                selId = id;
+                updateSelVisual();
+                const w = widgets.find((x) => x.id === id);
+                $("prop-obj").textContent = w ? w.name : formCfg.title;
+                updateStatusSel(w);
+                renderProps();
+            }
+
+            function deselect() {
+                selId = null;
+                updateSelVisual();
+                $("prop-obj").textContent = formCfg.title;
+                $("st-size").innerHTML = `W:<b>-</b> H:<b>-</b>`;
+                renderProps();
+            }
+
+            function updateStatusSel(w) {
+                if (!w) return;
+                $("st-pos").innerHTML = `X:<b>${w.x}</b> Y:<b>${w.y}</b>`;
+                $("st-size").innerHTML = `W:<b>${w.w}</b> H:<b>${w.h}</b>`;
+            }
+
+            /* ═══════════════════════════════════════════
+   ★ FORM-BODY MOUSEDOWN  （VBスタイル描画）
+   ・pointer → ウィジェット外クリックで deselect
+   ・tool    → ドラッグでラバーバンド → mouseup で確定
+═══════════════════════════════════════════ */
+            function initFormBodyEvents() {
+                const body = fb();
+
+                body.addEventListener("mousedown", (e) => {
+                    // ウィジェット・ハンドルは対象外
+                    if (e.target !== body && e.target.id !== "rubber") return;
+
+                    if (activeTool === "pointer") {
+                        deselect();
+                        return;
+                    }
+
+                    // ── ドラッグ描画開始 ──
+                    e.preventDefault();
+                    const rect = body.getBoundingClientRect();
+                    const x0 = sn(e.clientX - rect.left);
+                    const y0 = sn(e.clientY - rect.top);
+
+                    const rb = $("rubber");
+                    rb.style.cssText = `display:block;left:${x0}px;top:${y0}px;width:0;height:0`;
+
+                    let cx = x0,
+                        cy = y0,
+                        cw = 0,
+                        ch = 0;
+
+                    function onMove(ev) {
+                        const nx = sn(ev.clientX - rect.left);
+                        const ny = sn(ev.clientY - rect.top);
+                        cx = Math.min(x0, nx);
+                        cy = Math.min(y0, ny);
+                        cw = Math.abs(nx - x0);
+                        ch = Math.abs(ny - y0);
+                        rb.style.left = cx + "px";
+                        rb.style.top = cy + "px";
+                        rb.style.width = cw + "px";
+                        rb.style.height = ch + "px";
+                        $("st-pos").innerHTML = `X:<b>${cx}</b> Y:<b>${cy}</b>`;
+                        $("st-size").innerHTML =
+                            `W:<b>${cw}</b> H:<b>${ch}</b>`;
+                    }
+
+                    function onUp() {
+                        document.removeEventListener("mousemove", onMove);
+                        document.removeEventListener("mouseup", onUp);
+                        rb.style.display = "none";
+
+                        const tool = TOOLS.find((t) => t.id === activeTool);
+                        if (!tool || !tool.tag) {
+                            setTool("pointer");
+                            return;
+                        }
+
+                        // 最小サイズ保証
+                        const fw = Math.max(cw, tool.def.w);
+                        const fh = Math.max(ch, tool.def.h);
+
+                        addWidget(tool, cx, cy, fw, fh);
+                        setTool("pointer");
+                    }
+
+                    document.addEventListener("mousemove", onMove);
+                    document.addEventListener("mouseup", onUp);
+                });
+
+                // マウス位置ステータス
+                body.addEventListener("mousemove", (e) => {
+                    if (selId) return;
+                    const r = body.getBoundingClientRect();
+                    const x = sn(e.clientX - r.left),
+                        y = sn(e.clientY - r.top);
+                    $("st-pos").innerHTML = `X:<b>${x}</b> Y:<b>${y}</b>`;
+                });
+            }
+
+            /* ═══════════════════════════════════════════
+   ADD WIDGET
+═══════════════════════════════════════════ */
+            function addWidget(tool, x, y, w, h) {
+                const sameTag = widgets.filter(
+                    (ww) => ww.tag === tool.tag,
+                ).length;
+                const label = tool.id[0].toUpperCase() + tool.id.slice(1);
+                const name = label + (sameTag > 0 ? sameTag + 1 : "");
+                const props = { ...tool.def };
+                // w,h は def から除いて別管理
+                delete props.w;
+                delete props.h;
+
+                const widget = {
+                    id: idCnt++,
+                    name,
+                    tag: tool.tag,
+                    x: Math.max(0, x),
+                    y: Math.max(0, y),
+                    w: Math.max(w, 16),
+                    h: Math.max(h, 10),
+                    z: widgets.length,
+                    props,
+                    events: {},
+                };
+                widgets.push(widget);
+                commitIdCnt();
+                renderWidget(widget, true);
+                pushUndo();
+                select(widget.id);
+                updateCount();
+            }
+
+            /* ═══════════════════════════════════════════
+   WIDGET EVENTS（選択・移動・リサイズ）
+═══════════════════════════════════════════ */
+            function bindWidget(el, wid) {
+                el.addEventListener("mousedown", (e) => {
+                    if (e.button !== 0) return;
+
+                    const h = e.target.dataset.h;
+                    if (h) {
+                        // リサイズハンドル
+                        e.stopPropagation();
+                        e.preventDefault();
+                        startResize(e, wid, h);
+                        return;
+                    }
+
+                    // ウィジェット本体 → ポインタなら移動、ツールなら無視
+                    if (activeTool !== "pointer") return;
+                    e.stopPropagation();
+                    e.preventDefault();
+                    select(wid);
+                    startMove(e, wid);
+                });
+
+                el.addEventListener("contextmenu", (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    ctxId = wid;
+                    select(wid);
+                    showCtx(e.clientX, e.clientY);
+                });
+            }
+
+            /* ─ MOVE ─ */
+            function startMove(e, wid) {
+                const w = widgets.find((x) => x.id === wid);
+                if (!w) return;
+                const ox = w.x,
+                    oy = w.y;
+                const sx = e.clientX,
+                    sy = e.clientY;
+
+                function onMove(ev) {
+                    const dx = ev.clientX - sx,
+                        dy = ev.clientY - sy;
+                    w.x = sn(Math.max(0, Math.min(ox + dx, formCfg.w - w.w)));
+                    w.y = sn(Math.max(0, Math.min(oy + dy, formCfg.h - w.h)));
+                    const el = $("w" + wid);
+                    if (el) {
+                        el.style.left = w.x + "px";
+                        el.style.top = w.y + "px";
+                    }
+                    updateStatusSel(w);
+                    syncPropXY(w);
+                }
+                function onUp() {
+                    document.removeEventListener("mousemove", onMove);
+                    document.removeEventListener("mouseup", onUp);
+                    if (w.x !== ox || w.y !== oy) pushUndo();
+                }
+                document.addEventListener("mousemove", onMove);
+                document.addEventListener("mouseup", onUp);
+            }
+
+            /* ─ RESIZE ─ */
+            function startResize(e, wid, handle) {
+                const w = widgets.find((x) => x.id === wid);
+                if (!w) return;
+                const { x: ox, y: oy, w: ow, h: oh } = w;
+                const sx = e.clientX,
+                    sy = e.clientY;
+
+                function onMove(ev) {
+                    const dx = ev.clientX - sx,
+                        dy = ev.clientY - sy;
+                    let nx = ox,
+                        ny = oy,
+                        nw = ow,
+                        nh = oh;
+                    if (handle.includes("l")) {
+                        nx = sn(ox + dx);
+                        nw = sn(ow - dx);
+                    }
+                    if (handle.includes("r")) {
+                        nw = sn(ow + dx);
+                    }
+                    if (handle.includes("t")) {
+                        ny = sn(oy + dy);
+                        nh = sn(oh - dy);
+                    }
+                    if (handle.includes("b")) {
+                        nh = sn(oh + dy);
+                    }
+                    if (nw < 16) nw = 16;
+                    if (nh < 10) nh = 10;
+                    w.x = nx;
+                    w.y = ny;
+                    w.w = nw;
+                    w.h = nh;
+                    const el = $("w" + wid);
+                    if (el) {
+                        el.style.cssText = `left:${nx}px;top:${ny}px;width:${nw}px;height:${nh}px;z-index:${w.z || 0}`;
+                        el.classList.add("sel");
+                    }
+                    updateStatusSel(w);
+                    syncPropXY(w);
+                    syncPropWH(w);
+                }
+                function onUp() {
+                    document.removeEventListener("mousemove", onMove);
+                    document.removeEventListener("mouseup", onUp);
+                    pushUndo();
+                    renderProps();
+                }
+                document.addEventListener("mousemove", onMove);
+                document.addEventListener("mouseup", onUp);
+            }
+
+            /* ═══════════════════════════════════════════
+   PROPERTIES PANEL
+═══════════════════════════════════════════ */
+            const PDEFS = {
+                button: [
+                    { k: "name", lb: "Name", t: "text", sp: "name" },
+                    { k: "x", lb: "Left", t: "num", sp: "x" },
+                    { k: "y", lb: "Top", t: "num", sp: "y" },
+                    { k: "w", lb: "Width", t: "num", sp: "w" },
+                    { k: "h", lb: "Height", t: "num", sp: "h" },
+                    { sep: "外観" },
+                    { k: "text", lb: "Text", t: "text" },
+                    { k: "bg", lb: "BackColor", t: "color" },
+                    { k: "fg", lb: "ForeColor", t: "color" },
+                    { k: "fontSize", lb: "FontSize", t: "num" },
+                    { k: "fontBold", lb: "Bold", t: "bool" },
+                    { k: "border", lb: "Border", t: "text" },
+                    { k: "borderRadius", lb: "Radius", t: "num" },
+                    { sep: "動作" },
+                    { k: "disabled", lb: "Disabled", t: "bool" },
+                    { k: "visible", lb: "Visible", t: "bool" },
+                ],
+                label: [
+                    { k: "name", lb: "Name", t: "text", sp: "name" },
+                    { k: "x", lb: "Left", t: "num", sp: "x" },
+                    { k: "y", lb: "Top", t: "num", sp: "y" },
+                    { k: "w", lb: "Width", t: "num", sp: "w" },
+                    { k: "h", lb: "Height", t: "num", sp: "h" },
+                    { sep: "外観" },
+                    { k: "text", lb: "Text", t: "text" },
+                    { k: "fg", lb: "ForeColor", t: "color" },
+                    { k: "bg", lb: "BackColor", t: "color" },
+                    { k: "fontSize", lb: "FontSize", t: "num" },
+                    { k: "fontBold", lb: "Bold", t: "bool" },
+                    {
+                        k: "align",
+                        lb: "Align",
+                        t: "sel",
+                        opts: ["left", "center", "right"],
+                    },
+                    { k: "visible", lb: "Visible", t: "bool" },
+                ],
+                inputtype: [
+                    { k: "name", lb: "Name", t: "text", sp: "name" },
+                    { k: "x", lb: "Left", t: "num", sp: "x" },
+                    { k: "y", lb: "Top", t: "num", sp: "y" },
+                    { k: "w", lb: "Width", t: "num", sp: "w" },
+                    { k: "h", lb: "Height", t: "num", sp: "h" },
+                    { sep: "入力タイプ" },
+                    {
+                        k: "inputType",
+                        lb: "InputType",
+                        t: "sel",
+                        opts: [
+                            "text",
+                            "password",
+                            "email",
+                            "number",
+                            "tel",
+                            "url",
+                            "search",
+                            "date",
+                            "time",
+                            "month",
+                            "week",
+                            "datetime-local",
+                            "color",
+                            "range",
+                            "file",
+                        ],
+                    },
+                    { sep: "外観" },
+                    { k: "placeholder", lb: "Placeholder", t: "text" },
+                    { k: "text", lb: "Value", t: "text" },
+                    { k: "bg", lb: "BackColor", t: "color" },
+                    { k: "fg", lb: "ForeColor", t: "color" },
+                    { k: "fontSize", lb: "FontSize", t: "num" },
+                    { k: "border", lb: "Border", t: "text" },
+                    { sep: "動作" },
+                    { k: "maxLength", lb: "MaxLength", t: "num" },
+                    { k: "required", lb: "Required", t: "bool" },
+                    { k: "readonly", lb: "ReadOnly", t: "bool" },
+                    { k: "disabled", lb: "Disabled", t: "bool" },
+                    { k: "visible", lb: "Visible", t: "bool" },
+                ],
+                input: [
+                    { k: "name", lb: "Name", t: "text", sp: "name" },
+                    { k: "x", lb: "Left", t: "num", sp: "x" },
+                    { k: "y", lb: "Top", t: "num", sp: "y" },
+                    { k: "w", lb: "Width", t: "num", sp: "w" },
+                    { k: "h", lb: "Height", t: "num", sp: "h" },
+                    { sep: "外観" },
+                    { k: "text", lb: "Text", t: "text" },
+                    { k: "placeholder", lb: "Placeholder", t: "text" },
+                    { k: "bg", lb: "BackColor", t: "color" },
+                    { k: "fg", lb: "ForeColor", t: "color" },
+                    { k: "fontSize", lb: "FontSize", t: "num" },
+                    { sep: "動作" },
+                    { k: "multiline", lb: "Multiline", t: "bool" },
+                    { k: "disabled", lb: "Disabled", t: "bool" },
+                    { k: "visible", lb: "Visible", t: "bool" },
+                ],
+                checkbox: [
+                    { k: "name", lb: "Name", t: "text", sp: "name" },
+                    { k: "x", lb: "Left", t: "num", sp: "x" },
+                    { k: "y", lb: "Top", t: "num", sp: "y" },
+                    { k: "w", lb: "Width", t: "num", sp: "w" },
+                    { k: "h", lb: "Height", t: "num", sp: "h" },
+                    { sep: "外観" },
+                    { k: "text", lb: "Text", t: "text" },
+                    { k: "fg", lb: "ForeColor", t: "color" },
+                    { k: "fontSize", lb: "FontSize", t: "num" },
+                    { sep: "状態" },
+                    { k: "checked", lb: "Checked", t: "bool" },
+                    { k: "visible", lb: "Visible", t: "bool" },
+                ],
+                radio: [
+                    { k: "name", lb: "Name", t: "text", sp: "name" },
+                    { k: "x", lb: "Left", t: "num", sp: "x" },
+                    { k: "y", lb: "Top", t: "num", sp: "y" },
+                    { k: "w", lb: "Width", t: "num", sp: "w" },
+                    { k: "h", lb: "Height", t: "num", sp: "h" },
+                    { sep: "外観" },
+                    { k: "text", lb: "Text", t: "text" },
+                    { k: "group", lb: "GroupName", t: "text" },
+                    { k: "fg", lb: "ForeColor", t: "color" },
+                    { k: "fontSize", lb: "FontSize", t: "num" },
+                    { sep: "状態" },
+                    { k: "checked", lb: "Checked", t: "bool" },
+                    { k: "visible", lb: "Visible", t: "bool" },
+                ],
+                listbox: [
+                    { k: "name", lb: "Name", t: "text", sp: "name" },
+                    { k: "x", lb: "Left", t: "num", sp: "x" },
+                    { k: "y", lb: "Top", t: "num", sp: "y" },
+                    { k: "w", lb: "Width", t: "num", sp: "w" },
+                    { k: "h", lb: "Height", t: "num", sp: "h" },
+                    { sep: "外観" },
+                    { k: "items", lb: "Items", t: "area" },
+                    { k: "bg", lb: "BackColor", t: "color" },
+                    { k: "fg", lb: "ForeColor", t: "color" },
+                    { k: "fontSize", lb: "FontSize", t: "num" },
+                    { k: "visible", lb: "Visible", t: "bool" },
+                ],
+                selectBox: [
+                    { k: "name", lb: "Name", t: "text", sp: "name" },
+                    { k: "x", lb: "Left", t: "num", sp: "x" },
+                    { k: "y", lb: "Top", t: "num", sp: "y" },
+                    { k: "w", lb: "Width", t: "num", sp: "w" },
+                    { k: "h", lb: "Height", t: "num", sp: "h" },
+                    { sep: "外観" },
+                    { k: "items", lb: "Items", t: "area" },
+                    { k: "bg", lb: "BackColor", t: "color" },
+                    { k: "fg", lb: "ForeColor", t: "color" },
+                    { k: "fontSize", lb: "FontSize", t: "num" },
+                    { k: "visible", lb: "Visible", t: "bool" },
+                ],
+                groupbox: [
+                    { k: "name", lb: "Name", t: "text", sp: "name" },
+                    { k: "x", lb: "Left", t: "num", sp: "x" },
+                    { k: "y", lb: "Top", t: "num", sp: "y" },
+                    { k: "w", lb: "Width", t: "num", sp: "w" },
+                    { k: "h", lb: "Height", t: "num", sp: "h" },
+                    { sep: "外観" },
+                    { k: "text", lb: "Text", t: "text" },
+                    { k: "fg", lb: "ForeColor", t: "color" },
+                    { k: "bg", lb: "BackColor", t: "color" },
+                    { k: "border", lb: "Border", t: "text" },
+                    { k: "visible", lb: "Visible", t: "bool" },
+                ],
+                picture: [
+                    { k: "name", lb: "Name", t: "text", sp: "name" },
+                    { k: "x", lb: "Left", t: "num", sp: "x" },
+                    { k: "y", lb: "Top", t: "num", sp: "y" },
+                    { k: "w", lb: "Width", t: "num", sp: "w" },
+                    { k: "h", lb: "Height", t: "num", sp: "h" },
+                    { sep: "外観" },
+                    { k: "src", lb: "Image URL", t: "text" },
+                    { k: "bg", lb: "BackColor", t: "color" },
+                    { k: "border", lb: "Border", t: "text" },
+                    { k: "visible", lb: "Visible", t: "bool" },
+                ],
+                hscroll: [
+                    { k: "name", lb: "Name", t: "text", sp: "name" },
+                    { k: "x", lb: "Left", t: "num", sp: "x" },
+                    { k: "y", lb: "Top", t: "num", sp: "y" },
+                    { k: "w", lb: "Width", t: "num", sp: "w" },
+                    { k: "h", lb: "Height", t: "num", sp: "h" },
+                    { k: "visible", lb: "Visible", t: "bool" },
+                ],
+                vscroll: [
+                    { k: "name", lb: "Name", t: "text", sp: "name" },
+                    { k: "x", lb: "Left", t: "num", sp: "x" },
+                    { k: "y", lb: "Top", t: "num", sp: "y" },
+                    { k: "w", lb: "Width", t: "num", sp: "w" },
+                    { k: "h", lb: "Height", t: "num", sp: "h" },
+                    { k: "visible", lb: "Visible", t: "bool" },
+                ],
+            };
+
+            function renderProps() {
+                const pl = $("plist"),
+                    el = $("elist");
+                pl.innerHTML = "";
+                el.innerHTML = "";
+                if (curTab === "e") {
+                    renderEvents();
+                    return;
+                }
+
+                if (!selId) {
+                    renderFormProps();
+                    return;
+                }
+                const w = widgets.find((x) => x.id === selId);
+                if (!w) return;
+                const defs = PDEFS[w.tag] || [];
+                defs.forEach((d) => {
+                    if (d.sep) {
+                        pl.appendChild(makeSec(d.sep));
+                        return;
+                    }
+                    let val;
+                    if (d.sp === "name") val = w.name;
+                    else if (d.sp === "x") val = w.x;
+                    else if (d.sp === "y") val = w.y;
+                    else if (d.sp === "w") val = w.w;
+                    else if (d.sp === "h") val = w.h;
+                    else val = w.props[d.k];
+                    pl.appendChild(makeProw(d, val, w.id));
+                });
+            }
+
+            function makeSec(txt) {
+                const d = document.createElement("div");
+                d.className = "psec";
+                d.textContent = txt;
+                return d;
+            }
+
+            function makeProw(d, val, wid) {
+                const row = document.createElement("div");
+                row.className = "prow";
+                row.innerHTML = `<div class="pk">${d.lb}</div><div class="pv">${pinput(d, val, wid)}</div>`;
+                return row;
+            }
+
+            function pinput(d, val, wid) {
+                const w2 = wid;
+                switch (d.t) {
+                    case "text":
+                        return `<input type="text" value="${esc(val ?? "")}" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">`;
+                    case "num":
+                        return `<input type="number" value="${val ?? 0}" onchange="setProp('${d.k}','${d.sp || ""}',+this.value,${w2})">`;
+                    case "bool":
+                        return `<select onchange="setProp('${d.k}','${d.sp || ""}',this.value==='true',${w2})"><option value="true" ${val ? "selected" : ""}>True</option><option value="false" ${!val ? "selected" : ""}>False</option></select>`;
+                    case "color":
+                        return `<input type="color" value="${val || "#000000"}" style="width:100%;height:20px;padding:0;border:none;cursor:pointer" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">`;
+                    case "sel":
+                        return `<select onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">${(d.opts || []).map((o) => `<option value="${o}" ${val === o ? "selected" : ""}>${o}</option>`).join("")}</select>`;
+                    case "area":
+                        return `<textarea style="width:100%;height:56px;background:transparent;border:none;color:var(--text);font-size:11px;resize:none;outline:none" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">${esc(val || "")}</textarea>`;
+                }
+                return "";
+            }
+
+            function setProp(k, sp, val, wid) {
+                const w = widgets.find((x) => x.id == wid);
+                if (!w) return;
+                if (sp === "name") w.name = val;
+                else if (sp === "x") w.x = +val;
+                else if (sp === "y") w.y = +val;
+                else if (sp === "w") w.w = +val;
+                else if (sp === "h") w.h = +val;
+                else w.props[k] = val;
+                renderWidget(w, false);
+                applyWPos($("w" + wid), w);
+                if (sp === "name") $("prop-obj").textContent = val;
+            }
+
+            function syncPropXY(w) {
+                // live update while dragging
+                const rows = [...$("plist").querySelectorAll(".prow")];
+                rows.forEach((r) => {
+                    const inp = r.querySelector("input[type=number]");
+                    const lbl = r.querySelector(".pk")?.textContent;
+                    if (!inp || !lbl) return;
+                    if (lbl === "Left") inp.value = w.x;
+                    if (lbl === "Top") inp.value = w.y;
+                });
+            }
+            function syncPropWH(w) {
+                const rows = [...$("plist").querySelectorAll(".prow")];
+                rows.forEach((r) => {
+                    const inp = r.querySelector("input[type=number]");
+                    const lbl = r.querySelector(".pk")?.textContent;
+                    if (!inp || !lbl) return;
+                    if (lbl === "Width") inp.value = w.w;
+                    if (lbl === "Height") inp.value = w.h;
+                });
+            }
+
+            function renderFormProps() {
+                const pl = $("plist");
+                [
+                    { lb: "タイトル", k: "title", t: "text" },
+                    { lb: "Width", k: "w", t: "num" },
+                    { lb: "Height", k: "h", t: "num" },
+                    { lb: "背景色", k: "bg", t: "color" },
+                ].forEach((d) => {
+                    const row = document.createElement("div");
+                    row.className = "prow";
+                    let inp = "";
+                    if (d.t === "text")
+                        inp = `<input type="text" value="${esc(formCfg[d.k] ?? "")}" onchange="setFormCfg('${d.k}',this.value)">`;
+                    if (d.t === "num")
+                        inp = `<input type="number" value="${formCfg[d.k] ?? 0}" onchange="setFormCfg('${d.k}',+this.value)">`;
+                    if (d.t === "color")
+                        inp = `<input type="color" value="${formCfg[d.k] || "#ececec"}" style="width:100%;height:20px;padding:0;border:none;cursor:pointer" onchange="setFormCfg('${d.k}',this.value)">`;
+                    row.innerHTML = `<div class="pk">${d.lb}</div><div class="pv">${inp}</div>`;
+                    pl.appendChild(row);
+                });
+            }
+
+            function setFormCfg(k, v) {
+                formCfg[k] = v;
+                forms[curFormIdx].cfg[k] = v;
+                buildFormSelect();
+                applyForm();
+            }
+
+            /* ── イベントタブ ── */
+            function renderEvents() {
+                const el = $("elist");
+                el.innerHTML = "";
+                if (!selId) {
+                    el.innerHTML =
+                        '<div style="padding:8px;font-size:11px;color:var(--text3)">ウィジェットを選択してください</div>';
+                    return;
+                }
+                const w = widgets.find((x) => x.id === selId);
+                if (!w) return;
+                (EVENTS[w.tag] || []).forEach((ev) => {
+                    const hasY = w.events?.[ev]?.trim().length > 0;
+                    const row = document.createElement("div");
+                    row.className = "erow";
+                    row.innerHTML = `<div class="ek ${hasY ? "has-yaml" : ""}">${ev}${hasY ? " ✓" : ""}</div>
+      <button class="ebtn" onclick="openYaml(${w.id},'${ev}')">
+        <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>`;
+                    el.appendChild(row);
+                });
+            }
+
+            function switchTab(t) {
+                curTab = t;
+                document
+                    .querySelectorAll(".ptab")
+                    .forEach((el, i) =>
+                        el.classList.toggle(
+                            "on",
+                            (i === 0 && t === "p") || (i === 1 && t === "e"),
+                        ),
+                    );
+                $("plist").style.display = t === "p" ? "block" : "none";
+                $("elist").style.display = t === "e" ? "block" : "none";
+                renderProps();
+            }
+
+            /* ═══════════════════════════════════════════
+   YAML EDITOR
+═══════════════════════════════════════════ */
+            function openYaml(wid, evName) {
+                const w = widgets.find((x) => x.id == wid);
+                if (!w) return;
+                if (!w.events) w.events = {};
+                const cur =
+                    w.events[evName] ||
+                    `# イベント: ${evName} (${w.name})\n# YAML形式でアクションを定義します\n\naction: alert\nmessage: "${w.name}の${evName}が発生しました"\n\n# AI連携 (将来)\n# ai:\n#   provider: llama\n#   model: qwen3.5-4b\n#   prompt: "ユーザーが${evName}を実行しました"\n`;
+                showModal(`
+    <div class="mhdr"><h4>📋 ${w.name} — ${evName}</h4><button class="mclose" onclick="closeModal()">✕</button></div>
+    <div class="mbody">
+      <div class="infobox">YAML形式でイベント処理を定義します。将来的に <code>llama-server / qwen3.5</code> と連携してコードを自動生成します。</div>
+      <textarea class="yaml" id="yaml-ta">${esc(cur)}</textarea>
+    </div>
+    <div class="mfoot">
+      <button onclick="closeModal()">キャンセル</button>
+      <button class="pri" onclick="saveYaml(${wid},'${evName}')">保存</button>
+    </div>`);
+            }
+
+            function saveYaml(wid, evName) {
+                const w = widgets.find((x) => x.id == wid);
+                if (!w) return;
+                if (!w.events) w.events = {};
+                w.events[evName] = $("yaml-ta").value;
+                closeModal();
+                renderEvents();
+                pushUndo();
+            }
+
+            /* ═══════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════ */
+            function showModal(html) {
+                $("modal-root").innerHTML =
+                    `<div class="ov" onclick="ovClick(event)"><div class="modal">${html}</div></div>`;
+            }
+            function closeModal() {
+                $("modal-root").innerHTML = "";
+            }
+            function ovClick(e) {
+                if (e.target.classList.contains("ov")) closeModal();
+            }
+
+            /* ═══════════════════════════════════════════
+   CONTEXT MENU
+═══════════════════════════════════════════ */
+            function showCtx(x, y) {
+                const m = $("ctx");
+                m.style.cssText = `display:flex;left:${x}px;top:${y}px`;
+            }
+            function hideCtx() {
+                $("ctx").style.display = "none";
+            }
+            function ctxYaml() {
+                hideCtx();
+                const w = widgets.find((x) => x.id === ctxId);
+                if (!w) return;
+                openYaml(w.id, (EVENTS[w.tag] || ["Click"])[0]);
+            }
+            function ctxFront() {
+                hideCtx();
+                const w = widgets.find((x) => x.id === ctxId);
+                if (!w) return;
+                w.z = (w.z || 0) + 1;
+                applyWPos($("w" + w.id), w);
+            }
+            function ctxBack() {
+                hideCtx();
+                const w = widgets.find((x) => x.id === ctxId);
+                if (!w) return;
+                w.z = Math.max(0, (w.z || 0) - 1);
+                applyWPos($("w" + w.id), w);
+            }
+
+            /* ═══════════════════════════════════════════
+   UNDO / REDO
+═══════════════════════════════════════════ */
+            // プロジェクト全体スナップショット
+            function snapshot() {
+                return JSON.stringify({ forms, curFormIdx });
+            }
+            function pushUndo() {
+                // 編集前に現フォームのidCntを書き戻す
+                commitIdCnt();
+                undoStack.push(snapshot());
+                if (undoStack.length > 60) undoStack.shift();
+                redoStack = [];
+            }
+            function restoreSnap(s) {
+                const d = JSON.parse(s);
+                forms = d.forms;
+                curFormIdx = d.curFormIdx;
+                syncCurForm();
+                selId = null;
+                buildFormSelect();
+                applyForm();
+                fullRedraw();
+                renderProps();
+                updateCount();
+            }
+            function actUndo() {
+                if (!undoStack.length) return;
+                redoStack.push(snapshot());
+                restoreSnap(undoStack.pop());
+            }
+            function actRedo() {
+                if (!redoStack.length) return;
+                undoStack.push(snapshot());
+                restoreSnap(redoStack.pop());
+            }
+
+            /* ═══════════════════════════════════════════
+   DELETE / DUPLICATE
+═══════════════════════════════════════════ */
+            function actDelete() {
+                if (!selId) return;
+                pushUndo();
+                $("w" + selId)?.remove();
+                widgets = widgets.filter((x) => x.id !== selId);
+                forms[curFormIdx].widgets = widgets;
+                selId = null;
+                $("prop-obj").textContent = formCfg.title;
+                renderProps();
+                updateCount();
+            }
+            function actDuplicate() {
+                hideCtx();
+                const src = widgets.find((x) => x.id === (ctxId ?? selId));
+                if (!src) return;
+                const nw = {
+                    ...src,
+                    id: idCnt++,
+                    x: src.x + SNAP * 2,
+                    y: src.y + SNAP * 2,
+                    props: { ...src.props },
+                    events: { ...src.events },
+                    name: src.name + "_2",
+                };
+                widgets.push(nw);
+                renderWidget(nw, true);
+                pushUndo();
+                select(nw.id);
+                updateCount();
+            }
+
+            /* ═══════════════════════════════════════════
+   SAVE / OPEN / EXPORT
+═══════════════════════════════════════════ */
+            function actNew() {
+                if (
+                    !confirm(
+                        "新規プロジェクトを作成しますか？（現在の内容は失われます）",
+                    )
+                )
+                    return;
+                forms = [makeFormData("Form1")];
+                curFormIdx = 0;
+                syncCurForm();
+                selId = null;
+                undoStack = [];
+                redoStack = [];
+                buildFormSelect();
+                applyForm();
+                fullRedraw();
+                renderProps();
+                updateCount();
+                pushUndo();
+            }
+
+            // ── ファイル保存・オープン（Bunネイティブ経由）──
+            // _lastSavePath: 前回保存したパスを記憶（上書き保存用）
+            let _lastSavePath = null;
+
+            function loadProjectData(jsonStr) {
+                try {
+                    const d = JSON.parse(jsonStr);
+                    if (d.formCfg && !d.forms) {
+                        forms = [
+                            {
+                                id: "f0",
+                                cfg: d.formCfg,
+                                widgets: d.widgets || [],
+                                idCnt: d.idCnt || 1,
+                            },
+                        ];
+                        curFormIdx = 0;
+                    } else {
+                        forms = d.forms;
+                        curFormIdx = d.curFormIdx || 0;
+                    }
+                    syncCurForm();
+                    selId = null;
+                    undoStack = [];
+                    redoStack = [];
+                    buildFormSelect();
+                    applyForm();
+                    fullRedraw();
+                    renderProps();
+                    updateCount();
+                } catch (err) {
+                    alert("読み込み失敗: " + err.message);
+                }
+            }
+
+            // プロジェクトを開く → Bun側でファイル選択ダイアログ
+            async function actOpen() {
+                try {
+                    const result = await window.bunOpenFile({
+                        filter: "vjaproj",
+                    });
+                    if (result && result.content)
+                        loadProjectData(result.content);
+                } catch (e) {
+                    alert("ファイルを開けませんでした: " + e.message);
+                }
+            }
+
+            // 上書き保存（パスが既知なら直接保存、未知なら名前を付けて保存）
+            async function actSave() {
+                commitIdCnt();
+                if (_lastSavePath) {
+                    try {
+                        await window.bunSaveFile({
+                            path: _lastSavePath,
+                            content: snapshot(),
+                        });
+                        showToast("保存しました: " + _lastSavePath);
+                    } catch (e) {
+                        alert("保存に失敗しました: " + e.message);
+                    }
+                } else {
+                    await actSaveAs();
+                }
+            }
+
+            // 名前を付けて保存 → Bun側でファイル保存ダイアログ
+            async function actSaveAs() {
+                commitIdCnt();
+                const projName = forms[0]?.cfg?.title || "project";
+                try {
+                    const result = await window.bunSaveDialog({
+                        defaultName: projName + ".vjaproj",
+                        filter: "vjaproj",
+                    });
+                    if (result && result.path) {
+                        await window.bunSaveFile({
+                            path: result.path,
+                            content: snapshot(),
+                        });
+                        _lastSavePath = result.path;
+                        showToast("保存しました: " + result.path);
+                    }
+                } catch (e) {
+                    alert("保存に失敗しました: " + e.message);
+                }
+            }
+
+            // トースト通知（一時的なメッセージ表示）
+            function showToast(msg) {
+                let t = $("toast-msg");
+                if (!t) {
+                    t = document.createElement("div");
+                    t.id = "toast-msg";
+                    t.style.cssText =
+                        "position:fixed;bottom:36px;left:50%;transform:translateX(-50%);" +
+                        "background:#2d2d45;border:1px solid var(--accent);border-radius:4px;" +
+                        "color:#e0e0f0;font-size:12px;padding:6px 16px;z-index:2000;pointer-events:none;" +
+                        "opacity:0;transition:opacity .2s";
+                    document.body.appendChild(t);
+                }
+                t.textContent = msg;
+                t.style.opacity = "1";
+                clearTimeout(t._tid);
+                t._tid = setTimeout(() => {
+                    t.style.opacity = "0";
+                }, 2500);
+            }
+
+            function actExport() {
+                commitIdCnt();
+                const projTitle = forms[0]?.cfg?.title || "project";
+                // 全フォームのHTML生成
+                const formHtmls = forms.map((f) => {
+                    const lines2 = [];
+                    const ws = f.widgets,
+                        cfg = f.cfg;
+                    lines2.push(
+                        `<div class="vja-form" id="form-${f.id}" style="display:none;position:relative;width:${cfg.w}px;height:${cfg.h}px;background:${cfg.bg}">`,
+                    );
+                    f.widgets.forEach((w) => {
+                        const p = w.props;
+                        const vis =
+                            p.visible === false ? "visibility:hidden;" : "";
+                        const base = `position:absolute;left:${w.x}px;top:${w.y}px;width:${w.w}px;height:${w.h}px;z-index:${w.z || 0};box-sizing:border-box;${vis}`;
+                        switch (w.tag) {
+                            case "button":
+                                lines.push(
+                                    `<button id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};border-radius:${p.borderRadius || 2}px;cursor:pointer">${esc(p.text)}</button>`,
+                                );
+                                break;
+                            case "label":
+                                lines.push(
+                                    `<label  id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;text-align:${p.align};display:flex;align-items:center">${esc(p.text)}</label>`,
+                                );
+                                break;
+                            case "inputtype": {
+                                const itype2 = p.inputType || "text";
+                                const maxl = p.maxLength
+                                    ? ` maxlength="${p.maxLength}"`
+                                    : "";
+                                const req = p.required ? " required" : "";
+                                const ro = p.readonly ? " readonly" : "";
+                                const dis = p.disabled ? " disabled" : "";
+                                lines2.push(
+                                    `<input type="${itype2}" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};padding:0 4px">`,
+                                );
+                                break;
+                            }
+                            case "input":
+                                if (p.multiline)
+                                    lines.push(
+                                        `<textarea id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};padding:2px 4px;resize:none">${esc(p.text)}</textarea>`,
+                                    );
+                                else
+                                    lines.push(
+                                        `<input type="text" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};padding:0 4px">`,
+                                    );
+                                break;
+                            case "checkbox":
+                                lines.push(
+                                    `<label id="${w.name}" style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;cursor:pointer"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
+                                );
+                                break;
+                            case "radio":
+                                lines.push(
+                                    `<label id="${w.name}" style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;cursor:pointer"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
+                                );
+                                break;
+                            case "listbox":
+                                lines.push(
+                                    `<select id="${w.name}" multiple style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border}">${(
+                                        p.items || ""
+                                    )
+                                        .split("\n")
+                                        .map(
+                                            (i) => `<option>${esc(i)}</option>`,
+                                        )
+                                        .join("")}</select>`,
+                                );
+                                break;
+                            case "selectBox":
+                                lines.push(
+                                    `<select id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border}">${(
+                                        p.items || ""
+                                    )
+                                        .split("\n")
+                                        .map(
+                                            (i) => `<option>${esc(i)}</option>`,
+                                        )
+                                        .join("")}</select>`,
+                                );
+                                break;
+                            case "groupbox":
+                                lines.push(
+                                    `<fieldset id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border}"><legend>${esc(p.text)}</legend></fieldset>`,
+                                );
+                                break;
+                        }
+                    });
+                    lines2.push("</div>");
+                    return lines2.join("\n");
+                });
+
+                // ナビゲーションHTML
+                const navItems = forms
+                    .map(
+                        (f, i) =>
+                            `<button onclick="showForm('${f.id}')" style="padding:4px 12px;margin:0 2px;cursor:pointer">${esc(f.cfg.title)}</button>`,
+                    )
+                    .join("");
+
+                const lines = [
+                    "<!DOCTYPE html>",
+                    '<html lang="ja">',
+                    "<head>",
+                    '<meta charset="UTF-8">',
+                    `<title>${esc(projTitle)}</title>`,
+                    "<style>",
+                    "*{box-sizing:border-box;margin:0;padding:0}",
+                    `body{font-family:'Segoe UI',sans-serif}`,
+                    `#titlebar{background:linear-gradient(90deg,#003f91,#0060c8);color:#fff;height:24px;display:flex;align-items:center;padding:0 8px;font-size:12px;gap:8px}`,
+                    `#nav{padding:4px 8px;background:#f0f0f0;border-bottom:1px solid #ccc;display:flex;align-items:center;gap:4px}`,
+                    `#content{position:relative}`,
+                    ".vja-form{display:none}",
+                    ".vja-form.active{display:block}",
+                    "</style>",
+                    "</head>",
+                    "<body>",
+                    `<div id="titlebar"><span>${esc(projTitle)}</span></div>`,
+                    `<div id="nav">${navItems}</div>`,
+                    `<div id="content">`,
+                    ...formHtmls,
+                    `</div>`,
+                ];
+
+                // イベントスクリプト
+                const evLines = [];
+                forms.forEach((f) => {
+                    f.widgets.forEach((w) => {
+                        Object.entries(w.events || {}).forEach(([ev, yaml]) => {
+                            if (!yaml?.trim()) return;
+                            const jEv =
+                                ev === "Click"
+                                    ? "click"
+                                    : ev === "TextChanged"
+                                      ? "input"
+                                      : "click";
+                            evLines.push(
+                                `/* ${w.name}.${ev} */\ndocument.getElementById('${w.name}')?.addEventListener('${jEv}',()=>{\n  /* YAML:\n${yaml
+                                    .split("\n")
+                                    .map((l) => "    " + l)
+                                    .join(
+                                        "\n",
+                                    )}\n  */\n  console.log('${w.name}.${ev}');\n});`,
+                            );
+                        });
+                    });
+                });
+
+                // 画面遷移JS
+                const navJS = `function showForm(id){\n  document.querySelectorAll('.vja-form').forEach(el=>el.classList.remove('active'));\n  const el=document.getElementById('form-'+id);\n  if(el) el.classList.add('active');\n}\n// 最初の画面を表示\nshowForm('${forms[0]?.id || ""}');`;
+                lines.push(
+                    `<script>\n${navJS}\n${evLines.join("\n")}\n<\/script>`,
+                );
+                lines.push("</body>", "</html>");
+
+                const html = lines.join("\n");
+                showModal(`
+    <div class="mhdr"><h4>📤 HTMLエクスポート</h4><button class="mclose" onclick="closeModal()">✕</button></div>
+    <div class="mbody">
+      <textarea class="yaml" style="height:260px;font-size:10px" readonly>${esc(html)}</textarea>
+    </div>
+    <div class="mfoot">
+      <button onclick="closeModal()">閉じる</button>
+      <button class="pri" onclick="dlHTML()">ダウンロード</button>
+    </div>`);
+                window._exportHTML = html;
+            }
+            async function dlHTML() {
+                const projName = forms[0]?.cfg?.title || "form";
+                try {
+                    const result = await window.bunSaveDialog({
+                        defaultName: projName + ".html",
+                        filter: "html",
+                    });
+                    if (result && result.path) {
+                        await window.bunSaveFile({
+                            path: result.path,
+                            content: window._exportHTML,
+                        });
+                        closeModal();
+                        showToast("エクスポートしました: " + result.path);
+                    }
+                } catch (e) {
+                    alert("エクスポートに失敗しました: " + e.message);
+                }
+            }
+
+            /* ═══════════════════════════════════════════
+   マルチフォーム管理
+═══════════════════════════════════════════ */
+
+            // カスタムドロップダウンを再構築
+            function buildFormSelect() {
+                const list = $("fdd-list");
+                list.innerHTML = "";
+                forms.forEach((f, i) => {
+                    const item = document.createElement("div");
+                    item.className =
+                        "fdd-item" + (i === curFormIdx ? " fdd-active" : "");
+                    item.textContent = `[${i + 1}] ${f.cfg.title}`;
+                    item.onclick = (e) => {
+                        e.stopPropagation();
+                        switchForm(i);
+                        closeFdd();
+                    };
+                    list.appendChild(item);
+                });
+                // ボタンラベル更新
+                const cur = forms[curFormIdx];
+                $("fdd-label").textContent = cur
+                    ? `[${curFormIdx + 1}] ${cur.cfg.title}`
+                    : "";
+            }
+
+            function toggleFdd(e) {
+                e.stopPropagation();
+                $("fdd-list").classList.toggle("open");
+            }
+            function closeFdd() {
+                $("fdd-list").classList.remove("open");
+            }
+
+            // フォームを切り替え
+            function switchForm(idx) {
+                idx = parseInt(idx);
+                if (idx === curFormIdx) return;
+                commitIdCnt();
+                curFormIdx = idx;
+                syncCurForm();
+                selId = null;
+                buildFormSelect();
+                applyForm();
+                fullRedraw();
+                renderProps();
+                updateCount();
+                requestAnimationFrame(drawRulers);
+            }
+
+            // 新しい画面を追加
+            function formNew() {
+                const title = prompt(
+                    "新しい画面の名前を入力してください",
+                    "Form" + (forms.length + 1),
+                );
+                if (!title) return;
+                commitIdCnt();
+                pushUndo();
+                const f = makeFormData(title);
+                forms.push(f);
+                curFormIdx = forms.length - 1;
+                syncCurForm();
+                selId = null;
+                buildFormSelect();
+                applyForm();
+                fullRedraw();
+                renderProps();
+                updateCount();
+            }
+
+            // 現在の画面を削除
+            function formDelete() {
+                if (forms.length <= 1) {
+                    alert("最後の画面は削除できません");
+                    return;
+                }
+                if (!confirm(`"${formCfg.title}" を削除しますか？`)) return;
+                commitIdCnt();
+                pushUndo();
+                forms.splice(curFormIdx, 1);
+                curFormIdx = Math.min(curFormIdx, forms.length - 1);
+                syncCurForm();
+                selId = null;
+                buildFormSelect();
+                applyForm();
+                fullRedraw();
+                renderProps();
+                updateCount();
+            }
+
+            // 現在の画面名を変更
+            function formRename() {
+                const newTitle = prompt(
+                    "画面名を変更してください",
+                    formCfg.title,
+                );
+                if (!newTitle || newTitle === formCfg.title) return;
+                pushUndo();
+                formCfg.title = newTitle;
+                forms[curFormIdx].cfg.title = newTitle;
+                applyForm();
+                buildFormSelect();
+            }
+
+            /* ═══════════════════════════════════════════
+   MISC
+═══════════════════════════════════════════ */
+
+            /* ── ウィンドウを閉じる確認 ── */
+            function showCloseConfirm() {
+                document.getElementById("close-confirm").classList.add("show");
+            }
+            function hideCloseConfirm() {
+                document
+                    .getElementById("close-confirm")
+                    .classList.remove("show");
+            }
+            async function doClose() {
+                hideCloseConfirm();
+                try {
+                    await window.bunCloseApp();
+                } catch (e) {
+                    // バインドがない環境（ブラウザ等）ではwindow.closeを試みる
+                    window.close();
+                }
+            }
+            // Escキーで確認ダイアログを閉じる
+            function toggleGrid() {
+                fb().classList.toggle("show-grid");
+            }
+            function toggleSnap() {
+                snapOn = !snapOn;
+            }
+            function updateCount() {
+                $("st-cnt").innerHTML =
+                    `ウィジェット: <b>${widgets.length}</b>`;
+            }
+
+            function toggleMenu(id, e) {
+                e.stopPropagation();
+                const already = $(id).classList.contains("open");
+                closeAllMenus();
+                if (!already) $(id).classList.add("open");
+            }
+            function closeAllMenus() {
+                document
+                    .querySelectorAll(".dropdown")
+                    .forEach((d) => d.classList.remove("open"));
+            }
+
+            /* ═══════════════════════════════════════════
+   KEYBOARD
+═══════════════════════════════════════════ */
+            document.addEventListener("keydown", (e) => {
+                const tag = e.target.tagName;
+                if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT")
+                    return;
+                if (e.ctrlKey && e.key === "z") {
+                    e.preventDefault();
+                    actUndo();
+                }
+                if (e.ctrlKey && e.key === "y") {
+                    e.preventDefault();
+                    actRedo();
+                }
+                if (e.ctrlKey && e.key === "s") {
+                    e.preventDefault();
+                    actSave();
+                }
+                if (e.ctrlKey && e.key === "w") {
+                    e.preventDefault();
+                    showCloseConfirm();
+                }
+                if (e.key === "F4" && e.altKey) {
+                    e.preventDefault();
+                    showCloseConfirm();
+                }
+                if (e.ctrlKey && e.key === "n") {
+                    e.preventDefault();
+                    actNew();
+                }
+                if (e.ctrlKey && e.key === "d") {
+                    e.preventDefault();
+                    actDuplicate();
+                }
+                if ((e.key === "Delete" || e.key === "Backspace") && selId) {
+                    e.preventDefault();
+                    actDelete();
+                }
+                if (e.key === "Escape") {
+                    if (
+                        document
+                            .getElementById("close-confirm")
+                            .classList.contains("show")
+                    ) {
+                        hideCloseConfirm();
+                        return;
+                    }
+                    selId ? deselect() : setTool("pointer");
+                }
+                if (
+                    selId &&
+                    [
+                        "ArrowLeft",
+                        "ArrowRight",
+                        "ArrowUp",
+                        "ArrowDown",
+                    ].includes(e.key)
+                ) {
+                    e.preventDefault();
+                    const w = widgets.find((x) => x.id === selId);
+                    if (!w) return;
+                    const d = e.shiftKey ? SNAP : 1;
+                    if (e.key === "ArrowLeft") w.x = Math.max(0, w.x - d);
+                    if (e.key === "ArrowRight")
+                        w.x = Math.min(formCfg.w - w.w, w.x + d);
+                    if (e.key === "ArrowUp") w.y = Math.max(0, w.y - d);
+                    if (e.key === "ArrowDown")
+                        w.y = Math.min(formCfg.h - w.h, w.y + d);
+                    const el = $("w" + w.id);
+                    if (el) {
+                        el.style.left = w.x + "px";
+                        el.style.top = w.y + "px";
+                    }
+                    updateStatusSel(w);
+                    syncPropXY(w);
+                }
+            });
+
+            document.addEventListener("click", (e) => {
+                if (!e.target.closest(".menu-item")) closeAllMenus();
+                if (!e.target.closest("#ctx") && !e.target.closest(".widget"))
+                    hideCtx();
+                if (!e.target.closest("#fdd-wrap")) closeFdd();
+            });
+
+            /* ═══════════════════════════════════════════
+   RULER（座標ルーラー）
+═══════════════════════════════════════════ */
+            function initRuler() {
+                drawRulers();
+            }
+
+            function drawRulers() {
+                const wrap = $("canvas-wrap");
+                const wrapRect = wrap.getBoundingClientRect();
+                const formRect = fb().getBoundingClientRect();
+
+                // ── 水平ルーラー ──
+                const rh = $("ruler-h");
+                const hCanvas = $("ruler-h-canvas");
+                const hW = wrapRect.width;
+                rh.style.width = hW + "px";
+                hCanvas.width = hW;
+                hCanvas.height = 16;
+                const hCtx = hCanvas.getContext("2d");
+                hCtx.clearRect(0, 0, hW, 16);
+
+                // フォーム左端のラッパー内相対座標
+                const fLeft = formRect.left - wrapRect.left + 16; // ruler-v幅分オフセット
+                drawRulerH(hCtx, hW, fLeft);
+
+                // ── 垂直ルーラー ──
+                const rv = $("ruler-v");
+                const vCanvas = $("ruler-v-canvas");
+                const vH = wrapRect.height - 16;
+                rv.style.height = vH + "px";
+                vCanvas.width = 16;
+                vCanvas.height = vH;
+                const vCtx = vCanvas.getContext("2d");
+                vCtx.clearRect(0, 0, 16, vH);
+
+                const fTop = formRect.top - wrapRect.top; // ruler-h高さ分は既に top:16px で吸収
+                drawRulerV(vCtx, vH, fTop);
+            }
+
+            function drawRulerH(ctx, totalW, fLeft) {
+                const STEP = 50,
+                    TICK_LG = 8,
+                    TICK_SM = 4;
+                ctx.strokeStyle = "rgba(160,160,192,0.35)";
+                ctx.fillStyle = "rgba(160,160,192,0.55)";
+                ctx.font = "8px monospace";
+                ctx.textAlign = "left";
+                // フォーム原点から左右に目盛りを描く
+                for (let px = (fLeft % STEP) - STEP; px < totalW; px += STEP) {
+                    const coord = Math.round(px - fLeft); // フォーム座標
+                    // 大目盛り
+                    ctx.beginPath();
+                    ctx.moveTo(px, 16 - TICK_LG);
+                    ctx.lineTo(px, 16);
+                    ctx.stroke();
+                    if (px >= 0 && px < totalW && coord >= 0) {
+                        ctx.fillText(coord, px + 2, 9);
+                    }
+                    // 中目盛り（25px）
+                    const px2 = px + STEP / 2;
+                    if (px2 >= 0 && px2 < totalW) {
+                        ctx.beginPath();
+                        ctx.moveTo(px2, 16 - TICK_SM);
+                        ctx.lineTo(px2, 16);
+                        ctx.stroke();
+                    }
+                }
+                // フォーム範囲ハイライト
+                const fw = formCfg.w;
+                ctx.fillStyle = "rgba(122,158,248,0.10)";
+                ctx.fillRect(fLeft, 0, fw, 16);
+                // フォーム境界線
+                ctx.strokeStyle = "rgba(122,158,248,0.4)";
+                ctx.beginPath();
+                ctx.moveTo(fLeft, 0);
+                ctx.lineTo(fLeft, 16);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(fLeft + fw, 0);
+                ctx.lineTo(fLeft + fw, 16);
+                ctx.stroke();
+            }
+
+            function drawRulerV(ctx, totalH, fTop) {
+                const STEP = 50,
+                    TICK_LG = 8,
+                    TICK_SM = 4;
+                ctx.strokeStyle = "rgba(160,160,192,0.35)";
+                ctx.fillStyle = "rgba(160,160,192,0.55)";
+                ctx.font = "8px monospace";
+                ctx.save();
+                ctx.translate(14, 0);
+                ctx.rotate(Math.PI / 2); // 縦書きラベル用
+                for (let py = (fTop % STEP) - STEP; py < totalH; py += STEP) {
+                    const coord = Math.round(py - fTop);
+                    ctx.save();
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+                    // 大目盛り
+                    ctx.strokeStyle = "rgba(160,160,192,0.35)";
+                    ctx.beginPath();
+                    ctx.moveTo(16 - TICK_LG, py);
+                    ctx.lineTo(16, py);
+                    ctx.stroke();
+                    if (py >= 0 && py < totalH && coord >= 0) {
+                        ctx.fillStyle = "rgba(160,160,192,0.55)";
+                        ctx.font = "8px monospace";
+                        ctx.save();
+                        ctx.translate(12, py - 2);
+                        ctx.rotate(-Math.PI / 2);
+                        ctx.fillText(coord, -28, 0);
+                        ctx.restore();
+                    }
+                    // 中目盛り
+                    const py2 = py + STEP / 2;
+                    if (py2 >= 0 && py2 < totalH) {
+                        ctx.strokeStyle = "rgba(160,160,192,0.35)";
+                        ctx.beginPath();
+                        ctx.moveTo(16 - TICK_SM, py2);
+                        ctx.lineTo(16, py2);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+                ctx.restore();
+                // フォーム範囲ハイライト
+                const fh = formCfg.h;
+                ctx.fillStyle = "rgba(122,158,248,0.10)";
+                ctx.fillRect(0, fTop, 16, fh);
+                ctx.strokeStyle = "rgba(122,158,248,0.4)";
+                ctx.beginPath();
+                ctx.moveTo(0, fTop);
+                ctx.lineTo(16, fTop);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, fTop + fh);
+                ctx.lineTo(16, fTop + fh);
+                ctx.stroke();
+            }
+
+            /* ═══════════════════════════════════════════
+   FORM RESIZE（フォーム枠のD&D）
+═══════════════════════════════════════════ */
+            function initFormResize() {
+                function makeResizer(elId, doX, doY) {
+                    const el = $(elId);
+                    if (!el) return;
+                    el.addEventListener("mousedown", (e) => {
+                        if (e.button !== 0) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const sx = e.clientX,
+                            sy = e.clientY;
+                        const ow = formCfg.w,
+                            oh = formCfg.h;
+                        function onMove(ev) {
+                            if (doX) {
+                                const nw = Math.max(
+                                    200,
+                                    sn(ow + (ev.clientX - sx)),
+                                );
+                                formCfg.w = nw;
+                            }
+                            if (doY) {
+                                const nh = Math.max(
+                                    100,
+                                    sn(oh + (ev.clientY - sy)),
+                                );
+                                formCfg.h = nh;
+                            }
+                            applyForm();
+                            syncFormPropWH();
+                        }
+                        function onUp() {
+                            document.removeEventListener("mousemove", onMove);
+                            document.removeEventListener("mouseup", onUp);
+                            pushUndo();
+                        }
+                        document.addEventListener("mousemove", onMove);
+                        document.addEventListener("mouseup", onUp);
+                    });
+                }
+                makeResizer("form-resize-br", true, true);
+                makeResizer("form-resize-r", true, false);
+                makeResizer("form-resize-b", false, true);
+            }
+            function syncFormPropWH() {
+                if (selId) return; // フォームのプロパティ表示中のみ
+                const rows = [...$("plist").querySelectorAll(".prow")];
+                rows.forEach((r) => {
+                    const inp = r.querySelector("input[type=number]");
+                    const lbl = r.querySelector(".pk")?.textContent;
+                    if (!inp || !lbl) return;
+                    if (lbl === "Width") inp.value = formCfg.w;
+                    if (lbl === "Height") inp.value = formCfg.h;
+                });
+            }
+
+            /* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+            buildTools();
+            buildFormSelect();
+            applyForm();
+            initFormBodyEvents();
+            initFormResize();
+            initRuler();
+            $("canvas-wrap").addEventListener("scroll", () =>
+                requestAnimationFrame(drawRulers),
+            );
+            window.addEventListener("resize", () =>
+                requestAnimationFrame(drawRulers),
+            );
+            pushUndo();
+            renderProps();
+        </script>
+    </body>
+</html>
