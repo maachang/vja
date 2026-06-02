@@ -4,11 +4,11 @@ VB スタイルのフォームデザイナー。Electrobun + Bun で動作する
 
 ## 動作環境
 
-| 項目 | バージョン |
-|------|-----------|
-| Bun  | 1.3.14 以上 |
-| Electrobun | latest |
-| OS | macOS / Linux / Windows |
+| 項目       | バージョン              |
+| ---------- | ----------------------- |
+| Bun        | 1.3.14 以上             |
+| Electrobun | latest                  |
+| OS         | macOS / Linux / Windows |
 
 ## セットアップ
 
@@ -75,7 +75,7 @@ HTML 側は `await window.bunOpenFile()` / `await window.bunSaveProject()` と
 ## ウィジェット一覧
 
 button / label / text（multiline対応）/ inputType / checkbox / radioButton /
-listBox / selectBox / groupBox / picture / 水平SB / 垂直SB
+listBox / selectBox / groupBox / picture / 水平線 / 垂直線
 
 ## Linux 環境での保存ダイアログ
 
@@ -89,4 +89,3 @@ sudo apt install zenity
 # KDE 環境
 sudo apt install kdialog
 ```
-# vja

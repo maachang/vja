@@ -858,6 +858,154 @@
                 background: #e74c3c;
                 border-color: #e74c3c;
             }
+
+            /* ── カラム定義エディタ ── */
+            #coldef-modal .coldef-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 12px;
+            }
+            #coldef-modal .coldef-table th {
+                background: var(--bg3);
+                padding: 5px 8px;
+                border: 1px solid var(--border);
+                text-align: left;
+                font-size: 11px;
+                color: var(--text2);
+            }
+            #coldef-modal .coldef-table td {
+                padding: 2px 4px;
+                border: 1px solid var(--border);
+            }
+            #coldef-modal .coldef-table td:first-child {
+                text-align: center;
+                color: var(--text3);
+                font-size: 11px;
+                width: 36px;
+                background: var(--bg3);
+            }
+            #coldef-modal .coldef-table input {
+                width: 100%;
+                height: 24px;
+                background: var(--bg4);
+                border: none;
+                color: var(--text);
+                font-size: 12px;
+                padding: 0 4px;
+                outline: none;
+                border-radius: 2px;
+            }
+            #coldef-modal .coldef-table input:focus {
+                outline: 1px solid var(--accent);
+            }
+            #coldef-modal .coldef-table .del-btn {
+                width: 22px;
+                height: 22px;
+                background: transparent;
+                border: none;
+                color: #ff6b6b;
+                cursor: pointer;
+                font-size: 14px;
+                border-radius: 2px;
+            }
+            #coldef-modal .coldef-table .del-btn:hover {
+                background: #ff6b6b22;
+            }
+            #coldef-modal .coldef-scroll {
+                max-height: 360px;
+                overflow-y: auto;
+                border: 1px solid var(--border);
+                border-radius: 4px;
+            }
+            #coldef-modal .add-row-btn {
+                height: 28px;
+                padding: 0 14px;
+                background: var(--bg3);
+                border: 1px solid var(--border);
+                border-radius: 3px;
+                color: var(--text);
+                cursor: pointer;
+                font-size: 12px;
+                margin-top: 6px;
+            }
+            #coldef-modal .add-row-btn:hover {
+                background: var(--bg4);
+                border-color: var(--accent);
+            }
+
+            /* ── 定数エディタ ── */
+            #const-modal .const-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 12px;
+            }
+            #const-modal .const-table th {
+                background: var(--bg3);
+                padding: 5px 8px;
+                border: 1px solid var(--border);
+                text-align: left;
+                font-size: 11px;
+                color: var(--text2);
+            }
+            #const-modal .const-table td {
+                padding: 2px 4px;
+                border: 1px solid var(--border);
+            }
+            #const-modal .const-table td:first-child {
+                text-align: center;
+                color: var(--text3);
+                font-size: 11px;
+                width: 36px;
+                background: var(--bg3);
+            }
+            #const-modal .const-table input {
+                width: 100%;
+                height: 24px;
+                background: var(--bg4);
+                border: none;
+                color: var(--text);
+                font-size: 12px;
+                padding: 0 4px;
+                outline: none;
+                border-radius: 2px;
+            }
+            #const-modal .const-table input:focus {
+                outline: 1px solid var(--accent);
+            }
+            #const-modal .const-table .del-btn {
+                width: 22px;
+                height: 22px;
+                background: transparent;
+                border: none;
+                color: #ff6b6b;
+                cursor: pointer;
+                font-size: 14px;
+                border-radius: 2px;
+            }
+            #const-modal .const-table .del-btn:hover {
+                background: #ff6b6b22;
+            }
+            #const-modal .const-scroll {
+                max-height: 400px;
+                overflow-y: auto;
+                border: 1px solid var(--border);
+                border-radius: 4px;
+            }
+            #const-modal .add-row-btn {
+                height: 28px;
+                padding: 0 14px;
+                background: var(--bg3);
+                border: 1px solid var(--border);
+                border-radius: 3px;
+                color: var(--text);
+                cursor: pointer;
+                font-size: 12px;
+                margin-top: 6px;
+            }
+            #const-modal .add-row-btn:hover {
+                background: var(--bg4);
+                border-color: var(--accent);
+            }
             /* ── Context menu ── */
             #ctx {
                 position: fixed;
@@ -950,6 +1098,10 @@
                         <div class="dd-item" onmousedown="actDuplicate()">
                             複製<span class="sc">Ctrl+D</span>
                         </div>
+                        <div class="dd-sep"></div>
+                        <div class="dd-item" onmousedown="openConstEditor()">
+                            定数の編集…
+                        </div>
                     </div>
                 </div>
                 <div class="menu-item" onmousedown="toggleMenu('mv', event)">
@@ -980,7 +1132,14 @@
                     />
                 </svg>
             </button>
-            <button class="tb-btn" onclick="console.log('[btn] save clicked'); actSave()" title="保存">
+            <button
+                class="tb-btn"
+                onclick="
+                    console.log('[btn] save clicked');
+                    actSave();
+                "
+                title="保存"
+            >
                 <svg viewBox="0 0 24 24">
                     <path
                         d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
@@ -1399,6 +1558,27 @@
                     tag: "vscroll",
                     def: { w: 18, h: 80, bg: "#ddd", visible: true },
                 },
+                {
+                    id: "datagrid",
+                    label: "テーブル",
+                    icon: "🗃️",
+                    tag: "datagrid",
+                    def: {
+                        w: 320,
+                        h: 160,
+                        // カラム定義: "key:ラベル:幅px" をセミコロン区切り
+                        columns: "ID:60\n名前:120\n値:100",
+                        maxRows: 10,
+                        headerBg: "#4a4a6a",
+                        headerFg: "#ffffff",
+                        rowBg: "#ffffff",
+                        rowAltBg: "#f5f5f5",
+                        rowFg: "#000000",
+                        borderColor: "#cccccc",
+                        fontSize: 12,
+                        visible: true,
+                    },
+                },
             ];
 
             const EVENTS = {
@@ -1428,6 +1608,7 @@
                 picture: ["Click", "MouseDown", "MouseUp"],
                 hscroll: ["Scroll", "ValueChanged"],
                 vscroll: ["Scroll", "ValueChanged"],
+                datagrid: ["Click", "RowClick", "HeaderClick"],
                 form: [
                     "Load",
                     "Resize",
@@ -1465,6 +1646,8 @@
             let idCnt = forms[0].idCnt;
 
             let selId = null;
+            // 定数リスト [{name, value}]
+            let constants = [];
             let undoStack = [];
             let redoStack = [];
             let activeTool = "pointer";
@@ -1633,6 +1816,44 @@
                         return `<fieldset style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};${vis}"><legend style="padding:0 4px;font-size:${p.fontSize}px">${esc(p.text)}</legend></fieldset>`;
                     case "picture":
                         return `<div style="${base}background:${p.bg};border:${p.border};display:flex;align-items:center;justify-content:center;color:#888;font-size:11px;${vis}">${p.src ? `<img src="${esc(p.src)}" style="max-width:100%;max-height:100%">` : "📷"}</div>`;
+                    case "datagrid": {
+                        const cols = (p.columns || "ID:60\n名前:120")
+                            .split(/[;\n]/)
+                            .filter((s) => s.trim())
+                            .map((c, ci) => {
+                                const parts = c.trim().split(":");
+                                const label = parts[0] || "列" + (ci + 1);
+                                const width = parseInt(parts[1]) || 80;
+                                return { key: "col" + ci, label, width };
+                            });
+                        const maxR = p.maxRows || 5;
+                        const hbg = p.headerBg || "#4a4a6a";
+                        const hfg = p.headerFg || "#ffffff";
+                        const rbg = p.rowBg || "#ffffff";
+                        const rabg = p.rowAltBg || "#f5f5f5";
+                        const rfg = p.rowFg || "#000000";
+                        const bc = p.borderColor || "#cccccc";
+                        const fs = p.fontSize || 12;
+                        const vis2 =
+                            p.visible === false ? "visibility:hidden" : "";
+                        let html = `<div style="width:100%;height:100%;overflow:auto;border:1px solid ${bc};box-sizing:border-box;font-size:${fs}px;${vis2}">`;
+                        html += `<table style="width:100%;border-collapse:collapse;table-layout:fixed">`;
+                        html += `<thead><tr style="background:${hbg};color:${hfg}">`;
+                        cols.forEach((c) => {
+                            html += `<th style="width:${c.width}px;padding:3px 6px;border:1px solid ${bc};text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.label)}</th>`;
+                        });
+                        html += `</tr></thead><tbody>`;
+                        for (let r = 0; r < Math.min(maxR, 5); r++) {
+                            const bg2 = r % 2 === 0 ? rbg : rabg;
+                            html += `<tr style="background:${bg2};color:${rfg}">`;
+                            cols.forEach((c) => {
+                                html += `<td style="padding:2px 6px;border:1px solid ${bc};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r === 0 ? "(データ)" : ""}</td>`;
+                            });
+                            html += `</tr>`;
+                        }
+                        html += `</tbody></table></div>`;
+                        return html;
+                    }
                     case "hscroll":
                         return `<div style="${base}background:${p.bg};border:1px solid #999;border-radius:2px;display:flex;align-items:center;justify-content:space-between;padding:0 2px;${vis}"><span style="font-size:9px">◀</span><div style="flex:1;height:50%;background:#999;margin:0 3px;border-radius:1px"></div><span style="font-size:9px">▶</span></div>`;
                     case "vscroll":
@@ -2132,6 +2353,27 @@
                     { k: "border", lb: "Border", t: "text" },
                     { k: "visible", lb: "Visible", t: "bool" },
                 ],
+                datagrid: [
+                    { k: "name", lb: "Name", t: "text", sp: "name" },
+                    { k: "x", lb: "Left", t: "num", sp: "x" },
+                    { k: "y", lb: "Top", t: "num", sp: "y" },
+                    { k: "w", lb: "Width", t: "num", sp: "w" },
+                    { k: "h", lb: "Height", t: "num", sp: "h" },
+                    { sep: "カラム定義" },
+                    { k: "columns", lb: "Columns", t: "coldef" },
+                    { k: "maxRows", lb: "MaxRows", t: "num" },
+                    { sep: "ヘッダー" },
+                    { k: "headerBg", lb: "HeaderBg", t: "color" },
+                    { k: "headerFg", lb: "HeaderFg", t: "color" },
+                    { sep: "行" },
+                    { k: "rowBg", lb: "RowBg", t: "color" },
+                    { k: "rowAltBg", lb: "RowAltBg", t: "color" },
+                    { k: "rowFg", lb: "RowFg", t: "color" },
+                    { sep: "外観" },
+                    { k: "borderColor", lb: "BorderColor", t: "color" },
+                    { k: "fontSize", lb: "FontSize", t: "num" },
+                    { k: "visible", lb: "Visible", t: "bool" },
+                ],
                 hscroll: [
                     { k: "name", lb: "Name", t: "text", sp: "name" },
                     { k: "x", lb: "Left", t: "num", sp: "x" },
@@ -2212,6 +2454,8 @@
                         return `<select onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">${(d.opts || []).map((o) => `<option value="${o}" ${val === o ? "selected" : ""}>${o}</option>`).join("")}</select>`;
                     case "area":
                         return `<textarea style="width:100%;height:56px;background:transparent;border:none;color:var(--text);font-size:11px;resize:none;outline:none" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">${esc(val || "")}</textarea>`;
+                    case "coldef":
+                        return `<button onclick="openColDefEditor(${w2})" style="width:100%;height:24px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--accent);font-size:11px;cursor:pointer;text-align:left;padding:0 6px">✏ カラム編集…</button>`;
                 }
                 return "";
             }
@@ -2401,7 +2645,7 @@
             ═══════════════════════════════════════════ */
             // プロジェクト全体スナップショット
             function snapshot() {
-                return JSON.stringify({ forms, curFormIdx });
+                return JSON.stringify({ forms, curFormIdx, constants });
             }
             function pushUndo() {
                 // 編集前に現フォームのidCntを書き戻す
@@ -2414,6 +2658,7 @@
                 const d = JSON.parse(s);
                 forms = d.forms;
                 curFormIdx = d.curFormIdx;
+                constants = d.constants || []; // 旧形式互換
                 syncCurForm();
                 selId = null;
                 buildFormSelect();
@@ -2516,6 +2761,7 @@
                         forms = d.forms;
                         curFormIdx = d.curFormIdx || 0;
                     }
+                    constants = d.constants || [];
                     syncCurForm();
                     selId = null;
                     undoStack = [];
@@ -2536,8 +2782,8 @@
             async function actOpen() {
                 try {
                     const result = await window.bunOpenFile({
-                        filter  : "vjaproj",
-                        lastPath: _lastOpenPath,  // 前回開いた/保存したパスを渡す
+                        filter: "vjaproj",
+                        lastPath: _lastOpenPath, // 前回開いた/保存したパスを渡す
                     });
                     if (result && result.content) {
                         loadProjectData(result.content);
@@ -2559,12 +2805,20 @@
                 const projName = forms[0]?.cfg?.title || "project";
                 // bridge.ts がロードされているか確認
                 if (typeof window.bunSaveProject !== "function") {
-                    alert("エラー: bunSaveProject が未定義です。bridge.ts が正しくロードされていません。");
-                    console.error("[actSave] window.bunSaveProject is", typeof window.bunSaveProject);
+                    alert(
+                        "エラー: bunSaveProject が未定義です。bridge.ts が正しくロードされていません。",
+                    );
+                    console.error(
+                        "[actSave] window.bunSaveProject is",
+                        typeof window.bunSaveProject,
+                    );
                     return;
                 }
                 try {
-                    console.log("[actSave] calling bunSaveProject, lastPath:", _lastSavePath);
+                    console.log(
+                        "[actSave] calling bunSaveProject, lastPath:",
+                        _lastSavePath,
+                    );
                     const result = await window.bunSaveProject({
                         content,
                         defaultName: projName + ".vjaproj",
@@ -2572,8 +2826,8 @@
                     });
                     console.log("[actSave] result:", JSON.stringify(result));
                     if (result && result.ok && result.path) {
-                        _lastSavePath  = result.path;
-                        _lastOpenPath  = result.path;
+                        _lastSavePath = result.path;
+                        _lastOpenPath = result.path;
                         _savedSnapshot = content;
                         showToast("保存しました: " + result.path);
                     }
@@ -2620,6 +2874,7 @@
                 commitIdCnt();
                 const projTitle = forms[0]?.cfg?.title || "project";
                 // 全フォームのHTML生成
+                const dgScripts = [];
                 const formHtmls = forms.map((f) => {
                     const lines2 = [];
                     const ws = f.widgets,
@@ -2634,12 +2889,12 @@
                         const base = `position:absolute;left:${w.x}px;top:${w.y}px;width:${w.w}px;height:${w.h}px;z-index:${w.z || 0};box-sizing:border-box;${vis}`;
                         switch (w.tag) {
                             case "button":
-                                lines.push(
+                                lines2.push(
                                     `<button id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};border-radius:${p.borderRadius || 2}px;cursor:pointer">${esc(p.text)}</button>`,
                                 );
                                 break;
                             case "label":
-                                lines.push(
+                                lines2.push(
                                     `<label  id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;text-align:${p.align};display:flex;align-items:center">${esc(p.text)}</label>`,
                                 );
                                 break;
@@ -2658,26 +2913,26 @@
                             }
                             case "input":
                                 if (p.multiline)
-                                    lines.push(
+                                    lines2.push(
                                         `<textarea id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};padding:2px 4px;resize:none">${esc(p.text)}</textarea>`,
                                     );
                                 else
-                                    lines.push(
+                                    lines2.push(
                                         `<input type="text" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};padding:0 4px">`,
                                     );
                                 break;
                             case "checkbox":
-                                lines.push(
+                                lines2.push(
                                     `<label id="${w.name}" style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;cursor:pointer"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
                                 );
                                 break;
                             case "radio":
-                                lines.push(
+                                lines2.push(
                                     `<label id="${w.name}" style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;cursor:pointer"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
                                 );
                                 break;
                             case "listbox":
-                                lines.push(
+                                lines2.push(
                                     `<select id="${w.name}" multiple style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border}">${(
                                         p.items || ""
                                     )
@@ -2689,7 +2944,7 @@
                                 );
                                 break;
                             case "selectBox":
-                                lines.push(
+                                lines2.push(
                                     `<select id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border}">${(
                                         p.items || ""
                                     )
@@ -2701,11 +2956,125 @@
                                 );
                                 break;
                             case "groupbox":
-                                lines.push(
+                                lines2.push(
                                     `<fieldset id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border}"><legend>${esc(p.text)}</legend></fieldset>`,
                                 );
                                 break;
-                        }
+                            case "datagrid": {
+                                const dgCols = (p.columns || "")
+                                    .split(/[;\n]/)
+                                    .filter(function (s) {
+                                        return s.trim();
+                                    })
+                                    .map(function (c, ci) {
+                                        const parts = c.trim().split(":");
+                                        return {
+                                            key: "col" + ci,
+                                            label: parts[0] || "列" + (ci + 1),
+                                            width: parseInt(parts[1]) || 80,
+                                        };
+                                    });
+                                const dgMaxR = p.maxRows || 10;
+                                const dgHbg = p.headerBg || "#4a4a6a";
+                                const dgHfg = p.headerFg || "#ffffff";
+                                const dgRbg = p.rowBg || "#ffffff";
+                                const dgRabg = p.rowAltBg || "#f5f5f5";
+                                const dgRfg = p.rowFg || "#000000";
+                                const dgBc = p.borderColor || "#cccccc";
+                                const dgFs = p.fontSize || 12;
+                                const dgVis =
+                                    p.visible === false
+                                        ? "visibility:hidden;"
+                                        : "";
+                                // テーブルHTML
+                                let dgHtml =
+                                    '<div id="' +
+                                    w.name +
+                                    '" style="' +
+                                    base +
+                                    "overflow:auto;border:1px solid " +
+                                    dgBc +
+                                    ";box-sizing:border-box;font-size:" +
+                                    dgFs +
+                                    "px;" +
+                                    dgVis +
+                                    '">';
+                                dgHtml +=
+                                    '<table style="width:100%;border-collapse:collapse;table-layout:fixed">';
+                                dgHtml +=
+                                    '<thead><tr style="background:' +
+                                    dgHbg +
+                                    ";color:" +
+                                    dgHfg +
+                                    '">';
+                                dgCols.forEach(function (c) {
+                                    dgHtml +=
+                                        '<th data-key="' +
+                                        esc(c.key) +
+                                        '" style="width:' +
+                                        c.width +
+                                        "px;padding:3px 6px;border:1px solid " +
+                                        dgBc +
+                                        ';text-align:left">' +
+                                        esc(c.label) +
+                                        "</th>";
+                                });
+                                dgHtml += "</tr></thead>";
+                                dgHtml +=
+                                    '<tbody id="' + w.name + '_body"></tbody>';
+                                dgHtml += "</table></div>";
+                                lines2.push(dgHtml);
+                                // データ設定用ヘルパーJS（script タグを文字列分割で出力）
+                                const dgKeys = JSON.stringify(
+                                    dgCols.map(function (c) {
+                                        return c.key;
+                                    }),
+                                );
+                                const dgScript = [
+                                    'window["' +
+                                        w.name +
+                                        '_setData"]=function(rows){',
+                                    "  var keys=" + dgKeys + ";",
+                                    "  var maxR=" +
+                                        dgMaxR +
+                                        ',rbg="' +
+                                        dgRbg +
+                                        '",rabg="' +
+                                        dgRabg +
+                                        '",rfg="' +
+                                        dgRfg +
+                                        '",bc="' +
+                                        dgBc +
+                                        '";',
+                                    '  var tbody=document.getElementById("' +
+                                        w.name +
+                                        '_body");',
+                                    "  if(!tbody)return;",
+                                    '  tbody.innerHTML="";',
+                                    "  (rows||[]).slice(0,maxR).forEach(function(row,i){",
+                                    '    var tr=document.createElement("tr");',
+                                    "    tr.style.background=i%2===0?rbg:rabg;",
+                                    "    tr.style.color=rfg;",
+                                    "    keys.forEach(function(k){",
+                                    '      var td=document.createElement("td");',
+                                    '      td.style.cssText="padding:2px 6px;border:1px solid "+bc;',
+                                    '      td.textContent=(row[k]!==undefined&&row[k]!==null)?String(row[k]):"";',
+                                    "      tr.appendChild(td);",
+                                    "    });",
+                                    "    tbody.appendChild(tr);",
+                                    "  });",
+                                    "};",
+                                ].join("\n");
+                                // dgScripts に追加（後で evLines と一緒に出力）
+                                dgScripts.push(
+                                    "/* " +
+                                        w.name +
+                                        " データ設定ヘルパー */\n" +
+                                        dgScript,
+                                );
+                                break;
+                            }
+                        } // end switch
                     });
                     lines2.push("</div>");
                     return lines2.join("\n");
@@ -2769,6 +3138,10 @@
 
                 // 画面遷移JS
                 const navJS = `function showForm(id){\n  document.querySelectorAll('.vja-form').forEach(el=>el.classList.remove('active'));\n  const el=document.getElementById('form-'+id);\n  if(el) el.classList.add('active');\n}\n// 最初の画面を表示\nshowForm('${forms[0]?.id || ""}');`;
+                // datagrid ヘルパーJS を evLines に統合
+                dgScripts.forEach(function (s) {
+                    evLines.push(s);
+                });
                 lines.push(
                     `<script>\n${navJS}\n${evLines.join("\n")}\n<\/script>`,
                 );
@@ -2932,6 +3305,229 @@
                 }
             }
             // Escキーで確認ダイアログを閉じる
+
+            /* ── 定数エディタ ── */
+            function openConstEditor() {
+                window._constRows = constants.map((c) => ({
+                    name: c.name || "",
+                    value: c.value || "",
+                }));
+                if (window._constRows.length === 0)
+                    window._constRows.push({ name: "", value: "" });
+                renderConstModal();
+            }
+
+            function renderConstModal() {
+                const rows = window._constRows || [];
+                let tbody = "";
+                rows.forEach((r, i) => {
+                    const oi_n = "constUpdate(" + i + ",'name',this.value)";
+                    const oi_v = "constUpdate(" + i + ",'value',this.value)";
+                    tbody +=
+                        "<tr>" +
+                        "<td>" +
+                        (i + 1) +
+                        "</td>" +
+                        "<td><input type='text' value='" +
+                        esc(r.name) +
+                        "' oninput='" +
+                        oi_n +
+                        "' placeholder='定数名'></td>" +
+                        "<td><input type='text' value='" +
+                        esc(r.value) +
+                        "' oninput='" +
+                        oi_v +
+                        "' placeholder='値'></td>" +
+                        "<td><button class='del-btn' onclick='constDelRow(" +
+                        i +
+                        ")' title='削除'>✕</button></td>" +
+                        "</tr>";
+                });
+                showModal(
+                    "<div id='const-modal'>" +
+                        "<div class='mhdr'><h4>📌 定数エディタ</h4><button class='mclose' onclick='closeModal()'>✕</button></div>" +
+                        "<div class='mbody' style='gap:6px'>" +
+                        "<div class='infobox'>イベントのYAMLから参照できる定数を定義します。プロジェクトファイルに保存されます。</div>" +
+                        "<div class='const-scroll'>" +
+                        "<table class='const-table'>" +
+                        "<thead><tr><th style='width:36px'>No</th><th>定数名</th><th>値</th><th style='width:30px'></th></tr></thead>" +
+                        "<tbody>" +
+                        tbody +
+                        "</tbody>" +
+                        "</table>" +
+                        "</div>" +
+                        "<button class='add-row-btn' onclick='constAddRow()'>＋ 行を追加</button>" +
+                        "</div>" +
+                        "<div class='mfoot'>" +
+                        "<button onclick='closeModal()'>キャンセル</button>" +
+                        "<button class='pri' onclick='constSave()'>保存</button>" +
+                        "</div>" +
+                        "</div>",
+                );
+            }
+
+            // DOM から現在の入力値を _constRows に同期する
+            function syncConstFromDOM() {
+                const tbody = document.querySelector(
+                    "#const-modal .const-table tbody",
+                );
+                if (!tbody || !window._constRows) return;
+                const rows = tbody.querySelectorAll("tr");
+                rows.forEach((tr, i) => {
+                    const inputs = tr.querySelectorAll("input");
+                    if (inputs.length >= 2 && window._constRows[i]) {
+                        window._constRows[i].name = inputs[0].value;
+                        window._constRows[i].value = inputs[1].value;
+                    }
+                });
+            }
+
+            function constUpdate(idx, key, val) {
+                if (window._constRows) window._constRows[idx][key] = val;
+            }
+
+            function constAddRow() {
+                if (!window._constRows) return;
+                syncConstFromDOM(); // 現在の入力値を先に保存
+                window._constRows.push({ name: "", value: "" });
+                renderConstModal();
+            }
+
+            function constDelRow(idx) {
+                if (!window._constRows) return;
+                syncConstFromDOM(); // 現在の入力値を先に保存
+                window._constRows.splice(idx, 1);
+                if (window._constRows.length === 0)
+                    window._constRows.push({ name: "", value: "" });
+                renderConstModal();
+            }
+
+            function constSave() {
+                syncConstFromDOM(); // 保存前に DOM から最新値を取得
+                const valid = (window._constRows || []).filter((r) =>
+                    r.name.trim(),
+                );
+                // 重複チェック
+                const names = valid.map((r) => r.name.trim());
+                const dup = names.find((n, i) => names.indexOf(n) !== i);
+                if (dup) {
+                    alert("定数名「" + dup + "」が重複しています");
+                    return;
+                }
+                constants = valid.map((r) => ({
+                    name: r.name.trim(),
+                    value: r.value,
+                }));
+                closeModal();
+                pushUndo();
+            }
+
+            /* ── カラム定義エディタ ── */
+            function openColDefEditor(wid) {
+                const w = widgets.find((x) => x.id == wid);
+                if (!w) return;
+                const rows = (w.props.columns || "")
+                    .split(/[;\n]/)
+                    .filter((s) => s.trim())
+                    .map((c) => {
+                        const parts = c.trim().split(":");
+                        return {
+                            label: parts[0] || "",
+                            width: parts[1] || "80",
+                        };
+                    });
+                if (rows.length === 0) rows.push({ label: "", width: "80" });
+                window._coldefWid = wid;
+                window._coldefRows = rows;
+                renderColDefModal();
+            }
+            function renderColDefModal() {
+                const rows = window._coldefRows || [];
+                let tbody = "";
+                rows.forEach((r, i) => {
+                    tbody +=
+                        "<tr>" +
+                        "<td>" +
+                        (i + 1) +
+                        "</td>" +
+                        "<td><input type='text' value='" +
+                        esc(r.label) +
+                        "' oninput=\"coldefUpdate(" +
+                        i +
+                        ",'label',this.value)\" placeholder='カラム名'></td>" +
+                        "<td><input type='number' value='" +
+                        esc(r.width) +
+                        "' oninput=\"coldefUpdate(" +
+                        i +
+                        ",'width',this.value)\" style='width:70px' min='20' max='800'></td>" +
+                        "<td><button class='del-btn' onclick='coldefDelRow(" +
+                        i +
+                        ")' title='削除'>✕</button></td>" +
+                        "</tr>";
+                });
+                showModal(
+                    "<div id='coldef-modal'>" +
+                        "<div class='mhdr'><h4>📊 カラム定義エディタ</h4><button class='mclose' onclick='closeModal()'>✕</button></div>" +
+                        "<div class='mbody' style='gap:6px'>" +
+                        "<div class='infobox'>カラム名と幅(px)を定義します。Noは自動採番。最大100列。</div>" +
+                        "<div class='coldef-scroll'>" +
+                        "<table class='coldef-table'>" +
+                        "<thead><tr><th style='width:36px'>No</th><th>カラム名</th><th style='width:80px'>幅(px)</th><th style='width:30px'></th></tr></thead>" +
+                        "<tbody>" +
+                        tbody +
+                        "</tbody>" +
+                        "</table>" +
+                        "</div>" +
+                        (rows.length < 100
+                            ? "<button class='add-row-btn' onclick='coldefAddRow()'>＋ 行を追加</button>"
+                            : "") +
+                        "</div>" +
+                        "<div class='mfoot'>" +
+                        "<button onclick='closeModal()'>キャンセル</button>" +
+                        "<button class='pri' onclick='coldefSave()'>保存</button>" +
+                        "</div>" +
+                        "</div>",
+                );
+            }
+            function coldefUpdate(idx, key, val) {
+                if (window._coldefRows) window._coldefRows[idx][key] = val;
+            }
+            function coldefAddRow() {
+                if (!window._coldefRows || window._coldefRows.length >= 100)
+                    return;
+                window._coldefRows.push({ label: "", width: "80" });
+                renderColDefModal();
+            }
+            function coldefDelRow(idx) {
+                if (!window._coldefRows) return;
+                window._coldefRows.splice(idx, 1);
+                if (window._coldefRows.length === 0)
+                    window._coldefRows.push({ label: "", width: "80" });
+                renderColDefModal();
+            }
+            function coldefSave() {
+                const wid = window._coldefWid;
+                const w = widgets.find((x) => x.id == wid);
+                if (!w) return;
+                const valid = (window._coldefRows || []).filter((r) =>
+                    r.label.trim(),
+                );
+                if (valid.length === 0) {
+                    alert("カラム名を1つ以上入力してください");
+                    return;
+                }
+                w.props.columns = valid
+                    .map(
+                        (r) => r.label.trim() + ":" + (parseInt(r.width) || 80),
+                    )
+                    .join("\n");
+                closeModal();
+                pushUndo();
+                renderWidget(w, false);
+                applyWPos($("w" + wid), w);
+                renderProps();
+            }
+
             function toggleGrid() {
                 fb().classList.toggle("show-grid");
             }

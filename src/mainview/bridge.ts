@@ -7,19 +7,40 @@ import { Electroview } from "electrobun/view";
 // message は fire-and-forget なので、結果は Bun→Webview の message で返ってくる
 // それを Promise に変換して window.bunXxx として提供する
 type Resolver<T> = (value: T) => void;
-let _openResolve:  Resolver<{ content: string | null; path: string | null }> | null = null;
-let _saveResolve:  Resolver<{ ok: boolean; path: string | null; cancelled: boolean }> | null = null;
+let _openResolve: Resolver<{
+    content: string | null;
+    path: string | null;
+}> | null = null;
+let _saveResolve: Resolver<{
+    ok: boolean;
+    path: string | null;
+    cancelled: boolean;
+}> | null = null;
 
 const rpc = Electroview.defineRPC({
     handlers: {
         requests: {},
         messages: {
             // Bun から結果が送られてきたら待機中の Promise を resolve する
-            openFileResult: ({ content, path }: { content: string | null; path: string | null }) => {
+            openFileResult: ({
+                content,
+                path,
+            }: {
+                content: string | null;
+                path: string | null;
+            }) => {
                 _openResolve?.({ content, path });
                 _openResolve = null;
             },
-            saveFileResult: ({ ok, path, cancelled }: { ok: boolean; path: string | null; cancelled: boolean }) => {
+            saveFileResult: ({
+                ok,
+                path,
+                cancelled,
+            }: {
+                ok: boolean;
+                path: string | null;
+                cancelled: boolean;
+            }) => {
                 _saveResolve?.({ ok, path, cancelled });
                 _saveResolve = null;
             },
@@ -33,11 +54,14 @@ const _ev = new Electroview({ rpc });
 const w = window as any;
 
 // ファイルを開く
-w.bunOpenFile = (args: { filter: string; lastPath?: string | null }): Promise<{ content: string | null; path: string | null }> => {
+w.bunOpenFile = (args: {
+    filter: string;
+    lastPath?: string | null;
+}): Promise<{ content: string | null; path: string | null }> => {
     return new Promise((resolve) => {
         _openResolve = resolve;
         _ev.rpc.send.openFileRequest({
-            filter  : args.filter ?? "vjaproj",
+            filter: args.filter ?? "vjaproj",
             lastPath: args.lastPath ?? null,
         });
     });
@@ -52,9 +76,9 @@ w.bunSaveProject = (args: {
     return new Promise((resolve) => {
         _saveResolve = resolve;
         _ev.rpc.send.saveFileRequest({
-            content    : args.content,
+            content: args.content,
             defaultName: args.defaultName ?? "project.vjaproj",
-            lastPath   : args.lastPath ?? null,
+            lastPath: args.lastPath ?? null,
         });
     });
 };

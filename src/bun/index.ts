@@ -23,9 +23,17 @@ const execCmd = async (cmd: string[]): Promise<string> => {
     }
 };
 
+// browserWindowのrpcを取得.
+const getBrowserWindowRpc = (): any => {
+    if (browserWindow.webview.rpc == undefined) {
+        throw new Error("browserWindow.webview.rpc is undefined");
+    }
+    return browserWindow.webview.rpc;
+};
+
 // ── 前回のフォルダを永続化 ────────────────────────────
 // ~/.vja-designer/last-dir.txt に保存する
-const _configDir   = join(homedir(), ".vja-designer");
+const _configDir = join(homedir(), ".vja-designer");
 const _lastDirFile = join(_configDir, "last-dir.txt");
 
 const loadLastDir = (): string => {
@@ -83,7 +91,7 @@ const saveFileDialog = async (
                 "--file-selection",
                 "--save",
                 "--confirm-overwrite",
-                `--filename=${defaultPath}`,   // フルパスで指定
+                `--filename=${defaultPath}`, // フルパスで指定
                 "--title=保存先を選択",
                 `--file-filter=*.${ext}`,
             ]);
@@ -96,7 +104,7 @@ const saveFileDialog = async (
             const out = await execCmd([
                 "kdialog",
                 "--getsavefilename",
-                defaultPath,                   // フルパスで指定
+                defaultPath, // フルパスで指定
                 `*.${ext}`,
             ]);
             return out
@@ -122,20 +130,24 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
             // ファイルを開く: ダイアログ表示して結果を webview に送り返す
             openFileRequest: async ({ filter, lastPath }) => {
                 const ext = filter === "html" ? "html" : "vjaproj";
-                const startingFolder = lastPath
-                    ? dirname(lastPath)
-                    : _lastDir;
-                console.log("[open] startingFolder:", startingFolder, "ext:", ext);
+                const startingFolder = lastPath ? dirname(lastPath) : _lastDir;
+                console.log(
+                    "[open] startingFolder:",
+                    startingFolder,
+                    "ext:",
+                    ext,
+                );
                 const paths = await Utils.openFileDialog({
                     startingFolder,
-                    allowedFileTypes: ext === "*" ? "*" : `*.${ext}`,
+                    allowedFileTypes:
+                        (ext as string) === "*" ? "*" : `*.${ext}`,
                     canChooseFiles: true,
                     canChooseDirectory: false,
                     allowsMultipleSelection: false,
                 });
                 const path = paths?.length ? paths[0] : null;
                 if (!path) {
-                    browserWindow.webview.rpc.send.openFileResult({
+                    getBrowserWindowRpc().send.openFileResult({
                         content: null,
                         path: null,
                     });
@@ -144,15 +156,15 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 try {
                     const content = await Bun.file(path).text();
                     _lastDir = dirname(path);
-                    await saveLastDir(path);  // 永続化
+                    await saveLastDir(path); // 永続化
                     console.log("[open]", path);
-                    browserWindow.webview.rpc.send.openFileResult({
+                    getBrowserWindowRpc().send.openFileResult({
                         content,
                         path,
                     });
                 } catch (e: any) {
                     console.error("[open error]", e.message);
-                    browserWindow.webview.rpc.send.openFileResult({
+                    getBrowserWindowRpc().send.openFileResult({
                         content: null,
                         path: null,
                     });
@@ -170,7 +182,7 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 }
                 if (!savePath) {
                     console.log("[save] cancelled");
-                    browserWindow.webview.rpc.send.saveFileResult({
+                    getBrowserWindowRpc().send.saveFileResult({
                         ok: false,
                         path: null,
                         cancelled: true,
@@ -180,16 +192,16 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 try {
                     await Bun.write(savePath, content);
                     _lastDir = dirname(savePath);
-                    await saveLastDir(savePath);  // 永続化
+                    await saveLastDir(savePath); // 永続化
                     console.log("[saved]", savePath);
-                    browserWindow.webview.rpc.send.saveFileResult({
+                    getBrowserWindowRpc().send.saveFileResult({
                         ok: true,
                         path: savePath,
                         cancelled: false,
                     });
                 } catch (e: any) {
                     console.error("[save error]", e.message);
-                    browserWindow.webview.rpc.send.saveFileResult({
+                    getBrowserWindowRpc().send.saveFileResult({
                         ok: false,
                         path: null,
                         cancelled: false,
@@ -214,4 +226,5 @@ const browserWindow = new BrowserWindow({
     rpc: vjaRPC,
 });
 
+// 起動時最大表示.
 browserWindow.maximize();
