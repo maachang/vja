@@ -4,7 +4,7 @@
 
 このプロジェクトは基本ノーコードで ClaudeCode で作成(細かな部分は手動で修正している)。
 
-VB スタイルのフォームデザイナー。Electrobun + Bun で動作するローカル GUI アプリ。
+VB スタイルのフォームデザイナー(vja = visual js for AI)。Electrobun + Bun で動作するローカル GUI アプリ。
 
 最終的には ローカルLLM や OpenAIのAPIと連携して、ソースコード生成をAIで自動生成する。
 
@@ -31,8 +31,9 @@ https://bun.com/
 ダウンロード後以下を実行する.
 
 ```bash
-# 1. glt clone.
+# 1. glt clone + ディレクトリ移動.
 git clone git@github.com:maachang/vja.git
+cd vja
 
 # 2. 依存パッケージをインストール
 bun install
@@ -43,6 +44,8 @@ bun run dev
 # 4. ビルド（配布用）
 bun run build
 ```
+
+これにより、VB風の画面(vja)が起動することができる.
 
 ## ファイル構成
 

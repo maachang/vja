@@ -481,22 +481,45 @@
             .pv select {
                 width: 100%;
                 height: 24px;
-                background: transparent;
-                border: none;
+                background: var(--bg3);
+                border: 1px solid var(--border);
+                border-radius: 2px;
                 color: var(--text);
                 font-size: 13px;
                 font-family: var(--font);
-                padding: 0 2px;
+                padding: 0 4px;
                 outline: none;
             }
             .pv input:focus,
             .pv select:focus {
                 background: var(--bg4);
-                outline: 1px solid var(--accent);
-                border-radius: 2px;
+                border-color: var(--accent);
+                outline: none;
             }
             .pv select option {
                 background: var(--bg2);
+                color: var(--text);
+            }
+            .pv input[type="color"] {
+                padding: 1px 2px;
+                cursor: pointer;
+                border: 1px solid var(--border);
+                background: var(--bg3);
+                height: 24px;
+            }
+            .pv textarea {
+                background: var(--bg3);
+                border: 1px solid var(--border);
+                border-radius: 2px;
+                color: var(--text);
+                font-size: 11px;
+                resize: none;
+                outline: none;
+                padding: 3px 4px;
+                width: 100%;
+            }
+            .pv textarea:focus {
+                border-color: var(--accent);
             }
             .psec {
                 padding: 5px 8px;
@@ -1005,6 +1028,70 @@
             #const-modal .add-row-btn:hover {
                 background: var(--bg4);
                 border-color: var(--accent);
+            }
+
+            /* ── プロパティパネル カスタムセレクト ── */
+            .pv-sel {
+                position: relative;
+                width: 100%;
+            }
+            .pv-sel-btn {
+                width: 100%;
+                height: 24px;
+                background: var(--bg3);
+                border: 1px solid var(--border);
+                border-radius: 2px;
+                color: var(--text);
+                font-size: 13px;
+                font-family: var(--font);
+                padding: 0 20px 0 4px;
+                text-align: left;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .pv-sel-btn:hover {
+                border-color: var(--accent);
+            }
+            .pv-sel-btn .arr {
+                font-size: 9px;
+                opacity: 0.6;
+                flex-shrink: 0;
+                margin-left: 4px;
+            }
+            .pv-sel-list {
+                position: fixed;
+                background: #252535;
+                border: 1px solid var(--accent);
+                border-radius: 3px;
+                z-index: 9999;
+                display: none;
+                flex-direction: column;
+                min-width: 80px;
+                box-shadow: 0 4px 12px #000c;
+                max-height: 160px;
+                overflow-y: auto;
+            }
+            .pv-sel-list.open {
+                display: flex;
+            }
+            .pv-sel-opt {
+                padding: 5px 10px;
+                font-size: 12px;
+                color: #e0e0f0;
+                cursor: pointer;
+                white-space: nowrap;
+            }
+            .pv-sel-opt:hover {
+                background: #363652;
+                color: #fff;
+            }
+            .pv-sel-opt.active {
+                color: var(--accent);
             }
             /* ── Context menu ── */
             #ctx {
@@ -2456,14 +2543,48 @@
                         return `<input type="text" value="${esc(val ?? "")}" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">`;
                     case "num":
                         return `<input type="number" value="${val ?? 0}" onchange="setProp('${d.k}','${d.sp || ""}',+this.value,${w2})">`;
-                    case "bool":
-                        return `<select onchange="setProp('${d.k}','${d.sp || ""}',this.value==='true',${w2})"><option value="true" ${val ? "selected" : ""}>True</option><option value="false" ${!val ? "selected" : ""}>False</option></select>`;
+                    case "bool": {
+                        const bTrue = val ? "active" : "";
+                        const bFalse = !val ? "active" : "";
+                        const bLabel = val ? "True" : "False";
+                        const bid =
+                            "pvs_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
+                        return (
+                            `<div class="pv-sel" id="${bid}">` +
+                            `<div class="pv-sel-btn" onmousedown="pvSelOpen('${bid}',event)">` +
+                            `<span>${bLabel}</span><span class="arr">▼</span>` +
+                            `</div>` +
+                            `<div class="pv-sel-list">` +
+                            `<div class="pv-sel-opt ${bTrue}" onmousedown="pvSelPick('${bid}',true,event);setProp('${d.k}','${d.sp || ""}',true,${w2})">True</div>` +
+                            `<div class="pv-sel-opt ${bFalse}" onmousedown="pvSelPick('${bid}',false,event);setProp('${d.k}','${d.sp || ""}',false,${w2})">False</div>` +
+                            `</div>` +
+                            `</div>`
+                        );
+                    }
                     case "color":
-                        return `<input type="color" value="${val || "#000000"}" style="width:100%;height:20px;padding:0;border:none;cursor:pointer" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">`;
-                    case "sel":
-                        return `<select onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">${(d.opts || []).map((o) => `<option value="${o}" ${val === o ? "selected" : ""}>${o}</option>`).join("")}</select>`;
+                        return `<input type="color" value="${val || "#000000"}" style="width:100%;height:22px;padding:1px 2px;cursor:pointer;border:1px solid var(--border);border-radius:2px;background:var(--bg3)" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">`;
+                    case "sel": {
+                        const sid =
+                            "pvs_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
+                        const opts = d.opts || [];
+                        const sLabel = val ?? (opts[0] || "");
+                        const sOpts = opts
+                            .map(
+                                (o) =>
+                                    `<div class="pv-sel-opt ${val === o ? "active" : ""}" onmousedown="pvSelPick('${sid}','${o}',event);setProp('${d.k}','${d.sp || ""}','${o}',${w2})">${o}</div>`,
+                            )
+                            .join("");
+                        return (
+                            `<div class="pv-sel" id="${sid}">` +
+                            `<div class="pv-sel-btn" onmousedown="pvSelOpen('${sid}',event)">` +
+                            `<span>${sLabel}</span><span class="arr">▼</span>` +
+                            `</div>` +
+                            `<div class="pv-sel-list">${sOpts}</div>` +
+                            `</div>`
+                        );
+                    }
                     case "area":
-                        return `<textarea style="width:100%;height:56px;background:transparent;border:none;color:var(--text);font-size:11px;resize:none;outline:none" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">${esc(val || "")}</textarea>`;
+                        return `<textarea style="width:100%;height:56px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:11px;resize:none;outline:none;padding:3px 4px;box-sizing:border-box" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">${esc(val || "")}</textarea>`;
                     case "coldef":
                         return `<button onclick="openColDefEditor(${w2})" style="width:100%;height:24px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--accent);font-size:11px;cursor:pointer;text-align:left;padding:0 6px">✏ カラム編集…</button>`;
                 }
@@ -3469,6 +3590,45 @@
                 pushUndo();
             }
 
+            /* ── プロパティパネル カスタムセレクト ── */
+            function pvSelOpen(id, e) {
+                e.stopPropagation();
+                const wrap = document.getElementById(id);
+                if (!wrap) return;
+                const list = wrap.querySelector(".pv-sel-list");
+                if (!list) return;
+                const isOpen = list.classList.contains("open");
+                // 他を全部閉じる
+                document
+                    .querySelectorAll(".pv-sel-list.open")
+                    .forEach((el) => el.classList.remove("open"));
+                if (!isOpen) {
+                    list.classList.add("open");
+                    // 位置を fixed で計算
+                    const btn = wrap.querySelector(".pv-sel-btn");
+                    const r = btn.getBoundingClientRect();
+                    list.style.left = r.left + "px";
+                    list.style.top = r.bottom + 2 + "px";
+                    list.style.minWidth = r.width + "px";
+                }
+            }
+            function pvSelPick(id, val, e) {
+                e.stopPropagation();
+                const wrap = document.getElementById(id);
+                if (!wrap) return;
+                const list = wrap.querySelector(".pv-sel-list");
+                const btn = wrap.querySelector(".pv-sel-btn span:first-child");
+                if (btn) btn.textContent = String(val);
+                list?.classList.remove("open");
+                wrap.querySelectorAll(".pv-sel-opt").forEach((el) => {
+                    el.classList.toggle(
+                        "active",
+                        el.textContent === String(val) ||
+                            el.getAttribute("data-v") === String(val),
+                    );
+                });
+            }
+
             /* ── カラム定義エディタ ── */
             function openColDefEditor(wid) {
                 const w = widgets.find((x) => x.id == wid);
@@ -3682,6 +3842,10 @@
                 if (!e.target.closest("#ctx") && !e.target.closest(".widget"))
                     hideCtx();
                 if (!e.target.closest("#fdd-wrap")) closeFdd();
+                if (!e.target.closest(".pv-sel"))
+                    document
+                        .querySelectorAll(".pv-sel-list.open")
+                        .forEach((el) => el.classList.remove("open"));
             });
 
             /* ═══════════════════════════════════════════
