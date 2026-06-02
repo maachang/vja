@@ -607,11 +607,17 @@
                 background: var(--bg2);
                 border: 1px solid var(--border2);
                 border-radius: 6px;
-                min-width: 480px;
-                max-width: 640px;
+                min-width: 900px;
+                max-width: 1100px;
+                width: 90vw;
                 display: flex;
                 flex-direction: column;
                 box-shadow: 0 8px 40px #000b;
+            }
+            .modal.modal-yaml {
+                min-width: 960px;
+                max-width: 1200px;
+                width: 92vw;
             }
             .mhdr {
                 padding: 10px 14px;
@@ -681,15 +687,83 @@
                 border-radius: 4px;
                 color: var(--text);
                 font-family: monospace;
-                font-size: 12px;
+                font-size: 14px;
                 padding: 8px;
                 resize: vertical;
                 outline: none;
-                line-height: 1.5;
+                line-height: 1.6;
             }
             textarea.yaml:focus {
                 border-color: var(--accent);
             }
+            /* ── YAMLシンタックスハイライト ── */
+            .yaml-hl-wrap {
+                position: relative;
+                width: 100%;
+            }
+            /* ハイライト層（上に重ねる・クリック透過） */
+            .yaml-hl-bg {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                pointer-events: none;
+                border-radius: 4px;
+                padding: 8px;
+                box-sizing: border-box;
+                font-family: "Courier New", Courier, monospace;
+                font-size: 14px;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-break: break-all;
+                background: transparent;
+                border: 2px solid transparent;
+                z-index: 2;
+                overflow: hidden;
+                letter-spacing: normal;
+            }
+            /* textarea（入力受け付け・文字色を背景色と同じにして隠す） */
+            .yaml-hl-wrap textarea.yaml {
+                position: relative;
+                z-index: 1;
+                background: #2d2d45 !important;
+                caret-color: #e0e0f0 !important;
+                color: #2d2d45 !important;
+                border: 1px solid var(--border);
+                font-family: "Courier New", Courier, monospace;
+                font-size: 14px;
+                line-height: 1.6;
+                letter-spacing: normal;
+                resize: vertical;
+                display: block;
+                width: 100%;
+            }
+            .yaml-hl-wrap textarea.yaml:focus {
+                border-color: var(--accent);
+            }
+            /* カラートークン */
+            .yk {
+                color: #7ec8e3;
+            } /* キー */
+            .yv {
+                color: #98d982;
+            } /* 文字列値 */
+            .yn {
+                color: #f0a050;
+            } /* 数値 */
+            .yc {
+                color: #6a9955;
+            } /* コメント */
+            .yd {
+                color: #c586c0;
+            } /* ブール/null */
+            .ys {
+                color: #ce9178;
+            } /* 特殊値 */
+            .yp {
+                color: #dcdcaa;
+            } /* | > ブロック記号 */
             .infobox {
                 background: var(--bg3);
                 border: 1px solid var(--border);
@@ -778,7 +852,7 @@
             .fdd-item {
                 padding: 5px 10px;
                 font-size: 11px;
-                color: #e0e0f0;
+                color: var(--text2);
                 cursor: pointer;
                 white-space: nowrap;
             }
@@ -787,8 +861,9 @@
                 color: #fff;
             }
             .fdd-item.fdd-active {
-                color: var(--accent);
-                background: #2d2d45;
+                background: var(--accent);
+                color: #fff;
+                font-weight: bold;
             }
             /* アイコンボタン群 */
             .fs-btn {
@@ -1082,7 +1157,7 @@
             .pv-sel-opt {
                 padding: 5px 10px;
                 font-size: 12px;
-                color: #e0e0f0;
+                color: var(--text2);
                 cursor: pointer;
                 white-space: nowrap;
             }
@@ -1091,7 +1166,112 @@
                 color: #fff;
             }
             .pv-sel-opt.active {
+                background: var(--accent);
+                color: #fff;
+                font-weight: bold;
+            }
+
+            /* ── YAMLエディタ拡張 ── */
+            .yaml-modal-wrap {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .yaml-ref-panel {
+                background: var(--bg3);
+                border: 1px solid var(--border);
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 11px;
+                max-height: 100px;
+                overflow-y: auto;
+            }
+            .yaml-ref-panel b {
+                color: var(--accent2);
+                display: block;
+                margin-bottom: 4px;
+            }
+            .yaml-ref-item {
+                display: inline-block;
+                margin: 1px 4px 1px 0;
+                background: var(--bg4);
+                border: 1px solid var(--border);
+                border-radius: 3px;
+                padding: 1px 6px;
+                font-family: monospace;
+                font-size: 10px;
                 color: var(--accent);
+                cursor: pointer;
+            }
+            .yaml-ref-item:hover {
+                border-color: var(--accent);
+            }
+            .yaml-ai-bar {
+                display: flex;
+                gap: 6px;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+            .yaml-ai-bar input {
+                flex: 1;
+                height: 28px;
+                background: var(--bg3);
+                border: 1px solid var(--border);
+                border-radius: 3px;
+                color: var(--text);
+                font-size: 12px;
+                padding: 0 8px;
+                outline: none;
+                min-width: 80px;
+            }
+            .yaml-ai-bar input:focus {
+                border-color: var(--accent);
+            }
+            .yaml-ai-btn {
+                height: 28px;
+                padding: 0 14px;
+                border-radius: 3px;
+                border: 1px solid var(--accent);
+                background: var(--accent);
+                color: #fff;
+                cursor: pointer;
+                font-size: 12px;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+            .yaml-ai-btn:hover {
+                background: #5a7ef0;
+            }
+            .yaml-ai-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+            .yaml-ai-status {
+                font-size: 11px;
+                color: var(--text2);
+            }
+            .ai-cfg-row {
+                display: grid;
+                grid-template-columns: 100px 1fr;
+                gap: 6px;
+                align-items: center;
+                font-size: 12px;
+            }
+            .ai-cfg-row label {
+                color: var(--text2);
+            }
+            .ai-cfg-row input {
+                height: 28px;
+                background: var(--bg3);
+                border: 1px solid var(--border);
+                border-radius: 3px;
+                color: var(--text);
+                font-size: 12px;
+                padding: 0 8px;
+                outline: none;
+            }
+            .ai-cfg-row input:focus {
+                border-color: var(--accent);
             }
             /* ── Context menu ── */
             #ctx {
@@ -1188,6 +1368,9 @@
                         <div class="dd-sep"></div>
                         <div class="dd-item" onmousedown="openConstEditor()">
                             定数の編集…
+                        </div>
+                        <div class="dd-item" onmousedown="openAiConfig()">
+                            AI接続設定…
                         </div>
                     </div>
                 </div>
@@ -1736,6 +1919,15 @@
             let forms = [makeFormData("Form1")]; // フォーム配列
             let curFormIdx = 0; // 現在編集中インデックス
             let startFormId = forms[0]?.id ?? ""; // 初期表示フォームのID
+            // AI接続設定
+            let aiConfig = {
+                endpoint: "http://localhost:8080",
+                apiKey: "",
+                model: "",
+                models: [],
+                enabled: false,
+                routerMode: false,
+            };
 
             // 現在フォームへのショートカット（参照）
             let widgets = forms[0].widgets;
@@ -2703,17 +2895,541 @@
                 if (!w.events) w.events = {};
                 const cur =
                     w.events[evName] ||
-                    `# イベント: ${evName} (${w.name})\n# YAML形式でアクションを定義します\n\naction: alert\nmessage: "${w.name}の${evName}が発生しました"\n\n# AI連携 (将来)\n# ai:\n#   provider: llama\n#   model: qwen3.5-4b\n#   prompt: "ユーザーが${evName}を実行しました"\n`;
-                showModal(`
-    <div class="mhdr"><h4>📋 ${w.name} — ${evName}</h4><button class="mclose" onclick="closeModal()">✕</button></div>
-    <div class="mbody">
-      <div class="infobox">YAML形式でイベント処理を定義します。将来的に <code>llama-server / qwen3.5</code> と連携してコードを自動生成します。</div>
-      <textarea class="yaml" id="yaml-ta">${esc(cur)}</textarea>
-    </div>
-    <div class="mfoot">
-      <button onclick="closeModal()">キャンセル</button>
-      <button class="pri" onclick="saveYaml(${wid},'${evName}')">保存</button>
-    </div>`);
+                    "# イベント: " +
+                        evName +
+                        " (" +
+                        w.name +
+                        ")\n" +
+                        "# YAML形式でAIへの指示を記述します\n\n" +
+                        "# --- 基本アクション例 ---\n" +
+                        "action: navigate\ntarget: Form2\n\n" +
+                        "# --- AI生成指示例 ---\n" +
+                        "ai_prompt: |\n" +
+                        "  " +
+                        w.name +
+                        "の" +
+                        evName +
+                        "が発生した時の処理を生成してください。\n" +
+                        "  入力値を検証してForm2に遷移します。\n";
+
+                // 定数リスト
+                const constHtml =
+                    constants.length > 0
+                        ? constants
+                              .map(
+                                  (c) =>
+                                      '<span class="yaml-ref-item" onclick="yamlInsert(&quot;' +
+                                      esc(c.name) +
+                                      '&quot;)" title="' +
+                                      esc(c.value) +
+                                      '">' +
+                                      esc(c.name) +
+                                      "</span>",
+                              )
+                              .join("")
+                        : '<span style="color:var(--text3)">定数が未定義です（編集メニュー→定数の編集）</span>';
+
+                // フォームリスト
+                const formHtml = forms
+                    .map(
+                        (f) =>
+                            '<span class="yaml-ref-item" onclick="yamlInsert(&quot;' +
+                            esc(f.cfg.title) +
+                            '&quot;)" title="ID:' +
+                            f.id +
+                            '">' +
+                            esc(f.cfg.title) +
+                            "</span>",
+                    )
+                    .join("");
+
+                // ウィジェットリスト（同フォーム内）
+                const widgetHtml = widgets
+                    .map(
+                        (ww) =>
+                            '<span class="yaml-ref-item" onclick="yamlInsert(&quot;' +
+                            esc(ww.name) +
+                            '&quot;)" title="' +
+                            ww.tag +
+                            '">' +
+                            esc(ww.name) +
+                            "</span>",
+                    )
+                    .join("");
+
+                const aiEnabled = aiConfig.enabled;
+                showModal(
+                    '<div class="modal-yaml"><div class="mhdr"><h4>📋 ' +
+                        esc(w.name) +
+                        " — " +
+                        esc(evName) +
+                        '</h4><button class="mclose" onclick="closeModal()">✕</button></div>' +
+                        '<div class="mbody yaml-modal-wrap">' +
+                        // 参照パネル
+                        '<div class="yaml-ref-panel">' +
+                        "<b>📌 定数</b>" +
+                        constHtml +
+                        '<b style="margin-top:4px">📋 画面</b>' +
+                        formHtml +
+                        '<b style="margin-top:4px">🔲 ウィジェット</b>' +
+                        widgetHtml +
+                        "</div>" +
+                        // YAMLエリア
+                        '<div class="yaml-hl-wrap">' +
+                        '<div class="yaml-hl-bg" id="yaml-hl"></div>' +
+                        '<textarea class="yaml" id="yaml-ta" style="height:380px" oninput="yamlHlUpdate()" onscroll="yamlHlSync()">' +
+                        esc(cur) +
+                        "</textarea>" +
+                        "</div>" +
+                        // AIバー
+                        '<div class="yaml-ai-bar">' +
+                        '<input id="ai-prompt-in" placeholder="AIへの追加指示（任意）" >' +
+                        '<button class="yaml-ai-btn" id="ai-gen-btn" onclick="yamlAiGenerate(' +
+                        wid +
+                        ",'" +
+                        evName +
+                        "')\">" +
+                        (aiEnabled ? "🤖 AI生成" : "🤖 AI生成（設定要）") +
+                        "</button>" +
+                        '<span class="yaml-ai-status" id="ai-status"></span>' +
+                        "</div>" +
+                        "</div>" +
+                        '<div class="mfoot">' +
+                        '<button onclick="closeModal()">キャンセル</button>' +
+                        '<button class="pri" onclick="saveYaml(' +
+                        wid +
+                        ",'" +
+                        evName +
+                        "')\">保存</button>" +
+                        "</div>",
+                );
+                requestAnimationFrame(() => yamlHlUpdate());
+            }
+
+            // YAMLエリアにテキストを挿入
+            function yamlInsert(text) {
+                const ta = $("yaml-ta");
+                if (!ta) return;
+                const s = ta.selectionStart,
+                    e = ta.selectionEnd;
+                ta.value = ta.value.slice(0, s) + text + ta.value.slice(e);
+                ta.selectionStart = ta.selectionEnd = s + text.length;
+                ta.focus();
+                yamlHlUpdate();
+            }
+
+            // AI生成（llama-server 経由）
+            async function yamlAiGenerate(wid, evName) {
+                const w = widgets.find((x) => x.id == wid);
+                if (!w) return;
+                if (!aiConfig.enabled) {
+                    if (
+                        confirm(
+                            "AI接続設定が有効になっていません。設定画面を開きますか？",
+                        )
+                    ) {
+                        closeModal();
+                        openAiConfig();
+                    }
+                    return;
+                }
+                const yamlCur = $("yaml-ta")?.value || "";
+                const addPrompt = $("ai-prompt-in")?.value || "";
+                const btn = $("ai-gen-btn");
+                const status = $("ai-status");
+                if (btn) btn.disabled = true;
+                if (status) status.textContent = "⏳ 生成中…";
+
+                // コンテキスト情報
+                const constCtx =
+                    constants.map((c) => c.name + "=" + c.value).join(", ") ||
+                    "なし";
+                const formCtx = forms.map((f) => f.cfg.title).join(", ");
+                const widCtx = widgets
+                    .map((ww) => ww.name + "(" + ww.tag + ")")
+                    .join(", ");
+
+                const sysPrompt =
+                    "あなたはVJAフォームデザイナーのイベントYAML生成AIです。\n" +
+                    "以下の形式でYAMLを生成してください。\n\n" +
+                    "利用可能な定数: " +
+                    constCtx +
+                    "\n" +
+                    "画面一覧: " +
+                    formCtx +
+                    "\n" +
+                    "ウィジェット一覧: " +
+                    widCtx +
+                    "\n\n" +
+                    "YAMLのみを返してください。説明文は不要です。";
+
+                const userPrompt =
+                    "ウィジェット「" +
+                    w.name +
+                    "」（" +
+                    w.tag +
+                    "）の「" +
+                    evName +
+                    "」イベントの処理をYAMLで記述してください。\n" +
+                    (yamlCur.trim() ? "現在のYAML:\n" + yamlCur + "\n\n" : "") +
+                    (addPrompt ? "追加指示: " + addPrompt : "");
+
+                try {
+                    const hasApiKey = !!aiConfig.apiKey;
+                    const isRouterOn = !!aiConfig.routerMode;
+
+                    // API Key あり → OpenAI API
+                    // API Key なし → ローカル LLM（llama.cpp / llama-server）
+                    const endpoint = hasApiKey
+                        ? "https://api.openai.com" // OpenAI 固定エンドポイント
+                        : aiConfig.endpoint; // ローカル llama-server
+
+                    // モデル名
+                    // ・OpenAI の場合は aiConfig.model（例: gpt-4o）
+                    // ・ローカルでルーターモードON → aiConfig.model（選択済み）
+                    // ・ローカルでルーターモードOFF → モデル指定なし（llama-serverが自動選択）
+                    const modelName = hasApiKey
+                        ? aiConfig.model || "gpt-4o-mini"
+                        : isRouterOn
+                          ? aiConfig.model
+                          : undefined;
+
+                    const headers = { "Content-Type": "application/json" };
+                    if (hasApiKey) {
+                        headers["Authorization"] = "Bearer " + aiConfig.apiKey;
+                    }
+
+                    const body = {
+                        messages: [
+                            { role: "system", content: sysPrompt },
+                            { role: "user", content: userPrompt },
+                        ],
+                        temperature: 0.3,
+                        max_tokens: 512,
+                        stream: false,
+                    };
+                    if (modelName) body.model = modelName;
+
+                    if (status)
+                        status.textContent = hasApiKey
+                            ? "⏳ OpenAI API で生成中…"
+                            : "⏳ ローカル LLM で生成中…";
+
+                    const res = await fetch(endpoint + "/v1/chat/completions", {
+                        method: "POST",
+                        headers,
+                        body: JSON.stringify(body),
+                    });
+                    if (!res.ok) {
+                        const errText = await res.text().catch(() => "");
+                        throw new Error(
+                            "HTTP " +
+                                res.status +
+                                (errText ? " — " + errText.slice(0, 120) : ""),
+                        );
+                    }
+                    const data = await res.json();
+                    const generated = data.choices?.[0]?.message?.content || "";
+                    // コードブロックを除去
+                    const clean = generated
+                        .replace(/^```(?:ya?ml?)?\n?/i, "")
+                        .replace(/```$/, "")
+                        .trim();
+                    const ta = $("yaml-ta");
+                    if (ta) {
+                        ta.value = clean;
+                        yamlHlUpdate();
+                    }
+                    if (status) status.textContent = "✅ 生成完了";
+                } catch (e) {
+                    if (status) status.textContent = "❌ " + e.message;
+                } finally {
+                    if (btn) btn.disabled = false;
+                }
+            }
+
+            // AI接続設定モーダル
+            function openAiConfig() {
+                // aiConfig の初期値保証
+                if (!aiConfig.routerMode) aiConfig.routerMode = false;
+                if (!aiConfig.apiKey) aiConfig.apiKey = "";
+                if (!aiConfig.models) aiConfig.models = [];
+                if (!aiConfig.endpoint)
+                    aiConfig.endpoint = "http://localhost:8080";
+
+                const isEnabled = aiConfig.enabled === true;
+                const isRouter = aiConfig.routerMode === true;
+                const modelListHtml = aiCfgModelListHtml(
+                    aiConfig.models,
+                    aiConfig.model,
+                    isRouter,
+                );
+
+                showModal(
+                    "<div class='mhdr'><h4>🤖 AI接続設定</h4><button class='mclose' onclick='closeModal()'>✕</button></div>" +
+                        "<div class='mbody' style='gap:12px'>" +
+                        "<div class='infobox'>llama-server（またはOpenAI互換API）の接続設定を行います。</div>" +
+                        // AI生成を有効
+                        "<div class='ai-cfg-row'><label>AI生成を有効</label>" +
+                        "<div class='pv-sel' id='ai-ena-sel'>" +
+                        "<div class='pv-sel-btn' onmousedown=\"pvSelOpen('ai-ena-sel',event)\">" +
+                        "<span>" +
+                        (isEnabled ? "ON" : "OFF") +
+                        "</span><span class='arr'>▼</span></div>" +
+                        "<div class='pv-sel-list'>" +
+                        "<div class='pv-sel-opt " +
+                        (isEnabled ? "active" : "") +
+                        "' onmousedown=\"pvSelPick('ai-ena-sel','ON',event);aiCfgToggleEnabled('ON')\">ON</div>" +
+                        "<div class='pv-sel-opt " +
+                        (!isEnabled ? "active" : "") +
+                        "' onmousedown=\"pvSelPick('ai-ena-sel','OFF',event);aiCfgToggleEnabled('OFF')\">OFF</div>" +
+                        "</div></div></div>" +
+                        // エンドポイント
+                        "<div class='ai-cfg-row'><label>エンドポイント</label>" +
+                        "<input id='ai-ep' value='" +
+                        esc(aiConfig.endpoint) +
+                        "' placeholder='http://localhost:8080'></div>" +
+                        // API Key
+                        "<div class='ai-cfg-row'><label>API Key</label>" +
+                        "<input id='ai-apikey' type='password' value='" +
+                        esc(aiConfig.apiKey) +
+                        "' placeholder='OpenAI等のAPIキー（任意）'></div>" +
+                        // ルーターモード
+                        "<div class='ai-cfg-row'><label>ルーターモード</label>" +
+                        "<div class='pv-sel' id='ai-router-sel'>" +
+                        "<div class='pv-sel-btn' onmousedown=\"pvSelOpen('ai-router-sel',event)\">" +
+                        "<span>" +
+                        (isRouter ? "ON" : "OFF") +
+                        "</span><span class='arr'>▼</span></div>" +
+                        "<div class='pv-sel-list'>" +
+                        "<div class='pv-sel-opt " +
+                        (isRouter ? "active" : "") +
+                        "' onmousedown=\"pvSelPick('ai-router-sel','ON',event);aiCfgToggleRouter('ON')\">ON</div>" +
+                        "<div class='pv-sel-opt " +
+                        (!isRouter ? "active" : "") +
+                        "' onmousedown=\"pvSelPick('ai-router-sel','OFF',event);aiCfgToggleRouter('OFF')\">OFF</div>" +
+                        "</div></div></div>" +
+                        // モデル名（ルーターモードONのみ）
+                        "<div class='ai-cfg-row' id='ai-model-row' style='" +
+                        (!isRouter ? "opacity:.4;pointer-events:none" : "") +
+                        "'>" +
+                        "<label>モデル名</label>" +
+                        "<div style='display:flex;gap:6px;align-items:center'>" +
+                        "<div class='pv-sel' id='ai-model-sel' style='flex:1'>" +
+                        "<div class='pv-sel-btn' onmousedown=\"pvSelOpen('ai-model-sel',event)\">" +
+                        "<span id='ai-model-label'>" +
+                        (isRouter ? aiConfig.model || "（モデルを選択）" : "") +
+                        "</span>" +
+                        "<span class='arr'>▼</span></div>" +
+                        "<div class='pv-sel-list' id='ai-model-list'>" +
+                        modelListHtml +
+                        "</div>" +
+                        "</div>" +
+                        "<button onclick='aiCfgFetchModels()' style='height:28px;padding:0 10px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;flex-shrink:0'>🔄 更新</button>" +
+                        "</div></div>" +
+                        "</div>" +
+                        "<div class='mfoot'>" +
+                        "<button onclick='closeModal()'>キャンセル</button>" +
+                        "<button class='pri' onclick='saveAiConfig()'>保存</button>" +
+                        "</div>",
+                );
+            }
+
+            // モデルリストのHTML生成
+            function aiCfgModelListHtml(models, current, isRouter) {
+                if (!isRouter || !models || models.length === 0) {
+                    return "<div class='pv-sel-opt'>（ルーターモードONで更新）</div>";
+                }
+                return models
+                    .map(
+                        (m) =>
+                            "<div class='pv-sel-opt " +
+                            (m === current ? "active" : "") +
+                            "' " +
+                            "onmousedown=\"pvSelPick('ai-model-sel','" +
+                            esc(m) +
+                            "',event);$('ai-model-label').textContent='" +
+                            esc(m) +
+                            "'\">" +
+                            esc(m) +
+                            "</div>",
+                    )
+                    .join("");
+            }
+
+            // ルーターモード切り替え
+            function aiCfgToggleRouter(val) {
+                const row = $("ai-model-row");
+                if (!row) return;
+                const on = val === "ON";
+                row.style.opacity = on ? "1" : "0.4";
+                row.style.pointerEvents = on ? "auto" : "none";
+            }
+
+            // 有効/無効切り替え（将来の動的UI用）
+            function aiCfgToggleEnabled(val) {
+                /* 現状はpvSelPickのみで処理 */
+            }
+
+            // モデル一覧をllamaサーバーから取得
+            async function aiCfgFetchModels() {
+                const ep = $("ai-ep")?.value?.trim() || aiConfig.endpoint;
+                const apiKey = $("ai-apikey")?.value?.trim() || "";
+                const btn = document.querySelector("#ai-model-row button");
+                if (btn) {
+                    btn.textContent = "⏳";
+                    btn.disabled = true;
+                }
+                try {
+                    // API Key あり → OpenAI /v1/models
+                    // API Key なし → ローカル llama-server /v1/models
+                    const fetchEp = apiKey ? "https://api.openai.com" : ep;
+                    const headers = { "Content-Type": "application/json" };
+                    if (apiKey) headers["Authorization"] = "Bearer " + apiKey;
+                    const res = await fetch(fetchEp + "/v1/models", {
+                        headers,
+                    });
+                    if (!res.ok) throw new Error("HTTP " + res.status);
+                    const data = await res.json();
+                    const models = (data.data || [])
+                        .map((m) => m.id || m)
+                        .filter(Boolean)
+                        .sort();
+                    if (models.length === 0)
+                        throw new Error("モデルが見つかりません");
+                    aiConfig.models = models;
+                    const list = $("ai-model-list");
+                    if (list)
+                        list.innerHTML = aiCfgModelListHtml(
+                            models,
+                            aiConfig.model,
+                            true,
+                        );
+                    showToast(
+                        (apiKey ? "OpenAI" : "ローカル") +
+                            "からモデルを" +
+                            models.length +
+                            "件取得しました",
+                    );
+                } catch (e) {
+                    showToast("取得失敗: " + e.message);
+                } finally {
+                    if (btn) {
+                        btn.textContent = "🔄 更新";
+                        btn.disabled = false;
+                    }
+                }
+            }
+
+            function saveAiConfig() {
+                const ep = $("ai-ep")?.value?.trim() || "http://localhost:8080";
+                const apiKey = $("ai-apikey")?.value?.trim() || "";
+                const enaSel = document.querySelector(
+                    "#ai-ena-sel    .pv-sel-btn span:first-child",
+                );
+                const rtrSel = document.querySelector(
+                    "#ai-router-sel .pv-sel-btn span:first-child",
+                );
+                const modSel = document.querySelector("#ai-model-label");
+                const enabled = enaSel?.textContent === "ON";
+                const routerMode = rtrSel?.textContent === "ON";
+                const model = modSel?.textContent || aiConfig.model || "";
+                aiConfig = {
+                    endpoint: ep,
+                    apiKey,
+                    enabled,
+                    routerMode,
+                    model: routerMode ? model : "",
+                    models: aiConfig.models || [],
+                };
+                closeModal();
+                pushUndo();
+                showToast("AI設定を保存しました");
+            }
+
+            /* ── YAML シンタックスハイライト ── */
+            function yamlHlUpdate() {
+                const ta = $("yaml-ta");
+                const hl = $("yaml-hl");
+                if (!ta || !hl) return;
+                hl.innerHTML = yamlTokenize(ta.value);
+                // テキストエリアのサイズに合わせる
+                hl.style.height = ta.offsetHeight + "px";
+                hl.style.width = ta.offsetWidth + "px";
+                yamlHlSync();
+            }
+            function yamlHlSync() {
+                const ta = $("yaml-ta");
+                const hl = $("yaml-hl");
+                if (!ta || !hl) return;
+                hl.scrollTop = ta.scrollTop;
+                hl.scrollLeft = ta.scrollLeft;
+                hl.style.height = ta.offsetHeight + "px";
+            }
+            function yamlTokenize(text) {
+                return text
+                    .split("\n")
+                    .map((line) => {
+                        // コメント行
+                        if (/^\s*#/.test(line)) {
+                            return (
+                                '<span class="yc">' + escHl(line) + "</span>"
+                            );
+                        }
+                        // キー: 値 の行
+                        const kvMatch = line.match(
+                            /^(\s*-?\s*)([^:\s][^:]*)(:)(\s*)(.*)?$/,
+                        );
+                        if (kvMatch) {
+                            const indent = escHl(kvMatch[1]);
+                            const key =
+                                '<span class="yk">' +
+                                escHl(kvMatch[2]) +
+                                "</span>";
+                            const colon = '<span class="yk">:</span>';
+                            const space = escHl(kvMatch[4]);
+                            const val =
+                                kvMatch[5] !== undefined
+                                    ? colorVal(kvMatch[5])
+                                    : "";
+                            return indent + key + colon + space + val;
+                        }
+                        // リスト項目 (- value)
+                        const listMatch = line.match(/^(\s*-\s+)(.*)?$/);
+                        if (listMatch) {
+                            return (
+                                '<span class="ys">' +
+                                escHl(listMatch[1]) +
+                                "</span>" +
+                                colorVal(listMatch[2] || "")
+                            );
+                        }
+                        // ブロックスカラー継続行（インデントのみ）
+                        return '<span class="yv">' + escHl(line) + "</span>";
+                    })
+                    .join("\n");
+            }
+            function colorVal(v) {
+                if (!v) return "";
+                if (/^#/.test(v))
+                    return '<span class="yc">' + escHl(v) + "</span>";
+                if (/^[|>]/.test(v))
+                    return '<span class="yp">' + escHl(v) + "</span>";
+                if (/^(true|false|yes|no|on|off)$/i.test(v.trim()))
+                    return '<span class="yd">' + escHl(v) + "</span>";
+                if (/^null$/i.test(v.trim()))
+                    return '<span class="yd">' + escHl(v) + "</span>";
+                if (/^-?[0-9]+(\.?[0-9]*)$/.test(v.trim()))
+                    return '<span class="yn">' + escHl(v) + "</span>";
+                if (/^["']/.test(v.trim()))
+                    return '<span class="yv">' + escHl(v) + "</span>";
+                return '<span class="yv">' + escHl(v) + "</span>";
+            }
+            function escHl(s) {
+                return String(s || "")
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
             }
 
             function saveYaml(wid, evName) {
@@ -2781,6 +3497,7 @@
                     curFormIdx,
                     constants,
                     startFormId,
+                    aiConfig,
                 });
             }
             function pushUndo() {
@@ -2796,6 +3513,15 @@
                 curFormIdx = d.curFormIdx;
                 constants = d.constants || [];
                 startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
+                const _ac = d.aiConfig || {};
+                aiConfig = {
+                    endpoint: _ac.endpoint || "http://localhost:8080",
+                    apiKey: _ac.apiKey || "",
+                    model: _ac.model || "",
+                    models: _ac.models || [],
+                    enabled: !!_ac.enabled,
+                    routerMode: !!_ac.routerMode,
+                };
                 syncCurForm();
                 selId = null;
                 buildFormSelect();
@@ -2900,6 +3626,15 @@
                     }
                     constants = d.constants || [];
                     startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
+                    const _ac = d.aiConfig || {};
+                    aiConfig = {
+                        endpoint: _ac.endpoint || "http://localhost:8080",
+                        apiKey: _ac.apiKey || "",
+                        model: _ac.model || "",
+                        models: _ac.models || [],
+                        enabled: !!_ac.enabled,
+                        routerMode: !!_ac.routerMode,
+                    };
                     syncCurForm();
                     selId = null;
                     undoStack = [];
