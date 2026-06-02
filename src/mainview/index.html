@@ -1224,6 +1224,15 @@
                         <path d="M9 6V4h6v2" />
                     </svg>
                 </button>
+                <button
+                    id="btn-set-start"
+                    class="fs-btn"
+                    onclick="setStartForm()"
+                    title="初期表示フォームに設定"
+                    style="font-size: 14px"
+                >
+                    ★
+                </button>
             </div>
         </div>
 
@@ -1639,6 +1648,7 @@
             // プロジェクト全体
             let forms = [makeFormData("Form1")]; // フォーム配列
             let curFormIdx = 0; // 現在編集中インデックス
+            let startFormId = forms[0]?.id ?? ""; // 初期表示フォームのID
 
             // 現在フォームへのショートカット（参照）
             let widgets = forms[0].widgets;
@@ -2645,7 +2655,12 @@
             ═══════════════════════════════════════════ */
             // プロジェクト全体スナップショット
             function snapshot() {
-                return JSON.stringify({ forms, curFormIdx, constants });
+                return JSON.stringify({
+                    forms,
+                    curFormIdx,
+                    constants,
+                    startFormId,
+                });
             }
             function pushUndo() {
                 // 編集前に現フォームのidCntを書き戻す
@@ -2658,7 +2673,8 @@
                 const d = JSON.parse(s);
                 forms = d.forms;
                 curFormIdx = d.curFormIdx;
-                constants = d.constants || []; // 旧形式互換
+                constants = d.constants || [];
+                startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
                 syncCurForm();
                 selId = null;
                 buildFormSelect();
@@ -2762,6 +2778,7 @@
                         curFormIdx = d.curFormIdx || 0;
                     }
                     constants = d.constants || [];
+                    startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
                     syncCurForm();
                     selId = null;
                     undoStack = [];
@@ -3137,7 +3154,7 @@
                 });
 
                 // 画面遷移JS
-                const navJS = `function showForm(id){\n  document.querySelectorAll('.vja-form').forEach(el=>el.classList.remove('active'));\n  const el=document.getElementById('form-'+id);\n  if(el) el.classList.add('active');\n}\n// 最初の画面を表示\nshowForm('${forms[0]?.id || ""}');`;
+                const navJS = `function showForm(id){\n  document.querySelectorAll('.vja-form').forEach(el=>el.classList.remove('active'));\n  const el=document.getElementById('form-'+id);\n  if(el) el.classList.add('active');\n}\n// 最初の画面を表示\nshowForm('${startFormId || forms[0]?.id || ""}');`;
                 // datagrid ヘルパーJS を evLines に統合
                 dgScripts.forEach(function (s) {
                     evLines.push(s);
@@ -3180,6 +3197,32 @@
               マルチフォーム管理
             ═══════════════════════════════════════════ */
 
+            // 初期フォームを設定
+            function setStartForm() {
+                const f = forms[curFormIdx];
+                if (!f) return;
+                startFormId = f.id;
+                updateStartBtn();
+                pushUndo();
+                showToast(
+                    "「" + f.cfg.title + "」を初期表示フォームに設定しました",
+                );
+            }
+
+            // ★ボタンの状態を更新
+            function updateStartBtn() {
+                const btn = $("btn-set-start");
+                if (!btn) return;
+                const f = forms[curFormIdx];
+                const isStart = f && f.id === startFormId;
+                btn.classList.toggle("is-start", isStart);
+                btn.title = isStart
+                    ? "この画面が初期表示フォームです"
+                    : "初期表示フォームに設定";
+                btn.style.color = isStart ? "#f5a623" : "";
+                btn.style.borderColor = isStart ? "#f5a623" : "";
+            }
+
             // カスタムドロップダウンを再構築
             function buildFormSelect() {
                 const list = $("fdd-list");
@@ -3188,7 +3231,10 @@
                     const item = document.createElement("div");
                     item.className =
                         "fdd-item" + (i === curFormIdx ? " fdd-active" : "");
-                    item.textContent = `[${i + 1}] ${f.cfg.title}`;
+                    // 初期フォームに★マークを付ける
+                    item.textContent =
+                        (f.id === startFormId ? "★ " : "") +
+                        `[${i + 1}] ${f.cfg.title}`;
                     item.onclick = (e) => {
                         e.stopPropagation();
                         switchForm(i);
@@ -3201,6 +3247,7 @@
                 $("fdd-label").textContent = cur
                     ? `[${curFormIdx + 1}] ${cur.cfg.title}`
                     : "";
+                updateStartBtn();
             }
 
             function toggleFdd(e) {
