@@ -2,13 +2,15 @@
 
 ## 概要
 
-このプロジェクトは基本ノーコードで ClaudeCode で作成しています。
+このプロジェクトは基本ノーコードで ClaudeCode で作成(細かな部分は手動で修正している)。
 
 VB スタイルのフォームデザイナー。Electrobun + Bun で動作するローカル GUI アプリ。
 
-最終的には ローカルLLM や OpenAIのAPIと連携して、ソースコード生成をAIで実施する。
+最終的には ローカルLLM や OpenAIのAPIと連携して、ソースコード生成をAIで自動生成する。
 
-これによって「ノーエンジニアがローカルアプリを、VBライクに作成する事を目標としている。
+これによって「ノーエンジニア」がローカルアプリを、VBライクに作成する事を目標としている。
+
+- 2026/06/02 時点では、AIでソースコード作成は出来ない状態.
 
 ## 動作環境
 
@@ -20,14 +22,25 @@ VB スタイルのフォームデザイナー。Electrobun + Bun で動作する
 
 ## セットアップ
 
+まず初めに「bun.js」をインストールする。
+
+https://bun.com/
+
+上のURLから、OSやCPUに合わせてダウンロード.
+
+ダウンロード後以下を実行する.
+
 ```bash
-# 1. 依存パッケージをインストール
+# 1. glt clone.
+git clone git@github.com:maachang/vja.git
+
+# 2. 依存パッケージをインストール
 bun install
 
-# 2. 開発モードで起動
+# 3. 開発モードで起動
 bun run dev
 
-# 3. ビルド（配布用）
+# 4. ビルド（配布用）
 bun run build
 ```
 
@@ -83,7 +96,7 @@ HTML 側は `await window.bunOpenFile()` / `await window.bunSaveProject()` と
 ## ウィジェット一覧
 
 button / label / text（multiline対応）/ inputType / checkbox / radioButton /
-listBox / selectBox / groupBox / picture / 水平線 / 垂直線
+listBox / selectBox / groupBox / picture / 水平線 / 垂直線 / テーブル
 
 ## Linux 環境での保存ダイアログ
 
