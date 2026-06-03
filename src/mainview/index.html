@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <title>VJA Form Designer</title>
-        <link rel="stylesheet" href="./style.css">
+        <link rel="stylesheet" href="./style.css" />
     </head>
     <body>
         <!-- ■ TOOLBAR -->
@@ -88,7 +88,14 @@
                     />
                 </svg>
             </button>
-            <button class="tb-btn" onclick="console.log('[btn] save clicked'); actSave()" title="保存">
+            <button
+                class="tb-btn"
+                onclick="
+                    console.log('[btn] save clicked');
+                    actSave();
+                "
+                title="保存"
+            >
                 <svg viewBox="0 0 24 24">
                     <path
                         d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
@@ -178,8 +185,10 @@
                     class="fs-btn"
                     onclick="setStartForm()"
                     title="初期表示フォームに設定"
-                    style="font-size:14px"
-                >★</button>
+                    style="font-size: 14px"
+                >
+                    ★
+                </button>
             </div>
         </div>
 
@@ -259,6 +268,14 @@
             <span id="st-size">W:<b>-</b> H:<b>-</b></span>
             <span>|</span>
             <span id="st-cnt">ウィジェット: <b>0</b></span>
+            <span>|</span>
+            <span id="st-grid"
+                >グリッド: <b style="color: #ff6b6b">OFF</b></span
+            >
+            <span>|</span>
+            <span id="st-snap"
+                >スナップ: <b style="color: var(--accent)">ON</b></span
+            >
         </div>
 
         <!-- ■ CONTEXT MENU -->
@@ -327,7 +344,7 @@
         <div id="col-type-float"></div>
 
         <script>
-/* ═══════════════════════════════════════════
+            /* ═══════════════════════════════════════════
               TOOLS 定義
             ═══════════════════════════════════════════ */
             const TOOLS = [
@@ -599,7 +616,13 @@
                         "f" +
                         Date.now() +
                         Math.random().toString(36).slice(2, 6),
-                    cfg: { title, w: 640, h: 420, bg: "#ececec", description: "" },
+                    cfg: {
+                        title,
+                        w: 640,
+                        h: 420,
+                        bg: "#ececec",
+                        description: "",
+                    },
                     widgets: [],
                     idCnt: 1,
                 };
@@ -611,12 +634,12 @@
             let startFormId = forms[0]?.id ?? ""; // 初期表示フォームのID
             // AI接続設定
             let aiConfig = {
-                endpoint   : "http://localhost:8080",
-                apiKey     : "",
-                model      : "",
-                models     : [],
-                enabled    : false,
-                routerMode : false,
+                endpoint: "http://localhost:8080",
+                apiKey: "",
+                model: "",
+                models: [],
+                enabled: false,
+                routerMode: false,
             };
 
             // 現在フォームへのショートカット（参照）
@@ -632,7 +655,8 @@
             let undoStack = [];
             let redoStack = [];
             let activeTool = "pointer";
-            let snapOn = true;
+            let snapOn = true; // スナップON/OFF
+            let showGrid = false; // グリッド表示ON/OFF
             let ctxId = null;
             let curTab = "p";
             const SNAP = 8;
@@ -798,33 +822,37 @@
                     case "picture":
                         return `<div style="${base}background:${p.bg};border:${p.border};display:flex;align-items:center;justify-content:center;color:#888;font-size:11px;${vis}">${p.src ? `<img src="${esc(p.src)}" style="max-width:100%;max-height:100%">` : "📷"}</div>`;
                     case "datagrid": {
-                        const cols = (p.columns||"ID:60\n名前:120").split(/[;\n]/).filter(s=>s.trim()).map((c,ci)=>{
-                            const parts = c.trim().split(":");
-                            const label = parts[0]||("列"+(ci+1));
-                            const width = parseInt(parts[1])||80;
-                            return {key:"col"+ci, label, width};
-                        });
-                        const maxR = p.maxRows||5;
-                        const hbg  = p.headerBg||"#4a4a6a";
-                        const hfg  = p.headerFg||"#ffffff";
-                        const rbg  = p.rowBg||"#ffffff";
-                        const rabg = p.rowAltBg||"#f5f5f5";
-                        const rfg  = p.rowFg||"#000000";
-                        const bc   = p.borderColor||"#cccccc";
-                        const fs   = p.fontSize||12;
-                        const vis2 = p.visible===false?"visibility:hidden":"";
+                        const cols = (p.columns || "ID:60\n名前:120")
+                            .split(/[;\n]/)
+                            .filter((s) => s.trim())
+                            .map((c, ci) => {
+                                const parts = c.trim().split(":");
+                                const label = parts[0] || "列" + (ci + 1);
+                                const width = parseInt(parts[1]) || 80;
+                                return { key: "col" + ci, label, width };
+                            });
+                        const maxR = p.maxRows || 5;
+                        const hbg = p.headerBg || "#4a4a6a";
+                        const hfg = p.headerFg || "#ffffff";
+                        const rbg = p.rowBg || "#ffffff";
+                        const rabg = p.rowAltBg || "#f5f5f5";
+                        const rfg = p.rowFg || "#000000";
+                        const bc = p.borderColor || "#cccccc";
+                        const fs = p.fontSize || 12;
+                        const vis2 =
+                            p.visible === false ? "visibility:hidden" : "";
                         let html = `<div style="width:100%;height:100%;overflow:auto;border:1px solid ${bc};box-sizing:border-box;font-size:${fs}px;${vis2}">`;
                         html += `<table style="width:100%;border-collapse:collapse;table-layout:fixed">`;
                         html += `<thead><tr style="background:${hbg};color:${hfg}">`;
-                        cols.forEach(c=>{
+                        cols.forEach((c) => {
                             html += `<th style="width:${c.width}px;padding:3px 6px;border:1px solid ${bc};text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.label)}</th>`;
                         });
                         html += `</tr></thead><tbody>`;
-                        for(let r=0;r<Math.min(maxR,5);r++){
-                            const bg2 = r%2===0?rbg:rabg;
+                        for (let r = 0; r < Math.min(maxR, 5); r++) {
+                            const bg2 = r % 2 === 0 ? rbg : rabg;
                             html += `<tr style="background:${bg2};color:${rfg}">`;
-                            cols.forEach(c=>{
-                                html += `<td style="padding:2px 6px;border:1px solid ${bc};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r===0?"(データ)":""}</td>`;
+                            cols.forEach((c) => {
+                                html += `<td style="padding:2px 6px;border:1px solid ${bc};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r === 0 ? "(データ)" : ""}</td>`;
                             });
                             html += `</tr>`;
                         }
@@ -1351,25 +1379,25 @@
                     { k: "description", lb: "説明（任意）", t: "area" },
                 ],
                 datagrid: [
-                    { k: "name",        lb: "Name",        t: "text",  sp: "name" },
-                    { k: "x",           lb: "Left",        t: "num",   sp: "x" },
-                    { k: "y",           lb: "Top",         t: "num",   sp: "y" },
-                    { k: "w",           lb: "Width",       t: "num",   sp: "w" },
-                    { k: "h",           lb: "Height",      t: "num",   sp: "h" },
+                    { k: "name", lb: "Name", t: "text", sp: "name" },
+                    { k: "x", lb: "Left", t: "num", sp: "x" },
+                    { k: "y", lb: "Top", t: "num", sp: "y" },
+                    { k: "w", lb: "Width", t: "num", sp: "w" },
+                    { k: "h", lb: "Height", t: "num", sp: "h" },
                     { sep: "カラム定義" },
-                    { k: "columns",     lb: "Columns",     t: "coldef" },
-                    { k: "maxRows",     lb: "MaxRows",     t: "num" },
+                    { k: "columns", lb: "Columns", t: "coldef" },
+                    { k: "maxRows", lb: "MaxRows", t: "num" },
                     { sep: "ヘッダー" },
-                    { k: "headerBg",    lb: "HeaderBg",    t: "color" },
-                    { k: "headerFg",    lb: "HeaderFg",    t: "color" },
+                    { k: "headerBg", lb: "HeaderBg", t: "color" },
+                    { k: "headerFg", lb: "HeaderFg", t: "color" },
                     { sep: "行" },
-                    { k: "rowBg",       lb: "RowBg",       t: "color" },
-                    { k: "rowAltBg",    lb: "RowAltBg",    t: "color" },
-                    { k: "rowFg",       lb: "RowFg",       t: "color" },
+                    { k: "rowBg", lb: "RowBg", t: "color" },
+                    { k: "rowAltBg", lb: "RowAltBg", t: "color" },
+                    { k: "rowFg", lb: "RowFg", t: "color" },
                     { sep: "外観" },
                     { k: "borderColor", lb: "BorderColor", t: "color" },
-                    { k: "fontSize",    lb: "FontSize",    t: "num" },
-                    { k: "visible",     lb: "Visible",     t: "bool" },
+                    { k: "fontSize", lb: "FontSize", t: "num" },
+                    { k: "visible", lb: "Visible", t: "bool" },
                     { sep: "説明" },
                     { k: "description", lb: "説明（任意）", t: "area" },
                 ],
@@ -1450,33 +1478,44 @@
                     case "num":
                         return `<input type="number" value="${val ?? 0}" onchange="setProp('${d.k}','${d.sp || ""}',+this.value,${w2})">`;
                     case "bool": {
-                        const bTrue  = val ? "active" : "";
+                        const bTrue = val ? "active" : "";
                         const bFalse = !val ? "active" : "";
                         const bLabel = val ? "True" : "False";
-                        const bid = "pvs_"+w2+"_"+d.k.replace(/[^a-z0-9]/gi,"_");
-                        return `<div class="pv-sel" id="${bid}">` +
-                          `<div class="pv-sel-btn" onmousedown="pvSelOpen('${bid}',event)">` +
+                        const bid =
+                            "pvs_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
+                        return (
+                            `<div class="pv-sel" id="${bid}">` +
+                            `<div class="pv-sel-btn" onmousedown="pvSelOpen('${bid}',event)">` +
                             `<span>${bLabel}</span><span class="arr">▼</span>` +
-                          `</div>` +
-                          `<div class="pv-sel-list">` +
-                            `<div class="pv-sel-opt ${bTrue}" onmousedown="pvSelPick('${bid}',true,event);setProp('${d.k}','${d.sp||""}',true,${w2})">True</div>` +
-                            `<div class="pv-sel-opt ${bFalse}" onmousedown="pvSelPick('${bid}',false,event);setProp('${d.k}','${d.sp||""}',false,${w2})">False</div>` +
-                          `</div>` +
-                        `</div>`;
+                            `</div>` +
+                            `<div class="pv-sel-list">` +
+                            `<div class="pv-sel-opt ${bTrue}" onmousedown="pvSelPick('${bid}',true,event);setProp('${d.k}','${d.sp || ""}',true,${w2})">True</div>` +
+                            `<div class="pv-sel-opt ${bFalse}" onmousedown="pvSelPick('${bid}',false,event);setProp('${d.k}','${d.sp || ""}',false,${w2})">False</div>` +
+                            `</div>` +
+                            `</div>`
+                        );
                     }
                     case "color":
                         return `<input type="color" value="${val || "#000000"}" style="width:100%;height:22px;padding:1px 2px;cursor:pointer;border:1px solid var(--border);border-radius:2px;background:var(--bg3)" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">`;
                     case "sel": {
-                        const sid = "pvs_"+w2+"_"+d.k.replace(/[^a-z0-9]/gi,"_");
-                        const opts = d.opts||[];
-                        const sLabel = val ?? (opts[0]||"");
-                        const sOpts = opts.map(o=>`<div class="pv-sel-opt ${val===o?"active":""}" onmousedown="pvSelPick('${sid}','${o}',event);setProp('${d.k}','${d.sp||""}','${o}',${w2})">${o}</div>`).join("");
-                        return `<div class="pv-sel" id="${sid}">` +
-                          `<div class="pv-sel-btn" onmousedown="pvSelOpen('${sid}',event)">` +
+                        const sid =
+                            "pvs_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
+                        const opts = d.opts || [];
+                        const sLabel = val ?? (opts[0] || "");
+                        const sOpts = opts
+                            .map(
+                                (o) =>
+                                    `<div class="pv-sel-opt ${val === o ? "active" : ""}" onmousedown="pvSelPick('${sid}','${o}',event);setProp('${d.k}','${d.sp || ""}','${o}',${w2})">${o}</div>`,
+                            )
+                            .join("");
+                        return (
+                            `<div class="pv-sel" id="${sid}">` +
+                            `<div class="pv-sel-btn" onmousedown="pvSelOpen('${sid}',event)">` +
                             `<span>${sLabel}</span><span class="arr">▼</span>` +
-                          `</div>` +
-                          `<div class="pv-sel-list">${sOpts}</div>` +
-                        `</div>`;
+                            `</div>` +
+                            `<div class="pv-sel-list">${sOpts}</div>` +
+                            `</div>`
+                        );
                     }
                     case "area":
                         return `<textarea style="width:100%;height:56px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:11px;resize:none;outline:none;padding:3px 4px;box-sizing:border-box" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">${esc(val || "")}</textarea>`;
@@ -1541,7 +1580,7 @@
                     if (d.t === "color")
                         inp = `<input type="color" value="${formCfg[d.k] || "#ececec"}" style="width:100%;height:20px;padding:0;border:none;cursor:pointer" onchange="setFormCfg('${d.k}',this.value)">`;
                     if (d.t === "area")
-                        inp = `<textarea style="width:100%;height:60px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:13px;resize:vertical;outline:none;padding:3px 4px;box-sizing:border-box" onchange="setFormCfg('${d.k}',this.value)">${esc(formCfg[d.k]||"")}</textarea>`;
+                        inp = `<textarea style="width:100%;height:60px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:13px;resize:vertical;outline:none;padding:3px 4px;box-sizing:border-box" onchange="setFormCfg('${d.k}',this.value)">${esc(formCfg[d.k] || "")}</textarea>`;
                     row.innerHTML = `<div class="pk">${d.lb}</div><div class="pv">${inp}</div>`;
                     pl.appendChild(row);
                 });
@@ -1599,74 +1638,141 @@
                 const w = widgets.find((x) => x.id == wid);
                 if (!w) return;
                 if (!w.events) w.events = {};
-                const cur = w.events[evName] ||
-                    "# イベント: "+evName+" ("+w.name+")\n" +
-                    "# YAML形式でAIへの指示を記述します\n\n" +
-                    "# --- 基本アクション例 ---\n" +
-                    "action: navigate\ntarget: Form2\n\n" +
-                    "# --- AI生成指示例 ---\n" +
-                    "ai_prompt: |\n" +
-                    "  "+w.name+"の"+evName+"が発生した時の処理を生成してください。\n" +
-                    "  入力値を検証してForm2に遷移します。\n";
+                const cur =
+                    w.events[evName] ||
+                    "# イベント: " +
+                        evName +
+                        " (" +
+                        w.name +
+                        ")\n" +
+                        "# YAML形式でAIへの指示を記述します\n\n" +
+                        "# --- 基本アクション例 ---\n" +
+                        "action: navigate\ntarget: Form2\n\n" +
+                        "# --- AI生成指示例 ---\n" +
+                        "ai_prompt: |\n" +
+                        "  " +
+                        w.name +
+                        "の" +
+                        evName +
+                        "が発生した時の処理を生成してください。\n" +
+                        "  入力値を検証してForm2に遷移します。\n";
 
                 // 定数リスト
-                const constHtml = constants.length > 0
-                    ? constants.map(c=>'<span class="yaml-ref-item" onclick="yamlInsert(&quot;'+esc(c.name)+'&quot;)" title="'+esc(c.value)+'">'+esc(c.name)+'</span>').join("")
-                    : '<span style="color:var(--text3)">定数が未定義です（編集メニュー→定数の編集）</span>';
+                const constHtml =
+                    constants.length > 0
+                        ? constants
+                              .map(
+                                  (c) =>
+                                      '<span class="yaml-ref-item" onclick="yamlInsert(&quot;' +
+                                      esc(c.name) +
+                                      '&quot;)" title="' +
+                                      esc(c.value) +
+                                      '">' +
+                                      esc(c.name) +
+                                      "</span>",
+                              )
+                              .join("")
+                        : '<span style="color:var(--text3)">定数が未定義です（編集メニュー→定数の編集）</span>';
 
                 // フォームリスト
-                const formHtml = forms.map(f=>'<span class="yaml-ref-item" onclick="yamlInsert(&quot;'+esc(f.cfg.title)+'&quot;)" title="ID:'+f.id+'">'+esc(f.cfg.title)+'</span>').join("");
+                const formHtml = forms
+                    .map(
+                        (f) =>
+                            '<span class="yaml-ref-item" onclick="yamlInsert(&quot;' +
+                            esc(f.cfg.title) +
+                            '&quot;)" title="ID:' +
+                            f.id +
+                            '">' +
+                            esc(f.cfg.title) +
+                            "</span>",
+                    )
+                    .join("");
 
                 // ウィジェットリスト（同フォーム内）
-                const widgetHtml = widgets.map(ww=>'<span class="yaml-ref-item" onclick="yamlInsert(&quot;'+esc(ww.name)+'&quot;)" title="'+ww.tag+'">'+esc(ww.name)+'</span>').join("");
+                const widgetHtml = widgets
+                    .map(
+                        (ww) =>
+                            '<span class="yaml-ref-item" onclick="yamlInsert(&quot;' +
+                            esc(ww.name) +
+                            '&quot;)" title="' +
+                            ww.tag +
+                            '">' +
+                            esc(ww.name) +
+                            "</span>",
+                    )
+                    .join("");
 
                 const aiEnabled = aiConfig.enabled;
                 showModal(
-                    "<div class=\"modal-yaml\"><div class=\"mhdr\"><h4>📋 "+esc(w.name)+" — "+esc(evName)+"</h4><button class=\"mclose\" onclick=\"closeModal()\">✕</button></div>"+
-                    "<div class=\"mbody yaml-modal-wrap\">"+
-                    // 参照パネル
-                    "<div class=\"yaml-ref-panel\">"+
-                    "<b>📌 定数</b>"+constHtml+
-                    "<b style=\"margin-top:4px\">📋 画面</b>"+formHtml+
-                    "<b style=\"margin-top:4px\">🔲 ウィジェット</b>"+widgetHtml+
-                    "</div>"+
-                    // YAMLエリア
-                    "<div class=\"yaml-hl-wrap\">"+
-                    "<div class=\"yaml-hl-bg\" id=\"yaml-hl\"></div>"+
-                    "<textarea class=\"yaml\" id=\"yaml-ta\" style=\"height:380px\" oninput=\"yamlHlUpdate()\" onscroll=\"yamlHlSync()\">"+esc(cur)+"</textarea>"+
-                    "</div>"+
-                    // AIバー
-                    "<div class=\"yaml-ai-bar\">"+
-                    "<input id=\"ai-prompt-in\" placeholder=\"AIへの追加指示（任意）\" >"+
-                    "<button class=\"yaml-ai-btn\" id=\"ai-gen-btn\" onclick=\"yamlAiGenerate("+wid+",'"+evName+"')\">"+(aiEnabled?"🤖 AI生成":"🤖 AI生成（設定要）")+"</button>"+
-                    "<span class=\"yaml-ai-status\" id=\"ai-status\"></span>"+
-                    "</div>"+
-                    "</div>"+
-                    "<div class=\"mfoot\">"+
-                    "<button onclick=\"closeModal()\">キャンセル</button>"+
-                    "<button class=\"pri\" onclick=\"saveYaml("+wid+",'"+evName+"')\">保存</button>"+
-                    "</div>"
+                    '<div class="modal-yaml"><div class="mhdr"><h4>📋 ' +
+                        esc(w.name) +
+                        " — " +
+                        esc(evName) +
+                        '</h4><button class="mclose" onclick="closeModal()">✕</button></div>' +
+                        '<div class="mbody yaml-modal-wrap">' +
+                        // 参照パネル
+                        '<div class="yaml-ref-panel">' +
+                        "<b>📌 定数</b>" +
+                        constHtml +
+                        '<b style="margin-top:4px">📋 画面</b>' +
+                        formHtml +
+                        '<b style="margin-top:4px">🔲 ウィジェット</b>' +
+                        widgetHtml +
+                        "</div>" +
+                        // YAMLエリア
+                        '<div class="yaml-hl-wrap">' +
+                        '<div class="yaml-hl-bg" id="yaml-hl"></div>' +
+                        '<textarea class="yaml" id="yaml-ta" style="height:380px" oninput="yamlHlUpdate()" onscroll="yamlHlSync()">' +
+                        esc(cur) +
+                        "</textarea>" +
+                        "</div>" +
+                        // AIバー
+                        '<div class="yaml-ai-bar">' +
+                        '<input id="ai-prompt-in" placeholder="AIへの追加指示（任意）" >' +
+                        '<button class="yaml-ai-btn" id="ai-gen-btn" onclick="yamlAiGenerate(' +
+                        wid +
+                        ",'" +
+                        evName +
+                        "')\">" +
+                        (aiEnabled ? "🤖 AI生成" : "🤖 AI生成（設定要）") +
+                        "</button>" +
+                        '<span class="yaml-ai-status" id="ai-status"></span>' +
+                        "</div>" +
+                        "</div>" +
+                        '<div class="mfoot">' +
+                        '<button onclick="closeModal()">キャンセル</button>' +
+                        '<button class="pri" onclick="saveYaml(' +
+                        wid +
+                        ",'" +
+                        evName +
+                        "')\">保存</button>" +
+                        "</div>",
                 );
-                requestAnimationFrame(()=>yamlHlUpdate());
+                requestAnimationFrame(() => yamlHlUpdate());
             }
 
             // YAMLエリアにテキストを挿入
-            function yamlInsert(text){
+            function yamlInsert(text) {
                 const ta = $("yaml-ta");
-                if(!ta) return;
-                const s = ta.selectionStart, e = ta.selectionEnd;
-                ta.value = ta.value.slice(0,s) + text + ta.value.slice(e);
+                if (!ta) return;
+                const s = ta.selectionStart,
+                    e = ta.selectionEnd;
+                ta.value = ta.value.slice(0, s) + text + ta.value.slice(e);
                 ta.selectionStart = ta.selectionEnd = s + text.length;
                 ta.focus();
                 yamlHlUpdate();
             }
 
             // AI生成（llama-server 経由）
-            async function yamlAiGenerate(wid, evName){
-                const w = widgets.find(x=>x.id==wid);
-                if(!w) return;
-                if(!aiConfig.enabled){
-                    if(confirm("AI接続設定が有効になっていません。設定画面を開きますか？")){
+            async function yamlAiGenerate(wid, evName) {
+                const w = widgets.find((x) => x.id == wid);
+                if (!w) return;
+                if (!aiConfig.enabled) {
+                    if (
+                        confirm(
+                            "AI接続設定が有効になっていません。設定画面を開きますか？",
+                        )
+                    ) {
                         closeModal();
                         openAiConfig();
                     }
@@ -1676,214 +1782,303 @@
                 const addPrompt = $("ai-prompt-in")?.value || "";
                 const btn = $("ai-gen-btn");
                 const status = $("ai-status");
-                if(btn) btn.disabled = true;
-                if(status) status.textContent = "⏳ 生成中…";
+                if (btn) btn.disabled = true;
+                if (status) status.textContent = "⏳ 生成中…";
 
                 // コンテキスト情報
-                const constCtx = constants.map(c=>c.name+"="+c.value).join(", ") || "なし";
-                const formCtx  = forms.map(f=>f.cfg.title).join(", ");
-                const widCtx   = widgets.map(ww=>ww.name+"("+ww.tag+")").join(", ");
+                const constCtx =
+                    constants.map((c) => c.name + "=" + c.value).join(", ") ||
+                    "なし";
+                const formCtx = forms.map((f) => f.cfg.title).join(", ");
+                const widCtx = widgets
+                    .map((ww) => ww.name + "(" + ww.tag + ")")
+                    .join(", ");
 
                 const sysPrompt =
                     "あなたはVJAフォームデザイナーのイベントYAML生成AIです。\n" +
                     "以下の形式でYAMLを生成してください。\n\n" +
-                    "利用可能な定数: "+constCtx+"\n" +
-                    "画面一覧: "+formCtx+"\n" +
-                    "ウィジェット一覧: "+widCtx+"\n\n" +
+                    "利用可能な定数: " +
+                    constCtx +
+                    "\n" +
+                    "画面一覧: " +
+                    formCtx +
+                    "\n" +
+                    "ウィジェット一覧: " +
+                    widCtx +
+                    "\n\n" +
                     "YAMLのみを返してください。説明文は不要です。";
 
                 const userPrompt =
-                    "ウィジェット「"+w.name+"」（"+w.tag+"）の「"+evName+"」イベントの処理をYAMLで記述してください。\n" +
-                    (yamlCur.trim() ? "現在のYAML:\n"+yamlCur+"\n\n" : "") +
-                    (addPrompt ? "追加指示: "+addPrompt : "");
+                    "ウィジェット「" +
+                    w.name +
+                    "」（" +
+                    w.tag +
+                    "）の「" +
+                    evName +
+                    "」イベントの処理をYAMLで記述してください。\n" +
+                    (yamlCur.trim() ? "現在のYAML:\n" + yamlCur + "\n\n" : "") +
+                    (addPrompt ? "追加指示: " + addPrompt : "");
 
-                try{
-                    const hasApiKey  = !!aiConfig.apiKey;
+                try {
+                    const hasApiKey = !!aiConfig.apiKey;
                     const isRouterOn = !!aiConfig.routerMode;
 
                     // API Key あり → OpenAI API
                     // API Key なし → ローカル LLM（llama.cpp / llama-server）
                     const endpoint = hasApiKey
-                        ? "https://api.openai.com"          // OpenAI 固定エンドポイント
-                        : aiConfig.endpoint;                // ローカル llama-server
+                        ? "https://api.openai.com" // OpenAI 固定エンドポイント
+                        : aiConfig.endpoint; // ローカル llama-server
 
                     // モデル名
                     // ・OpenAI の場合は aiConfig.model（例: gpt-4o）
                     // ・ローカルでルーターモードON → aiConfig.model（選択済み）
                     // ・ローカルでルーターモードOFF → モデル指定なし（llama-serverが自動選択）
                     const modelName = hasApiKey
-                        ? (aiConfig.model || "gpt-4o-mini")
-                        : (isRouterOn ? aiConfig.model : undefined);
+                        ? aiConfig.model || "gpt-4o-mini"
+                        : isRouterOn
+                          ? aiConfig.model
+                          : undefined;
 
-                    const headers = {"Content-Type": "application/json"};
-                    if(hasApiKey){
-                        headers["Authorization"] = "Bearer "+aiConfig.apiKey;
+                    const headers = { "Content-Type": "application/json" };
+                    if (hasApiKey) {
+                        headers["Authorization"] = "Bearer " + aiConfig.apiKey;
                     }
 
                     const body = {
                         messages: [
-                            {role:"system", content: sysPrompt},
-                            {role:"user",   content: userPrompt}
+                            { role: "system", content: sysPrompt },
+                            { role: "user", content: userPrompt },
                         ],
                         temperature: 0.3,
                         max_tokens: 512,
-                        stream: false
+                        stream: false,
                     };
-                    if(modelName) body.model = modelName;
+                    if (modelName) body.model = modelName;
 
-                    if(status) status.textContent =
-                        hasApiKey ? "⏳ OpenAI API で生成中…"
-                                  : "⏳ ローカル LLM で生成中…";
+                    if (status)
+                        status.textContent = hasApiKey
+                            ? "⏳ OpenAI API で生成中…"
+                            : "⏳ ローカル LLM で生成中…";
 
-                    const res = await fetch(endpoint+"/v1/chat/completions", {
+                    const res = await fetch(endpoint + "/v1/chat/completions", {
                         method: "POST",
                         headers,
-                        body: JSON.stringify(body)
+                        body: JSON.stringify(body),
                     });
-                    if(!res.ok){
-                        const errText = await res.text().catch(()=>"");
-                        throw new Error("HTTP "+res.status+(errText?" — "+errText.slice(0,120):""));
+                    if (!res.ok) {
+                        const errText = await res.text().catch(() => "");
+                        throw new Error(
+                            "HTTP " +
+                                res.status +
+                                (errText ? " — " + errText.slice(0, 120) : ""),
+                        );
                     }
                     const data = await res.json();
                     const generated = data.choices?.[0]?.message?.content || "";
                     // コードブロックを除去
-                    const clean = generated.replace(/^```(?:ya?ml?)?\n?/i,"").replace(/```$/,"").trim();
+                    const clean = generated
+                        .replace(/^```(?:ya?ml?)?\n?/i, "")
+                        .replace(/```$/, "")
+                        .trim();
                     const ta = $("yaml-ta");
-                    if(ta){ ta.value = clean; yamlHlUpdate(); }
-                    if(status) status.textContent = "✅ 生成完了";
-                } catch(e){
-                    if(status) status.textContent = "❌ "+e.message;
+                    if (ta) {
+                        ta.value = clean;
+                        yamlHlUpdate();
+                    }
+                    if (status) status.textContent = "✅ 生成完了";
+                } catch (e) {
+                    if (status) status.textContent = "❌ " + e.message;
                 } finally {
-                    if(btn) btn.disabled = false;
+                    if (btn) btn.disabled = false;
                 }
             }
 
             // AI接続設定モーダル
-            function openAiConfig(){
+            function openAiConfig() {
                 // aiConfig の初期値保証
-                if(!aiConfig.routerMode)  aiConfig.routerMode  = false;
-                if(!aiConfig.apiKey)      aiConfig.apiKey      = "";
-                if(!aiConfig.models)      aiConfig.models      = [];
-                if(!aiConfig.endpoint)    aiConfig.endpoint    = "http://localhost:8080";
+                if (!aiConfig.routerMode) aiConfig.routerMode = false;
+                if (!aiConfig.apiKey) aiConfig.apiKey = "";
+                if (!aiConfig.models) aiConfig.models = [];
+                if (!aiConfig.endpoint)
+                    aiConfig.endpoint = "http://localhost:8080";
 
-                const isEnabled    = aiConfig.enabled    === true;
-                const isRouter     = aiConfig.routerMode === true;
-                const modelListHtml = aiCfgModelListHtml(aiConfig.models, aiConfig.model, isRouter);
+                const isEnabled = aiConfig.enabled === true;
+                const isRouter = aiConfig.routerMode === true;
+                const modelListHtml = aiCfgModelListHtml(
+                    aiConfig.models,
+                    aiConfig.model,
+                    isRouter,
+                );
 
                 showModal(
-                    "<div class='mhdr'><h4>🤖 AI接続設定</h4><button class='mclose' onclick='closeModal()'>✕</button></div>"+
-                    "<div class='mbody' style='gap:12px'>"+
-                    "<div class='infobox'>llama-server（またはOpenAI互換API）の接続設定を行います。</div>"+
-
-                    // AI生成を有効
-                    "<div class='ai-cfg-row'><label>AI生成を有効</label>"+
-                    "<div class='pv-sel' id='ai-ena-sel'>"+
-                    "<div class='pv-sel-btn' onmousedown=\"pvSelOpen('ai-ena-sel',event)\">"+
-                    "<span>"+(isEnabled?"ON":"OFF")+"</span><span class='arr'>▼</span></div>"+
-                    "<div class='pv-sel-list'>"+
-                    "<div class='pv-sel-opt "+(isEnabled?"active":"")+"' onmousedown=\"pvSelPick('ai-ena-sel','ON',event);aiCfgToggleEnabled('ON')\">ON</div>"+
-                    "<div class='pv-sel-opt "+(!isEnabled?"active":"")+"' onmousedown=\"pvSelPick('ai-ena-sel','OFF',event);aiCfgToggleEnabled('OFF')\">OFF</div>"+
-                    "</div></div></div>"+
-
-                    // エンドポイント
-                    "<div class='ai-cfg-row'><label>エンドポイント</label>"+
-                    "<input id='ai-ep' value='"+esc(aiConfig.endpoint)+"' placeholder='http://localhost:8080'></div>"+
-
-                    // API Key
-                    "<div class='ai-cfg-row'><label>API Key</label>"+
-                    "<input id='ai-apikey' type='password' value='"+esc(aiConfig.apiKey)+"' placeholder='OpenAI等のAPIキー（任意）'></div>"+
-
-                    // ルーターモード
-                    "<div class='ai-cfg-row'><label>ルーターモード</label>"+
-                    "<div class='pv-sel' id='ai-router-sel'>"+
-                    "<div class='pv-sel-btn' onmousedown=\"pvSelOpen('ai-router-sel',event)\">"+
-                    "<span>"+(isRouter?"ON":"OFF")+"</span><span class='arr'>▼</span></div>"+
-                    "<div class='pv-sel-list'>"+
-                    "<div class='pv-sel-opt "+(isRouter?"active":"")+"' onmousedown=\"pvSelPick('ai-router-sel','ON',event);aiCfgToggleRouter('ON')\">ON</div>"+
-                    "<div class='pv-sel-opt "+(!isRouter?"active":"")+"' onmousedown=\"pvSelPick('ai-router-sel','OFF',event);aiCfgToggleRouter('OFF')\">OFF</div>"+
-                    "</div></div></div>"+
-
-                    // モデル名（ルーターモードONのみ）
-                    "<div class='ai-cfg-row' id='ai-model-row' style='"+(!isRouter?"opacity:.4;pointer-events:none":"")+"'>"+
-                    "<label>モデル名</label>"+
-                    "<div style='display:flex;gap:6px;align-items:center'>"+
-                    "<div class='pv-sel' id='ai-model-sel' style='flex:1'>"+
-                    "<div class='pv-sel-btn' onmousedown=\"pvSelOpen('ai-model-sel',event)\">"+
-                    "<span id='ai-model-label'>"+(isRouter ? (aiConfig.model||"（モデルを選択）") : "")+"</span>"+
-                    "<span class='arr'>▼</span></div>"+
-                    "<div class='pv-sel-list' id='ai-model-list'>"+modelListHtml+"</div>"+
-                    "</div>"+
-                    "<button onclick='aiCfgFetchModels()' style='height:28px;padding:0 10px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;flex-shrink:0'>🔄 更新</button>"+
-                    "</div></div>"+
-
-                    "</div>"+
-                    "<div class='mfoot'>"+
-                    "<button onclick='closeModal()'>キャンセル</button>"+
-                    "<button class='pri' onclick='saveAiConfig()'>保存</button>"+
-                    "</div>"
+                    "<div class='mhdr'><h4>🤖 AI接続設定</h4><button class='mclose' onclick='closeModal()'>✕</button></div>" +
+                        "<div class='mbody' style='gap:12px'>" +
+                        "<div class='infobox'>llama-server（またはOpenAI互換API）の接続設定を行います。</div>" +
+                        // AI生成を有効
+                        "<div class='ai-cfg-row'><label>AI生成を有効</label>" +
+                        "<div class='pv-sel' id='ai-ena-sel'>" +
+                        "<div class='pv-sel-btn' onmousedown=\"pvSelOpen('ai-ena-sel',event)\">" +
+                        "<span>" +
+                        (isEnabled ? "ON" : "OFF") +
+                        "</span><span class='arr'>▼</span></div>" +
+                        "<div class='pv-sel-list'>" +
+                        "<div class='pv-sel-opt " +
+                        (isEnabled ? "active" : "") +
+                        "' onmousedown=\"pvSelPick('ai-ena-sel','ON',event);aiCfgToggleEnabled('ON')\">ON</div>" +
+                        "<div class='pv-sel-opt " +
+                        (!isEnabled ? "active" : "") +
+                        "' onmousedown=\"pvSelPick('ai-ena-sel','OFF',event);aiCfgToggleEnabled('OFF')\">OFF</div>" +
+                        "</div></div></div>" +
+                        // エンドポイント
+                        "<div class='ai-cfg-row'><label>エンドポイント</label>" +
+                        "<input id='ai-ep' value='" +
+                        esc(aiConfig.endpoint) +
+                        "' placeholder='http://localhost:8080'></div>" +
+                        // API Key
+                        "<div class='ai-cfg-row'><label>API Key</label>" +
+                        "<input id='ai-apikey' type='password' value='" +
+                        esc(aiConfig.apiKey) +
+                        "' placeholder='OpenAI等のAPIキー（任意）'></div>" +
+                        // ルーターモード
+                        "<div class='ai-cfg-row'><label>ルーターモード</label>" +
+                        "<div class='pv-sel' id='ai-router-sel'>" +
+                        "<div class='pv-sel-btn' onmousedown=\"pvSelOpen('ai-router-sel',event)\">" +
+                        "<span>" +
+                        (isRouter ? "ON" : "OFF") +
+                        "</span><span class='arr'>▼</span></div>" +
+                        "<div class='pv-sel-list'>" +
+                        "<div class='pv-sel-opt " +
+                        (isRouter ? "active" : "") +
+                        "' onmousedown=\"pvSelPick('ai-router-sel','ON',event);aiCfgToggleRouter('ON')\">ON</div>" +
+                        "<div class='pv-sel-opt " +
+                        (!isRouter ? "active" : "") +
+                        "' onmousedown=\"pvSelPick('ai-router-sel','OFF',event);aiCfgToggleRouter('OFF')\">OFF</div>" +
+                        "</div></div></div>" +
+                        // モデル名（ルーターモードONのみ）
+                        "<div class='ai-cfg-row' id='ai-model-row' style='" +
+                        (!isRouter ? "opacity:.4;pointer-events:none" : "") +
+                        "'>" +
+                        "<label>モデル名</label>" +
+                        "<div style='display:flex;gap:6px;align-items:center'>" +
+                        "<div class='pv-sel' id='ai-model-sel' style='flex:1'>" +
+                        "<div class='pv-sel-btn' onmousedown=\"pvSelOpen('ai-model-sel',event)\">" +
+                        "<span id='ai-model-label'>" +
+                        (isRouter ? aiConfig.model || "（モデルを選択）" : "") +
+                        "</span>" +
+                        "<span class='arr'>▼</span></div>" +
+                        "<div class='pv-sel-list' id='ai-model-list'>" +
+                        modelListHtml +
+                        "</div>" +
+                        "</div>" +
+                        "<button onclick='aiCfgFetchModels()' style='height:28px;padding:0 10px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;flex-shrink:0'>🔄 更新</button>" +
+                        "</div></div>" +
+                        "</div>" +
+                        "<div class='mfoot'>" +
+                        "<button onclick='closeModal()'>キャンセル</button>" +
+                        "<button class='pri' onclick='saveAiConfig()'>保存</button>" +
+                        "</div>",
                 );
             }
 
             // モデルリストのHTML生成
-            function aiCfgModelListHtml(models, current, isRouter){
-                if(!isRouter || !models || models.length===0){
+            function aiCfgModelListHtml(models, current, isRouter) {
+                if (!isRouter || !models || models.length === 0) {
                     return "<div class='pv-sel-opt'>（ルーターモードONで更新）</div>";
                 }
-                return models.map(m=>
-                    "<div class='pv-sel-opt "+(m===current?"active":"")+"' "+
-                    "onmousedown=\"pvSelPick('ai-model-sel','"+esc(m)+"',event);$('ai-model-label').textContent='"+esc(m)+"'\">"+esc(m)+"</div>"
-                ).join("");
+                return models
+                    .map(
+                        (m) =>
+                            "<div class='pv-sel-opt " +
+                            (m === current ? "active" : "") +
+                            "' " +
+                            "onmousedown=\"pvSelPick('ai-model-sel','" +
+                            esc(m) +
+                            "',event);$('ai-model-label').textContent='" +
+                            esc(m) +
+                            "'\">" +
+                            esc(m) +
+                            "</div>",
+                    )
+                    .join("");
             }
 
             // ルーターモード切り替え
-            function aiCfgToggleRouter(val){
+            function aiCfgToggleRouter(val) {
                 const row = $("ai-model-row");
-                if(!row) return;
-                const on = val==="ON";
-                row.style.opacity = on?"1":"0.4";
-                row.style.pointerEvents = on?"auto":"none";
+                if (!row) return;
+                const on = val === "ON";
+                row.style.opacity = on ? "1" : "0.4";
+                row.style.pointerEvents = on ? "auto" : "none";
             }
 
             // 有効/無効切り替え（将来の動的UI用）
-            function aiCfgToggleEnabled(val){ /* 現状はpvSelPickのみで処理 */ }
+            function aiCfgToggleEnabled(val) {
+                /* 現状はpvSelPickのみで処理 */
+            }
 
             // モデル一覧をllamaサーバーから取得
-            async function aiCfgFetchModels(){
-                const ep     = $("ai-ep")?.value?.trim()     || aiConfig.endpoint;
+            async function aiCfgFetchModels() {
+                const ep = $("ai-ep")?.value?.trim() || aiConfig.endpoint;
                 const apiKey = $("ai-apikey")?.value?.trim() || "";
                 const btn = document.querySelector("#ai-model-row button");
-                if(btn){ btn.textContent="⏳"; btn.disabled=true; }
-                try{
+                if (btn) {
+                    btn.textContent = "⏳";
+                    btn.disabled = true;
+                }
+                try {
                     // API Key あり → OpenAI /v1/models
                     // API Key なし → ローカル llama-server /v1/models
                     const fetchEp = apiKey ? "https://api.openai.com" : ep;
-                    const headers = {"Content-Type":"application/json"};
-                    if(apiKey) headers["Authorization"] = "Bearer "+apiKey;
-                    const res = await fetch(fetchEp+"/v1/models", {headers});
-                    if(!res.ok) throw new Error("HTTP "+res.status);
+                    const headers = { "Content-Type": "application/json" };
+                    if (apiKey) headers["Authorization"] = "Bearer " + apiKey;
+                    const res = await fetch(fetchEp + "/v1/models", {
+                        headers,
+                    });
+                    if (!res.ok) throw new Error("HTTP " + res.status);
                     const data = await res.json();
-                    const models = (data.data||[]).map(m=>m.id||m).filter(Boolean).sort();
-                    if(models.length===0) throw new Error("モデルが見つかりません");
+                    const models = (data.data || [])
+                        .map((m) => m.id || m)
+                        .filter(Boolean)
+                        .sort();
+                    if (models.length === 0)
+                        throw new Error("モデルが見つかりません");
                     aiConfig.models = models;
                     const list = $("ai-model-list");
-                    if(list) list.innerHTML = aiCfgModelListHtml(models, aiConfig.model, true);
-                    showToast((apiKey?"OpenAI":"ローカル")+"からモデルを"+models.length+"件取得しました");
-                } catch(e){
-                    showToast("取得失敗: "+e.message);
+                    if (list)
+                        list.innerHTML = aiCfgModelListHtml(
+                            models,
+                            aiConfig.model,
+                            true,
+                        );
+                    showToast(
+                        (apiKey ? "OpenAI" : "ローカル") +
+                            "からモデルを" +
+                            models.length +
+                            "件取得しました",
+                    );
+                } catch (e) {
+                    showToast("取得失敗: " + e.message);
                 } finally {
-                    if(btn){ btn.textContent="🔄 更新"; btn.disabled=false; }
+                    if (btn) {
+                        btn.textContent = "🔄 更新";
+                        btn.disabled = false;
+                    }
                 }
             }
 
-            function saveAiConfig(){
-                const ep      = $("ai-ep")?.value?.trim()     || "http://localhost:8080";
-                const apiKey  = $("ai-apikey")?.value?.trim() || "";
-                const enaSel  = document.querySelector("#ai-ena-sel    .pv-sel-btn span:first-child");
-                const rtrSel  = document.querySelector("#ai-router-sel .pv-sel-btn span:first-child");
-                const modSel  = document.querySelector("#ai-model-label");
-                const enabled    = enaSel?.textContent === "ON";
+            function saveAiConfig() {
+                const ep = $("ai-ep")?.value?.trim() || "http://localhost:8080";
+                const apiKey = $("ai-apikey")?.value?.trim() || "";
+                const enaSel = document.querySelector(
+                    "#ai-ena-sel    .pv-sel-btn span:first-child",
+                );
+                const rtrSel = document.querySelector(
+                    "#ai-router-sel .pv-sel-btn span:first-child",
+                );
+                const modSel = document.querySelector("#ai-model-label");
+                const enabled = enaSel?.textContent === "ON";
                 const routerMode = rtrSel?.textContent === "ON";
-                const model      = modSel?.textContent || aiConfig.model || "";
+                const model = modSel?.textContent || aiConfig.model || "";
                 aiConfig = {
                     endpoint: ep,
                     apiKey,
@@ -1897,63 +2092,89 @@
                 showToast("AI設定を保存しました");
             }
 
-
             /* ── YAML シンタックスハイライト ── */
-            function yamlHlUpdate(){
+            function yamlHlUpdate() {
                 const ta = $("yaml-ta");
                 const hl = $("yaml-hl");
-                if(!ta||!hl) return;
+                if (!ta || !hl) return;
                 hl.innerHTML = yamlTokenize(ta.value);
                 // テキストエリアのサイズに合わせる
                 hl.style.height = ta.offsetHeight + "px";
-                hl.style.width  = ta.offsetWidth  + "px";
+                hl.style.width = ta.offsetWidth + "px";
                 yamlHlSync();
             }
-            function yamlHlSync(){
+            function yamlHlSync() {
                 const ta = $("yaml-ta");
                 const hl = $("yaml-hl");
-                if(!ta||!hl) return;
-                hl.scrollTop  = ta.scrollTop;
+                if (!ta || !hl) return;
+                hl.scrollTop = ta.scrollTop;
                 hl.scrollLeft = ta.scrollLeft;
                 hl.style.height = ta.offsetHeight + "px";
             }
-            function yamlTokenize(text){
-                return text.split("\n").map(line=>{
-                    // コメント行
-                    if(/^\s*#/.test(line)){
-                        return '<span class="yc">'+escHl(line)+'</span>';
-                    }
-                    // キー: 値 の行
-                    const kvMatch = line.match(/^(\s*-?\s*)([^:\s][^:]*)(:)(\s*)(.*)?$/);
-                    if(kvMatch){
-                        const indent = escHl(kvMatch[1]);
-                        const key    = '<span class="yk">'+escHl(kvMatch[2])+'</span>';
-                        const colon  = '<span class="yk">:</span>';
-                        const space  = escHl(kvMatch[4]);
-                        const val    = kvMatch[5] !== undefined ? colorVal(kvMatch[5]) : '';
-                        return indent+key+colon+space+val;
-                    }
-                    // リスト項目 (- value)
-                    const listMatch = line.match(/^(\s*-\s+)(.*)?$/);
-                    if(listMatch){
-                        return '<span class="ys">'+escHl(listMatch[1])+'</span>'+colorVal(listMatch[2]||'');
-                    }
-                    // ブロックスカラー継続行（インデントのみ）
-                    return '<span class="yv">'+escHl(line)+'</span>';
-                }).join("\n");
+            function yamlTokenize(text) {
+                return text
+                    .split("\n")
+                    .map((line) => {
+                        // コメント行
+                        if (/^\s*#/.test(line)) {
+                            return (
+                                '<span class="yc">' + escHl(line) + "</span>"
+                            );
+                        }
+                        // キー: 値 の行
+                        const kvMatch = line.match(
+                            /^(\s*-?\s*)([^:\s][^:]*)(:)(\s*)(.*)?$/,
+                        );
+                        if (kvMatch) {
+                            const indent = escHl(kvMatch[1]);
+                            const key =
+                                '<span class="yk">' +
+                                escHl(kvMatch[2]) +
+                                "</span>";
+                            const colon = '<span class="yk">:</span>';
+                            const space = escHl(kvMatch[4]);
+                            const val =
+                                kvMatch[5] !== undefined
+                                    ? colorVal(kvMatch[5])
+                                    : "";
+                            return indent + key + colon + space + val;
+                        }
+                        // リスト項目 (- value)
+                        const listMatch = line.match(/^(\s*-\s+)(.*)?$/);
+                        if (listMatch) {
+                            return (
+                                '<span class="ys">' +
+                                escHl(listMatch[1]) +
+                                "</span>" +
+                                colorVal(listMatch[2] || "")
+                            );
+                        }
+                        // ブロックスカラー継続行（インデントのみ）
+                        return '<span class="yv">' + escHl(line) + "</span>";
+                    })
+                    .join("\n");
             }
-            function colorVal(v){
-                if(!v) return '';
-                if(/^#/.test(v))  return '<span class="yc">'+escHl(v)+'</span>';
-                if(/^[|>]/.test(v)) return '<span class="yp">'+escHl(v)+'</span>';
-                if(/^(true|false|yes|no|on|off)$/i.test(v.trim())) return '<span class="yd">'+escHl(v)+'</span>';
-                if(/^null$/i.test(v.trim())) return '<span class="yd">'+escHl(v)+'</span>';
-                if(/^-?[0-9]+(\.?[0-9]*)$/.test(v.trim())) return '<span class="yn">'+escHl(v)+'</span>';
-                if(/^["']/.test(v.trim())) return '<span class="yv">'+escHl(v)+'</span>';
-                return '<span class="yv">'+escHl(v)+'</span>';
+            function colorVal(v) {
+                if (!v) return "";
+                if (/^#/.test(v))
+                    return '<span class="yc">' + escHl(v) + "</span>";
+                if (/^[|>]/.test(v))
+                    return '<span class="yp">' + escHl(v) + "</span>";
+                if (/^(true|false|yes|no|on|off)$/i.test(v.trim()))
+                    return '<span class="yd">' + escHl(v) + "</span>";
+                if (/^null$/i.test(v.trim()))
+                    return '<span class="yd">' + escHl(v) + "</span>";
+                if (/^-?[0-9]+(\.?[0-9]*)$/.test(v.trim()))
+                    return '<span class="yn">' + escHl(v) + "</span>";
+                if (/^["']/.test(v.trim()))
+                    return '<span class="yv">' + escHl(v) + "</span>";
+                return '<span class="yv">' + escHl(v) + "</span>";
             }
-            function escHl(s){
-                return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            function escHl(s) {
+                return String(s || "")
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
             }
 
             function saveYaml(wid, evName) {
@@ -2016,7 +2237,16 @@
             ═══════════════════════════════════════════ */
             // プロジェクト全体スナップショット
             function snapshot() {
-                return JSON.stringify({ forms, curFormIdx, constants, startFormId, aiConfig, tables });
+                return JSON.stringify({
+                    forms,
+                    curFormIdx,
+                    constants,
+                    startFormId,
+                    aiConfig,
+                    tables,
+                    snapOn,
+                    showGrid,
+                });
             }
             function pushUndo() {
                 // 編集前に現フォームのidCntを書き戻す
@@ -2031,9 +2261,18 @@
                 curFormIdx = d.curFormIdx;
                 constants = d.constants || [];
                 startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
-tables = d.tables || [];
+                tables = d.tables || [];
+                snapOn = d.snapOn !== undefined ? d.snapOn : true;
+                showGrid = d.showGrid !== undefined ? d.showGrid : false;
                 const _ac = d.aiConfig || {};
-                aiConfig = { endpoint: _ac.endpoint||"http://localhost:8080", apiKey: _ac.apiKey||"", model: _ac.model||"", models: _ac.models||[], enabled: !!_ac.enabled, routerMode: !!_ac.routerMode };
+                aiConfig = {
+                    endpoint: _ac.endpoint || "http://localhost:8080",
+                    apiKey: _ac.apiKey || "",
+                    model: _ac.model || "",
+                    models: _ac.models || [],
+                    enabled: !!_ac.enabled,
+                    routerMode: !!_ac.routerMode,
+                };
                 syncCurForm();
                 selId = null;
                 buildFormSelect();
@@ -2138,9 +2377,18 @@ tables = d.tables || [];
                     }
                     constants = d.constants || [];
                     startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
-    tables = d.tables || [];
-                const _ac = d.aiConfig || {};
-                aiConfig = { endpoint: _ac.endpoint||"http://localhost:8080", apiKey: _ac.apiKey||"", model: _ac.model||"", models: _ac.models||[], enabled: !!_ac.enabled, routerMode: !!_ac.routerMode };
+                    tables = d.tables || [];
+                    snapOn = d.snapOn !== undefined ? d.snapOn : true;
+                    showGrid = d.showGrid !== undefined ? d.showGrid : false;
+                    const _ac = d.aiConfig || {};
+                    aiConfig = {
+                        endpoint: _ac.endpoint || "http://localhost:8080",
+                        apiKey: _ac.apiKey || "",
+                        model: _ac.model || "",
+                        models: _ac.models || [],
+                        enabled: !!_ac.enabled,
+                        routerMode: !!_ac.routerMode,
+                    };
                     syncCurForm();
                     selId = null;
                     undoStack = [];
@@ -2152,6 +2400,7 @@ tables = d.tables || [];
                     updateCount();
                     // 開いた直後は保存済み状態とする
                     _savedSnapshot = snapshot();
+                    applyViewSettings();
                 } catch (err) {
                     alert("読み込み失敗: " + err.message);
                 }
@@ -2161,8 +2410,8 @@ tables = d.tables || [];
             async function actOpen() {
                 try {
                     const result = await window.bunOpenFile({
-                        filter  : "vjaproj",
-                        lastPath: _lastOpenPath,  // 前回開いた/保存したパスを渡す
+                        filter: "vjaproj",
+                        lastPath: _lastOpenPath, // 前回開いた/保存したパスを渡す
                     });
                     if (result && result.content) {
                         loadProjectData(result.content);
@@ -2184,12 +2433,20 @@ tables = d.tables || [];
                 const projName = forms[0]?.cfg?.title || "project";
                 // bridge.ts がロードされているか確認
                 if (typeof window.bunSaveProject !== "function") {
-                    alert("エラー: bunSaveProject が未定義です。bridge.ts が正しくロードされていません。");
-                    console.error("[actSave] window.bunSaveProject is", typeof window.bunSaveProject);
+                    alert(
+                        "エラー: bunSaveProject が未定義です。bridge.ts が正しくロードされていません。",
+                    );
+                    console.error(
+                        "[actSave] window.bunSaveProject is",
+                        typeof window.bunSaveProject,
+                    );
                     return;
                 }
                 try {
-                    console.log("[actSave] calling bunSaveProject, lastPath:", _lastSavePath);
+                    console.log(
+                        "[actSave] calling bunSaveProject, lastPath:",
+                        _lastSavePath,
+                    );
                     const result = await window.bunSaveProject({
                         content,
                         defaultName: projName + ".vjaproj",
@@ -2197,8 +2454,8 @@ tables = d.tables || [];
                     });
                     console.log("[actSave] result:", JSON.stringify(result));
                     if (result && result.ok && result.path) {
-                        _lastSavePath  = result.path;
-                        _lastOpenPath  = result.path;
+                        _lastSavePath = result.path;
+                        _lastOpenPath = result.path;
                         _savedSnapshot = content;
                         showToast("保存しました: " + result.path);
                     }
@@ -2332,55 +2589,117 @@ tables = d.tables || [];
                                 );
                                 break;
                             case "datagrid": {
-                                const dgCols = (p.columns||"").split(/[;\n]/).filter(function(s){return s.trim();}).map(function(c,ci){
-                                    const parts = c.trim().split(":");
-                                    return {key:"col"+ci, label:parts[0]||("列"+(ci+1)), width:parseInt(parts[1])||80};
-                                });
-                                const dgMaxR  = p.maxRows||10;
-                                const dgHbg   = p.headerBg||"#4a4a6a";
-                                const dgHfg   = p.headerFg||"#ffffff";
-                                const dgRbg   = p.rowBg||"#ffffff";
-                                const dgRabg  = p.rowAltBg||"#f5f5f5";
-                                const dgRfg   = p.rowFg||"#000000";
-                                const dgBc    = p.borderColor||"#cccccc";
-                                const dgFs    = p.fontSize||12;
-                                const dgVis   = p.visible===false?"visibility:hidden;":"";
+                                const dgCols = (p.columns || "")
+                                    .split(/[;\n]/)
+                                    .filter(function (s) {
+                                        return s.trim();
+                                    })
+                                    .map(function (c, ci) {
+                                        const parts = c.trim().split(":");
+                                        return {
+                                            key: "col" + ci,
+                                            label: parts[0] || "列" + (ci + 1),
+                                            width: parseInt(parts[1]) || 80,
+                                        };
+                                    });
+                                const dgMaxR = p.maxRows || 10;
+                                const dgHbg = p.headerBg || "#4a4a6a";
+                                const dgHfg = p.headerFg || "#ffffff";
+                                const dgRbg = p.rowBg || "#ffffff";
+                                const dgRabg = p.rowAltBg || "#f5f5f5";
+                                const dgRfg = p.rowFg || "#000000";
+                                const dgBc = p.borderColor || "#cccccc";
+                                const dgFs = p.fontSize || 12;
+                                const dgVis =
+                                    p.visible === false
+                                        ? "visibility:hidden;"
+                                        : "";
                                 // テーブルHTML
-                                let dgHtml = '<div id="' + w.name + '" style="' + base + 'overflow:auto;border:1px solid ' + dgBc + ';box-sizing:border-box;font-size:' + dgFs + 'px;' + dgVis + '">';
-                                dgHtml += '<table style="width:100%;border-collapse:collapse;table-layout:fixed">';
-                                dgHtml += '<thead><tr style="background:' + dgHbg + ';color:' + dgHfg + '">';
-                                dgCols.forEach(function(c){
-                                    dgHtml += '<th data-key="' + esc(c.key) + '" style="width:' + c.width + 'px;padding:3px 6px;border:1px solid ' + dgBc + ';text-align:left">' + esc(c.label) + '</th>';
+                                let dgHtml =
+                                    '<div id="' +
+                                    w.name +
+                                    '" style="' +
+                                    base +
+                                    "overflow:auto;border:1px solid " +
+                                    dgBc +
+                                    ";box-sizing:border-box;font-size:" +
+                                    dgFs +
+                                    "px;" +
+                                    dgVis +
+                                    '">';
+                                dgHtml +=
+                                    '<table style="width:100%;border-collapse:collapse;table-layout:fixed">';
+                                dgHtml +=
+                                    '<thead><tr style="background:' +
+                                    dgHbg +
+                                    ";color:" +
+                                    dgHfg +
+                                    '">';
+                                dgCols.forEach(function (c) {
+                                    dgHtml +=
+                                        '<th data-key="' +
+                                        esc(c.key) +
+                                        '" style="width:' +
+                                        c.width +
+                                        "px;padding:3px 6px;border:1px solid " +
+                                        dgBc +
+                                        ';text-align:left">' +
+                                        esc(c.label) +
+                                        "</th>";
                                 });
-                                dgHtml += '</tr></thead>';
-                                dgHtml += '<tbody id="' + w.name + '_body"></tbody>';
-                                dgHtml += '</table></div>';
+                                dgHtml += "</tr></thead>";
+                                dgHtml +=
+                                    '<tbody id="' + w.name + '_body"></tbody>';
+                                dgHtml += "</table></div>";
                                 lines2.push(dgHtml);
                                 // データ設定用ヘルパーJS（script タグを文字列分割で出力）
-                                const dgKeys = JSON.stringify(dgCols.map(function(c){return c.key;}));
+                                const dgKeys = JSON.stringify(
+                                    dgCols.map(function (c) {
+                                        return c.key;
+                                    }),
+                                );
                                 const dgScript = [
-                                    'window["' + w.name + '_setData"]=function(rows){',
-                                    '  var keys=' + dgKeys + ';',
-                                    '  var maxR=' + dgMaxR + ',rbg="' + dgRbg + '",rabg="' + dgRabg + '",rfg="' + dgRfg + '",bc="' + dgBc + '";',
-                                    '  var tbody=document.getElementById("' + w.name + '_body");',
-                                    '  if(!tbody)return;',
+                                    'window["' +
+                                        w.name +
+                                        '_setData"]=function(rows){',
+                                    "  var keys=" + dgKeys + ";",
+                                    "  var maxR=" +
+                                        dgMaxR +
+                                        ',rbg="' +
+                                        dgRbg +
+                                        '",rabg="' +
+                                        dgRabg +
+                                        '",rfg="' +
+                                        dgRfg +
+                                        '",bc="' +
+                                        dgBc +
+                                        '";',
+                                    '  var tbody=document.getElementById("' +
+                                        w.name +
+                                        '_body");',
+                                    "  if(!tbody)return;",
                                     '  tbody.innerHTML="";',
-                                    '  (rows||[]).slice(0,maxR).forEach(function(row,i){',
+                                    "  (rows||[]).slice(0,maxR).forEach(function(row,i){",
                                     '    var tr=document.createElement("tr");',
-                                    '    tr.style.background=i%2===0?rbg:rabg;',
-                                    '    tr.style.color=rfg;',
-                                    '    keys.forEach(function(k){',
+                                    "    tr.style.background=i%2===0?rbg:rabg;",
+                                    "    tr.style.color=rfg;",
+                                    "    keys.forEach(function(k){",
                                     '      var td=document.createElement("td");',
                                     '      td.style.cssText="padding:2px 6px;border:1px solid "+bc;',
                                     '      td.textContent=(row[k]!==undefined&&row[k]!==null)?String(row[k]):"";',
-                                    '      tr.appendChild(td);',
-                                    '    });',
-                                    '    tbody.appendChild(tr);',
-                                    '  });',
-                                    '};',
-                                ].join('\n');
+                                    "      tr.appendChild(td);",
+                                    "    });",
+                                    "    tbody.appendChild(tr);",
+                                    "  });",
+                                    "};",
+                                ].join("\n");
                                 // dgScripts に追加（後で evLines と一緒に出力）
-                                dgScripts.push('/* ' + w.name + ' データ設定ヘルパー */\n' + dgScript);
+                                dgScripts.push(
+                                    "/* " +
+                                        w.name +
+                                        " データ設定ヘルパー */\n" +
+                                        dgScript,
+                                );
                                 break;
                             }
                         } // end switch
@@ -2448,7 +2767,9 @@ tables = d.tables || [];
                 // 画面遷移JS
                 const navJS = `function showForm(id){\n  document.querySelectorAll('.vja-form').forEach(el=>el.classList.remove('active'));\n  const el=document.getElementById('form-'+id);\n  if(el) el.classList.add('active');\n}\n// 最初の画面を表示\nshowForm('${startFormId || forms[0]?.id || ""}');`;
                 // datagrid ヘルパーJS を evLines に統合
-                dgScripts.forEach(function(s){ evLines.push(s); });
+                dgScripts.forEach(function (s) {
+                    evLines.push(s);
+                });
                 lines.push(
                     `<script>\n${navJS}\n${evLines.join("\n")}\n<\/script>`,
                 );
@@ -2488,23 +2809,27 @@ tables = d.tables || [];
             ═══════════════════════════════════════════ */
 
             // 初期フォームを設定
-            function setStartForm(){
+            function setStartForm() {
                 const f = forms[curFormIdx];
-                if(!f) return;
+                if (!f) return;
                 startFormId = f.id;
                 updateStartBtn();
                 pushUndo();
-                showToast("「"+f.cfg.title+"」を初期表示フォームに設定しました");
+                showToast(
+                    "「" + f.cfg.title + "」を初期表示フォームに設定しました",
+                );
             }
 
             // ★ボタンの状態を更新
-            function updateStartBtn(){
+            function updateStartBtn() {
                 const btn = $("btn-set-start");
-                if(!btn) return;
+                if (!btn) return;
                 const f = forms[curFormIdx];
                 const isStart = f && f.id === startFormId;
                 btn.classList.toggle("is-start", isStart);
-                btn.title = isStart ? "この画面が初期表示フォームです" : "初期表示フォームに設定";
+                btn.title = isStart
+                    ? "この画面が初期表示フォームです"
+                    : "初期表示フォームに設定";
                 btn.style.color = isStart ? "#f5a623" : "";
                 btn.style.borderColor = isStart ? "#f5a623" : "";
             }
@@ -2518,7 +2843,9 @@ tables = d.tables || [];
                     item.className =
                         "fdd-item" + (i === curFormIdx ? " fdd-active" : "");
                     // 初期フォームに★マークを付ける
-                    item.textContent = (f.id === startFormId ? "★ " : "") + `[${i + 1}] ${f.cfg.title}`;
+                    item.textContent =
+                        (f.id === startFormId ? "★ " : "") +
+                        `[${i + 1}] ${f.cfg.title}`;
                     item.onclick = (e) => {
                         e.stopPropagation();
                         switchForm(i);
@@ -2637,318 +2964,442 @@ tables = d.tables || [];
             }
             // Escキーで確認ダイアログを閉じる
 
-
             /* ── 定数エディタ ── */
-            function openConstEditor(){
-                window._constRows = constants.map(c=>({name:c.name||"", value:c.value||""}));
-                if(window._constRows.length===0) window._constRows.push({name:"", value:""});
+            function openConstEditor() {
+                window._constRows = constants.map((c) => ({
+                    name: c.name || "",
+                    value: c.value || "",
+                }));
+                if (window._constRows.length === 0)
+                    window._constRows.push({ name: "", value: "" });
                 renderConstModal();
             }
 
-            function renderConstModal(){
-                const rows = window._constRows||[];
+            function renderConstModal() {
+                const rows = window._constRows || [];
                 let tbody = "";
-                rows.forEach((r,i)=>{
-                    const oi_n = "constUpdate("+i+",'name',this.value)";
-                    const oi_v = "constUpdate("+i+",'value',this.value)";
-                    tbody += "<tr>"
-                        +"<td>"+(i+1)+"</td>"
-                        +"<td><input type='text' value='"+esc(r.name)+"' oninput='"+oi_n+"' placeholder='定数名'></td>"
-                        +"<td><input type='text' value='"+esc(r.value)+"' oninput='"+oi_v+"' placeholder='値'></td>"
-                        +"<td><button class='del-btn' onclick='constDelRow("+i+")' title='削除'>✕</button></td>"
-                        +"</tr>";
+                rows.forEach((r, i) => {
+                    const oi_n = "constUpdate(" + i + ",'name',this.value)";
+                    const oi_v = "constUpdate(" + i + ",'value',this.value)";
+                    tbody +=
+                        "<tr>" +
+                        "<td>" +
+                        (i + 1) +
+                        "</td>" +
+                        "<td><input type='text' value='" +
+                        esc(r.name) +
+                        "' oninput='" +
+                        oi_n +
+                        "' placeholder='定数名'></td>" +
+                        "<td><input type='text' value='" +
+                        esc(r.value) +
+                        "' oninput='" +
+                        oi_v +
+                        "' placeholder='値'></td>" +
+                        "<td><button class='del-btn' onclick='constDelRow(" +
+                        i +
+                        ")' title='削除'>✕</button></td>" +
+                        "</tr>";
                 });
-                showModal("<div id='const-modal'>"
-                    +"<div class='mhdr'><h4>📌 定数エディタ</h4><button class='mclose' onclick='closeModal()'>✕</button></div>"
-                    +"<div class='mbody' style='gap:6px'>"
-                    +"<div class='infobox'>イベントのYAMLから参照できる定数を定義します。プロジェクトファイルに保存されます。</div>"
-                    +"<div class='const-scroll'>"
-                    +"<table class='const-table'>"
-                    +"<thead><tr><th style='width:36px'>No</th><th>定数名</th><th>値</th><th style='width:30px'></th></tr></thead>"
-                    +"<tbody>"+tbody+"</tbody>"
-                    +"</table>"
-                    +"</div>"
-                    +"<button class='add-row-btn' onclick='constAddRow()'>＋ 行を追加</button>"
-                    +"</div>"
-                    +"<div class='mfoot'>"
-                    +"<button onclick='closeModal()'>キャンセル</button>"
-                    +"<button class='pri' onclick='constSave()'>保存</button>"
-                    +"</div>"
-                    +"</div>");
+                showModal(
+                    "<div id='const-modal'>" +
+                        "<div class='mhdr'><h4>📌 定数エディタ</h4><button class='mclose' onclick='closeModal()'>✕</button></div>" +
+                        "<div class='mbody' style='gap:6px'>" +
+                        "<div class='infobox'>イベントのYAMLから参照できる定数を定義します。プロジェクトファイルに保存されます。</div>" +
+                        "<div class='const-scroll'>" +
+                        "<table class='const-table'>" +
+                        "<thead><tr><th style='width:36px'>No</th><th>定数名</th><th>値</th><th style='width:30px'></th></tr></thead>" +
+                        "<tbody>" +
+                        tbody +
+                        "</tbody>" +
+                        "</table>" +
+                        "</div>" +
+                        "<button class='add-row-btn' onclick='constAddRow()'>＋ 行を追加</button>" +
+                        "</div>" +
+                        "<div class='mfoot'>" +
+                        "<button onclick='closeModal()'>キャンセル</button>" +
+                        "<button class='pri' onclick='constSave()'>保存</button>" +
+                        "</div>" +
+                        "</div>",
+                );
             }
 
             // DOM から現在の入力値を _constRows に同期する
-            function syncConstFromDOM(){
-                const tbody = document.querySelector("#const-modal .const-table tbody");
-                if(!tbody||!window._constRows) return;
+            function syncConstFromDOM() {
+                const tbody = document.querySelector(
+                    "#const-modal .const-table tbody",
+                );
+                if (!tbody || !window._constRows) return;
                 const rows = tbody.querySelectorAll("tr");
-                rows.forEach((tr,i)=>{
+                rows.forEach((tr, i) => {
                     const inputs = tr.querySelectorAll("input");
-                    if(inputs.length>=2 && window._constRows[i]){
-                        window._constRows[i].name  = inputs[0].value;
+                    if (inputs.length >= 2 && window._constRows[i]) {
+                        window._constRows[i].name = inputs[0].value;
                         window._constRows[i].value = inputs[1].value;
                     }
                 });
             }
 
-            function constUpdate(idx, key, val){
-                if(window._constRows) window._constRows[idx][key] = val;
+            function constUpdate(idx, key, val) {
+                if (window._constRows) window._constRows[idx][key] = val;
             }
 
-            function constAddRow(){
-                if(!window._constRows) return;
+            function constAddRow() {
+                if (!window._constRows) return;
                 syncConstFromDOM(); // 現在の入力値を先に保存
-                window._constRows.push({name:"", value:""});
+                window._constRows.push({ name: "", value: "" });
                 renderConstModal();
             }
 
-            function constDelRow(idx){
-                if(!window._constRows) return;
+            function constDelRow(idx) {
+                if (!window._constRows) return;
                 syncConstFromDOM(); // 現在の入力値を先に保存
-                window._constRows.splice(idx,1);
-                if(window._constRows.length===0) window._constRows.push({name:"", value:""});
+                window._constRows.splice(idx, 1);
+                if (window._constRows.length === 0)
+                    window._constRows.push({ name: "", value: "" });
                 renderConstModal();
             }
 
-            function constSave(){
+            function constSave() {
                 syncConstFromDOM(); // 保存前に DOM から最新値を取得
-                const valid = (window._constRows||[]).filter(r=>r.name.trim());
+                const valid = (window._constRows || []).filter((r) =>
+                    r.name.trim(),
+                );
                 // 重複チェック
-                const names = valid.map(r=>r.name.trim());
-                const dup = names.find((n,i)=>names.indexOf(n)!==i);
-                if(dup){ alert("定数名「"+dup+"」が重複しています"); return; }
-                constants = valid.map(r=>({name:r.name.trim(), value:r.value}));
+                const names = valid.map((r) => r.name.trim());
+                const dup = names.find((n, i) => names.indexOf(n) !== i);
+                if (dup) {
+                    alert("定数名「" + dup + "」が重複しています");
+                    return;
+                }
+                constants = valid.map((r) => ({
+                    name: r.name.trim(),
+                    value: r.value,
+                }));
                 closeModal();
                 pushUndo();
             }
 
-
             /* ── プロパティパネル カスタムセレクト ── */
-            function pvSelOpen(id, e){
+            function pvSelOpen(id, e) {
                 e.stopPropagation();
                 const wrap = document.getElementById(id);
-                if(!wrap) return;
+                if (!wrap) return;
                 const list = wrap.querySelector(".pv-sel-list");
-                if(!list) return;
+                if (!list) return;
                 const isOpen = list.classList.contains("open");
                 // 他を全部閉じる
-                document.querySelectorAll(".pv-sel-list.open").forEach(el=>el.classList.remove("open"));
-                if(!isOpen){
+                document
+                    .querySelectorAll(".pv-sel-list.open")
+                    .forEach((el) => el.classList.remove("open"));
+                if (!isOpen) {
                     list.classList.add("open");
                     // 位置を fixed で計算
                     const btn = wrap.querySelector(".pv-sel-btn");
                     const r = btn.getBoundingClientRect();
-                    list.style.left = r.left+"px";
-                    list.style.top  = (r.bottom+2)+"px";
-                    list.style.minWidth = r.width+"px";
+                    list.style.left = r.left + "px";
+                    list.style.top = r.bottom + 2 + "px";
+                    list.style.minWidth = r.width + "px";
                 }
             }
-            function pvSelPick(id, val, e){
+            function pvSelPick(id, val, e) {
                 e.stopPropagation();
                 const wrap = document.getElementById(id);
-                if(!wrap) return;
+                if (!wrap) return;
                 const list = wrap.querySelector(".pv-sel-list");
-                const btn  = wrap.querySelector(".pv-sel-btn span:first-child");
-                if(btn) btn.textContent = String(val);
+                const btn = wrap.querySelector(".pv-sel-btn span:first-child");
+                if (btn) btn.textContent = String(val);
                 list?.classList.remove("open");
-                wrap.querySelectorAll(".pv-sel-opt").forEach(el=>{
-                    el.classList.toggle("active", el.textContent===String(val)||el.getAttribute("data-v")===String(val));
+                wrap.querySelectorAll(".pv-sel-opt").forEach((el) => {
+                    el.classList.toggle(
+                        "active",
+                        el.textContent === String(val) ||
+                            el.getAttribute("data-v") === String(val),
+                    );
                 });
             }
-
 
             /* ═══════════════════════════════════════════
                テーブル管理
             ═══════════════════════════════════════════ */
 
             // SQLite型リスト
-            const SQLITE_TYPES = ["TEXT","INTEGER","REAL","BLOB","NULL"];
+            const SQLITE_TYPES = ["TEXT", "INTEGER", "REAL", "BLOB", "NULL"];
 
             // テーブル管理モーダルを開く
-            function openTableManager(){
+            function openTableManager() {
                 renderTableManagerModal();
             }
 
-            function renderTableManagerModal(){
-                const rows = tables.length > 0
-                    ? tables.map((t,i)=>{
-                        const colCount = t.columns ? t.columns.length : 0;
-                        const idxCount = t.columns ? t.columns.filter(c=>c.index).length : 0;
-                        return "<tr>"+
-                            "<td>"+(i+1)+"</td>"+
-                            "<td style='font-weight:bold'>"+esc(t.name)+"</td>"+
-                            "<td style='text-align:center'>"+colCount+"</td>"+
-                            "<td style='text-align:center'>"+idxCount+"</td>"+
-                            "<td style='text-align:center'>"+
-                                "<button class='tbl-action-btn' onclick='openTableEdit("+i+")'>✏ 編集</button>"+
-                            "</td>"+
-                            "<td style='text-align:center'>"+
-                                "<button class='tbl-action-btn del' onclick='deleteTable("+i+")'>🗑 削除</button>"+
-                            "</td>"+
-                        "</tr>";
-                    }).join("")
-                    : "<tr><td colspan='6' class='tbl-empty'>テーブルが未登録です。「＋ テーブル追加」から追加してください。</td></tr>";
+            function renderTableManagerModal() {
+                const rows =
+                    tables.length > 0
+                        ? tables
+                              .map((t, i) => {
+                                  const colCount = t.columns
+                                      ? t.columns.length
+                                      : 0;
+                                  const idxCount = t.columns
+                                      ? t.columns.filter((c) => c.index).length
+                                      : 0;
+                                  return (
+                                      "<tr>" +
+                                      "<td>" +
+                                      (i + 1) +
+                                      "</td>" +
+                                      "<td style='font-weight:bold'>" +
+                                      esc(t.name) +
+                                      "</td>" +
+                                      "<td style='text-align:center'>" +
+                                      colCount +
+                                      "</td>" +
+                                      "<td style='text-align:center'>" +
+                                      idxCount +
+                                      "</td>" +
+                                      "<td style='text-align:center'>" +
+                                      "<button class='tbl-action-btn' onclick='openTableEdit(" +
+                                      i +
+                                      ")'>✏ 編集</button>" +
+                                      "</td>" +
+                                      "<td style='text-align:center'>" +
+                                      "<button class='tbl-action-btn del' onclick='deleteTable(" +
+                                      i +
+                                      ")'>🗑 削除</button>" +
+                                      "</td>" +
+                                      "</tr>"
+                                  );
+                              })
+                              .join("")
+                        : "<tr><td colspan='6' class='tbl-empty'>テーブルが未登録です。「＋ テーブル追加」から追加してください。</td></tr>";
 
                 showModal(
-                    "<div class='mhdr'><h4>🗄 テーブル管理</h4><button class='mclose' onclick='closeModal()'>✕</button></div>"+
-                    "<div class='mbody tbl-mgr-wrap'>"+
-                    "<div class='tbl-mgr-header'>"+
-                    "<span style='font-size:12px;color:var(--text2)'>SQLiteテーブル定義（全"+tables.length+"件）</span>"+
-                    "<button class='tbl-add-btn' onclick='openTableEdit(-1)'>＋ テーブル追加</button>"+
-                    "</div>"+
-                    "<div class='tbl-list-scroll'>"+
-                    "<table class='tbl-list-table'>"+
-                    "<thead><tr>"+
-                    "<th style='width:36px'>No</th>"+
-                    "<th>テーブル名</th>"+
-                    "<th style='width:72px;text-align:center'>カラム数</th>"+
-                    "<th style='width:90px;text-align:center'>インデックス数</th>"+
-                    "<th style='width:80px;text-align:center'>編集</th>"+
-                    "<th style='width:80px;text-align:center'>削除</th>"+
-                    "</tr></thead>"+
-                    "<tbody>"+rows+"</tbody>"+
-                    "</table></div>"+
-                    "</div>"+
-                    "<div class='mfoot'>"+
-                    "<button onclick='closeModal()'>閉じる</button>"+
-                    "</div>"
+                    "<div class='mhdr'><h4>🗄 テーブル管理</h4><button class='mclose' onclick='closeModal()'>✕</button></div>" +
+                        "<div class='mbody tbl-mgr-wrap'>" +
+                        "<div class='tbl-mgr-header'>" +
+                        "<span style='font-size:12px;color:var(--text2)'>SQLiteテーブル定義（全" +
+                        tables.length +
+                        "件）</span>" +
+                        "<button class='tbl-add-btn' onclick='openTableEdit(-1)'>＋ テーブル追加</button>" +
+                        "</div>" +
+                        "<div class='tbl-list-scroll'>" +
+                        "<table class='tbl-list-table'>" +
+                        "<thead><tr>" +
+                        "<th style='width:36px'>No</th>" +
+                        "<th>テーブル名</th>" +
+                        "<th style='width:72px;text-align:center'>カラム数</th>" +
+                        "<th style='width:90px;text-align:center'>インデックス数</th>" +
+                        "<th style='width:80px;text-align:center'>編集</th>" +
+                        "<th style='width:80px;text-align:center'>削除</th>" +
+                        "</tr></thead>" +
+                        "<tbody>" +
+                        rows +
+                        "</tbody>" +
+                        "</table></div>" +
+                        "</div>" +
+                        "<div class='mfoot'>" +
+                        "<button onclick='closeModal()'>閉じる</button>" +
+                        "</div>",
                 );
             }
 
             // テーブル削除
-            function deleteTable(idx){
+            function deleteTable(idx) {
                 const t = tables[idx];
-                if(!t) return;
-                if(!confirm("テーブル「"+t.name+"」を削除しますか？この操作は元に戻せません。")) return;
-                tables.splice(idx,1);
+                if (!t) return;
+                if (
+                    !confirm(
+                        "テーブル「" +
+                            t.name +
+                            "」を削除しますか？この操作は元に戻せません。",
+                    )
+                )
+                    return;
+                tables.splice(idx, 1);
                 pushUndo();
                 renderTableManagerModal();
             }
 
             // テーブル新規作成 / 編集モーダル
-            function openTableEdit(idx){
+            function openTableEdit(idx) {
                 // idx=-1 → 新規, それ以外 → 編集
                 const isNew = idx < 0;
                 const tbl = isNew
-                    ? { name:"", description:"", columns:[ defaultColumn() ] }
+                    ? { name: "", description: "", columns: [defaultColumn()] }
                     : JSON.parse(JSON.stringify(tables[idx])); // ディープコピー
-                if(!tbl.columns || tbl.columns.length===0) tbl.columns = [ defaultColumn() ];
+                if (!tbl.columns || tbl.columns.length === 0)
+                    tbl.columns = [defaultColumn()];
                 window._tblEditIdx = idx;
-                window._tblEdit    = tbl;
+                window._tblEdit = tbl;
                 renderTableEditModal();
             }
 
-            function defaultColumn(){
-                return { name:"", type:"TEXT", notNull:false, pk:false, index:false };
+            function defaultColumn() {
+                return {
+                    name: "",
+                    type: "TEXT",
+                    notNull: false,
+                    pk: false,
+                    index: false,
+                };
             }
 
-            function renderTableEditModal(){
-                const tbl  = window._tblEdit;
+            function renderTableEditModal() {
+                const tbl = window._tblEdit;
                 const isNew = window._tblEditIdx < 0;
-                const cols = tbl.columns||[];
+                const cols = tbl.columns || [];
 
-                let tbody = cols.map((c,i)=>{
-                    const did = "ctype_"+i;
-                    const oi_name    = "tblColUpdate("+i+",'name',this.value)";
-                    const oi_notNull = "tblColUpdate("+i+",'notNull',this.checked)";
-                    const oi_pk      = "tblColUpdatePk("+i+",this.checked)";
-                    const oi_index   = "tblColUpdate("+i+",'index',this.checked)";
-                    return "<tr id='col-row-"+i+"'>"+
-                        "<td>"+(i+1)+"</td>"+
-                        "<td><input class='col-input' type='text' value='"+esc(c.name)+"' "+
-                            "oninput='"+oi_name+"' placeholder='カラム名'></td>"+
-                        "<td>"+
-                            "<button type='button' class='col-type-btn' data-colidx='"+i+"'>"+
-                            "<span class='col-type-lbl'>"+esc(c.type||"TEXT")+"</span>"+
-                            "<span class='arr'>▼</span></button>"+
-                        "</td>"+
-                        "<td><input class='col-check' type='checkbox' "+(c.notNull?"checked":"")+" "+
-                            "onchange='"+oi_notNull+"'></td>"+
-                        "<td><input class='col-check' type='checkbox' "+(c.pk?"checked":"")+" "+
-                            "onchange='"+oi_pk+"'></td>"+
-                        "<td><input class='col-check' type='checkbox' "+(c.index?"checked":"")+" "+
-                            "onchange='"+oi_index+"'></td>"+
-                        "<td><button class='tbl-action-btn del' onclick='tblColDelete("+i+")'>✕</button></td>"+
-                    "</tr>";
-                }).join("");
+                let tbody = cols
+                    .map((c, i) => {
+                        const did = "ctype_" + i;
+                        const oi_name =
+                            "tblColUpdate(" + i + ",'name',this.value)";
+                        const oi_notNull =
+                            "tblColUpdate(" + i + ",'notNull',this.checked)";
+                        const oi_pk = "tblColUpdatePk(" + i + ",this.checked)";
+                        const oi_index =
+                            "tblColUpdate(" + i + ",'index',this.checked)";
+                        return (
+                            "<tr id='col-row-" +
+                            i +
+                            "'>" +
+                            "<td>" +
+                            (i + 1) +
+                            "</td>" +
+                            "<td><input class='col-input' type='text' value='" +
+                            esc(c.name) +
+                            "' " +
+                            "oninput='" +
+                            oi_name +
+                            "' placeholder='カラム名'></td>" +
+                            "<td>" +
+                            "<button type='button' class='col-type-btn' data-colidx='" +
+                            i +
+                            "'>" +
+                            "<span class='col-type-lbl'>" +
+                            esc(c.type || "TEXT") +
+                            "</span>" +
+                            "<span class='arr'>▼</span></button>" +
+                            "</td>" +
+                            "<td><input class='col-check' type='checkbox' " +
+                            (c.notNull ? "checked" : "") +
+                            " " +
+                            "onchange='" +
+                            oi_notNull +
+                            "'></td>" +
+                            "<td><input class='col-check' type='checkbox' " +
+                            (c.pk ? "checked" : "") +
+                            " " +
+                            "onchange='" +
+                            oi_pk +
+                            "'></td>" +
+                            "<td><input class='col-check' type='checkbox' " +
+                            (c.index ? "checked" : "") +
+                            " " +
+                            "onchange='" +
+                            oi_index +
+                            "'></td>" +
+                            "<td><button class='tbl-action-btn del' onclick='tblColDelete(" +
+                            i +
+                            ")'>✕</button></td>" +
+                            "</tr>"
+                        );
+                    })
+                    .join("");
 
                 showModal(
-                    "<div class='mhdr'><h4>"+(isNew?"➕ テーブル新規作成":"✏ テーブル編集")+"</h4>"+
-                    "<button class='mclose' onclick='openTableManager()'>✕</button></div>"+
-                    "<div class='mbody tbl-edit-wrap'>"+
-                    // テーブル名
-                    "<div class='tbl-name-row'><label>テーブル名</label>"+
-                    "<input id='tbl-name-in' value='"+esc(tbl.name)+"' placeholder='例: users' "+
-                    "oninput='window._tblEdit.name=this.value'></div>"+
-                    // 説明
-                    "<div class='tbl-desc-row'><label>説明（任意）</label>"+
-                    "<textarea id='tbl-desc-in' oninput='window._tblEdit.description=this.value'>"+esc(tbl.description||"")+"</textarea></div>"+
-                    // カラム一覧
-                    "<div style='display:flex;justify-content:space-between;align-items:center'>"+
-                    "<span style='font-size:12px;color:var(--text2)'>カラム定義（"+cols.length+"列）</span>"+
-                    "<button class='col-add-btn' onclick='tblColAdd()'>＋ カラム追加</button>"+
-                    "</div>"+
-                    "<div class='col-list-scroll'>"+
-                    "<table class='col-list-table'>"+
-                    "<thead><tr>"+
-                    "<th style='width:32px'>No</th>"+
-                    "<th style='text-align:left;min-width:120px'>カラム名</th>"+
-                    "<th style='width:100px'>型</th>"+
-                    "<th style='width:64px'>NOT NULL</th>"+
-                    "<th style='width:48px'>KEY</th>"+
-                    "<th style='width:72px'>インデックス</th>"+
-                    "<th style='width:40px'>削除</th>"+
-                    "</tr></thead>"+
-                    "<tbody id='col-tbody'>"+tbody+"</tbody>"+
-                    "</table></div>"+
-                    // DDL プレビュー
-                    "<div style='font-size:11px;color:var(--text3);margin-top:2px'>"+
-                    "<span onclick='tblShowDdl()' style='cursor:pointer;text-decoration:underline'>DDLプレビューを表示</span>"+
-                    "</div>"+
-                    "<pre id='tbl-ddl-preview' style='display:none;background:var(--bg3);border:1px solid var(--border);"+
-                    "border-radius:3px;padding:8px;font-size:11px;color:#98d982;overflow-x:auto;white-space:pre-wrap'></pre>"+
-                    "</div>"+
-                    "<div class='mfoot'>"+
-                    "<button onclick='openTableManager()'>← 一覧に戻る</button>"+
-                    "<button class='pri' onclick='tblSave()'>保存</button>"+
-                    "</div>"
+                    "<div class='mhdr'><h4>" +
+                        (isNew ? "➕ テーブル新規作成" : "✏ テーブル編集") +
+                        "</h4>" +
+                        "<button class='mclose' onclick='openTableManager()'>✕</button></div>" +
+                        "<div class='mbody tbl-edit-wrap'>" +
+                        // テーブル名
+                        "<div class='tbl-name-row'><label>テーブル名</label>" +
+                        "<input id='tbl-name-in' value='" +
+                        esc(tbl.name) +
+                        "' placeholder='例: users' " +
+                        "oninput='window._tblEdit.name=this.value'></div>" +
+                        // 説明
+                        "<div class='tbl-desc-row'><label>説明（任意）</label>" +
+                        "<textarea id='tbl-desc-in' oninput='window._tblEdit.description=this.value'>" +
+                        esc(tbl.description || "") +
+                        "</textarea></div>" +
+                        // カラム一覧
+                        "<div style='display:flex;justify-content:space-between;align-items:center'>" +
+                        "<span style='font-size:12px;color:var(--text2)'>カラム定義（" +
+                        cols.length +
+                        "列）</span>" +
+                        "<button class='col-add-btn' onclick='tblColAdd()'>＋ カラム追加</button>" +
+                        "</div>" +
+                        "<div class='col-list-scroll'>" +
+                        "<table class='col-list-table'>" +
+                        "<thead><tr>" +
+                        "<th style='width:32px'>No</th>" +
+                        "<th style='text-align:left;min-width:120px'>カラム名</th>" +
+                        "<th style='width:100px'>型</th>" +
+                        "<th style='width:64px'>NOT NULL</th>" +
+                        "<th style='width:48px'>KEY</th>" +
+                        "<th style='width:72px'>インデックス</th>" +
+                        "<th style='width:40px'>削除</th>" +
+                        "</tr></thead>" +
+                        "<tbody id='col-tbody'>" +
+                        tbody +
+                        "</tbody>" +
+                        "</table></div>" +
+                        // DDL プレビュー
+                        "<div style='font-size:11px;color:var(--text3);margin-top:2px'>" +
+                        "<span onclick='tblShowDdl()' style='cursor:pointer;text-decoration:underline'>DDLプレビューを表示</span>" +
+                        "</div>" +
+                        "<pre id='tbl-ddl-preview' style='display:none;background:var(--bg3);border:1px solid var(--border);" +
+                        "border-radius:3px;padding:8px;font-size:11px;color:#98d982;overflow-x:auto;white-space:pre-wrap'></pre>" +
+                        "</div>" +
+                        "<div class='mfoot'>" +
+                        "<button onclick='openTableManager()'>← 一覧に戻る</button>" +
+                        "<button class='pri' onclick='tblSave()'>保存</button>" +
+                        "</div>",
                 );
                 // showModal後にイベントデリゲーション登録
-                requestAnimationFrame(()=>{
-                    const modalEl = document.querySelector("#modal-root .modal");
-                    if(modalEl){
-                        modalEl.addEventListener("click", function handler(e){
-                            const btn = e.target.closest(".col-type-btn");
-                            if(!btn) return;
-                            e.stopPropagation();
-                            const idx = parseInt(btn.dataset.colidx);
-                            tblTypeOpen(idx, btn);
-                        }, {capture:false});
+                requestAnimationFrame(() => {
+                    const modalEl =
+                        document.querySelector("#modal-root .modal");
+                    if (modalEl) {
+                        modalEl.addEventListener(
+                            "click",
+                            function handler(e) {
+                                const btn = e.target.closest(".col-type-btn");
+                                if (!btn) return;
+                                e.stopPropagation();
+                                const idx = parseInt(btn.dataset.colidx);
+                                tblTypeOpen(idx, btn);
+                            },
+                            { capture: false },
+                        );
                     }
                 });
             }
 
             // カラム値を更新
-            function tblColUpdate(idx, key, val){
-                if(!window._tblEdit||!window._tblEdit.columns[idx]) return;
+            function tblColUpdate(idx, key, val) {
+                if (!window._tblEdit || !window._tblEdit.columns[idx]) return;
                 window._tblEdit.columns[idx][key] = val;
-                if(key==="pk"&&val) {
+                if (key === "pk" && val) {
                     // PKの場合はNOT NULLも自動ON
                     window._tblEdit.columns[idx].notNull = true;
                 }
             }
 
             // PK設定（1つのみ許可）
-            function tblColUpdatePk(idx, val){
-                if(!window._tblEdit) return;
-                window._tblEdit.columns.forEach((c,i)=>{ c.pk = (i===idx && val); });
+            function tblColUpdatePk(idx, val) {
+                if (!window._tblEdit) return;
+                window._tblEdit.columns.forEach((c, i) => {
+                    c.pk = i === idx && val;
+                });
                 // 再描画
                 renderTableEditModal();
             }
 
             // カラム追加
-            function tblColAdd(){
-                if(!window._tblEdit) return;
+            function tblColAdd() {
+                if (!window._tblEdit) return;
                 // 現在のDOMから値を同期
                 tblSyncFromDOM();
                 window._tblEdit.columns.push(defaultColumn());
@@ -2956,91 +3407,125 @@ tables = d.tables || [];
             }
 
             // カラム削除
-            function tblColDelete(idx){
-                if(!window._tblEdit) return;
+            function tblColDelete(idx) {
+                if (!window._tblEdit) return;
                 tblSyncFromDOM();
-                window._tblEdit.columns.splice(idx,1);
-                if(window._tblEdit.columns.length===0) window._tblEdit.columns.push(defaultColumn());
+                window._tblEdit.columns.splice(idx, 1);
+                if (window._tblEdit.columns.length === 0)
+                    window._tblEdit.columns.push(defaultColumn());
                 renderTableEditModal();
             }
 
             // DOMから現在の入力値を同期
-            function tblSyncFromDOM(){
+            function tblSyncFromDOM() {
                 const tbl = window._tblEdit;
-                if(!tbl) return;
+                if (!tbl) return;
                 const nameIn = $("tbl-name-in");
                 const descIn = $("tbl-desc-in");
-                if(nameIn) tbl.name = nameIn.value;
-                if(descIn) tbl.description = descIn.value;
+                if (nameIn) tbl.name = nameIn.value;
+                if (descIn) tbl.description = descIn.value;
                 const tbody = $("col-tbody");
-                if(!tbody) return;
-                tbody.querySelectorAll("tr").forEach((tr,i)=>{
-                    if(!tbl.columns[i]) return;
+                if (!tbody) return;
+                tbody.querySelectorAll("tr").forEach((tr, i) => {
+                    if (!tbl.columns[i]) return;
                     const inp = tr.querySelector("input[type=text]");
                     const sel = tr.querySelector("select");
                     const cbs = tr.querySelectorAll("input[type=checkbox]");
-                    if(inp) tbl.columns[i].name    = inp.value;
-                    if(sel) tbl.columns[i].type    = sel.value;
-                    if(cbs[0]) tbl.columns[i].notNull = cbs[0].checked;
-                    if(cbs[1]) tbl.columns[i].pk      = cbs[1].checked;
-                    if(cbs[2]) tbl.columns[i].index   = cbs[2].checked;
+                    if (inp) tbl.columns[i].name = inp.value;
+                    if (sel) tbl.columns[i].type = sel.value;
+                    if (cbs[0]) tbl.columns[i].notNull = cbs[0].checked;
+                    if (cbs[1]) tbl.columns[i].pk = cbs[1].checked;
+                    if (cbs[2]) tbl.columns[i].index = cbs[2].checked;
                 });
             }
 
             // DDLプレビュー表示
-            function tblShowDdl(){
+            function tblShowDdl() {
                 tblSyncFromDOM();
                 const tbl = window._tblEdit;
                 const pre = $("tbl-ddl-preview");
-                if(!pre) return;
-                pre.style.display = pre.style.display==="none" ? "block" : "none";
-                if(pre.style.display==="block") pre.textContent = generateDDL(tbl);
+                if (!pre) return;
+                pre.style.display =
+                    pre.style.display === "none" ? "block" : "none";
+                if (pre.style.display === "block")
+                    pre.textContent = generateDDL(tbl);
             }
 
             // DDL生成
-            function generateDDL(tbl){
-                if(!tbl.name) return "-- テーブル名を入力してください";
-                const cols = (tbl.columns||[]).filter(c=>c.name.trim());
-                if(cols.length===0) return "-- カラムを1つ以上定義してください";
-                const pkCols = cols.filter(c=>c.pk);
-                const colDefs = cols.map(c=>{
-                    let def = "  "+c.name+" "+c.type;
-                    if(c.pk && pkCols.length===1) def += " PRIMARY KEY";
-                    if(c.notNull && !c.pk) def += " NOT NULL";
+            function generateDDL(tbl) {
+                if (!tbl.name) return "-- テーブル名を入力してください";
+                const cols = (tbl.columns || []).filter((c) => c.name.trim());
+                if (cols.length === 0)
+                    return "-- カラムを1つ以上定義してください";
+                const pkCols = cols.filter((c) => c.pk);
+                const colDefs = cols.map((c) => {
+                    let def = "  " + c.name + " " + c.type;
+                    if (c.pk && pkCols.length === 1) def += " PRIMARY KEY";
+                    if (c.notNull && !c.pk) def += " NOT NULL";
                     return def;
                 });
-                if(pkCols.length > 1){
-                    colDefs.push("  PRIMARY KEY ("+pkCols.map(c=>c.name).join(", ")+")");
+                if (pkCols.length > 1) {
+                    colDefs.push(
+                        "  PRIMARY KEY (" +
+                            pkCols.map((c) => c.name).join(", ") +
+                            ")",
+                    );
                 }
-                let ddl = "CREATE TABLE IF NOT EXISTS "+tbl.name+" (\n"+colDefs.join(",\n")+"\n);";
+                let ddl =
+                    "CREATE TABLE IF NOT EXISTS " +
+                    tbl.name +
+                    " (\n" +
+                    colDefs.join(",\n") +
+                    "\n);";
                 // INDEX
-                const idxCols = cols.filter(c=>c.index && !c.pk);
-                idxCols.forEach(c=>{
-                    ddl += "\nCREATE INDEX IF NOT EXISTS idx_"+tbl.name+"_"+c.name+
-                           " ON "+tbl.name+" ("+c.name+");";
+                const idxCols = cols.filter((c) => c.index && !c.pk);
+                idxCols.forEach((c) => {
+                    ddl +=
+                        "\nCREATE INDEX IF NOT EXISTS idx_" +
+                        tbl.name +
+                        "_" +
+                        c.name +
+                        " ON " +
+                        tbl.name +
+                        " (" +
+                        c.name +
+                        ");";
                 });
                 return ddl;
             }
 
-            function tblTypeOpen(idx, btn){
+            function tblTypeOpen(idx, btn) {
                 console.log("[tblTypeOpen] idx:", idx, "btn:", btn);
                 const float = $("col-type-float");
-                if(!float) { console.log("[tblTypeOpen] float not found"); return; }
-                if(!window._tblEdit||!window._tblEdit.columns[idx]) return;
+                if (!float) {
+                    console.log("[tblTypeOpen] float not found");
+                    return;
+                }
+                if (!window._tblEdit || !window._tblEdit.columns[idx]) return;
                 const curType = window._tblEdit.columns[idx].type || "TEXT";
                 // 既に開いていて同じインデックスならclose
-                if(float.classList.contains("open") && float.dataset.colidx==idx){
+                if (
+                    float.classList.contains("open") &&
+                    float.dataset.colidx == idx
+                ) {
                     float.classList.remove("open");
                     return;
                 }
                 // ドロップダウン内容を構築
-                float.innerHTML = SQLITE_TYPES.map(t=>
-                    "<div class='col-type-opt "+(t===curType?"active":"")+"' "+
-                    "data-type='"+t+"'>"+t+"</div>"
+                float.innerHTML = SQLITE_TYPES.map(
+                    (t) =>
+                        "<div class='col-type-opt " +
+                        (t === curType ? "active" : "") +
+                        "' " +
+                        "data-type='" +
+                        t +
+                        "'>" +
+                        t +
+                        "</div>",
                 ).join("");
                 // クリックハンドラを追加
-                float.querySelectorAll(".col-type-opt").forEach(opt=>{
-                    opt.addEventListener("click", function(e){
+                float.querySelectorAll(".col-type-opt").forEach((opt) => {
+                    opt.addEventListener("click", function (e) {
                         e.stopPropagation();
                         const type = this.dataset.type;
                         tblTypeSelect(idx, type);
@@ -3048,124 +3533,215 @@ tables = d.tables || [];
                 });
                 // 位置を計算
                 const r = btn.getBoundingClientRect();
-                float.style.left = r.left+"px";
-                float.style.top  = (r.bottom+2)+"px";
-                float.style.minWidth = r.width+"px";
+                float.style.left = r.left + "px";
+                float.style.top = r.bottom + 2 + "px";
+                float.style.minWidth = r.width + "px";
                 float.dataset.colidx = idx;
                 float.classList.add("open");
                 console.log("[tblTypeOpen] opened at", r.left, r.bottom);
             }
 
             // カラム型の選択
-            function tblTypeSelect(idx, type){
+            function tblTypeSelect(idx, type) {
                 const t = type.trim();
-                if(!window._tblEdit||!window._tblEdit.columns[idx]) return;
+                if (!window._tblEdit || !window._tblEdit.columns[idx]) return;
                 window._tblEdit.columns[idx].type = t;
                 // ボタンラベル更新
-                const btn = document.querySelector(".col-type-btn[data-colidx='"+idx+"'] .col-type-lbl");
-                if(btn) btn.textContent = t;
+                const btn = document.querySelector(
+                    ".col-type-btn[data-colidx='" + idx + "'] .col-type-lbl",
+                );
+                if (btn) btn.textContent = t;
                 // フローティングを閉じる
                 const float = $("col-type-float");
-                if(float) float.classList.remove("open");
+                if (float) float.classList.remove("open");
             }
 
             // テーブル保存
-            function tblSave(){
+            function tblSave() {
                 tblSyncFromDOM();
                 const tbl = window._tblEdit;
-                if(!tbl.name.trim()){ alert("テーブル名を入力してください"); return; }
+                if (!tbl.name.trim()) {
+                    alert("テーブル名を入力してください");
+                    return;
+                }
                 // テーブル名重複チェック（自分自身は除外）
-                const dupIdx = tables.findIndex((t,i)=>t.name===tbl.name.trim() && i!==window._tblEditIdx);
-                if(dupIdx>=0){ alert("テーブル名「"+tbl.name+"」は既に存在します"); return; }
+                const dupIdx = tables.findIndex(
+                    (t, i) =>
+                        t.name === tbl.name.trim() && i !== window._tblEditIdx,
+                );
+                if (dupIdx >= 0) {
+                    alert("テーブル名「" + tbl.name + "」は既に存在します");
+                    return;
+                }
                 // 空カラムを除去
-                tbl.columns = (tbl.columns||[]).filter(c=>c.name.trim());
-                if(tbl.columns.length===0){ alert("カラムを1つ以上定義してください"); return; }
+                tbl.columns = (tbl.columns || []).filter((c) => c.name.trim());
+                if (tbl.columns.length === 0) {
+                    alert("カラムを1つ以上定義してください");
+                    return;
+                }
                 tbl.name = tbl.name.trim();
-                if(window._tblEditIdx < 0){
+                if (window._tblEditIdx < 0) {
                     tables.push(tbl);
                 } else {
                     tables[window._tblEditIdx] = tbl;
                 }
                 pushUndo();
-                showToast("テーブル「"+tbl.name+"」を保存しました");
+                showToast("テーブル「" + tbl.name + "」を保存しました");
                 renderTableManagerModal();
             }
 
             /* ── カラム定義エディタ ── */
-            function openColDefEditor(wid){
-                const w = widgets.find(x=>x.id==wid);
-                if(!w) return;
-                const rows = (w.props.columns||"").split(/[;\n]/).filter(s=>s.trim()).map((c)=>{
-                    const parts = c.trim().split(":");
-                    return {label:parts[0]||"", width:parts[1]||"80"};
-                });
-                if(rows.length===0) rows.push({label:"", width:"80"});
+            function openColDefEditor(wid) {
+                const w = widgets.find((x) => x.id == wid);
+                if (!w) return;
+                const rows = (w.props.columns || "")
+                    .split(/[;\n]/)
+                    .filter((s) => s.trim())
+                    .map((c) => {
+                        const parts = c.trim().split(":");
+                        return {
+                            label: parts[0] || "",
+                            width: parts[1] || "80",
+                        };
+                    });
+                if (rows.length === 0) rows.push({ label: "", width: "80" });
                 window._coldefWid = wid;
                 window._coldefRows = rows;
                 renderColDefModal();
             }
-            function renderColDefModal(){
-                const rows = window._coldefRows||[];
+            function renderColDefModal() {
+                const rows = window._coldefRows || [];
                 let tbody = "";
-                rows.forEach((r,i)=>{
-                    tbody += "<tr>"
-                        +"<td>"+(i+1)+"</td>"
-                        +"<td><input type='text' value='"+esc(r.label)+"' oninput=\"coldefUpdate("+i+",'label',this.value)\" placeholder='カラム名'></td>"
-                        +"<td><input type='number' value='"+esc(r.width)+"' oninput=\"coldefUpdate("+i+",'width',this.value)\" style='width:70px' min='20' max='800'></td>"
-                        +"<td><button class='del-btn' onclick='coldefDelRow("+i+")' title='削除'>✕</button></td>"
-                        +"</tr>";
+                rows.forEach((r, i) => {
+                    tbody +=
+                        "<tr>" +
+                        "<td>" +
+                        (i + 1) +
+                        "</td>" +
+                        "<td><input type='text' value='" +
+                        esc(r.label) +
+                        "' oninput=\"coldefUpdate(" +
+                        i +
+                        ",'label',this.value)\" placeholder='カラム名'></td>" +
+                        "<td><input type='number' value='" +
+                        esc(r.width) +
+                        "' oninput=\"coldefUpdate(" +
+                        i +
+                        ",'width',this.value)\" style='width:70px' min='20' max='800'></td>" +
+                        "<td><button class='del-btn' onclick='coldefDelRow(" +
+                        i +
+                        ")' title='削除'>✕</button></td>" +
+                        "</tr>";
                 });
-                showModal("<div id='coldef-modal'>"
-                    +"<div class='mhdr'><h4>📊 カラム定義エディタ</h4><button class='mclose' onclick='closeModal()'>✕</button></div>"
-                    +"<div class='mbody' style='gap:6px'>"
-                    +"<div class='infobox'>カラム名と幅(px)を定義します。Noは自動採番。最大100列。</div>"
-                    +"<div class='coldef-scroll'>"
-                    +"<table class='coldef-table'>"
-                    +"<thead><tr><th style='width:36px'>No</th><th>カラム名</th><th style='width:80px'>幅(px)</th><th style='width:30px'></th></tr></thead>"
-                    +"<tbody>"+tbody+"</tbody>"
-                    +"</table>"
-                    +"</div>"
-                    +(rows.length<100?"<button class='add-row-btn' onclick='coldefAddRow()'>＋ 行を追加</button>":"")
-                    +"</div>"
-                    +"<div class='mfoot'>"
-                    +"<button onclick='closeModal()'>キャンセル</button>"
-                    +"<button class='pri' onclick='coldefSave()'>保存</button>"
-                    +"</div>"
-                    +"</div>");
+                showModal(
+                    "<div id='coldef-modal'>" +
+                        "<div class='mhdr'><h4>📊 カラム定義エディタ</h4><button class='mclose' onclick='closeModal()'>✕</button></div>" +
+                        "<div class='mbody' style='gap:6px'>" +
+                        "<div class='infobox'>カラム名と幅(px)を定義します。Noは自動採番。最大100列。</div>" +
+                        "<div class='coldef-scroll'>" +
+                        "<table class='coldef-table'>" +
+                        "<thead><tr><th style='width:36px'>No</th><th>カラム名</th><th style='width:80px'>幅(px)</th><th style='width:30px'></th></tr></thead>" +
+                        "<tbody>" +
+                        tbody +
+                        "</tbody>" +
+                        "</table>" +
+                        "</div>" +
+                        (rows.length < 100
+                            ? "<button class='add-row-btn' onclick='coldefAddRow()'>＋ 行を追加</button>"
+                            : "") +
+                        "</div>" +
+                        "<div class='mfoot'>" +
+                        "<button onclick='closeModal()'>キャンセル</button>" +
+                        "<button class='pri' onclick='coldefSave()'>保存</button>" +
+                        "</div>" +
+                        "</div>",
+                );
             }
-            function coldefUpdate(idx, key, val){
-                if(window._coldefRows) window._coldefRows[idx][key] = val;
+            function coldefUpdate(idx, key, val) {
+                if (window._coldefRows) window._coldefRows[idx][key] = val;
             }
-            function coldefAddRow(){
-                if(!window._coldefRows||window._coldefRows.length>=100) return;
-                window._coldefRows.push({label:"", width:"80"});
+            function coldefAddRow() {
+                if (!window._coldefRows || window._coldefRows.length >= 100)
+                    return;
+                window._coldefRows.push({ label: "", width: "80" });
                 renderColDefModal();
             }
-            function coldefDelRow(idx){
-                if(!window._coldefRows) return;
-                window._coldefRows.splice(idx,1);
-                if(window._coldefRows.length===0) window._coldefRows.push({label:"", width:"80"});
+            function coldefDelRow(idx) {
+                if (!window._coldefRows) return;
+                window._coldefRows.splice(idx, 1);
+                if (window._coldefRows.length === 0)
+                    window._coldefRows.push({ label: "", width: "80" });
                 renderColDefModal();
             }
-            function coldefSave(){
+            function coldefSave() {
                 const wid = window._coldefWid;
-                const w = widgets.find(x=>x.id==wid);
-                if(!w) return;
-                const valid = (window._coldefRows||[]).filter(r=>r.label.trim());
-                if(valid.length===0){ alert("カラム名を1つ以上入力してください"); return; }
-                w.props.columns = valid.map(r=>r.label.trim()+":"+(parseInt(r.width)||80)).join("\n");
+                const w = widgets.find((x) => x.id == wid);
+                if (!w) return;
+                const valid = (window._coldefRows || []).filter((r) =>
+                    r.label.trim(),
+                );
+                if (valid.length === 0) {
+                    alert("カラム名を1つ以上入力してください");
+                    return;
+                }
+                w.props.columns = valid
+                    .map(
+                        (r) => r.label.trim() + ":" + (parseInt(r.width) || 80),
+                    )
+                    .join("\n");
                 closeModal();
                 pushUndo();
                 renderWidget(w, false);
-                applyWPos($("w"+wid), w);
+                applyWPos($("w" + wid), w);
                 renderProps();
             }
 
+            function applyViewSettings() {
+                // グリッド
+                fb().classList.toggle("show-grid", showGrid);
+                const stg = $("st-grid");
+                if (stg)
+                    stg.innerHTML =
+                        "グリッド: <b style='color:" +
+                        (showGrid ? "var(--accent)" : "#ff6b6b") +
+                        "'>" +
+                        (showGrid ? "ON" : "OFF") +
+                        "</b>";
+                // スナップ
+                const sts = $("st-snap");
+                if (sts)
+                    sts.innerHTML =
+                        "スナップ: <b style='color:" +
+                        (snapOn ? "var(--accent)" : "#ff6b6b") +
+                        "'>" +
+                        (snapOn ? "ON" : "OFF") +
+                        "</b>";
+                // メニュー項目
+                const mgrid = document.querySelector(
+                    '.dd-item[onmousedown="toggleGrid()"]',
+                );
+                if (mgrid)
+                    mgrid.textContent =
+                        "グリッド表示切替（現在: " +
+                        (showGrid ? "ON" : "OFF") +
+                        "）";
+                const msnap = document.querySelector(
+                    '.dd-item[onmousedown="toggleSnap()"]',
+                );
+                if (msnap)
+                    msnap.textContent =
+                        "スナップ切替（現在: " + (snapOn ? "ON" : "OFF") + "）";
+            }
+
             function toggleGrid() {
-                fb().classList.toggle("show-grid");
+                showGrid = !showGrid;
+                applyViewSettings();
+                showToast("グリッド表示: " + (showGrid ? "ON" : "OFF"));
             }
             function toggleSnap() {
                 snapOn = !snapOn;
+                applyViewSettings();
+                showToast("スナップ: " + (snapOn ? "ON" : "OFF"));
             }
             function updateCount() {
                 $("st-cnt").innerHTML =
@@ -3268,10 +3844,16 @@ tables = d.tables || [];
                 if (!e.target.closest("#ctx") && !e.target.closest(".widget"))
                     hideCtx();
                 if (!e.target.closest("#fdd-wrap")) closeFdd();
-                if (!e.target.closest(".pv-sel")) document.querySelectorAll(".pv-sel-list.open").forEach(el=>el.classList.remove("open"));
-                if (!e.target.closest(".col-type-btn") && !e.target.closest("#col-type-float")){
-                    const f=$("col-type-float");
-                    if(f) f.classList.remove("open");
+                if (!e.target.closest(".pv-sel"))
+                    document
+                        .querySelectorAll(".pv-sel-list.open")
+                        .forEach((el) => el.classList.remove("open"));
+                if (
+                    !e.target.closest(".col-type-btn") &&
+                    !e.target.closest("#col-type-float")
+                ) {
+                    const f = $("col-type-float");
+                    if (f) f.classList.remove("open");
                 }
             });
 
@@ -3479,6 +4061,7 @@ tables = d.tables || [];
             buildTools();
             buildFormSelect();
             applyForm();
+            applyViewSettings();
             initFormBodyEvents();
             initFormResize();
             initRuler();
@@ -3490,7 +4073,6 @@ tables = d.tables || [];
             );
             pushUndo();
             renderProps();
-
         </script>
 
         <!-- Electrobun RPC ブリッジ（Electrobun が bridge.ts をバンドルして読み込む） -->
