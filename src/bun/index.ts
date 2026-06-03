@@ -23,7 +23,7 @@ const execCmd = async (cmd: string[]): Promise<string> => {
     }
 };
 
-// browserWindowのrpcを取得.
+// rpcを取得.
 const getBrowserWindowRpc = (): any => {
     if (browserWindow.webview.rpc == undefined) {
         throw new Error("browserWindow.webview.rpc is undefined");
@@ -219,12 +219,45 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
 });
 
 // ── BrowserWindow 生成 ────────────────────────────────
+// Windows では maximize() が効かない場合があるため
+// 初期フレームをプラットフォーム別に設定する
+const isWin = process.platform === "win32";
+
+// Windows の場合は PowerShell で画面サイズを取得して初期値に使う
+let initW = 1280,
+    initH = 800;
+if (isWin) {
+    try {
+        const ps = `Add-Type -AssemblyName System.Windows.Forms;[System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width.ToString()+','+[System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height.ToString()`;
+        const { stdout } = await execFileAsync("powershell", ["-Command", ps]);
+        const [w, h] = stdout.trim().split(",").map(Number);
+        if (w > 0 && h > 0) {
+            initW = w;
+            initH = h;
+        }
+    } catch {
+        /* fallback to default */
+    }
+}
+
 const browserWindow = new BrowserWindow({
     title: _TITLE,
     url: "views://mainview/index.html",
-    frame: { x: 0, y: 0, width: 1280, height: 800 },
+    frame: { x: 0, y: 0, width: initW, height: initH },
     rpc: vjaRPC,
 });
 
-// 起動時最大表示.
+// 最大化（Windows での遅延実行も含む）
 browserWindow.maximize();
+if (isWin) {
+    setTimeout(() => {
+        try {
+            browserWindow.maximize();
+        } catch {}
+    }, 300);
+    setTimeout(() => {
+        try {
+            browserWindow.maximize();
+        } catch {}
+    }, 1000);
+}

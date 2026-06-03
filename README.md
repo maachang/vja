@@ -31,8 +31,12 @@ https://bun.com/
 ダウンロード後以下を実行する.
 
 ```bash
-# 1. glt clone + ディレクトリ移動.
+# 1. glt clone(https)
+git clone https://github.com/maachang/vja.git
+# または glt clone(ssh)
 git clone git@github.com:maachang/vja.git
+
+# ディレクトリ移動.
 cd vja
 
 # 2. 依存パッケージをインストール
@@ -41,7 +45,12 @@ bun install
 # 3. 開発モードで起動
 bun run dev
 
-# 4. ビルド（配布用）
+```
+
+コンパイルして、実行ファイルを作成.
+
+```bash
+# ビルド（配布用）
 bun run build
 ```
 
