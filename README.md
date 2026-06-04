@@ -56,6 +56,8 @@ bun run build
 
 これにより、VB風の画面(vja)が起動することができる.
 
+※ ただ windows for snapdragon x (ARM64 の Windows）の場合、electrobunが対応していないので、x86 用のbun.js をインストールしてエミュレーション実行で対応する必要があるので、注意が必要。
+
 ## ファイル構成
 
 ```

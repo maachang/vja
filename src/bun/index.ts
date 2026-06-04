@@ -6,13 +6,22 @@ import { homedir } from "os";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { dirname, join } from "path";
-import { existsSync, readFileSync, mkdirSync } from "fs";
-import { type VjaRPCType } from "../shared/types";
+import {
+    existsSync,
+    readFileSync,
+    mkdirSync,
+    rmSync,
+    copyFileSync,
+    readdirSync,
+} from "fs";
+import { Database } from "bun:sqlite";
+import { type VjaRPCType, type DbRow, type DbResult } from "../shared/types";
 
 const _TITLE = "VJA Form Designer";
+const _VERSION = "0.1.0";
 const execFileAsync = promisify(execFile);
 
-// コマンド実行.
+// ── コマンド実行ヘルパー ──────────────────────────────
 const execCmd = async (cmd: string[]): Promise<string> => {
     try {
         const [bin, ...args] = cmd;
@@ -23,16 +32,14 @@ const execCmd = async (cmd: string[]): Promise<string> => {
     }
 };
 
-// rpcを取得.
-const getBrowserWindowRpc = (): any => {
-    if (browserWindow.webview.rpc == undefined) {
-        throw new Error("browserWindow.webview.rpc is undefined");
-    }
-    return browserWindow.webview.rpc;
-};
+// ── アプリデータディレクトリ ──────────────────────────
+const _appName = "VJAFormDesigner";
+const _dataDir = join(homedir(), ".vja-apps", _appName);
+const _dbPath = join(_dataDir, "app.db");
+const _logDir = join(_dataDir, "logs");
+const _logPath = join(_logDir, `app.log`);
 
-// ── 前回のフォルダを永続化 ────────────────────────────
-// ~/.vja-designer/last-dir.txt に保存する
+// ── 前回フォルダ永続化 ────────────────────────────────
 const _configDir = join(homedir(), ".vja-designer");
 const _lastDirFile = join(_configDir, "last-dir.txt");
 
@@ -40,38 +47,54 @@ const loadLastDir = (): string => {
     try {
         if (existsSync(_lastDirFile)) {
             const saved = readFileSync(_lastDirFile, "utf-8").trim();
-            if (saved && existsSync(saved)) {
-                console.log("[lastDir] loaded:", saved);
-                return saved;
-            }
+            if (saved && existsSync(saved)) return saved;
         }
-    } catch (e: any) {
-        console.warn("[lastDir] load failed:", e.message);
-    }
+    } catch {}
     return homedir();
 };
-
 const saveLastDir = async (filePath: string): Promise<void> => {
     try {
         const dir = dirname(filePath);
         if (!existsSync(_configDir)) mkdirSync(_configDir, { recursive: true });
         await Bun.write(_lastDirFile, dir);
-        console.log("[lastDir] saved:", dir);
-    } catch (e: any) {
-        console.warn("[lastDir] save failed:", e.message);
+    } catch {}
+};
+let _lastDir: string = loadLastDir();
+
+// ── SQLite DB インスタンス（アプリ用） ────────────────
+// プロジェクトロード時に初期化される
+let _db: Database | null = null;
+
+const getDb = (): Database => {
+    if (!_db) {
+        if (!existsSync(_dataDir)) mkdirSync(_dataDir, { recursive: true });
+        _db = new Database(_dbPath);
+        _db.run("PRAGMA journal_mode = WAL");
+        _db.run("PRAGMA foreign_keys = ON");
     }
+    return _db;
 };
 
-let _lastDir: string = loadLastDir();
+// ── ログ出力 ──────────────────────────────────────────
+const writeLog = async (level: string, message: string): Promise<void> => {
+    try {
+        if (!existsSync(_logDir)) mkdirSync(_logDir, { recursive: true });
+        const ts = new Date().toISOString();
+        const line = `[${ts}] [${level.toUpperCase()}] ${message}\n`;
+        const prev = existsSync(_logPath)
+            ? readFileSync(_logPath, "utf-8")
+            : "";
+        await Bun.write(_logPath, prev + line);
+        console.log(line.trim());
+    } catch {}
+};
 
 // ── 保存ダイアログ ────────────────────────────────────
 const saveFileDialog = async (
     defaultName: string,
     ext: string,
 ): Promise<string | null> => {
-    // フルパスで渡すことでダイアログが前回のフォルダから開く
     const defaultPath = join(_lastDir, defaultName);
-
     if (process.platform === "darwin") {
         const script = `choose file name default name "${defaultName}" with prompt "保存先を選択"`;
         const out = await execCmd(["osascript", "-e", script]);
@@ -91,7 +114,7 @@ const saveFileDialog = async (
                 "--file-selection",
                 "--save",
                 "--confirm-overwrite",
-                `--filename=${defaultPath}`, // フルパスで指定
+                `--filename=${defaultPath}`,
                 "--title=保存先を選択",
                 `--file-filter=*.${ext}`,
             ]);
@@ -104,7 +127,7 @@ const saveFileDialog = async (
             const out = await execCmd([
                 "kdialog",
                 "--getsavefilename",
-                defaultPath, // フルパスで指定
+                defaultPath,
                 `*.${ext}`,
             ]);
             return out
@@ -121,13 +144,14 @@ const saveFileDialog = async (
     return null;
 };
 
-// ── RPC 定義（message ベース = タイムアウトなし）────────
+// ── RPC 定義 ──────────────────────────────────────────
 const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
     maxRequestTime: 5000,
     handlers: {
         requests: {},
         messages: {
-            // ファイルを開く: ダイアログ表示して結果を webview に送り返す
+            // ══ プロジェクトファイル操作 ══════════════
+
             openFileRequest: async ({ filter, lastPath }) => {
                 const ext = filter === "html" ? "html" : "vjaproj";
                 const startingFolder = lastPath ? dirname(lastPath) : _lastDir;
@@ -139,15 +163,14 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 );
                 const paths = await Utils.openFileDialog({
                     startingFolder,
-                    allowedFileTypes:
-                        (ext as string) === "*" ? "*" : `*.${ext}`,
+                    allowedFileTypes: `*.${ext}`,
                     canChooseFiles: true,
                     canChooseDirectory: false,
                     allowsMultipleSelection: false,
                 });
                 const path = paths?.length ? paths[0] : null;
                 if (!path) {
-                    getBrowserWindowRpc().send.openFileResult({
+                    browserWindow.webview.rpc.send.openFileResult({
                         content: null,
                         path: null,
                     });
@@ -156,22 +179,21 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 try {
                     const content = await Bun.file(path).text();
                     _lastDir = dirname(path);
-                    await saveLastDir(path); // 永続化
+                    await saveLastDir(path);
                     console.log("[open]", path);
-                    getBrowserWindowRpc().send.openFileResult({
+                    browserWindow.webview.rpc.send.openFileResult({
                         content,
                         path,
                     });
                 } catch (e: any) {
                     console.error("[open error]", e.message);
-                    getBrowserWindowRpc().send.openFileResult({
+                    browserWindow.webview.rpc.send.openFileResult({
                         content: null,
                         path: null,
                     });
                 }
             },
 
-            // 保存: ダイアログ表示→書き込みして結果を webview に送り返す
             saveFileRequest: async ({ content, defaultName, lastPath }) => {
                 let savePath = lastPath ?? null;
                 if (!savePath) {
@@ -182,7 +204,7 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 }
                 if (!savePath) {
                     console.log("[save] cancelled");
-                    getBrowserWindowRpc().send.saveFileResult({
+                    browserWindow.webview.rpc.send.saveFileResult({
                         ok: false,
                         path: null,
                         cancelled: true,
@@ -192,16 +214,16 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 try {
                     await Bun.write(savePath, content);
                     _lastDir = dirname(savePath);
-                    await saveLastDir(savePath); // 永続化
+                    await saveLastDir(savePath);
                     console.log("[saved]", savePath);
-                    getBrowserWindowRpc().send.saveFileResult({
+                    browserWindow.webview.rpc.send.saveFileResult({
                         ok: true,
                         path: savePath,
                         cancelled: false,
                     });
                 } catch (e: any) {
                     console.error("[save error]", e.message);
-                    getBrowserWindowRpc().send.saveFileResult({
+                    browserWindow.webview.rpc.send.saveFileResult({
                         ok: false,
                         path: null,
                         cancelled: false,
@@ -209,21 +231,320 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 }
             },
 
-            // アプリを終了する
             closeAppRequest: () => {
                 console.log("[close]");
                 browserWindow.close();
+            },
+
+            // ══ DB: SELECT ════════════════════════════
+
+            dbQueryRequest: async ({ sql, params }) => {
+                try {
+                    const db = getDb();
+                    const stmt = db.prepare(sql);
+                    const rows = (
+                        params ? stmt.all(...params) : stmt.all()
+                    ) as DbRow[];
+                    browserWindow.webview.rpc.send.dbQueryResult({
+                        ok: true,
+                        rows,
+                    });
+                } catch (e: any) {
+                    await writeLog(
+                        "error",
+                        `dbQuery: ${e.message} | sql: ${sql}`,
+                    );
+                    browserWindow.webview.rpc.send.dbQueryResult({
+                        ok: false,
+                        rows: [],
+                        error: e.message,
+                    });
+                }
+            },
+
+            // ══ DB: INSERT/UPDATE/DELETE ══════════════
+
+            dbExecuteRequest: async ({ sql, params }) => {
+                try {
+                    const db = getDb();
+                    const stmt = db.prepare(sql);
+                    const res = params ? stmt.run(...params) : stmt.run();
+                    const result: DbResult = {
+                        changes: res.changes,
+                        lastInsertRowid: Number(res.lastInsertRowid),
+                    };
+                    browserWindow.webview.rpc.send.dbExecuteResult({
+                        ok: true,
+                        result,
+                    });
+                } catch (e: any) {
+                    await writeLog(
+                        "error",
+                        `dbExecute: ${e.message} | sql: ${sql}`,
+                    );
+                    browserWindow.webview.rpc.send.dbExecuteResult({
+                        ok: false,
+                        result: { changes: 0, lastInsertRowid: 0 },
+                        error: e.message,
+                    });
+                }
+            },
+
+            // ══ DB: トランザクション ══════════════════
+
+            dbTransactionRequest: async ({ statements }) => {
+                try {
+                    const db = getDb();
+                    const tx = db.transaction(() => {
+                        for (const s of statements) {
+                            const stmt = db.prepare(s.sql);
+                            s.params ? stmt.run(...s.params) : stmt.run();
+                        }
+                    });
+                    tx();
+                    browserWindow.webview.rpc.send.dbTransactionResult({
+                        ok: true,
+                    });
+                } catch (e: any) {
+                    await writeLog("error", `dbTransaction: ${e.message}`);
+                    browserWindow.webview.rpc.send.dbTransactionResult({
+                        ok: false,
+                        error: e.message,
+                    });
+                }
+            },
+
+            // ══ DB: 初期化 ════════════════════════════
+
+            dbInitRequest: async ({ ddlStatements }) => {
+                try {
+                    const db = getDb();
+                    const tx = db.transaction(() => {
+                        for (const ddl of ddlStatements) db.run(ddl);
+                    });
+                    tx();
+                    browserWindow.webview.rpc.send.dbInitResult({ ok: true });
+                } catch (e: any) {
+                    await writeLog("error", `dbInit: ${e.message}`);
+                    browserWindow.webview.rpc.send.dbInitResult({
+                        ok: false,
+                        error: e.message,
+                    });
+                }
+            },
+
+            // ══ ファイル操作 ══════════════════════════
+
+            fileReadRequest: async ({ path }) => {
+                try {
+                    const content = await Bun.file(path).text();
+                    browserWindow.webview.rpc.send.fileReadResult({
+                        ok: true,
+                        content,
+                    });
+                } catch (e: any) {
+                    browserWindow.webview.rpc.send.fileReadResult({
+                        ok: false,
+                        content: null,
+                        error: e.message,
+                    });
+                }
+            },
+
+            fileWriteRequest: async ({ path, content }) => {
+                try {
+                    await Bun.write(path, content);
+                    browserWindow.webview.rpc.send.fileWriteResult({
+                        ok: true,
+                    });
+                } catch (e: any) {
+                    browserWindow.webview.rpc.send.fileWriteResult({
+                        ok: false,
+                        error: e.message,
+                    });
+                }
+            },
+
+            fileReadBytesRequest: async ({ path }) => {
+                try {
+                    const buf = await Bun.file(path).arrayBuffer();
+                    const data = Array.from(new Uint8Array(buf));
+                    browserWindow.webview.rpc.send.fileReadBytesResult({
+                        ok: true,
+                        data,
+                    });
+                } catch (e: any) {
+                    browserWindow.webview.rpc.send.fileReadBytesResult({
+                        ok: false,
+                        data: null,
+                        error: e.message,
+                    });
+                }
+            },
+
+            fileWriteBytesRequest: async ({ path, data }) => {
+                try {
+                    await Bun.write(path, new Uint8Array(data));
+                    browserWindow.webview.rpc.send.fileWriteBytesResult({
+                        ok: true,
+                    });
+                } catch (e: any) {
+                    browserWindow.webview.rpc.send.fileWriteBytesResult({
+                        ok: false,
+                        error: e.message,
+                    });
+                }
+            },
+
+            fileExistsRequest: async ({ path }) => {
+                const value = existsSync(path);
+                browserWindow.webview.rpc.send.fileExistsResult({
+                    ok: true,
+                    value,
+                });
+            },
+
+            fileDeleteRequest: async ({ path }) => {
+                try {
+                    rmSync(path);
+                    browserWindow.webview.rpc.send.fileDeleteResult({
+                        ok: true,
+                    });
+                } catch (e: any) {
+                    browserWindow.webview.rpc.send.fileDeleteResult({
+                        ok: false,
+                        error: e.message,
+                    });
+                }
+            },
+
+            fileCopyRequest: async ({ src, dest }) => {
+                try {
+                    copyFileSync(src, dest);
+                    browserWindow.webview.rpc.send.fileCopyResult({ ok: true });
+                } catch (e: any) {
+                    browserWindow.webview.rpc.send.fileCopyResult({
+                        ok: false,
+                        error: e.message,
+                    });
+                }
+            },
+
+            // ══ ディレクトリ操作 ══════════════════════
+
+            dirCreateRequest: async ({ path }) => {
+                try {
+                    mkdirSync(path, { recursive: true });
+                    browserWindow.webview.rpc.send.dirCreateResult({
+                        ok: true,
+                    });
+                } catch (e: any) {
+                    browserWindow.webview.rpc.send.dirCreateResult({
+                        ok: false,
+                        error: e.message,
+                    });
+                }
+            },
+
+            dirDeleteRequest: async ({ path }) => {
+                try {
+                    rmSync(path, { recursive: true, force: true });
+                    browserWindow.webview.rpc.send.dirDeleteResult({
+                        ok: true,
+                    });
+                } catch (e: any) {
+                    browserWindow.webview.rpc.send.dirDeleteResult({
+                        ok: false,
+                        error: e.message,
+                    });
+                }
+            },
+
+            dirListRequest: async ({ path }) => {
+                try {
+                    const entries = readdirSync(path).map(String);
+                    browserWindow.webview.rpc.send.dirListResult({
+                        ok: true,
+                        entries,
+                    });
+                } catch (e: any) {
+                    browserWindow.webview.rpc.send.dirListResult({
+                        ok: false,
+                        entries: [],
+                        error: e.message,
+                    });
+                }
+            },
+
+            dirExistsRequest: async ({ path }) => {
+                const value = existsSync(path);
+                browserWindow.webview.rpc.send.dirExistsResult({
+                    ok: true,
+                    value,
+                });
+            },
+
+            // ══ ログ ══════════════════════════════════
+
+            logRequest: async ({ level, message }) => {
+                await writeLog(level, message);
+                browserWindow.webview.rpc.send.logResult({ ok: true });
+            },
+
+            // ══ アプリ情報 ════════════════════════════
+
+            appInfoRequest: () => {
+                browserWindow.webview.rpc.send.appInfoResult({
+                    ok: true,
+                    info: {
+                        dataDir: _dataDir,
+                        dbPath: _dbPath,
+                        appName: _appName,
+                        version: _VERSION,
+                    },
+                });
+            },
+
+            // ══ ダイアログ ════════════════════════════
+
+            appDialogRequest: async ({ type, message }) => {
+                try {
+                    if (type === "confirm") {
+                        const res = await Utils.showMessageBox({
+                            type: "question",
+                            title: _TITLE,
+                            message,
+                            buttons: ["キャンセル", "OK"],
+                            defaultId: 1,
+                            cancelId: 0,
+                        });
+                        browserWindow.webview.rpc.send.appDialogResult({
+                            ok: true,
+                            confirmed: res.response === 1,
+                        });
+                    } else {
+                        await Utils.showMessageBox({
+                            type: "info",
+                            title: _TITLE,
+                            message,
+                            buttons: ["OK"],
+                        });
+                        browserWindow.webview.rpc.send.appDialogResult({
+                            ok: true,
+                        });
+                    }
+                } catch (e: any) {
+                    browserWindow.webview.rpc.send.appDialogResult({
+                        ok: false,
+                    });
+                }
             },
         },
     },
 });
 
 // ── BrowserWindow 生成 ────────────────────────────────
-// Windows では maximize() が効かない場合があるため
-// 初期フレームをプラットフォーム別に設定する
 const isWin = process.platform === "win32";
-
-// Windows の場合は PowerShell で画面サイズを取得して初期値に使う
 let initW = 1280,
     initH = 800;
 if (isWin) {
@@ -235,9 +556,7 @@ if (isWin) {
             initW = w;
             initH = h;
         }
-    } catch {
-        /* fallback to default */
-    }
+    } catch {}
 }
 
 const browserWindow = new BrowserWindow({
@@ -247,7 +566,6 @@ const browserWindow = new BrowserWindow({
     rpc: vjaRPC,
 });
 
-// 最大化（Windows での遅延実行も含む）
 browserWindow.maximize();
 if (isWin) {
     setTimeout(() => {

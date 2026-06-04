@@ -48,17 +48,6 @@
                         <div class="dd-item" onmousedown="actDuplicate()">
                             複製<span class="sc">Ctrl+D</span>
                         </div>
-                        <div class="dd-sep"></div>
-                        <div class="dd-item" onmousedown="openConstEditor()">
-                            定数の編集…
-                        </div>
-                        <div class="dd-item" onmousedown="openAiConfig()">
-                            AI接続設定…
-                        </div>
-                        <div class="dd-sep"></div>
-                        <div class="dd-item" onmousedown="openTableManager()">
-                            テーブル管理…
-                        </div>
                     </div>
                 </div>
                 <div class="menu-item" onmousedown="toggleMenu('mv', event)">
@@ -69,6 +58,22 @@
                         </div>
                         <div class="dd-item" onmousedown="toggleSnap()">
                             スナップ切替
+                        </div>
+                        <div class="dd-sep"></div>
+                        <div class="dd-item" onmousedown="openConstEditor()">
+                            定数の編集…
+                        </div>
+                        <div
+                            class="dd-item"
+                            onmousedown="openFormConstEditor()"
+                        >
+                            フォーム定数の編集…
+                        </div>
+                        <div class="dd-item" onmousedown="openAiConfig()">
+                            AI接続設定…
+                        </div>
+                        <div class="dd-item" onmousedown="openTableManager()">
+                            テーブル管理…
                         </div>
                     </div>
                 </div>
@@ -134,6 +139,52 @@
                         d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"
                     /></svg
                 >エクスポート
+            </button>
+            <div class="tb-sep"></div>
+            <button
+                class="tb-btn"
+                onclick="openConstEditor()"
+                title="グローバル定数の編集"
+            >
+                <svg viewBox="0 0 24 24">
+                    <line x1="4" y1="9" x2="20" y2="9" />
+                    <line x1="4" y1="15" x2="20" y2="15" />
+                    <line x1="10" y1="3" x2="8" y2="21" />
+                    <line x1="16" y1="3" x2="14" y2="21" /></svg
+                >定数(G)
+            </button>
+            <button
+                class="tb-btn"
+                onclick="openFormConstEditor()"
+                title="フォーム定数の編集（現在のフォームに紐づく定数）"
+            >
+                <svg viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="7" height="7" />
+                    <line x1="4" y1="12" x2="20" y2="12" />
+                    <line x1="4" y1="16" x2="20" y2="16" />
+                    <line x1="10" y1="10" x2="8" y2="22" />
+                    <line x1="16" y1="10" x2="14" y2="22" /></svg
+                >定数(F)
+            </button>
+            <button class="tb-btn" onclick="openAiConfig()" title="AI接続設定">
+                <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="3" />
+                    <path
+                        d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"
+                    /></svg
+                >AI設定
+            </button>
+            <button
+                class="tb-btn"
+                onclick="openTableManager()"
+                title="テーブル管理"
+            >
+                <svg viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <line x1="3" y1="9" x2="21" y2="9" />
+                    <line x1="3" y1="15" x2="21" y2="15" />
+                    <line x1="9" y1="3" x2="9" y2="21" /></svg
+                >テーブル
             </button>
             <div class="tb-sep"></div>
             <div id="form-selector-area">
@@ -626,6 +677,7 @@
                     },
                     widgets: [],
                     idCnt: 1,
+                    constants: [], // フォーム単位の定数
                 };
             }
 
@@ -1659,9 +1711,11 @@
                         "  入力値を検証してForm2に遷移します。\n";
 
                 // 定数リスト
+                const _formConsts = forms[curFormIdx]?.constants || [];
+                const _allConsts = [...constants, ..._formConsts];
                 const constHtml =
-                    constants.length > 0
-                        ? constants
+                    _allConsts.length > 0
+                        ? _allConsts
                               .map(
                                   (c) =>
                                       '<span class="yaml-ref-item" onclick="yamlInsert(&quot;' +
@@ -1673,7 +1727,7 @@
                                       "</span>",
                               )
                               .join("")
-                        : '<span style="color:var(--text3)">定数が未定義です（編集メニュー→定数の編集）</span>';
+                        : '<span style="color:var(--text3)">定数が未定義です（表示→定数の編集）</span>';
 
                 // フォームリスト
                 const formHtml = forms
@@ -1784,56 +1838,210 @@
                 const btn = $("ai-gen-btn");
                 const status = $("ai-status");
                 if (btn) btn.disabled = true;
-                if (status) status.textContent = "⏳ 生成中…";
+                if (status) status.textContent = "⏳ コンテキスト収集中…";
 
-                // コンテキスト情報
-                const constCtx =
-                    constants.map((c) => c.name + "=" + c.value).join(", ") ||
-                    "なし";
-                const formCtx = forms.map((f) => f.cfg.title).join(", ");
-                const widCtx = widgets
-                    .map((ww) => ww.name + "(" + ww.tag + ")")
-                    .join(", ");
+                // ── ① 入力系ウィジェット一覧（フォームの入力パラメータ） ──
+                const INPUT_TAGS = [
+                    "inputtype",
+                    "text",
+                    "checkbox",
+                    "radiobutton",
+                    "listbox",
+                    "selectbox",
+                ];
+                const inputWidgets = widgets.filter((ww) =>
+                    INPUT_TAGS.includes(ww.tag.toLowerCase()),
+                );
+                const inputParamsCtx =
+                    inputWidgets.length > 0
+                        ? inputWidgets
+                              .map((ww) => {
+                                  const desc = ww.props?.description
+                                      ? " // " + ww.props.description
+                                      : "";
+                                  return (
+                                      "  - " +
+                                      ww.name +
+                                      " (" +
+                                      ww.tag +
+                                      ")" +
+                                      desc
+                                  );
+                              })
+                              .join("\n")
+                        : "  （なし）";
 
-                const sysPrompt =
-                    "あなたはVJAフォームデザイナーのイベントYAML生成AIです。\n" +
-                    "以下の形式でYAMLを生成してください。\n\n" +
-                    "利用可能な定数: " +
-                    constCtx +
-                    "\n" +
-                    "画面一覧: " +
-                    formCtx +
-                    "\n" +
-                    "ウィジェット一覧: " +
-                    widCtx +
-                    "\n\n" +
-                    "YAMLのみを返してください。説明文は不要です。";
+                // ── ② 全ウィジェット一覧 ──
+                const allWidgetsCtx =
+                    widgets
+                        .map((ww) => "  - " + ww.name + " (" + ww.tag + ")")
+                        .join("\n") || "  （なし）";
 
-                const userPrompt =
-                    "ウィジェット「" +
-                    w.name +
-                    "」（" +
-                    w.tag +
-                    "）の「" +
-                    evName +
-                    "」イベントの処理をYAMLで記述してください。\n" +
-                    (yamlCur.trim() ? "現在のYAML:\n" + yamlCur + "\n\n" : "") +
-                    (addPrompt ? "追加指示: " + addPrompt : "");
+                // ── ③ 画面一覧 ──
+                const formsCtx = forms
+                    .map((f, i) => {
+                        const star = f.id === startFormId ? "★" : "";
+                        return (
+                            "  - " +
+                            f.cfg.title +
+                            (star ? " [初期画面]" : "") +
+                            (f.cfg.description
+                                ? " // " + f.cfg.description
+                                : "")
+                        );
+                    })
+                    .join("\n");
+
+                // ── ④ 定数（グローバル＋フォーム単位） ──
+                const curForm = forms[curFormIdx];
+                const globalConstCtx =
+                    constants.length > 0
+                        ? constants
+                              .map((c) => "  - " + c.name + " = " + c.value)
+                              .join("\n")
+                        : "  （なし）";
+                const formConstCtx =
+                    (curForm?.constants || []).length > 0
+                        ? (curForm.constants || [])
+                              .map((c) => "  - " + c.name + " = " + c.value)
+                              .join("\n")
+                        : "  （なし）";
+
+                // ── ⑤ テーブル定義（利用テーブルのカラム情報） ──
+                // YAMLに「利用テーブル:」が書かれていればそれを参照、なければ全テーブル
+                const mentionedTables = [];
+                if (yamlCur) {
+                    const m = yamlCur.match(
+                        /利用テーブル\s*:\s*\n([\s\S]*?)(?:\n\S|\n\n|$)/,
+                    );
+                    if (m) {
+                        const lines = m[1].split("\n");
+                        lines.forEach((l) => {
+                            const name = l
+                                .replace(/^\s*-\s*/, "")
+                                .replace(/#.*$/, "")
+                                .trim();
+                            if (name) mentionedTables.push(name);
+                        });
+                    }
+                }
+                const targetTables =
+                    mentionedTables.length > 0
+                        ? tables.filter((t) => mentionedTables.includes(t.name))
+                        : tables;
+                const tablesCtx =
+                    targetTables.length > 0
+                        ? targetTables
+                              .map((t) => {
+                                  const cols = (t.columns || [])
+                                      .map((c) => {
+                                          let def =
+                                              "    - " +
+                                              c.name +
+                                              " (" +
+                                              c.type +
+                                              ")";
+                                          if (c.pk) def += " PK";
+                                          if (c.notNull) def += " NOT NULL";
+                                          if (c.index) def += " INDEX";
+                                          return def;
+                                      })
+                                      .join("\n");
+                                  const desc = t.description
+                                      ? " // " + t.description
+                                      : "";
+                                  return "  " + t.name + desc + ":\n" + cols;
+                              })
+                              .join("\n")
+                        : "  （テーブル未定義）";
+
+                // ── ⑥ システムプロンプト ──
+                const sysPrompt = [
+                    "あなたはVJAフォームデザイナーのイベント処理コード生成AIです。",
+                    "ユーザーが書いたYAML仕様をもとに、JavaScriptの実装コードを生成します。",
+                    "",
+                    "## 実行環境",
+                    "- デスクトップアプリ（Electrobun + Bun.js）",
+                    "- フロントエンド: HTML/JavaScript（WebView）",
+                    "- バックエンド: Bun.js（SQLite, ファイルI/O）",
+                    "- フロントとバックエンドは window.vja.* APIで接続済み",
+                    "",
+                    "## window.vja.* API（全てawaitで呼び出す）",
+                    "// DB操作",
+                    "await window.vja.db.query(sql, params?)          // SELECT → { ok, rows[] }",
+                    "await window.vja.db.execute(sql, params?)         // INSERT/UPDATE/DELETE → { ok, result }",
+                    "await window.vja.db.transaction(statements[])     // トランザクション → { ok }",
+                    "await window.vja.db.init(ddlStatements[])         // テーブル作成 → { ok }",
+                    "// ログ",
+                    "await window.vja.log.info(message)",
+                    "await window.vja.log.error(message)",
+                    "// ダイアログ",
+                    "await window.vja.app.showDialog(message)          // アラート",
+                    "await window.vja.app.showConfirm(message)         // 確認 → { ok, confirmed: boolean }",
+                    "// ファイル（必要な場合のみ）",
+                    "await window.vja.file.read(path)                  // → { ok, content }",
+                    "await window.vja.file.write(path, content)        // → { ok }",
+                    "",
+                    "## 画面遷移",
+                    "showForm('画面名')  // 指定した画面に遷移",
+                    "",
+                    "## コード生成ルール",
+                    "- 必ずtry/catchで囲み、エラー時は window.vja.app.showDialog でエラー内容を表示する",
+                    "- SQLはプレースホルダー（?）を必ず使用する（SQLインジェクション対策）",
+                    "- 全ての window.vja.* 呼び出しは await を付ける",
+                    "- コードのみを返す（説明文・マークダウン不要）",
+                    "",
+                    "## プロジェクト情報",
+                    "### 現在のフォーム: " + curForm?.cfg?.title,
+                    "### 対象ウィジェット: " +
+                        w.name +
+                        " (" +
+                        w.tag +
+                        ")" +
+                        (w.props?.description
+                            ? " // " + w.props.description
+                            : ""),
+                    "### 対象イベント: " + evName,
+                    "",
+                    "### フォーム内の入力パラメータ",
+                    inputParamsCtx,
+                    "",
+                    "### フォーム内の全ウィジェット",
+                    allWidgetsCtx,
+                    "",
+                    "### 画面一覧",
+                    formsCtx,
+                    "",
+                    "### グローバル定数",
+                    globalConstCtx,
+                    "",
+                    "### フォーム定数（" + curForm?.cfg?.title + "）",
+                    formConstCtx,
+                    "",
+                    "### テーブル定義",
+                    tablesCtx,
+                ].join("\n");
+
+                // ── ⑦ ユーザープロンプト ──
+                const userPrompt = [
+                    yamlCur.trim()
+                        ? "以下のYAML仕様に基づいてJavaScriptコードを生成してください。\n\n```yaml\n" +
+                          yamlCur +
+                          "\n```"
+                        : "「" +
+                          w.name +
+                          "」の「" +
+                          evName +
+                          "」イベント処理のJavaScriptコードを生成してください。",
+                    addPrompt ? "\n追加指示: " + addPrompt : "",
+                ].join("");
 
                 try {
                     const hasApiKey = !!aiConfig.apiKey;
                     const isRouterOn = !!aiConfig.routerMode;
-
-                    // API Key あり → OpenAI API
-                    // API Key なし → ローカル LLM（llama.cpp / llama-server）
                     const endpoint = hasApiKey
-                        ? "https://api.openai.com" // OpenAI 固定エンドポイント
-                        : aiConfig.endpoint; // ローカル llama-server
-
-                    // モデル名
-                    // ・OpenAI の場合は aiConfig.model（例: gpt-4o）
-                    // ・ローカルでルーターモードON → aiConfig.model（選択済み）
-                    // ・ローカルでルーターモードOFF → モデル指定なし（llama-serverが自動選択）
+                        ? "https://api.openai.com"
+                        : aiConfig.endpoint;
                     const modelName = hasApiKey
                         ? aiConfig.model || "gpt-4o-mini"
                         : isRouterOn
@@ -1841,9 +2049,8 @@
                           : undefined;
 
                     const headers = { "Content-Type": "application/json" };
-                    if (hasApiKey) {
+                    if (hasApiKey)
                         headers["Authorization"] = "Bearer " + aiConfig.apiKey;
-                    }
 
                     const body = {
                         messages: [
@@ -1851,7 +2058,7 @@
                             { role: "user", content: userPrompt },
                         ],
                         temperature: 0.3,
-                        max_tokens: 512,
+                        max_tokens: 1024,
                         stream: false,
                     };
                     if (modelName) body.model = modelName;
@@ -1876,9 +2083,10 @@
                     }
                     const data = await res.json();
                     const generated = data.choices?.[0]?.message?.content || "";
-                    // コードブロックを除去
+                    // コードブロック・think タグを除去
                     const clean = generated
-                        .replace(/^```(?:ya?ml?)?\n?/i, "")
+                        .replace(/<think>[\s\S]*?<\/think>/gi, "")
+                        .replace(/^```(?:javascript|js)?\n?/i, "")
                         .replace(/```$/, "")
                         .trim();
                     const ta = $("yaml-ta");
@@ -1889,6 +2097,9 @@
                     if (status) status.textContent = "✅ 生成完了";
                 } catch (e) {
                     if (status) status.textContent = "❌ " + e.message;
+                    await window.vja?.log
+                        ?.error?.("AI生成エラー: " + e.message)
+                        .catch(() => {});
                 } finally {
                     if (btn) btn.disabled = false;
                 }
@@ -3589,6 +3800,108 @@
                 pushUndo();
                 showToast("テーブル「" + tbl.name + "」を保存しました");
                 renderTableManagerModal();
+            }
+
+            /* ── フォーム定数エディタ ── */
+            function openFormConstEditor() {
+                const f = forms[curFormIdx];
+                if (!f) return;
+                if (!f.constants) f.constants = [];
+                window._constTarget = "form"; // グローバルと区別
+                window._constRows = f.constants.map((c) => ({
+                    name: c.name || "",
+                    value: c.value || "",
+                }));
+                if (window._constRows.length === 0)
+                    window._constRows.push({ name: "", value: "" });
+                renderFormConstModal();
+            }
+
+            function renderFormConstModal() {
+                const f = forms[curFormIdx];
+                const formTitle = f?.cfg?.title || "フォーム";
+                const rows = window._constRows || [];
+                let tbody = "";
+                rows.forEach((r, i) => {
+                    const oi_n = "constUpdate(" + i + ",'name',this.value)";
+                    const oi_v = "constUpdate(" + i + ",'value',this.value)";
+                    tbody +=
+                        "<tr>" +
+                        "<td>" +
+                        (i + 1) +
+                        "</td>" +
+                        "<td><input type='text' value='" +
+                        esc(r.name) +
+                        "' oninput='" +
+                        oi_n +
+                        "' placeholder='定数名'></td>" +
+                        "<td><input type='text' value='" +
+                        esc(r.value) +
+                        "' oninput='" +
+                        oi_v +
+                        "' placeholder='値'></td>" +
+                        "<td><button class='del-btn' onclick='constDelRow(" +
+                        i +
+                        ")' title='削除'>✕</button></td>" +
+                        "</tr>";
+                });
+                showModal(
+                    "<div id='const-modal'>" +
+                        "<div class='mhdr'><h4>📌 フォーム定数 — " +
+                        esc(formTitle) +
+                        "</h4><button class='mclose' onclick='closeModal()'>✕</button></div>" +
+                        "<div class='mbody' style='gap:6px'>" +
+                        "<div class='infobox'>このフォーム（" +
+                        esc(formTitle) +
+                        "）専用の定数を定義します。グローバル定数と合わせてYAMLから参照できます。</div>" +
+                        "<div class='const-scroll'>" +
+                        "<table class='const-table'>" +
+                        "<thead><tr><th style='width:36px'>No</th><th>定数名</th><th>値</th><th style='width:30px'></th></tr></thead>" +
+                        "<tbody>" +
+                        tbody +
+                        "</tbody>" +
+                        "</table>" +
+                        "</div>" +
+                        "<button class='add-row-btn' onclick='formConstAddRow()'>＋ 行を追加</button>" +
+                        "</div>" +
+                        "<div class='mfoot'>" +
+                        "<button onclick='closeModal()'>キャンセル</button>" +
+                        "<button class='pri' onclick='saveFormConst()'>保存</button>" +
+                        "</div>" +
+                        "</div>",
+                );
+            }
+
+            function formConstAddRow() {
+                if (!window._constRows) return;
+                window._constRows.push({ name: "", value: "" });
+                renderFormConstModal();
+            }
+
+            function saveFormConst() {
+                syncConstFromDOM();
+                const valid = (window._constRows || []).filter((r) =>
+                    r.name.trim(),
+                );
+                const names = valid.map((r) => r.name.trim());
+                const dup = names.find((n, i) => names.indexOf(n) !== i);
+                if (dup) {
+                    alert("定数名「" + dup + "」が重複しています");
+                    return;
+                }
+                const f = forms[curFormIdx];
+                if (!f) return;
+                f.constants = valid.map((r) => ({
+                    name: r.name.trim(),
+                    value: r.value,
+                }));
+                closeModal();
+                pushUndo();
+                showToast(
+                    "フォーム定数を保存しました（" +
+                        f.constants.length +
+                        "件）",
+                );
             }
 
             /* ── カラム定義エディタ ── */
