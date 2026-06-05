@@ -1609,9 +1609,21 @@
                     row.innerHTML = `<div class="ek ${hasY ? "has-yaml" : ""}">${ev}${hasY ? " ✓" : ""}</div>
       <button class="ebtn" onclick="openYaml(${w.id},'${ev}')">
         <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      </button>`;
+      </button>
+      <button class="edelbtn ${hasY ? "has-yaml" : ""}" onclick="deleteYaml(${w.id},'${ev}')" title="イベントを削除">✕</button>`;
                     el.appendChild(row);
                 });
+            }
+
+            function deleteYaml(wid, evName) {
+                const w = widgets.find((x) => x.id === wid);
+                if (!w) return;
+                const hasY = w.events?.[evName]?.trim().length > 0;
+                if (!hasY) return; // 未保存は無反応
+                if (!confirm("「" + evName + "」のイベント定義を削除してよろしいですか？")) return;
+                if (w.events) delete w.events[evName];
+                renderEvents();
+                pushUndo();
             }
 
             function switchTab(t) {
@@ -1672,7 +1684,7 @@
                     // AIバー
                     "<div class='yaml-ai-bar' style='padding-bottom:8px'>"+
                     "<input id='ai-prompt-in' placeholder='AIへの追加指示（任意）'>"+
-                    "<button class='yaml-ai-btn' id='ai-gen-btn' onclick='yamlAiGenerate("+wid+",'"+evName+"')'>"+
+                    "<button class='yaml-ai-btn' id='ai-gen-btn' onclick='window._yamlAiGen()'>"+
                     (aiEnabled?"🤖 AI生成":"🤖 AI生成（設定要）")+"</button>"+
                     "<span class='yaml-ai-status' id='ai-status'></span>"+
                     "</div>"+
@@ -1687,9 +1699,12 @@
                     "</div>"+
                     "<div class='mfoot'>"+
                     "<button onclick='closeModal()'>キャンセル</button>"+
-                    "<button class='pri' onclick='saveYaml("+wid+",'"+evName+"')'>保存</button>"+
+                    "<button class='pri' onclick='window._yamlSave()'>保存</button>"+
                     "</div>"
                 );
+                // グローバルブリッジ（クォート衝突回避）
+                window._yamlSave  = () => saveYaml(wid, evName);
+                window._yamlAiGen = () => yamlAiGenerate(wid, evName);
                 requestAnimationFrame(()=>{
                     yamlHlUpdate();
                     yamlInitResize();
