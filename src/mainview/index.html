@@ -1559,6 +1559,17 @@
         }
 
         /* ── イベントタブ ── */
+        function deleteYaml(wid, evName) {
+            const w = widgets.find((x) => x.id === wid);
+            if (!w) return;
+            const hasY = w.events?.[evName]?.trim().length > 0;
+            if (!hasY) return;
+            if (!confirm("「" + evName + "」のイベント定義を削除してよろしいですか？")) return;
+            if (w.events) delete w.events[evName];
+            renderEvents();
+            pushUndo();
+        }
+
         function renderEvents() {
             const el = $("elist");
             el.innerHTML = "";
@@ -1580,17 +1591,6 @@
       <button class="edelbtn ${hasY ? "has-yaml" : ""}" onclick="deleteYaml(${w.id},'${ev}')" title="イベントを削除">✕</button>`;
                 el.appendChild(row);
             });
-        }
-
-        function deleteYaml(wid, evName) {
-            const w = widgets.find((x) => x.id === wid);
-            if (!w) return;
-            const hasY = w.events?.[evName]?.trim().length > 0;
-            if (!hasY) return; // 未保存は無反応
-            if (!confirm("「" + evName + "」のイベント定義を削除してよろしいですか？")) return;
-            if (w.events) delete w.events[evName];
-            renderEvents();
-            pushUndo();
         }
 
         function switchTab(t) {
@@ -1624,14 +1624,6 @@
                 "ai_prompt: |\n" +
                 "  " + w.name + "の" + evName + "が発生した時の処理を生成してください。\n" +
                 "  入力値を検証してForm2に遷移します。\n";
-
-            // 現在チェック済みテーブルをYAMLから解析
-            window._yamlSelTables = new Set();
-            (cur.match(/利用テーブル\s*:[\s\S]*?(?=\n\S|\n\n|$)/) || [""])[0]
-                .split("\n").forEach(l => {
-                    const m = l.match(/^\s*-\s*([\w]+)/);
-                    if (m) window._yamlSelTables.add(m[1]);
-                });
 
             const aiEnabled = aiConfig.enabled;
             showModal(
@@ -1703,24 +1695,21 @@
                 }).join("") + "</table>"
                 : "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>定数なし</div>";
 
-            // ── 画面一覧（テーブル一覧と同じ展開方式） ──
+            // ── 画面一覧 ──
             const formBody = "<div>" + forms.map((f, fi) => {
                 const isCur = fi === curFormIdx;
                 const ft = esc(f.cfg.title);
                 const wids = (f.widgets || []).map(ww => {
                     const wn = esc(ww.name);
-                    const desc = esc(ww.props?.description || "");
                     return "<tr class='rp-insert' data-insert='" + wn + "'>"
                         + "<td class='col-name'>" + wn + "</td>"
                         + "<td class='col-type'>" + esc(ww.tag) + "</td>"
-                        + (desc ? "<td class='col-flag'>" + desc + "</td>" : "<td></td>")
-                        + "</tr>";
+                        + "<td></td></tr>";
                 }).join("");
                 return "<div class='rp-tbl-row'>"
                     + "<div class='rp-tbl-header'>"
                     + "<span class='rp-tbl-name rp-insert' data-insert='" + ft + "' style='" + (isCur ? "color:var(--accent);font-weight:bold" : "") + "'>"
                     + (isCur ? "★ " : "") + ft + "</span>"
-
                     + (wids ? "<button class='rp-tbl-expand' onclick='event.stopPropagation();yamlToggleTblCols(this)'>▶</button>" : "")
                     + "</div>"
                     + (wids ? "<div class='rp-tbl-cols'><table>" + wids + "</table></div>" : "")
@@ -1755,9 +1744,7 @@
                     }).join("");
                     return "<div class='rp-tbl-row'>"
                         + "<div class='rp-tbl-header'>"
-
                         + "<span class='rp-tbl-name rp-insert' data-insert='" + tn + "'>" + tn + "</span>"
-                        + "" /* description非表示 */
                         + (cols ? "<button class='rp-tbl-expand' onclick='event.stopPropagation();yamlToggleTblCols(this)'>▶</button>" : "")
                         + "</div>"
                         + (cols ? "<div class='rp-tbl-cols'><table>" + cols + "</table></div>" : "")
@@ -1830,99 +1817,10 @@
 
         // テーブルカラム展開
         function yamlToggleTblCols(btn) {
-            if (event) event.stopPropagation();
             const cols = btn.parentElement?.nextElementSibling;
             if (!cols) return;
             const open = cols.classList.toggle("open");
             btn.textContent = open ? "▼" : "▶";
-        }
-
-        // テーブル選択 → YAMLの「利用テーブル:」セクションを更新
-        function yamlToggleTable(tableName, checked) {
-            if (!window._yamlSelTables) window._yamlSelTables = new Set();
-            if (checked) window._yamlSelTables.add(tableName);
-            else window._yamlSelTables.delete(tableName);
-
-            const ta = $("yaml-ta");
-            if (!ta) return;
-            let yaml = ta.value;
-
-            // 既存の「利用テーブル:」セクションを削除
-            yaml = yaml.replace(/^利用テーブル\s*:[\s\S]*?(?=\n[^\s\n]|\n\n|$)/m, "").trimStart();
-
-            // 選択テーブルがあれば先頭に追加
-            if (window._yamlSelTables.size > 0) {
-                const tblSection = "利用テーブル:\n"
-                    + [...window._yamlSelTables].map(t => "  - " + t).join("\n") + "\n\n";
-                yaml = tblSection + yaml;
-            }
-            ta.value = yaml;
-            yamlHlUpdate();
-        }
-
-        // 画面詳細ポップアップ
-        function yamlShowFormDetail(formIdx, triggerEl) {
-            console.log("[detail] formIdx:", formIdx, "triggerEl:", triggerEl);
-            const f = forms[formIdx];
-            if (!f) {console.log("[detail] form not found"); return;}
-            const wids = f.widgets || [];
-            console.log("[detail] widgets:", wids.length);
-            let rows = wids.length > 0
-                ? wids.map(ww => {
-                    const desc = ww.props?.description || "";
-                    return "<div class='dp-item' onclick='yamlInsert(" + JSON.stringify(ww.name) + ");yamlCloseDetailPopup()'>"
-                        + "<span class='dp-item-name'>" + esc(ww.name) + "</span>"
-                        + "<span class='dp-item-tag'>" + esc(ww.tag) + "</span>"
-                        + (desc ? "<span class='dp-item-desc'>" + esc(desc) + "</span>" : "")
-                        + "</div>";
-                }).join("")
-                : "<div style='padding:8px;color:var(--text3);font-size:11px'>ウィジェットなし</div>";
-
-            const desc = f.cfg.description
-                ? "<div style='color:var(--text3);font-size:11px;margin-bottom:8px'>" + esc(f.cfg.description) + "</div>"
-                : "";
-            yamlShowDetailPopup(
-                "📋 " + esc(f.cfg.title) + " のウィジェット",
-                desc + rows,
-                triggerEl
-            );
-        }
-
-        // 詳細ポップアップ表示（共通）
-        function yamlShowDetailPopup(title, contentHtml, triggerEl) {
-            yamlCloseDetailPopup();
-            const popup = document.createElement("div");
-            popup.id = "yaml-detail-popup";
-            popup.className = "yaml-detail-popup";
-            popup.innerHTML =
-                "<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px'>"
-                + "<h5 style='margin:0;font-size:12px;color:var(--accent)'>" + title + "</h5>"
-                + "<button type='button' style='background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;padding:0 4px' onclick='yamlCloseDetailPopup()'>✕</button>"
-                + "</div>" + contentHtml;
-
-            // body に position:fixed で画面中央に表示
-            document.body.appendChild(popup);
-            popup.style.position = "fixed";
-            popup.style.top = "50%";
-            popup.style.left = "50%";
-            popup.style.transform = "translate(-50%,-50%)";
-            popup.style.zIndex = "99999";
-
-            setTimeout(() => {
-                document.addEventListener("click", yamlCloseDetailOnOutside);
-            }, 100);
-        }
-
-        function yamlCloseDetailPopup() {
-            const p = $("yaml-detail-popup");
-            if (p) p.remove();
-            document.removeEventListener("click", yamlCloseDetailOnOutside);
-            document.removeEventListener("mousedown", _yamlOutside);
-        }
-
-        function yamlCloseDetailOnOutside(e) {
-            const p = $("yaml-detail-popup");
-            if (p && !p.contains(e.target)) yamlCloseDetailPopup();
         }
 
         // 右パネルのイベントデリゲーション登録
@@ -1939,28 +1837,11 @@
                 }
                 if (e.type !== "click") return;
 
-                // ② 画面詳細ボタン
-                const detailEl = e.target.closest(".rp-form-detail");
-                if (detailEl) {
-                    e.stopPropagation();
-                    const fi = parseInt(detailEl.dataset.fidx);
-                    console.log("[rpanel] detail fi=", fi, detailEl);
-                    yamlShowFormDetail(fi, detailEl);
-                    return;
-                }
                 // ③ テーブルカラム展開ボタン
                 const expand = e.target.closest(".rp-tbl-expand");
                 if (expand) {
                     e.stopPropagation();
                     yamlToggleTblCols(expand);
-                    return;
-                }
-                // ④ テーブル選択チェックボックス
-                const cb = e.target.closest(".rp-tbl-check");
-                if (cb) {
-                    const tblRow = cb.closest(".rp-tbl-row");
-                    const nameEl = tblRow?.querySelector(".rp-tbl-name");
-                    if (nameEl) yamlToggleTable(nameEl.dataset.insert, cb.checked);
                     return;
                 }
                 // ⑤ 挿入系（最後に判定）
@@ -2443,12 +2324,6 @@
             return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
 
-
-        // 詳細ボタン用グローバルブリッジ（WebKitGTK onmousedown 対応）
-        window.yamlDetailClick = function (fi) {
-            console.log("[yamlDetailClick] fi=", fi);
-            yamlShowFormDetail(fi, null);
-        };
 
         function saveYaml(wid, evName) {
             const w = widgets.find((x) => x.id == wid);
