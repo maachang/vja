@@ -49,7 +49,7 @@ const loadLastDir = (): string => {
             const saved = readFileSync(_lastDirFile, "utf-8").trim();
             if (saved && existsSync(saved)) return saved;
         }
-    } catch {}
+    } catch { }
     return homedir();
 };
 const saveLastDir = async (filePath: string): Promise<void> => {
@@ -57,7 +57,7 @@ const saveLastDir = async (filePath: string): Promise<void> => {
         const dir = dirname(filePath);
         if (!existsSync(_configDir)) mkdirSync(_configDir, { recursive: true });
         await Bun.write(_lastDirFile, dir);
-    } catch {}
+    } catch { }
 };
 let _lastDir: string = loadLastDir();
 
@@ -86,7 +86,7 @@ const writeLog = async (level: string, message: string): Promise<void> => {
             : "";
         await Bun.write(_logPath, prev + line);
         console.log(line.trim());
-    } catch {}
+    } catch { }
 };
 
 // ── 保存ダイアログ ────────────────────────────────────
@@ -548,7 +548,13 @@ const isWin = process.platform === "win32";
 let initW = 1280,
     initH = 800;
 if (isWin) {
-    // 一旦Windowsの最大画像の調整は 一応以下でうまくいく。
+    // ─────────────────────────────────────────────────────
+    // 【暫定対応】Windows フルスクリーン問題
+    // Electrobun の maximize() が Windows では WebView のリサイズに
+    // 追従しないため、起動時のフレームサイズを作業領域に合わせて設定する。
+    // 2環境で動作確認済みだが、DPI設定やマルチモニター環境では
+    // 異なる結果になる可能性があるため、暫定対応とする。
+    // ─────────────────────────────────────────────────────
     try {
         // OSで設定されている全体サイズを取得.
         const ps = `Add-Type -AssemblyName System.Windows.Forms;[System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width.ToString()+','+[System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height.ToString()`;
@@ -560,7 +566,7 @@ if (isWin) {
         const { width, height } = primaryDisplay.workArea;
         initW = width;
         initH = height - (((h - height) >> 1) - 1);
-    } catch {}
+    } catch { }
 }
 
 const browserWindow = new BrowserWindow({

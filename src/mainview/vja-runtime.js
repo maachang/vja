@@ -445,12 +445,12 @@
             return crypto.randomUUID
                 ? crypto.randomUUID()
                 : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
-                      /[xy]/g,
-                      (c) => {
-                          const r = (Math.random() * 16) | 0;
-                          return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
-                      },
-                  );
+                    /[xy]/g,
+                    (c) => {
+                        const r = (Math.random() * 16) | 0;
+                        return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+                    },
+                );
         },
 
         // クリップボード
@@ -790,7 +790,7 @@
         } catch (e) {
             const msg = e?.message || String(e);
             console.error("[vja] イベントエラー:", msg, e);
-            await vja.log?.error?.("イベントエラー: " + msg).catch(() => {});
+            await vja.log?.error?.("イベントエラー: " + msg).catch(() => { });
             await vja.app
                 ?.showDialog?.("エラーが発生しました:\n" + msg)
                 .catch(() => alert("エラー: " + msg));
