@@ -301,6 +301,8 @@ body {
     position: relative;
     overflow: hidden;
     background: #ececec;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 /* ドット グリッド（非表示時は消す） */
@@ -371,6 +373,8 @@ body {
     cursor: move;
     box-sizing: border-box;
     overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .widget.sel {
