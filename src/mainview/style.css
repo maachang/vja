@@ -457,7 +457,8 @@ body {
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: visible;
     min-height: 0;
 }
 
@@ -502,8 +503,8 @@ body {
 
 #plist {
     flex: 1;
-    overflow-y: auto;
-    overflow-x: visible;
+    overflow: visible;
+    min-height: 0;
 }
 
 #elist {
@@ -516,7 +517,6 @@ body {
     display: grid;
     grid-template-columns: 2fr 3fr;
     min-height: 28px;
-    overflow: visible;
     border-bottom: 1px solid #ffffff08;
 }
 
@@ -1602,18 +1602,16 @@ textarea.yaml:focus {
 }
 
 .pv-sel-list {
-    position: absolute;
-    top: 100%;
-    left: 0;
+    position: fixed;
     background: #252535;
     border: 1px solid var(--accent);
     border-radius: 3px;
-    z-index: 9999;
+    z-index: 99999;
     display: none;
     flex-direction: column;
-    min-width: 100%;
+    min-width: 80px;
     box-shadow: 0 4px 12px #000c;
-    max-height: 160px;
+    max-height: 400px;
     overflow-y: auto
 }
 
@@ -1622,7 +1620,7 @@ textarea.yaml:focus {
 }
 
 .pv-sel-opt {
-    padding: 5px 10px;
+    padding: 6px 10px;
     font-size: 12px;
     color: var(--text2);
     cursor: pointer;
@@ -2260,3 +2258,15 @@ textarea.yaml:focus {
 }
 
 /* true/false/null/undefined */
+
+/* number input スピナー非表示 */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+}
+
+input[type=number] {
+    -moz-appearance: textfield;
+}

@@ -667,6 +667,47 @@
           SNAP / HELPERS
         ═══════════════════════════════════════════ */
         const sn = (v) => (snapOn ? Math.round(v / SNAP) * SNAP : v);
+        /* ═══════════════════════════════════════════
+           共通ユーティリティ
+        ═══════════════════════════════════════════ */
+
+        // ① グローバルブリッジ共通管理
+        const _pvRegistry = {};
+        function pvRegister(key, fn) {_pvRegistry[key] = fn;}
+        function pvCall(key, ...args) {
+            if (_pvRegistry[key]) _pvRegistry[key](...args);
+            else console.warn("[pvCall] not registered:", key);
+        }
+
+        // ② モーダル構築ヘルパー
+        function buildModal({title = "", body = "", footer = "", extraClass = ""} = {}) {
+            const hdr = "<div class='mhdr'><h4>" + title + "</h4>" +
+                "<button class='mclose' onmousedown='closeModal()'>✕</button></div>";
+            const foot = footer ? "<div class='mfoot'>" + footer + "</div>" : "";
+            if (extraClass) {
+                return "<div class='" + extraClass + "'>" + hdr +
+                    "<div class='mbody'>" + body + "</div>" + foot + "</div>";
+            }
+            return hdr + "<div class='mbody'>" + body + "</div>" + foot;
+        }
+
+        // ③ addEventListener ヘルパー（WebKitGTK対応）
+        function rAfBind(selector, event, fn, root) {
+            requestAnimationFrame(() => {
+                const el = typeof selector === "string"
+                    ? (root || document).querySelector(selector)
+                    : selector;
+                if (el) el.addEventListener(event, fn);
+            });
+        }
+        function rAfBindAll(selector, event, fn, root) {
+            requestAnimationFrame(() => {
+                (root || document).querySelectorAll(selector).forEach(el => {
+                    el.addEventListener(event, fn);
+                });
+            });
+        }
+
         const esc = (s) =>
             String(s ?? "")
                 .replace(/&/g, "&amp;")
@@ -1470,8 +1511,20 @@
             switch (d.t) {
                 case "text":
                     return `<input type="text" value="${esc(val ?? "")}" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">`;
-                case "num":
-                    return `<input type="number" value="${val ?? 0}" onchange="setProp('${d.k}','${d.sp || ""}',+this.value,${w2})">`;
+                case "num": {
+                    const nid = "pn_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
+                    const nMin = d.min ?? -9999;
+                    const nMax = d.max ?? 9999;
+                    return `<div style="display:flex;align-items:center;gap:2px;width:100%">` +
+                        `<input type="number" id="${nid}" value="${val ?? 0}" min="${nMin}" max="${nMax}" ` +
+                        `style="flex:1;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:13px;padding:0 4px;outline:none;-webkit-appearance:none;appearance:none;text-align:right" ` +
+                        `onchange="setProp('${d.k}','${d.sp || ""}',+this.value,${w2})">` +
+                        `<button onmousedown="pvNumStep('${nid}',1,'${d.k}','${d.sp || ""}',${w2},${nMin},${nMax})" ` +
+                        `style="width:18px;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:10px;cursor:pointer;padding:0;flex-shrink:0">▲</button>` +
+                        `<button onmousedown="pvNumStep('${nid}',-1,'${d.k}','${d.sp || ""}',${w2},${nMin},${nMax})" ` +
+                        `style="width:18px;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:10px;cursor:pointer;padding:0;flex-shrink:0">▼</button>` +
+                        `</div>`;
+                }
                 case "bool": {
                     const bTrue = val ? "active" : "";
                     const bFalse = !val ? "active" : "";
@@ -1511,7 +1564,7 @@
                     const fid = "pv-ff-" + w2;
                     const fopts = WIDGET_FONTS.map((f, i) =>
                         `<div class="pv-sel-opt ${f.value === curFF ? "active" : ""}" ` +
-                        `onmousedown="pvSelPick('${fid}','${esc(f.label)}',event);window._setFF(${i},${w2})">${esc(f.label)}</div>`
+                        `onmousedown="pvSelPick('${fid}','${esc(f.label)}',event);setFontFamilyProp(${i},${w2})">${esc(f.label)}</div>`
                     ).join("");
                     return `<div class="pv-sel" id="${fid}">` +
                         `<div class="pv-sel-btn" onmousedown="pvSelOpen('${fid}',event)">` +
@@ -1533,22 +1586,31 @@
             else w.props[k] = val;
             renderWidget(w, false);
             applyWPos($("w" + wid), w);
-
-            // フォントファミリー選択グローバルブリッジ
-            window._setFF = function (idx, wid) {
-                setFontFamilyProp(idx, wid);
-            };
-
-            function setFontFamilyProp(idx, wid) {
-                const w = widgets.find((x) => x.id == wid);
-                if (!w) return;
-                w.props.fontFamily = (WIDGET_FONTS[idx] || WIDGET_FONTS[0]).value;
-                renderWidget(w, false);
-                applyWPos($("w" + wid), w);
-                pushUndo();
-            }
             if (sp === "name") $("prop-obj").textContent = val;
+            pushUndo();
+            renderProps();
         }
+
+        // 数値入力の▲▼ボタン処理
+        function pvNumStep(nid, dir, k, sp, wid, min, max) {
+            const inp = $(nid);
+            if (!inp) return;
+            const cur = parseFloat(inp.value) || 0;
+            const step = parseFloat(inp.step) || 1;
+            const next = Math.min(max, Math.max(min, cur + dir * step));
+            inp.value = next;
+            setProp(k, sp, next, wid);
+        }
+
+        function setFontFamilyProp(idx, wid) {
+            const w = widgets.find((x) => x.id == wid);
+            if (!w) return;
+            w.props.fontFamily = (WIDGET_FONTS[idx] || WIDGET_FONTS[0]).value;
+            renderWidget(w, false);
+            applyWPos($("w" + wid), w);
+            pushUndo();
+        }
+        pvRegister("setFF", setFontFamilyProp);
 
         function syncPropXY(w) {
             // live update while dragging
@@ -1677,7 +1739,7 @@
             showModal(
                 "<div class='modal-yaml'>" +
                 "<div class='mhdr'><h4>📋 " + esc(w.name) + " — " + esc(evName) + "</h4>" +
-                "<button class='mclose' onclick='closeModal()'>✕</button></div>" +
+                "<button class='mclose' onmousedown='closeModal()'>✕</button></div>" +
                 "<div class='mbody' style='padding:0;gap:0;overflow:hidden;display:flex;flex-direction:column'>" +
                 // メインレイアウト
                 "<div class='yaml-editor-layout' id='yaml-layout'>" +
@@ -1707,7 +1769,7 @@
                 // AIバー
                 "<div class='yaml-ai-bar' style='padding-bottom:8px'>" +
                 "<input id='ai-prompt-in' placeholder='AIへの追加指示（任意）'>" +
-                "<button class='yaml-ai-btn' id='ai-gen-btn' onclick='window._yamlAiGen()'>" +
+                "<button class='yaml-ai-btn' id='ai-gen-btn' onmousedown='pvCall(\"yamlAiGen\")'>" +
                 (aiEnabled ? "🤖 AI生成" : "🤖 AI生成（設定要）") + "</button>" +
                 "<span class='yaml-ai-status' id='ai-status'></span>" +
                 "</div>" +
@@ -1721,13 +1783,13 @@
                 "</div>" +
                 "</div>" +
                 "<div class='mfoot'>" +
-                "<button onclick='closeModal()'>キャンセル</button>" +
-                "<button class='pri' onclick='window._yamlSave()'>保存</button>" +
+                "<button onmousedown='closeModal()'>キャンセル</button>" +
+                "<button class='pri' onmousedown='pvCall(\"yamlSave\")'>保存</button>" +
                 "</div>"
             );
             // グローバルブリッジ（クォート衝突回避）
-            window._yamlSave = () => saveYaml(wid, evName);
-            window._yamlAiGen = () => yamlAiGenerate(wid, evName);
+            pvRegister("yamlSave", () => saveYaml(wid, evName));
+            pvRegister("yamlAiGen", () => yamlAiGenerate(wid, evName));
             requestAnimationFrame(() => {
                 applyEditorConfig(); // フォント設定を即時反映
                 yamlHlUpdate();
@@ -1735,10 +1797,8 @@
                 yamlInitResize();
                 yamlInitRpanelEvents();
                 // タブボタンにイベント登録
-                const tabY = $("tab-yaml");
-                const tabJ = $("tab-js");
-                if (tabY) tabY.addEventListener("click", () => yamlTabSwitch("yaml"));
-                if (tabJ) tabJ.addEventListener("click", () => {yamlTabSwitch("js"); jsHlUpdate();});
+                rAfBind("#tab-yaml", "click", () => yamlTabSwitch("yaml"));
+                rAfBind("#tab-js", "click", () => {yamlTabSwitch("js"); jsHlUpdate();});
                 // JS初期ハイライト
                 jsHlUpdate();
                 // JSタブにCtrl+Z/Shift+Zを設定
@@ -2262,7 +2322,7 @@
             const modelListHtml = aiCfgModelListHtml(aiConfig.models, aiConfig.model, isRouter);
 
             showModal(
-                "<div class='mhdr'><h4>🤖 AI接続設定</h4><button class='mclose' onclick='closeModal()'>✕</button></div>" +
+                "<div class='mhdr'><h4>🤖 AI接続設定</h4><button class='mclose' onmousedown='closeModal()'>✕</button></div>" +
                 "<div class='mbody' style='gap:12px'>" +
                 "<div class='infobox'>llama-server（またはOpenAI互換API）の接続設定を行います。</div>" +
 
@@ -2309,7 +2369,7 @@
 
                 "</div>" +
                 "<div class='mfoot'>" +
-                "<button onclick='closeModal()'>キャンセル</button>" +
+                "<button onmousedown='closeModal()'>キャンセル</button>" +
                 "<button class='pri' onclick='saveAiConfig()'>保存</button>" +
                 "</div>"
             );
@@ -3107,12 +3167,12 @@
 
             const html = lines.join("\n");
             showModal(`
-    <div class="mhdr"><h4>📤 HTMLエクスポート</h4><button class="mclose" onclick="closeModal()">✕</button></div>
+    <div class="mhdr"><h4>📤 HTMLエクスポート</h4><button class="mclose" onmousedown="closeModal()">✕</button></div>
     <div class="mbody">
       <textarea class="yaml" style="height:260px;font-size:10px" readonly>${esc(html)}</textarea>
     </div>
     <div class="mfoot">
-      <button onclick="closeModal()">閉じる</button>
+      <button onmousedown="closeModal()">閉じる</button>
       <button class="pri" onclick="dlHTML()">ダウンロード</button>
     </div>`);
             window._exportHTML = html;
@@ -3310,7 +3370,7 @@
                     + "</tr>";
             });
             showModal("<div id='const-modal'>"
-                + "<div class='mhdr'><h4>📌 定数エディタ</h4><button class='mclose' onclick='closeModal()'>✕</button></div>"
+                + "<div class='mhdr'><h4>📌 定数エディタ</h4><button class='mclose' onmousedown='closeModal()'>✕</button></div>"
                 + "<div class='mbody' style='gap:6px'>"
                 + "<div class='infobox'>イベントのYAMLから参照できる定数を定義します。プロジェクトファイルに保存されます。</div>"
                 + "<div class='const-scroll'>"
@@ -3322,7 +3382,7 @@
                 + "<button class='add-row-btn' onclick='constAddRow()'>＋ 行を追加</button>"
                 + "</div>"
                 + "<div class='mfoot'>"
-                + "<button onclick='closeModal()'>キャンセル</button>"
+                + "<button onmousedown='closeModal()'>キャンセル</button>"
                 + "<button class='pri' onclick='constSave()'>保存</button>"
                 + "</div>"
                 + "</div>");
@@ -3383,10 +3443,17 @@
             if (!list) return;
             const isOpen = list.classList.contains("open");
             document.querySelectorAll(".pv-sel-list.open").forEach(el => el.classList.remove("open"));
-            if (!isOpen) list.classList.add("open");
+            if (!isOpen) {
+                list.classList.add("open");
+                const btn = wrap.querySelector(".pv-sel-btn");
+                const r = btn.getBoundingClientRect();
+                list.style.left = r.left + "px";
+                list.style.top = (r.bottom + 2) + "px";
+                list.style.minWidth = r.width + "px";
+            }
         }
         function pvSelPick(id, val, e) {
-            e.stopPropagation();
+            if (e) e.stopPropagation();
             const wrap = document.getElementById(id);
             if (!wrap) return;
             const list = wrap.querySelector(".pv-sel-list");
@@ -3394,7 +3461,8 @@
             if (btn) btn.textContent = String(val);
             list?.classList.remove("open");
             wrap.querySelectorAll(".pv-sel-opt").forEach(el => {
-                el.classList.toggle("active", el.textContent === String(val) || el.getAttribute("data-v") === String(val));
+                el.classList.toggle("active",
+                    el.textContent === String(val) || el.getAttribute("data-v") === String(val));
             });
         }
 
@@ -3432,7 +3500,7 @@
                 : "<tr><td colspan='6' class='tbl-empty'>テーブルが未登録です。「＋ テーブル追加」から追加してください。</td></tr>";
 
             showModal(
-                "<div class='mhdr'><h4>🗄 テーブル管理</h4><button class='mclose' onclick='closeModal()'>✕</button></div>" +
+                "<div class='mhdr'><h4>🗄 テーブル管理</h4><button class='mclose' onmousedown='closeModal()'>✕</button></div>" +
                 "<div class='mbody tbl-mgr-wrap'>" +
                 "<div class='tbl-mgr-header'>" +
                 "<span style='font-size:12px;color:var(--text2)'>SQLiteテーブル定義（全" + tables.length + "件）</span>" +
@@ -3452,7 +3520,7 @@
                 "</table></div>" +
                 "</div>" +
                 "<div class='mfoot'>" +
-                "<button onclick='closeModal()'>閉じる</button>" +
+                "<button onmousedown='closeModal()'>閉じる</button>" +
                 "</div>"
             );
         }
@@ -3761,7 +3829,7 @@
                     "</tr>";
             });
             showModal("<div id='const-modal'>" +
-                "<div class='mhdr'><h4>📌 フォーム定数 — " + esc(formTitle) + "</h4><button class='mclose' onclick='closeModal()'>✕</button></div>" +
+                "<div class='mhdr'><h4>📌 フォーム定数 — " + esc(formTitle) + "</h4><button class='mclose' onmousedown='closeModal()'>✕</button></div>" +
                 "<div class='mbody' style='gap:6px'>" +
                 "<div class='infobox'>このフォーム（" + esc(formTitle) + "）専用の定数を定義します。グローバル定数と合わせてYAMLから参照できます。</div>" +
                 "<div class='const-scroll'>" +
@@ -3773,7 +3841,7 @@
                 "<button class='add-row-btn' onclick='formConstAddRow()'>＋ 行を追加</button>" +
                 "</div>" +
                 "<div class='mfoot'>" +
-                "<button onclick='closeModal()'>キャンセル</button>" +
+                "<button onmousedown='closeModal()'>キャンセル</button>" +
                 "<button class='pri' onclick='saveFormConst()'>保存</button>" +
                 "</div>" +
                 "</div>");
@@ -3835,7 +3903,7 @@
 
             showModal(
                 "<div class='mhdr'><h4>🔤 エディタフォント設定</h4>" +
-                "<button class='mclose' onclick='closeModal()'>✕</button></div>" +
+                "<button class='mclose' onmousedown='closeModal()'>✕</button></div>" +
                 "<div class='mbody' style='gap:14px'>" +
                 // フォントサイズ
                 "<div class='ai-cfg-row'><label>フォントサイズ</label>" +
@@ -3867,15 +3935,12 @@
                 "</div>" +
                 "</div>" +
                 "<div class='mfoot'>" +
-                "<button onclick='closeModal()'>キャンセル</button>" +
+                "<button onmousedown='closeModal()'>キャンセル</button>" +
                 "<button class='pri' id='ef-save-btn'>保存</button>" +
                 "</div>"
             );
             // 保存ボタンに直接addEventListener登録
-            requestAnimationFrame(() => {
-                const saveBtn = $("ef-save-btn");
-                if (saveBtn) saveBtn.addEventListener("click", saveFontConfig);
-            });
+            rAfBind("#ef-save-btn", "click", saveFontConfig);
             // ポーリングでプレビュー更新
             let _pfLastSize = curSize, _pfLastIdx = -1;
             const _pfPoll = setInterval(() => {
@@ -3898,7 +3963,7 @@
 
 
 
-        window._fontSave = function () {saveFontConfig();};
+        pvRegister("fontSave", saveFontConfig);
 
         function saveFontConfig() {
             const size = Math.max(10, Math.min(32, parseInt($("ef-size")?.value) || 16));
@@ -3938,7 +4003,7 @@
                     + "</tr>";
             });
             showModal("<div id='coldef-modal'>"
-                + "<div class='mhdr'><h4>📊 カラム定義エディタ</h4><button class='mclose' onclick='closeModal()'>✕</button></div>"
+                + "<div class='mhdr'><h4>📊 カラム定義エディタ</h4><button class='mclose' onmousedown='closeModal()'>✕</button></div>"
                 + "<div class='mbody' style='gap:6px'>"
                 + "<div class='infobox'>カラム名と幅(px)を定義します。Noは自動採番。最大100列。</div>"
                 + "<div class='coldef-scroll'>"
@@ -3950,7 +4015,7 @@
                 + (rows.length < 100 ? "<button class='add-row-btn' onclick='coldefAddRow()'>＋ 行を追加</button>" : "")
                 + "</div>"
                 + "<div class='mfoot'>"
-                + "<button onclick='closeModal()'>キャンセル</button>"
+                + "<button onmousedown='closeModal()'>キャンセル</button>"
                 + "<button class='pri' onclick='coldefSave()'>保存</button>"
                 + "</div>"
                 + "</div>");
@@ -4129,7 +4194,7 @@
             if (!e.target.closest("#ctx") && !e.target.closest(".widget"))
                 hideCtx();
             if (!e.target.closest("#fdd-wrap")) closeFdd();
-            if (!e.target.closest(".pv-sel")) document.querySelectorAll(".pv-sel-list.open").forEach(el => el.classList.remove("open"));
+            if (!e.target.closest(".pv-sel") && !e.target.closest(".pv-sel-list")) document.querySelectorAll(".pv-sel-list.open").forEach(el => el.classList.remove("open"));
             if (!e.target.closest(".col-type-btn") && !e.target.closest("#col-type-float")) {
                 const f = $("col-type-float");
                 if (f) f.classList.remove("open");
