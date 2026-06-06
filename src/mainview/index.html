@@ -1293,6 +1293,22 @@
                 {k: "readonly", lb: "ReadOnly", t: "bool"},
                 ...PP_TAIL,
             ],
+            input: [
+                ...PP_POS,
+                {sep: "外観"},
+                {k: "text", lb: "Text", t: "text"},
+                {k: "placeholder", lb: "Placeholder", t: "text"},
+                {k: "maxLength", lb: "MaxLength", t: "num"},
+                {k: "bg", lb: "BackColor", t: "color"},
+                {k: "fg", lb: "ForeColor", t: "color"},
+                ...PP_FONT,
+                ...PP_BORDER,
+                {sep: "動作"},
+                {k: "multiline", lb: "Multiline", t: "bool"},
+                {k: "disabled", lb: "Disabled", t: "bool"},
+                {k: "readonly", lb: "ReadOnly", t: "bool"},
+                ...PP_TAIL,
+            ],
             checkbox: [
                 ...PP_POS,
                 {sep: "外観"},
@@ -1341,6 +1357,7 @@
                 {k: "text", lb: "Text", t: "text"},
                 {k: "fg", lb: "ForeColor", t: "color"},
                 {k: "bg", lb: "BackColor", t: "color"},
+                ...PP_FONT,
                 ...PP_BORDER,
                 ...PP_TAIL,
             ],
@@ -1434,7 +1451,7 @@
             const w2 = wid;
             switch (d.t) {
                 case "text":
-                    return `<input type="text" value="${esc(val ?? "")}" oninput="setProp('${d.k}','${d.sp || ""}',this.value,${w2})" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">`;
+                    return `<input type="text" class="pv-input" value="${esc(val ?? "")}" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">`;
                 case "num": {
                     const nid = "pn_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
                     const nMin = d.min ?? -9999;
@@ -1606,7 +1623,7 @@
                 row.className = "prow";
                 let inp = "";
                 if (d.t === "text")
-                    inp = `<input type="text" class="pv-input" value="${esc(formCfg[d.k] ?? "")}" oninput="setFormCfg('${d.k}',this.value)" onchange="setFormCfg('${d.k}',this.value)">`;
+                    inp = `<input type="text" class="pv-input" value="${esc(formCfg[d.k] ?? "")}" onchange="setFormCfg('${d.k}',this.value)">`;
                 if (d.t === "num") {
                     const fnid = "pfn_" + d.k;
                     inp = `<div style="display:flex;align-items:center;gap:2px;width:100%">` +
