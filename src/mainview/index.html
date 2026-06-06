@@ -74,6 +74,10 @@
                     <div class="dd-item" onmousedown="openTableManager()">
                         テーブル管理…
                     </div>
+                    <div class="dd-sep"></div>
+                    <div class="dd-item" onmousedown="openFontConfig()">
+                        フォント設定…
+                    </div>
                 </div>
             </div>
         </div>
@@ -613,6 +617,12 @@
         let curFormIdx = 0; // 現在編集中インデックス
         let startFormId = forms[0]?.id ?? ""; // 初期表示フォームのID
         // AI接続設定
+        // エディタフォント設定
+        let editorConfig = {
+            fontSize: 16,
+            fontFamily: "'Courier New', Courier, monospace",
+        };
+
         let aiConfig = {
             endpoint: "http://localhost:8080",
             apiKey: "",
@@ -724,9 +734,9 @@
             const base = `width:100%;height:100%;box-sizing:border-box;font-family:'Segoe UI',sans-serif;`;
             switch (w.tag) {
                 case "button":
-                    return `<button style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-weight:${p.fontBold ? "bold" : "normal"};border:${p.border};border-radius:${p.borderRadius || 2}px;cursor:default;pointer-events:none;${vis}">${esc(p.text)}</button>`;
+                    return `<button style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${p.border};border-radius:${p.borderRadius || 2}px;cursor:default;pointer-events:none;${vis}">${esc(p.text)}</button>`;
                 case "label":
-                    return `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-weight:${p.fontBold ? "bold" : "normal"};text-align:${p.align || "left"};display:flex;align-items:center;overflow:hidden;padding:0 2px;${vis}">${esc(p.text)}</div>`;
+                    return `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};text-align:${p.align || "left"};display:flex;align-items:center;overflow:hidden;padding:0 2px;${vis}">${esc(p.text)}</div>`;
                 case "inputtype": {
                     const itype = p.inputType || "text";
                     // type別のプレビュー表示
@@ -758,9 +768,9 @@
                         "file",
                     ].includes(itype);
                     if (needsPreview) {
-                        return `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};display:flex;align-items:center;padding:0 6px;gap:6px;pointer-events:none;${vis}"><span style="font-size:11px;opacity:.7">${typeIcons[itype] || itype}</span></div>`;
+                        return `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};display:flex;align-items:center;padding:0 6px;gap:6px;pointer-events:none;${vis}"><span style="font-size:11px;opacity:.7">${typeIcons[itype] || itype}</span></div>`;
                     }
-                    return `<input type="${itype}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" ${p.maxLength ? `maxlength="${p.maxLength}"` : ""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};padding:0 4px;pointer-events:none;${vis}">`;
+                    return `<input type="${itype}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" ${p.maxLength ? `maxlength="${p.maxLength}"` : ""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};padding:0 4px;pointer-events:none;${vis}">`;
                 }
                 case "inputtype": {
                     const itype2 = p.inputType || "text";
@@ -771,34 +781,34 @@
                     const ro = p.readonly ? " readonly" : "";
                     const dis = p.disabled ? " disabled" : "";
                     lines2.push(
-                        `<input type="${itype2}" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};padding:0 4px">`,
+                        `<input type="${itype2}" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};padding:0 4px">`,
                     );
                     break;
                 }
                 case "input":
                     if (p.multiline)
-                        return `<textarea style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};resize:none;padding:2px 4px;pointer-events:none;${vis}">${esc(p.text)}</textarea>`;
-                    return `<input type="text" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};padding:0 4px;pointer-events:none;${vis}">`;
+                        return `<textarea style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};resize:none;padding:2px 4px;pointer-events:none;${vis}">${esc(p.text)}</textarea>`;
+                    return `<input type="text" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};padding:0 4px;pointer-events:none;${vis}">`;
                 case "checkbox":
-                    return `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;pointer-events:none;${vis}"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`;
+                    return `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};pointer-events:none;${vis}"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`;
                 case "radio":
-                    return `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;pointer-events:none;${vis}"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`;
+                    return `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};pointer-events:none;${vis}"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`;
                 case "listbox":
-                    return `<select multiple style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};pointer-events:none;${vis}">${(
+                    return `<select multiple style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};pointer-events:none;${vis}">${(
                         p.items || ""
                     )
                         .split("\n")
                         .map((i) => `<option>${esc(i)}</option>`)
                         .join("")}</select>`;
                 case "selectBox":
-                    return `<select style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};pointer-events:none;${vis}">${(
+                    return `<select style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};pointer-events:none;${vis}">${(
                         p.items || ""
                     )
                         .split("\n")
                         .map((i) => `<option>${esc(i)}</option>`)
                         .join("")}</select>`;
                 case "groupbox":
-                    return `<fieldset style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};${vis}"><legend style="padding:0 4px;font-size:${p.fontSize}px">${esc(p.text)}</legend></fieldset>`;
+                    return `<fieldset style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};${vis}"><legend style="padding:0 4px;font-size:${p.fontSize}px;font-family:${p.fontFamily || ""}">${esc(p.text)}</legend></fieldset>`;
                 case "picture":
                     return `<div style="${base}background:${p.bg};border:${p.border};display:flex;align-items:center;justify-content:center;color:#888;font-size:11px;${vis}">${p.src ? `<img src="${esc(p.src)}" style="max-width:100%;max-height:100%">` : "📷"}</div>`;
                 case "datagrid": {
@@ -1167,6 +1177,7 @@
                 {k: "bg", lb: "BackColor", t: "color"},
                 {k: "fg", lb: "ForeColor", t: "color"},
                 {k: "fontSize", lb: "FontSize", t: "num"},
+                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
                 {k: "fontBold", lb: "Bold", t: "bool"},
                 {k: "border", lb: "Border", t: "text"},
                 {k: "borderRadius", lb: "Radius", t: "num"},
@@ -1187,6 +1198,7 @@
                 {k: "fg", lb: "ForeColor", t: "color"},
                 {k: "bg", lb: "BackColor", t: "color"},
                 {k: "fontSize", lb: "FontSize", t: "num"},
+                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
                 {k: "fontBold", lb: "Bold", t: "bool"},
                 {
                     k: "align",
@@ -1233,6 +1245,7 @@
                 {k: "bg", lb: "BackColor", t: "color"},
                 {k: "fg", lb: "ForeColor", t: "color"},
                 {k: "fontSize", lb: "FontSize", t: "num"},
+                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
                 {k: "border", lb: "Border", t: "text"},
                 {sep: "動作"},
                 {k: "maxLength", lb: "MaxLength", t: "num"},
@@ -1255,6 +1268,7 @@
                 {k: "bg", lb: "BackColor", t: "color"},
                 {k: "fg", lb: "ForeColor", t: "color"},
                 {k: "fontSize", lb: "FontSize", t: "num"},
+                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
                 {sep: "動作"},
                 {k: "multiline", lb: "Multiline", t: "bool"},
                 {k: "disabled", lb: "Disabled", t: "bool"},
@@ -1272,6 +1286,7 @@
                 {k: "text", lb: "Text", t: "text"},
                 {k: "fg", lb: "ForeColor", t: "color"},
                 {k: "fontSize", lb: "FontSize", t: "num"},
+                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
                 {sep: "状態"},
                 {k: "checked", lb: "Checked", t: "bool"},
                 {k: "visible", lb: "Visible", t: "bool"},
@@ -1289,6 +1304,7 @@
                 {k: "group", lb: "GroupName", t: "text"},
                 {k: "fg", lb: "ForeColor", t: "color"},
                 {k: "fontSize", lb: "FontSize", t: "num"},
+                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
                 {sep: "状態"},
                 {k: "checked", lb: "Checked", t: "bool"},
                 {k: "visible", lb: "Visible", t: "bool"},
@@ -1306,6 +1322,7 @@
                 {k: "bg", lb: "BackColor", t: "color"},
                 {k: "fg", lb: "ForeColor", t: "color"},
                 {k: "fontSize", lb: "FontSize", t: "num"},
+                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
                 {k: "visible", lb: "Visible", t: "bool"},
                 {sep: "説明"},
                 {k: "description", lb: "説明（任意）", t: "area"},
@@ -1321,6 +1338,7 @@
                 {k: "bg", lb: "BackColor", t: "color"},
                 {k: "fg", lb: "ForeColor", t: "color"},
                 {k: "fontSize", lb: "FontSize", t: "num"},
+                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
                 {k: "visible", lb: "Visible", t: "bool"},
                 {sep: "説明"},
                 {k: "description", lb: "説明（任意）", t: "area"},
@@ -1373,6 +1391,7 @@
                 {sep: "外観"},
                 {k: "borderColor", lb: "BorderColor", t: "color"},
                 {k: "fontSize", lb: "FontSize", t: "num"},
+                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
                 {k: "visible", lb: "Visible", t: "bool"},
                 {sep: "説明"},
                 {k: "description", lb: "説明（任意）", t: "area"},
@@ -1486,6 +1505,19 @@
                     return `<textarea style="width:100%;height:56px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:11px;resize:none;outline:none;padding:3px 4px;box-sizing:border-box" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">${esc(val || "")}</textarea>`;
                 case "coldef":
                     return `<button onclick="openColDefEditor(${w2})" style="width:100%;height:24px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--accent);font-size:11px;cursor:pointer;text-align:left;padding:0 6px">✏ カラム編集…</button>`;
+                case "fontsel": {
+                    const curFF = val || "";
+                    const curFFL = WIDGET_FONTS.find(f => f.value === curFF)?.label || "（デフォルト）";
+                    const fid = "pv-ff-" + w2;
+                    const fopts = WIDGET_FONTS.map((f, i) =>
+                        `<div class="pv-sel-opt ${f.value === curFF ? "active" : ""}" ` +
+                        `onmousedown="pvSelPick('${fid}','${esc(f.label)}',event);window._setFF(${i},${w2})">${esc(f.label)}</div>`
+                    ).join("");
+                    return `<div class="pv-sel" id="${fid}">` +
+                        `<div class="pv-sel-btn" onmousedown="pvSelOpen('${fid}',event)">` +
+                        `<span>${esc(curFFL)}</span><span class="arr">▼</span></div>` +
+                        `<div class="pv-sel-list">${fopts}</div></div>`;
+                }
             }
             return "";
         }
@@ -1501,6 +1533,20 @@
             else w.props[k] = val;
             renderWidget(w, false);
             applyWPos($("w" + wid), w);
+
+            // フォントファミリー選択グローバルブリッジ
+            window._setFF = function (idx, wid) {
+                setFontFamilyProp(idx, wid);
+            };
+
+            function setFontFamilyProp(idx, wid) {
+                const w = widgets.find((x) => x.id == wid);
+                if (!w) return;
+                w.props.fontFamily = (WIDGET_FONTS[idx] || WIDGET_FONTS[0]).value;
+                renderWidget(w, false);
+                applyWPos($("w" + wid), w);
+                pushUndo();
+            }
             if (sp === "name") $("prop-obj").textContent = val;
         }
 
@@ -1626,6 +1672,7 @@
                 "  入力値を検証してForm2に遷移します。\n";
 
 
+            const curJs = (w.jsCode && w.jsCode[evName]) || "";
             const aiEnabled = aiConfig.enabled;
             showModal(
                 "<div class='modal-yaml'>" +
@@ -1636,10 +1683,26 @@
                 "<div class='yaml-editor-layout' id='yaml-layout'>" +
                 // 左: YAMLエリア
                 "<div class='yaml-editor-left'>" +
+                // タブバー
+                "<div class='yaml-tab-bar'>" +
+                "<div class='yaml-tab active' id='tab-yaml'>📋 YAML</div>" +
+                "<div class='yaml-tab' id='tab-js'>📜 JavaScript</div>" +
+                "</div>" +
+                // YAMLペイン
+                "<div class='yaml-pane active' id='pane-yaml'>" +
                 "<div class='yaml-hl-wrap' style='flex:1;min-height:0'>" +
                 "<div class='yaml-hl-bg' id='yaml-hl'></div>" +
                 "<textarea class='yaml' id='yaml-ta' style='height:100%;min-height:300px' " +
                 "oninput='yamlHlUpdate()' onscroll='yamlHlSync()'>" + esc(cur) + "</textarea>" +
+                "</div></div>" +
+                // JSペイン
+                "<div class='yaml-pane' id='pane-js'>" +
+                "<div class='js-hl-wrap'>" +
+                "<div class='js-hl-bg' id='js-hl'></div>" +
+                "<textarea class='yaml' id='js-ta' " +
+                "oninput='jsHlUpdate()' onscroll='jsHlSync()' " +
+                "placeholder='// AIでJavaScriptを生成、または直接編集できます'>" + esc(curJs) + "</textarea>" +
+                "</div>" +
                 "</div>" +
                 // AIバー
                 "<div class='yaml-ai-bar' style='padding-bottom:8px'>" +
@@ -1666,9 +1729,25 @@
             window._yamlSave = () => saveYaml(wid, evName);
             window._yamlAiGen = () => yamlAiGenerate(wid, evName);
             requestAnimationFrame(() => {
+                applyEditorConfig(); // フォント設定を即時反映
                 yamlHlUpdate();
+                yamlUndoInit(cur);
                 yamlInitResize();
                 yamlInitRpanelEvents();
+                // タブボタンにイベント登録
+                const tabY = $("tab-yaml");
+                const tabJ = $("tab-js");
+                if (tabY) tabY.addEventListener("click", () => yamlTabSwitch("yaml"));
+                if (tabJ) tabJ.addEventListener("click", () => {yamlTabSwitch("js"); jsHlUpdate();});
+                // JS初期ハイライト
+                jsHlUpdate();
+                // JSタブにCtrl+Z/Shift+Zを設定
+                const jsTa = $("js-ta");
+                if (jsTa) {
+                    jsTa.addEventListener("keydown", function (e) {
+                        // ネイティブUndoに委譲（何もしない）
+                    }, true);
+                }
             });
 
         }
@@ -2156,9 +2235,12 @@
                     .replace(/^```(?:javascript|js)?\n?/i, "")
                     .replace(/```$/, "")
                     .trim();
-                const ta = $("yaml-ta");
-                if (ta) {ta.value = clean; yamlHlUpdate();}
-                if (status) status.textContent = "✅ 生成完了";
+                // JS生成結果をJSタブにセット
+                const jsTa = $("js-ta");
+                if (jsTa) {jsTa.value = clean;}
+                // YAMLも保持しつつJSタブに切り替え
+                yamlTabSwitch("js");
+                if (status) status.textContent = "✅ 生成完了 (JavaScriptタブを確認)";
             } catch (e) {
                 if (status) status.textContent = "❌ " + e.message;
                 await window.vja?.log?.error?.("AI生成エラー: " + e.message).catch(() => { });
@@ -2308,6 +2390,146 @@
 
 
         /* ── YAML シンタックスハイライト ── */
+
+
+        /* ── JavaScript シンタックスハイライト ── */
+        function jsHlUpdate() {
+            const ta = $("js-ta");
+            const hl = $("js-hl");
+            if (!ta || !hl) return;
+            hl.innerHTML = jsTokenize(ta.value);
+            hl.style.height = ta.offsetHeight + "px";
+            hl.style.width = ta.offsetWidth + "px";
+            jsHlSync();
+        }
+        function jsHlSync() {
+            const ta = $("js-ta");
+            const hl = $("js-hl");
+            if (!ta || !hl) return;
+            hl.scrollTop = ta.scrollTop;
+            hl.scrollLeft = ta.scrollLeft;
+            hl.style.height = ta.offsetHeight + "px";
+        }
+        function jsTokenize(code) {
+            const KW = /^(function|return|if|else|for|while|do|switch|case|break|continue|const|let|var|new|this|typeof|instanceof|try|catch|finally|throw|await|async|of|in|class|extends|import|export|default|void|delete|yield)$/;
+            const BOOL = /^(true|false|null|undefined|NaN|Infinity)$/;
+            return code.split("\n").map(line => {
+                // 行コメント
+                if (/^\s*\/\//.test(line)) return '<span class="jc">' + escHl(line) + '</span>';
+                let out = ""; let i = 0;
+                while (i < line.length) {
+                    // 行コメント（途中）
+                    if (line[i] === "/" && line[i + 1] === "/") {
+                        out += '<span class="jc">' + escHl(line.slice(i)) + '</span>';
+                        break;
+                    }
+                    // 文字列
+                    if (line[i] === '"' || line[i] === "'" || line[i] === "`") {
+                        const q = line[i]; let j = i + 1;
+                        while (j < line.length) {if (line[j] === "\\") {j += 2; continue;} if (line[j] === q) {j++; break;} j++;}
+                        out += '<span class="js">' + escHl(line.slice(i, j)) + '</span>';
+                        i = j; continue;
+                    }
+                    // 数値
+                    if (/[0-9]/.test(line[i]) && (i === 0 || !/\w/.test(line[i - 1]))) {
+                        let j = i; while (j < line.length && /[0-9._xXa-fA-F]/.test(line[j])) j++;
+                        out += '<span class="jn">' + escHl(line.slice(i, j)) + '</span>';
+                        i = j; continue;
+                    }
+                    // 識別子・キーワード
+                    if (/[a-zA-Z_$]/.test(line[i])) {
+                        let j = i; while (j < line.length && /[\w$]/.test(line[j])) j++;
+                        const word = line.slice(i, j);
+                        const next = line[j];
+                        if (KW.test(word)) out += '<span class="jk">' + escHl(word) + '</span>';
+                        else if (BOOL.test(word)) out += '<span class="jb">' + escHl(word) + '</span>';
+                        else if (next === "(") out += '<span class="jf">' + escHl(word) + '</span>';
+                        else out += '<span class="jp">' + escHl(word) + '</span>';
+                        i = j; continue;
+                    }
+                    out += escHl(line[i]); i++;
+                }
+                return out;
+            }).join("\n");
+        }
+
+        /* ── YAMLエディタ タブ切り替え ── */
+        function yamlTabSwitch(tab) {
+            const yamlTab = $("tab-yaml");
+            const jsTab = $("tab-js");
+            const yamlPane = $("pane-yaml");
+            const jsPane = $("pane-js");
+            if (!yamlTab || !jsTab || !yamlPane || !jsPane) return;
+            if (tab === "yaml") {
+                yamlTab.classList.add("active");
+                jsTab.classList.remove("active");
+                yamlPane.classList.add("active");
+                jsPane.classList.remove("active");
+            } else {
+                jsTab.classList.add("active");
+                yamlTab.classList.remove("active");
+                jsPane.classList.add("active");
+                yamlPane.classList.remove("active");
+            }
+        }
+
+        /* ── JavaScript エディタ Undo（ネイティブに委譲） ── */
+        function jsUndoPush() { /* ネイティブUndoを使用 */}
+
+        /* ── YAMLエディタ Undo履歴 ── */
+        let _yamlUndoStack = [];
+        let _yamlUndoIdx = -1;
+        let _yamlUndoTimer = null;
+        let _yamlUndoing = false;
+
+        function yamlUndoInit(val) {
+            _yamlUndoStack = [val];
+            _yamlUndoIdx = 0;
+            _yamlUndoing = false;
+            const ta = $("yaml-ta");
+            if (!ta) return;
+
+            // input イベントでスナップショット保存
+            ta.addEventListener("input", function () {
+                if (_yamlUndoing) return;
+                clearTimeout(_yamlUndoTimer);
+                _yamlUndoTimer = setTimeout(() => {
+                    if (_yamlUndoing) return;
+                    const v = ta.value;
+                    _yamlUndoStack = _yamlUndoStack.slice(0, _yamlUndoIdx + 1);
+                    if (_yamlUndoStack[_yamlUndoIdx] === v) return;
+                    _yamlUndoStack.push(v);
+                    if (_yamlUndoStack.length > 100) _yamlUndoStack.shift();
+                    else _yamlUndoIdx++;
+                }, 400);
+            });
+
+            ta.addEventListener("keydown", function (e) {
+                const isUndo = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !e.shiftKey;
+                const isRedo = (e.ctrlKey || e.metaKey) && ((e.key.toLowerCase() === "z" && e.shiftKey) || e.key.toLowerCase() === "y");
+                if (!isUndo && !isRedo) return;
+                e.preventDefault();
+                e.stopPropagation();
+                _yamlUndoing = true;
+                clearTimeout(_yamlUndoTimer);
+                if (isUndo && _yamlUndoIdx > 0) {
+                    _yamlUndoIdx--;
+                    ta.value = _yamlUndoStack[_yamlUndoIdx];
+                    yamlHlUpdate();
+                } else if (isRedo) {
+                    if (_yamlUndoIdx < _yamlUndoStack.length - 1) {
+                        _yamlUndoIdx++;
+                        ta.value = _yamlUndoStack[_yamlUndoIdx];
+                        yamlHlUpdate();
+                    }
+                }
+                setTimeout(() => {_yamlUndoing = false;}, 100);
+            }, true);
+        }
+
+        function yamlUndoPush() { /* 互換用・内部では使わない */}
+        function yamlUndoKey(e) { /* 互換用・内部では使わない */}
+
         function yamlHlUpdate() {
             const ta = $("yaml-ta");
             const hl = $("yaml-hl");
@@ -2370,7 +2592,9 @@
             const w = widgets.find((x) => x.id == wid);
             if (!w) return;
             if (!w.events) w.events = {};
-            w.events[evName] = $("yaml-ta").value;
+            if (!w.jsCode) w.jsCode = {};
+            w.events[evName] = $("yaml-ta")?.value || "";
+            w.jsCode[evName] = $("js-ta")?.value || "";
             closeModal();
             renderEvents();
             pushUndo();
@@ -2436,7 +2660,7 @@
         ═══════════════════════════════════════════ */
         // プロジェクト全体スナップショット
         function snapshot() {
-            return JSON.stringify({forms, curFormIdx, constants, startFormId, aiConfig, tables, snapOn, showGrid});
+            return JSON.stringify({forms, curFormIdx, constants, startFormId, aiConfig, tables, snapOn, showGrid, editorConfig});
         }
         function pushUndo() {
             // 編集前に現フォームのidCntを書き戻す
@@ -2454,6 +2678,7 @@
             tables = d.tables || [];
             snapOn = d.snapOn !== undefined ? d.snapOn : true;
             showGrid = d.showGrid !== undefined ? d.showGrid : false;
+            if (d.editorConfig) editorConfig = {...editorConfig, ...d.editorConfig};
             const _ac = d.aiConfig || {};
             aiConfig = {endpoint: _ac.endpoint || "http://localhost:8080", apiKey: _ac.apiKey || "", model: _ac.model || "", models: _ac.models || [], enabled: !!_ac.enabled, routerMode: !!_ac.routerMode};
             syncCurForm();
@@ -2563,6 +2788,7 @@
                 tables = d.tables || [];
                 snapOn = d.snapOn !== undefined ? d.snapOn : true;
                 showGrid = d.showGrid !== undefined ? d.showGrid : false;
+                if (d.editorConfig) editorConfig = {...editorConfig, ...d.editorConfig};
                 const _ac = d.aiConfig || {};
                 aiConfig = {endpoint: _ac.endpoint || "http://localhost:8080", apiKey: _ac.apiKey || "", model: _ac.model || "", models: _ac.models || [], enabled: !!_ac.enabled, routerMode: !!_ac.routerMode};
                 syncCurForm();
@@ -2686,12 +2912,12 @@
                     switch (w.tag) {
                         case "button":
                             lines2.push(
-                                `<button id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};border-radius:${p.borderRadius || 2}px;cursor:pointer">${esc(p.text)}</button>`,
+                                `<button id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};border-radius:${p.borderRadius || 2}px;cursor:pointer">${esc(p.text)}</button>`,
                             );
                             break;
                         case "label":
                             lines2.push(
-                                `<label  id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;text-align:${p.align};display:flex;align-items:center">${esc(p.text)}</label>`,
+                                `<label  id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};text-align:${p.align};display:flex;align-items:center">${esc(p.text)}</label>`,
                             );
                             break;
                         case "inputtype": {
@@ -2703,33 +2929,33 @@
                             const ro = p.readonly ? " readonly" : "";
                             const dis = p.disabled ? " disabled" : "";
                             lines2.push(
-                                `<input type="${itype2}" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};padding:0 4px">`,
+                                `<input type="${itype2}" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};padding:0 4px">`,
                             );
                             break;
                         }
                         case "input":
                             if (p.multiline)
                                 lines2.push(
-                                    `<textarea id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};padding:2px 4px;resize:none">${esc(p.text)}</textarea>`,
+                                    `<textarea id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};padding:2px 4px;resize:none">${esc(p.text)}</textarea>`,
                                 );
                             else
                                 lines2.push(
-                                    `<input type="text" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border};padding:0 4px">`,
+                                    `<input type="text" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};padding:0 4px">`,
                                 );
                             break;
                         case "checkbox":
                             lines2.push(
-                                `<label id="${w.name}" style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;cursor:pointer"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
+                                `<label id="${w.name}" style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};cursor:pointer"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
                             );
                             break;
                         case "radio":
                             lines2.push(
-                                `<label id="${w.name}" style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;cursor:pointer"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
+                                `<label id="${w.name}" style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};cursor:pointer"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
                             );
                             break;
                         case "listbox":
                             lines2.push(
-                                `<select id="${w.name}" multiple style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border}">${(
+                                `<select id="${w.name}" multiple style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border}">${(
                                     p.items || ""
                                 )
                                     .split("\n")
@@ -2741,7 +2967,7 @@
                             break;
                         case "selectBox":
                             lines2.push(
-                                `<select id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border}">${(
+                                `<select id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border}">${(
                                     p.items || ""
                                 )
                                     .split("\n")
@@ -2753,7 +2979,7 @@
                             break;
                         case "groupbox":
                             lines2.push(
-                                `<fieldset id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;border:${p.border}"><legend>${esc(p.text)}</legend></fieldset>`,
+                                `<fieldset id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border}"><legend>${esc(p.text)}</legend></fieldset>`,
                             );
                             break;
                         case "datagrid": {
@@ -3150,23 +3376,14 @@
 
         /* ── プロパティパネル カスタムセレクト ── */
         function pvSelOpen(id, e) {
-            e.stopPropagation();
+            if (e) e.stopPropagation();
             const wrap = document.getElementById(id);
             if (!wrap) return;
             const list = wrap.querySelector(".pv-sel-list");
             if (!list) return;
             const isOpen = list.classList.contains("open");
-            // 他を全部閉じる
             document.querySelectorAll(".pv-sel-list.open").forEach(el => el.classList.remove("open"));
-            if (!isOpen) {
-                list.classList.add("open");
-                // 位置を fixed で計算
-                const btn = wrap.querySelector(".pv-sel-btn");
-                const r = btn.getBoundingClientRect();
-                list.style.left = r.left + "px";
-                list.style.top = (r.bottom + 2) + "px";
-                list.style.minWidth = r.width + "px";
-            }
+            if (!isOpen) list.classList.add("open");
         }
         function pvSelPick(id, val, e) {
             e.stopPropagation();
@@ -3582,6 +3799,120 @@
             showToast("フォーム定数を保存しました（" + f.constants.length + "件）");
         }
 
+
+        /* ── フォント設定 ── */
+
+        const WIDGET_FONTS = [
+            {label: "（デフォルト）", value: ""},
+            {label: "Courier New", value: "'Courier New', Courier, monospace"},
+            {label: "Consolas", value: "'Consolas', 'Courier New', monospace"},
+            {label: "Fira Code", value: "'Fira Code', 'Courier New', monospace"},
+            {label: "Source Code Pro", value: "'Source Code Pro', monospace"},
+            {label: "Menlo", value: "'Menlo', 'DejaVu Sans Mono', monospace"},
+            {label: "sans-serif", value: "sans-serif"},
+            {label: "serif", value: "serif"},
+            {label: "monospace", value: "monospace"},
+        ];
+
+        const EDITOR_FONTS = [
+            {label: "Courier New", value: "'Courier New', Courier, monospace"},
+            {label: "Consolas", value: "'Consolas', 'Courier New', monospace"},
+            {label: "Fira Code", value: "'Fira Code', 'Courier New', monospace"},
+            {label: "Source Code Pro", value: "'Source Code Pro', monospace"},
+            {label: "Menlo", value: "'Menlo', 'DejaVu Sans Mono', monospace"},
+            {label: "monospace", value: "monospace"},
+        ];
+
+        function openFontConfig() {
+            const curFont = editorConfig.fontFamily;
+            const curSize = editorConfig.fontSize;
+            const fontOpts = EDITOR_FONTS.map(f =>
+                "<div class='pv-sel-opt " + (f.value === curFont ? "active" : "") + "' " +
+                "data-label='" + esc(f.label) + "' data-value='" + esc(f.value) + "'>" +
+                f.label + "</div>"
+            ).join("");
+            const curFontLabel = EDITOR_FONTS.find(f => f.value === curFont)?.label || "Courier New";
+
+            showModal(
+                "<div class='mhdr'><h4>🔤 エディタフォント設定</h4>" +
+                "<button class='mclose' onclick='closeModal()'>✕</button></div>" +
+                "<div class='mbody' style='gap:14px'>" +
+                // フォントサイズ
+                "<div class='ai-cfg-row'><label>フォントサイズ</label>" +
+                "<div style='display:flex;align-items:center;gap:8px'>" +
+                "<input id='ef-size' type='number' value='" + curSize + "' min='10' max='32' step='1' " +
+                "style='width:70px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:13px;padding:0 8px;outline:none;text-align:center' " +
+                ">" +
+                "<span style='color:var(--text2);font-size:12px'>px (10〜32)</span>" +
+                "</div></div>" +
+                // フォントファミリー
+                "<div class='ai-cfg-row'><label>フォント</label>" +
+                "<div style='flex:1;background:#1e1e2e;border:1px solid #666;border-radius:3px;overflow:hidden'>" +
+                "<select id='ef-font-sel' style='width:100%;height:30px;background:transparent;border:none;color:#e0e0f0;font-size:13px;padding:0 4px;outline:none;color-scheme:dark'>" +
+                EDITOR_FONTS.map((f, i) =>
+                    "<option value='" + i + "' style='background:#1e1e2e;color:#e0e0f0' " + (f.value === curFont ? "selected" : "") + ">" + esc(f.label) + "</option>"
+                ).join("") +
+                "</select>" +
+                "</div>" +
+                "</div>" +
+                // プレビュー
+                "<div style='display:flex;flex-direction:column;gap:6px'>" +
+                "<label style='font-size:12px;color:var(--text2)'>プレビュー</label>" +
+                "<div id='ef-preview' style='background:#1e1e2e;border:1px solid var(--border);border-radius:4px;padding:12px;" +
+                "font-size:" + curSize + "px;font-family:" + curFont + ";line-height:1.6;color:#e8e8f0;white-space:pre'>" +
+                "<span style='color:#7ec8ff'>function</span> <span style='color:#ffe080'>hello</span>() {\n" +
+                "  <span style='color:#7ec8ff'>const</span> msg = <span style='color:#f0a87a'>&quot;Hello, VJA!&quot;</span>;\n" +
+                "  <span style='color:#7ec8ff'>return</span> msg;\n" +
+                "}" +
+                "</div>" +
+                "</div>" +
+                "<div class='mfoot'>" +
+                "<button onclick='closeModal()'>キャンセル</button>" +
+                "<button class='pri' id='ef-save-btn'>保存</button>" +
+                "</div>"
+            );
+            // 保存ボタンに直接addEventListener登録
+            requestAnimationFrame(() => {
+                const saveBtn = $("ef-save-btn");
+                if (saveBtn) saveBtn.addEventListener("click", saveFontConfig);
+            });
+            // ポーリングでプレビュー更新
+            let _pfLastSize = curSize, _pfLastIdx = -1;
+            const _pfPoll = setInterval(() => {
+                const sel = $("ef-font-sel");
+                const sizeIn = $("ef-size");
+                const prev = $("ef-preview");
+                if (!sel || !prev) {clearInterval(_pfPoll); return;}
+                const nowSize = parseInt(sizeIn?.value) || 16;
+                const nowIdx = sel.selectedIndex;
+                if (nowSize !== _pfLastSize || nowIdx !== _pfLastIdx) {
+                    _pfLastSize = nowSize;
+                    _pfLastIdx = nowIdx;
+                    const f = EDITOR_FONTS[nowIdx] || EDITOR_FONTS[0];
+                    prev.style.setProperty("font-size", nowSize + "px", "important");
+                    prev.style.setProperty("font-family", f.value, "important");
+                }
+            }, 150);
+        }
+
+
+
+
+        window._fontSave = function () {saveFontConfig();};
+
+        function saveFontConfig() {
+            const size = Math.max(10, Math.min(32, parseInt($("ef-size")?.value) || 16));
+            const sel = $("ef-font-sel");
+            const fontIdx = sel ? (parseInt(sel.options[sel.selectedIndex]?.value) || 0) : 0;
+            const font = (EDITOR_FONTS[fontIdx] || EDITOR_FONTS[0]).value;
+            console.log("[saveFontConfig] size=", size, "fontIdx=", fontIdx, "font=", font);
+            editorConfig = {fontSize: size, fontFamily: font};
+            applyEditorConfig();
+            closeModal();
+            pushUndo();
+            showToast("フォント設定を保存しました");
+        }
+
         /* ── カラム定義エディタ ── */
         function openColDefEditor(wid) {
             const w = widgets.find(x => x.id == wid);
@@ -3653,7 +3984,26 @@
         }
 
 
+        function applyEditorConfig() {
+            const fs = editorConfig.fontSize + "px";
+            const ff = editorConfig.fontFamily;
+            // CSS変数を更新
+            document.documentElement.style.setProperty("--editor-font-size", fs);
+            document.documentElement.style.setProperty("--editor-font-family", ff);
+            // 既に開いているエディタ要素に直接適用
+            ["yaml-ta", "js-ta"].forEach(id => {
+                const el = $(id);
+                if (el) {el.style.fontSize = fs; el.style.fontFamily = ff;}
+            });
+            // ハイライトオーバーレイにも直接適用
+            document.querySelectorAll(".yaml-hl-bg, #yaml-hl, #js-hl").forEach(el => {
+                el.style.fontSize = fs;
+                el.style.fontFamily = ff;
+            });
+        }
+
         function applyViewSettings() {
+            applyEditorConfig();
             // グリッド
             fb().classList.toggle("show-grid", showGrid);
             const stg = $("st-grid");

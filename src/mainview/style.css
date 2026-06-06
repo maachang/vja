@@ -10,6 +10,8 @@ html {
 }
 
 :root {
+    --editor-font-size: 16px;
+    --editor-font-family: 'Courier New', Courier, monospace;
     --bg: #1e1e2e;
     --bg2: #252535;
     --bg3: #2d2d45;
@@ -501,6 +503,7 @@ body {
 #plist {
     flex: 1;
     overflow-y: auto;
+    overflow-x: visible;
 }
 
 #elist {
@@ -513,6 +516,7 @@ body {
     display: grid;
     grid-template-columns: 2fr 3fr;
     min-height: 28px;
+    overflow: visible;
     border-bottom: 1px solid #ffffff08;
 }
 
@@ -1076,8 +1080,8 @@ textarea.yaml {
     border: 1px solid var(--border);
     border-radius: 4px;
     color: var(--text);
-    font-family: monospace;
-    font-size: 14px;
+    font-family: var(--editor-font-family);
+    font-size: var(--editor-font-size);
     padding: 8px;
     resize: vertical;
     outline: none;
@@ -1105,8 +1109,8 @@ textarea.yaml:focus {
     border-radius: 4px;
     padding: 8px;
     box-sizing: border-box;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 14px;
+    font-family: var(--editor-font-family);
+    font-size: var(--editor-font-size);
     line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-all;
@@ -1125,8 +1129,8 @@ textarea.yaml:focus {
     caret-color: #e0e0f0 !important;
     color: #2d2d45 !important;
     border: 1px solid var(--border);
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 14px;
+    font-family: var(--editor-font-family);
+    font-size: var(--editor-font-size);
     line-height: 1.6;
     letter-spacing: normal;
     resize: vertical;
@@ -1598,14 +1602,16 @@ textarea.yaml:focus {
 }
 
 .pv-sel-list {
-    position: fixed;
+    position: absolute;
+    top: 100%;
+    left: 0;
     background: #252535;
     border: 1px solid var(--accent);
     border-radius: 3px;
     z-index: 9999;
     display: none;
     flex-direction: column;
-    min-width: 80px;
+    min-width: 100%;
     box-shadow: 0 4px 12px #000c;
     max-height: 160px;
     overflow-y: auto
@@ -2126,3 +2132,131 @@ textarea.yaml:focus {
     background: var(--border);
     border-radius: 3px;
 }
+
+/* ── YAMLエディタ タブ ── */
+.yaml-tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--border);
+    flex-shrink: 0;
+    background: var(--bg3)
+}
+
+.yaml-tab {
+    padding: 9px 32px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text2);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    user-select: none;
+    transition: .15s;
+    letter-spacing: .3px
+}
+
+.yaml-tab:hover {
+    color: var(--text)
+}
+
+.yaml-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    font-weight: bold;
+    background: var(--bg2)
+}
+
+.yaml-pane {
+    display: none;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden
+}
+
+.yaml-pane.active {
+    display: flex
+}
+
+/* ── JavaScript シンタックスハイライト ── */
+.js-hl-wrap {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column
+}
+
+.js-hl-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 2;
+    padding: 8px;
+    box-sizing: border-box;
+    font-family: var(--editor-font-family);
+    font-size: var(--editor-font-size);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: transparent;
+    border: 1px solid transparent;
+    overflow: hidden
+}
+
+.js-hl-wrap textarea.yaml {
+    position: relative;
+    z-index: 1;
+    background: #1e1e2e !important;
+    caret-color: #e0e0f0 !important;
+    color: #1e1e2e !important;
+    border: 1px solid var(--border);
+    font-family: var(--editor-font-family);
+    font-size: var(--editor-font-size);
+    line-height: 1.6;
+    resize: none;
+    display: block;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    box-sizing: border-box
+}
+
+/* JSトークン色 */
+.jk {
+    color: #7ec8ff
+}
+
+/* キーワード */
+.js {
+    color: #f0a87a
+}
+
+/* 文字列 */
+.jn {
+    color: #d0f0a0
+}
+
+/* 数値 */
+.jc {
+    color: #7ec87e
+}
+
+/* コメント */
+.jf {
+    color: #ffe080
+}
+
+/* 関数名 */
+.jp {
+    color: #e8e8f0
+}
+
+/* 通常テキスト */
+.jb {
+    color: #e080e0
+}
+
+/* true/false/null/undefined */
