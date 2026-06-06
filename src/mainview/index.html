@@ -32,6 +32,10 @@
                     <div class="dd-item" onmousedown="actExport()">
                         HTMLエクスポート
                     </div>
+                    <div class="dd-sep"></div>
+                    <div class="dd-item" onmousedown="openProjectInfo()">
+                        プロジェクト情報…
+                    </div>
                 </div>
             </div>
             <div class="menu-item" onmousedown="toggleMenu('me', event)">
@@ -82,18 +86,18 @@
             </div>
         </div>
         <div class="tb-sep"></div>
-        <button class="tb-btn" onclick="actNew()" title="新規">
+        <button class="tb-btn" onmousedown="actNew()" title="新規">
             <svg viewBox="0 0 24 24">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                 <polyline points="14 2 14 8 20 8" />
             </svg>
         </button>
-        <button class="tb-btn" onclick="actOpen()" title="開く">
+        <button class="tb-btn" onmousedown="actOpen()" title="開く">
             <svg viewBox="0 0 24 24">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
             </svg>
         </button>
-        <button class="tb-btn" onclick="console.log('[btn] save clicked'); actSave()" title="保存">
+        <button class="tb-btn" onmousedown="actSave()" title="保存">
             <svg viewBox="0 0 24 24">
                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
                 <polyline points="17 21 17 13 7 13 7 21" />
@@ -101,27 +105,27 @@
             </svg>
         </button>
         <div class="tb-sep"></div>
-        <button class="tb-btn" onclick="actUndo()" title="元に戻す">
+        <button class="tb-btn" onmousedown="actUndo()" title="元に戻す">
             <svg viewBox="0 0 24 24">
                 <polyline points="9 14 4 9 9 4" />
                 <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
             </svg>
         </button>
-        <button class="tb-btn" onclick="actRedo()" title="やり直し">
+        <button class="tb-btn" onmousedown="actRedo()" title="やり直し">
             <svg viewBox="0 0 24 24">
                 <polyline points="15 14 20 9 15 4" />
                 <path d="M4 20v-7a4 4 0 0 1 4-4h12" />
             </svg>
         </button>
         <div class="tb-sep"></div>
-        <button class="tb-btn" onclick="actDelete()">
+        <button class="tb-btn" onmousedown="actDelete()">
             <svg viewBox="0 0 24 24">
                 <polyline points="3 6 5 6 21 6" />
                 <path d="M19 6l-1 14H6L5 6" />
                 <path d="M9 6V4h6v2" />
             </svg>削除
         </button>
-        <button class="tb-btn" onclick="actExport()">
+        <button class="tb-btn" onmousedown="actExport()">
             <svg viewBox="0 0 24 24">
                 <polyline points="8 17 12 21 16 17" />
                 <line x1="12" y1="12" x2="12" y2="21" />
@@ -129,7 +133,7 @@
             </svg>エクスポート
         </button>
         <div class="tb-sep"></div>
-        <button class="tb-btn" onclick="openConstEditor()" title="グローバル定数の編集">
+        <button class="tb-btn" onmousedown="openConstEditor()" title="グローバル定数の編集">
             <svg viewBox="0 0 24 24">
                 <line x1="4" y1="9" x2="20" y2="9" />
                 <line x1="4" y1="15" x2="20" y2="15" />
@@ -137,7 +141,7 @@
                 <line x1="16" y1="3" x2="14" y2="21" />
             </svg>定数(G)
         </button>
-        <button class="tb-btn" onclick="openFormConstEditor()" title="フォーム定数の編集（現在のフォームに紐づく定数）">
+        <button class="tb-btn" onmousedown="openFormConstEditor()" title="フォーム定数の編集（現在のフォームに紐づく定数）">
             <svg viewBox="0 0 24 24">
                 <rect x="3" y="3" width="7" height="7" />
                 <line x1="4" y1="12" x2="20" y2="12" />
@@ -146,14 +150,14 @@
                 <line x1="16" y1="10" x2="14" y2="22" />
             </svg>定数(F)
         </button>
-        <button class="tb-btn" onclick="openAiConfig()" title="AI接続設定">
+        <button class="tb-btn" onmousedown="openAiConfig()" title="AI接続設定">
             <svg viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="3" />
                 <path
                     d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" />
             </svg>AI設定
         </button>
-        <button class="tb-btn" onclick="openTableManager()" title="テーブル管理">
+        <button class="tb-btn" onmousedown="openTableManager()" title="テーブル管理">
             <svg viewBox="0 0 24 24">
                 <rect x="3" y="3" width="18" height="18" rx="2" />
                 <line x1="3" y1="9" x2="21" y2="9" />
@@ -165,32 +169,32 @@
         <div id="form-selector-area">
             <span id="form-label">📋 画面:</span>
             <div id="fdd-wrap">
-                <div id="fdd-btn" onclick="toggleFdd(event)">
+                <div id="fdd-btn" onmousedown="toggleFdd(event)">
                     <span id="fdd-label">Form1</span>
                     <span class="fdd-arrow">▼</span>
                 </div>
                 <div id="fdd-list"></div>
             </div>
-            <button class="fs-btn" onclick="formNew()" title="新しい画面を追加">
+            <button class="fs-btn" onmousedown="formNew()" title="新しい画面を追加">
                 <svg viewBox="0 0 24 24">
                     <line x1="12" y1="5" x2="12" y2="19" />
                     <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
             </button>
-            <button class="fs-btn" onclick="formRename()" title="画面名を変更">
+            <button class="fs-btn" onmousedown="formRename()" title="画面名を変更">
                 <svg viewBox="0 0 24 24">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                 </svg>
             </button>
-            <button class="fs-btn" onclick="formDelete()" title="この画面を削除" style="color: #ff6b6b">
+            <button class="fs-btn" onmousedown="formDelete()" title="この画面を削除" style="color: #ff6b6b">
                 <svg viewBox="0 0 24 24" stroke="#ff6b6b">
                     <polyline points="3 6 5 6 21 6" />
                     <path d="M19 6l-1 14H6L5 6" />
                     <path d="M9 6V4h6v2" />
                 </svg>
             </button>
-            <button id="btn-set-start" class="fs-btn" onclick="setStartForm()" title="初期表示フォームに設定"
+            <button id="btn-set-start" class="fs-btn" onmousedown="setStartForm()" title="初期表示フォームに設定"
                 style="font-size:14px">★</button>
         </div>
     </div>
@@ -246,10 +250,10 @@
             <h3>プロパティ</h3>
             <div id="prop-obj">Form1</div>
             <div id="ptabs">
-                <div class="ptab on" onclick="switchTab('p')">
+                <div class="ptab on" onmousedown="switchTab('p')">
                     プロパティ
                 </div>
-                <div class="ptab" onclick="switchTab('e')">イベント</div>
+                <div class="ptab" onmousedown="switchTab('e')">イベント</div>
             </div>
             <div id="plist"></div>
             <div id="elist"></div>
@@ -257,7 +261,7 @@
     </div>
 
     <!-- ■ STATUSBAR -->
-    <div id="statusbar">
+    <div id="statusbar"><span id="st-project-name" style="color:var(--accent2);margin-right:12px"></span>
         <span id="st-tool"><b>ポインタ</b></span>
         <span>|</span>
         <span id="st-pos">X:<b>0</b> Y:<b>0</b></span>
@@ -273,32 +277,32 @@
 
     <!-- ■ CONTEXT MENU -->
     <div id="ctx">
-        <div class="ci" onclick="ctxYaml()">
+        <div class="ci" onmousedown="ctxYaml()">
             <svg viewBox="0 0 24 24">
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
             </svg>イベントを編集…
         </div>
-        <div class="ci" onclick="actDuplicate()">
+        <div class="ci" onmousedown="actDuplicate()">
             <svg viewBox="0 0 24 24">
                 <rect x="9" y="9" width="13" height="13" rx="2" />
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
             </svg>複製
         </div>
         <div class="csep"></div>
-        <div class="ci" onclick="ctxFront()">
+        <div class="ci" onmousedown="ctxFront()">
             <svg viewBox="0 0 24 24">
                 <polyline points="17 11 12 6 7 11" />
                 <polyline points="17 18 12 13 7 18" />
             </svg>前面へ
         </div>
-        <div class="ci" onclick="ctxBack()">
+        <div class="ci" onmousedown="ctxBack()">
             <svg viewBox="0 0 24 24">
                 <polyline points="17 6 12 11 7 6" />
                 <polyline points="17 13 12 18 7 13" />
             </svg>背面へ
         </div>
         <div class="csep"></div>
-        <div class="ci" style="color: #ff5f56" onclick="actDelete()">
+        <div class="ci" style="color: #ff5f56" onmousedown="actDelete()">
             <svg viewBox="0 0 24 24" stroke="#ff5f56">
                 <polyline points="3 6 5 6 21 6" />
                 <path d="M19 6l-1 14H6L5 6" />
@@ -317,10 +321,10 @@
                     style="font-size: 12px; color: var(--text2)">保存していない変更は失われます。</span>
             </p>
             <div class="btns">
-                <button class="btn-cancel" onclick="hideCloseConfirm()">
+                <button class="btn-cancel" onmousedown="hideCloseConfirm()">
                     キャンセル
                 </button>
-                <button class="btn-close" onclick="doClose()">
+                <button class="btn-close" onmousedown="doClose()">
                     閉じる
                 </button>
             </div>
@@ -351,7 +355,7 @@
                     fg: "#000",
                     fontSize: 12,
                     fontBold: false,
-                    border: "1px solid #888",
+                    borderSize: 1, borderColor: "#cccccc",
                     borderRadius: 2,
                     disabled: false,
                     visible: true,
@@ -389,7 +393,7 @@
                     bg: "#fff",
                     fg: "#000",
                     fontSize: 12,
-                    border: "1px solid #888",
+                    borderSize: 1, borderColor: "#cccccc",
                     multiline: false,
                     disabled: false,
                     visible: true,
@@ -410,7 +414,7 @@
                     bg: "#fff",
                     fg: "#000",
                     fontSize: 12,
-                    border: "1px solid #888",
+                    borderSize: 1, borderColor: "#cccccc",
                     maxLength: 0,
                     required: false,
                     readonly: false,
@@ -464,7 +468,7 @@
                     bg: "#fff",
                     fg: "#000",
                     fontSize: 12,
-                    border: "1px solid #888",
+                    borderSize: 1, borderColor: "#cccccc",
                     visible: true,
                     description: "",
                 },
@@ -481,7 +485,7 @@
                     bg: "#fff",
                     fg: "#000",
                     fontSize: 12,
-                    border: "1px solid #888",
+                    borderSize: 1, borderColor: "#cccccc",
                     visible: true,
                     description: "",
                 },
@@ -498,7 +502,7 @@
                     bg: "transparent",
                     fg: "#000",
                     fontSize: 12,
-                    border: "1px solid #888",
+                    borderSize: 1, borderColor: "#cccccc",
                     visible: true,
                     description: "",
                 },
@@ -513,7 +517,7 @@
                     h: 80,
                     src: "",
                     bg: "#ddd",
-                    border: "1px solid #888",
+                    borderSize: 1, borderColor: "#cccccc",
                     visible: true,
                     description: "",
                 },
@@ -617,6 +621,15 @@
         let curFormIdx = 0; // 現在編集中インデックス
         let startFormId = forms[0]?.id ?? ""; // 初期表示フォームのID
         // AI接続設定
+        // プロジェクト情報
+        let projectInfo = {
+            name: "",
+            description: "",
+            version: "1.0.0",
+            author: "",
+            company: "",
+        };
+
         // エディタフォント設定
         let editorConfig = {
             fontSize: 16,
@@ -775,7 +788,7 @@
             const base = `width:100%;height:100%;box-sizing:border-box;font-family:'Segoe UI',sans-serif;`;
             switch (w.tag) {
                 case "button":
-                    return `<button style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${p.border};border-radius:${p.borderRadius || 2}px;cursor:default;pointer-events:none;${vis}">${esc(p.text)}</button>`;
+                    return `<button style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};border-radius:${p.borderRadius || 2}px;cursor:default;pointer-events:none;${vis}">${esc(p.text)}</button>`;
                 case "label":
                     return `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};text-align:${p.align || "left"};display:flex;align-items:center;overflow:hidden;padding:0 2px;${vis}">${esc(p.text)}</div>`;
                 case "inputtype": {
@@ -809,9 +822,9 @@
                         "file",
                     ].includes(itype);
                     if (needsPreview) {
-                        return `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};display:flex;align-items:center;padding:0 6px;gap:6px;pointer-events:none;${vis}"><span style="font-size:11px;opacity:.7">${typeIcons[itype] || itype}</span></div>`;
+                        return `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};display:flex;align-items:center;padding:0 6px;gap:6px;pointer-events:none;${vis}"><span style="font-size:11px;opacity:.7">${typeIcons[itype] || itype}</span></div>`;
                     }
-                    return `<input type="${itype}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" ${p.maxLength ? `maxlength="${p.maxLength}"` : ""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};padding:0 4px;pointer-events:none;${vis}">`;
+                    return `<input type="${itype}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" ${p.maxLength ? `maxlength="${p.maxLength}"` : ""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px;pointer-events:none;${vis}">`;
                 }
                 case "inputtype": {
                     const itype2 = p.inputType || "text";
@@ -822,36 +835,36 @@
                     const ro = p.readonly ? " readonly" : "";
                     const dis = p.disabled ? " disabled" : "";
                     lines2.push(
-                        `<input type="${itype2}" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};padding:0 4px">`,
+                        `<input type="${itype2}" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px">`,
                     );
                     break;
                 }
                 case "input":
                     if (p.multiline)
-                        return `<textarea style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};resize:none;padding:2px 4px;pointer-events:none;${vis}">${esc(p.text)}</textarea>`;
-                    return `<input type="text" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};padding:0 4px;pointer-events:none;${vis}">`;
+                        return `<textarea style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};resize:none;padding:2px 4px;pointer-events:none;${vis}">${esc(p.text)}</textarea>`;
+                    return `<input type="text" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px;pointer-events:none;${vis}">`;
                 case "checkbox":
-                    return `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};pointer-events:none;${vis}"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`;
+                    return `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};pointer-events:none;${vis}"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`;
                 case "radio":
-                    return `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};pointer-events:none;${vis}"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`;
+                    return `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};pointer-events:none;${vis}"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`;
                 case "listbox":
-                    return `<select multiple style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};pointer-events:none;${vis}">${(
+                    return `<select multiple style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};pointer-events:none;${vis}">${(
                         p.items || ""
                     )
                         .split("\n")
                         .map((i) => `<option>${esc(i)}</option>`)
                         .join("")}</select>`;
                 case "selectBox":
-                    return `<select style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};pointer-events:none;${vis}">${(
+                    return `<select style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};pointer-events:none;${vis}">${(
                         p.items || ""
                     )
                         .split("\n")
                         .map((i) => `<option>${esc(i)}</option>`)
                         .join("")}</select>`;
                 case "groupbox":
-                    return `<fieldset style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};${vis}"><legend style="padding:0 4px;font-size:${p.fontSize}px;font-family:${p.fontFamily || ""}">${esc(p.text)}</legend></fieldset>`;
+                    return `<fieldset style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};${vis}"><legend style="padding:0 4px;font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"}">${esc(p.text)}</legend></fieldset>`;
                 case "picture":
-                    return `<div style="${base}background:${p.bg};border:${p.border};display:flex;align-items:center;justify-content:center;color:#888;font-size:11px;${vis}">${p.src ? `<img src="${esc(p.src)}" style="max-width:100%;max-height:100%">` : "📷"}</div>`;
+                    return `<div style="${base}background:${p.bg};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};display:flex;align-items:center;justify-content:center;color:#888;font-size:11px;${vis}">${p.src ? `<img src="${esc(p.src)}" style="max-width:100%;max-height:100%">` : "📷"}</div>`;
                 case "datagrid": {
                     const cols = (p.columns || "ID:60\n名前:120").split(/[;\n]/).filter(s => s.trim()).map((c, ci) => {
                         const parts = c.trim().split(":");
@@ -951,7 +964,7 @@
         function select(id) {
             selId = id;
             updateSelVisual();
-            const w = widgets.find((x) => x.id === id);
+            const w = getWidget(id);
             $("prop-obj").textContent = w ? w.name : formCfg.title;
             updateStatusSel(w);
             renderProps();
@@ -1120,7 +1133,7 @@
 
         /* ─ MOVE ─ */
         function startMove(e, wid) {
-            const w = widgets.find((x) => x.id === wid);
+            const w = getWidget(wid);
             if (!w) return;
             const ox = w.x,
                 oy = w.y;
@@ -1151,7 +1164,7 @@
 
         /* ─ RESIZE ─ */
         function startResize(e, wid, handle) {
-            const w = widgets.find((x) => x.id === wid);
+            const w = getWidget(wid);
             if (!w) return;
             const {x: ox, y: oy, w: ow, h: oh} = w;
             const sx = e.clientX,
@@ -1206,256 +1219,167 @@
         /* ═══════════════════════════════════════════
           PROPERTIES PANEL
         ═══════════════════════════════════════════ */
+
+        /* ═══════════════════════════════════════════
+           プロパティ定義 共通パーツ
+        ═══════════════════════════════════════════ */
+        // 位置・サイズ（全ウィジェット共通）
+        const PP_POS = [
+            {k: "name", lb: "Name", t: "text", sp: "name"},
+            {k: "x", lb: "Left", t: "num", sp: "x"},
+            {k: "y", lb: "Top", t: "num", sp: "y"},
+            {k: "w", lb: "Width", t: "num", sp: "w"},
+            {k: "h", lb: "Height", t: "num", sp: "h"},
+        ];
+        // フォントセット（fontSize を持つウィジェット共通）
+        const PP_FONT = [
+            {k: "fontSize", lb: "FontSize", t: "num"},
+            {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
+            {k: "fontBold", lb: "Bold", t: "bool"},
+        ];
+        // ボーダー（border持ちウィジェット共通）
+        const PP_BORDER = [
+            {k: "borderSize", lb: "BorderSize", t: "num"},
+            {k: "borderColor", lb: "BorderColor", t: "color"},
+        ];
+        // 表示・説明（全ウィジェット共通）
+        const PP_TAIL = [
+            {k: "visible", lb: "Visible", t: "bool"},
+            {sep: "説明"},
+            {k: "description", lb: "説明（任意）", t: "area"},
+        ];
+
         const PDEFS = {
             button: [
-                {k: "name", lb: "Name", t: "text", sp: "name"},
-                {k: "x", lb: "Left", t: "num", sp: "x"},
-                {k: "y", lb: "Top", t: "num", sp: "y"},
-                {k: "w", lb: "Width", t: "num", sp: "w"},
-                {k: "h", lb: "Height", t: "num", sp: "h"},
+                ...PP_POS,
                 {sep: "外観"},
                 {k: "text", lb: "Text", t: "text"},
                 {k: "bg", lb: "BackColor", t: "color"},
                 {k: "fg", lb: "ForeColor", t: "color"},
-                {k: "fontSize", lb: "FontSize", t: "num"},
-                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
-                {k: "fontBold", lb: "Bold", t: "bool"},
-                {k: "border", lb: "Border", t: "text"},
+                ...PP_FONT,
+                ...PP_BORDER,
                 {k: "borderRadius", lb: "Radius", t: "num"},
                 {sep: "動作"},
                 {k: "disabled", lb: "Disabled", t: "bool"},
-                {k: "visible", lb: "Visible", t: "bool"},
-                {sep: "説明"},
-                {k: "description", lb: "説明（任意）", t: "area"},
+                ...PP_TAIL,
             ],
             label: [
-                {k: "name", lb: "Name", t: "text", sp: "name"},
-                {k: "x", lb: "Left", t: "num", sp: "x"},
-                {k: "y", lb: "Top", t: "num", sp: "y"},
-                {k: "w", lb: "Width", t: "num", sp: "w"},
-                {k: "h", lb: "Height", t: "num", sp: "h"},
+                ...PP_POS,
                 {sep: "外観"},
                 {k: "text", lb: "Text", t: "text"},
                 {k: "fg", lb: "ForeColor", t: "color"},
                 {k: "bg", lb: "BackColor", t: "color"},
-                {k: "fontSize", lb: "FontSize", t: "num"},
-                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
-                {k: "fontBold", lb: "Bold", t: "bool"},
-                {
-                    k: "align",
-                    lb: "Align",
-                    t: "sel",
-                    opts: ["left", "center", "right"],
-                },
-                {k: "visible", lb: "Visible", t: "bool"},
-                {sep: "説明"},
-                {k: "description", lb: "説明（任意）", t: "area"},
+                ...PP_FONT,
+                {k: "align", lb: "Align", t: "sel", opts: ["left", "center", "right"]},
+                ...PP_TAIL,
             ],
             inputtype: [
-                {k: "name", lb: "Name", t: "text", sp: "name"},
-                {k: "x", lb: "Left", t: "num", sp: "x"},
-                {k: "y", lb: "Top", t: "num", sp: "y"},
-                {k: "w", lb: "Width", t: "num", sp: "w"},
-                {k: "h", lb: "Height", t: "num", sp: "h"},
+                ...PP_POS,
                 {sep: "入力タイプ"},
                 {
-                    k: "inputType",
-                    lb: "InputType",
-                    t: "sel",
-                    opts: [
-                        "text",
-                        "password",
-                        "email",
-                        "number",
-                        "tel",
-                        "url",
-                        "search",
-                        "date",
-                        "time",
-                        "month",
-                        "week",
-                        "datetime-local",
-                        "color",
-                        "range",
-                        "file",
-                    ],
+                    k: "inputType", lb: "InputType", t: "sel",
+                    opts: ["text", "password", "number", "email", "tel", "date", "time", "datetime-local", "url", "search"]
                 },
                 {sep: "外観"},
-                {k: "placeholder", lb: "Placeholder", t: "text"},
-                {k: "text", lb: "Value", t: "text"},
-                {k: "bg", lb: "BackColor", t: "color"},
-                {k: "fg", lb: "ForeColor", t: "color"},
-                {k: "fontSize", lb: "FontSize", t: "num"},
-                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
-                {k: "border", lb: "Border", t: "text"},
-                {sep: "動作"},
-                {k: "maxLength", lb: "MaxLength", t: "num"},
-                {k: "required", lb: "Required", t: "bool"},
-                {k: "readonly", lb: "ReadOnly", t: "bool"},
-                {k: "disabled", lb: "Disabled", t: "bool"},
-                {k: "visible", lb: "Visible", t: "bool"},
-                {sep: "説明"},
-                {k: "description", lb: "説明（任意）", t: "area"},
-            ],
-            input: [
-                {k: "name", lb: "Name", t: "text", sp: "name"},
-                {k: "x", lb: "Left", t: "num", sp: "x"},
-                {k: "y", lb: "Top", t: "num", sp: "y"},
-                {k: "w", lb: "Width", t: "num", sp: "w"},
-                {k: "h", lb: "Height", t: "num", sp: "h"},
-                {sep: "外観"},
                 {k: "text", lb: "Text", t: "text"},
                 {k: "placeholder", lb: "Placeholder", t: "text"},
+                {k: "maxLength", lb: "MaxLength", t: "num"},
                 {k: "bg", lb: "BackColor", t: "color"},
                 {k: "fg", lb: "ForeColor", t: "color"},
-                {k: "fontSize", lb: "FontSize", t: "num"},
-                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
+                ...PP_FONT,
+                ...PP_BORDER,
                 {sep: "動作"},
-                {k: "multiline", lb: "Multiline", t: "bool"},
                 {k: "disabled", lb: "Disabled", t: "bool"},
-                {k: "visible", lb: "Visible", t: "bool"},
-                {sep: "説明"},
-                {k: "description", lb: "説明（任意）", t: "area"},
+                {k: "readonly", lb: "ReadOnly", t: "bool"},
+                ...PP_TAIL,
             ],
             checkbox: [
-                {k: "name", lb: "Name", t: "text", sp: "name"},
-                {k: "x", lb: "Left", t: "num", sp: "x"},
-                {k: "y", lb: "Top", t: "num", sp: "y"},
-                {k: "w", lb: "Width", t: "num", sp: "w"},
-                {k: "h", lb: "Height", t: "num", sp: "h"},
-                {sep: "外観"},
-                {k: "text", lb: "Text", t: "text"},
-                {k: "fg", lb: "ForeColor", t: "color"},
-                {k: "fontSize", lb: "FontSize", t: "num"},
-                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
-                {sep: "状態"},
-                {k: "checked", lb: "Checked", t: "bool"},
-                {k: "visible", lb: "Visible", t: "bool"},
-                {sep: "説明"},
-                {k: "description", lb: "説明（任意）", t: "area"},
-            ],
-            radio: [
-                {k: "name", lb: "Name", t: "text", sp: "name"},
-                {k: "x", lb: "Left", t: "num", sp: "x"},
-                {k: "y", lb: "Top", t: "num", sp: "y"},
-                {k: "w", lb: "Width", t: "num", sp: "w"},
-                {k: "h", lb: "Height", t: "num", sp: "h"},
+                ...PP_POS,
                 {sep: "外観"},
                 {k: "text", lb: "Text", t: "text"},
                 {k: "group", lb: "GroupName", t: "text"},
                 {k: "fg", lb: "ForeColor", t: "color"},
-                {k: "fontSize", lb: "FontSize", t: "num"},
-                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
+                ...PP_FONT,
                 {sep: "状態"},
                 {k: "checked", lb: "Checked", t: "bool"},
-                {k: "visible", lb: "Visible", t: "bool"},
-                {sep: "説明"},
-                {k: "description", lb: "説明（任意）", t: "area"},
+                ...PP_TAIL,
+            ],
+            radio: [
+                ...PP_POS,
+                {sep: "外観"},
+                {k: "text", lb: "Text", t: "text"},
+                {k: "group", lb: "GroupName", t: "text"},
+                {k: "fg", lb: "ForeColor", t: "color"},
+                ...PP_FONT,
+                {sep: "状態"},
+                {k: "checked", lb: "Checked", t: "bool"},
+                ...PP_TAIL,
             ],
             listbox: [
-                {k: "name", lb: "Name", t: "text", sp: "name"},
-                {k: "x", lb: "Left", t: "num", sp: "x"},
-                {k: "y", lb: "Top", t: "num", sp: "y"},
-                {k: "w", lb: "Width", t: "num", sp: "w"},
-                {k: "h", lb: "Height", t: "num", sp: "h"},
+                ...PP_POS,
                 {sep: "外観"},
                 {k: "items", lb: "Items", t: "area"},
                 {k: "bg", lb: "BackColor", t: "color"},
                 {k: "fg", lb: "ForeColor", t: "color"},
-                {k: "fontSize", lb: "FontSize", t: "num"},
-                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
-                {k: "visible", lb: "Visible", t: "bool"},
-                {sep: "説明"},
-                {k: "description", lb: "説明（任意）", t: "area"},
+                ...PP_FONT,
+                ...PP_BORDER,
+                ...PP_TAIL,
             ],
             selectBox: [
-                {k: "name", lb: "Name", t: "text", sp: "name"},
-                {k: "x", lb: "Left", t: "num", sp: "x"},
-                {k: "y", lb: "Top", t: "num", sp: "y"},
-                {k: "w", lb: "Width", t: "num", sp: "w"},
-                {k: "h", lb: "Height", t: "num", sp: "h"},
+                ...PP_POS,
                 {sep: "外観"},
                 {k: "items", lb: "Items", t: "area"},
                 {k: "bg", lb: "BackColor", t: "color"},
                 {k: "fg", lb: "ForeColor", t: "color"},
-                {k: "fontSize", lb: "FontSize", t: "num"},
-                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
-                {k: "visible", lb: "Visible", t: "bool"},
-                {sep: "説明"},
-                {k: "description", lb: "説明（任意）", t: "area"},
+                ...PP_FONT,
+                ...PP_BORDER,
+                ...PP_TAIL,
             ],
             groupbox: [
-                {k: "name", lb: "Name", t: "text", sp: "name"},
-                {k: "x", lb: "Left", t: "num", sp: "x"},
-                {k: "y", lb: "Top", t: "num", sp: "y"},
-                {k: "w", lb: "Width", t: "num", sp: "w"},
-                {k: "h", lb: "Height", t: "num", sp: "h"},
+                ...PP_POS,
                 {sep: "外観"},
                 {k: "text", lb: "Text", t: "text"},
                 {k: "fg", lb: "ForeColor", t: "color"},
                 {k: "bg", lb: "BackColor", t: "color"},
-                {k: "border", lb: "Border", t: "text"},
-                {k: "visible", lb: "Visible", t: "bool"},
-                {sep: "説明"},
-                {k: "description", lb: "説明（任意）", t: "area"},
+                ...PP_BORDER,
+                ...PP_TAIL,
             ],
             picture: [
-                {k: "name", lb: "Name", t: "text", sp: "name"},
-                {k: "x", lb: "Left", t: "num", sp: "x"},
-                {k: "y", lb: "Top", t: "num", sp: "y"},
-                {k: "w", lb: "Width", t: "num", sp: "w"},
-                {k: "h", lb: "Height", t: "num", sp: "h"},
-                {sep: "外観"},
-                {k: "src", lb: "Image URL", t: "text"},
-                {k: "bg", lb: "BackColor", t: "color"},
-                {k: "border", lb: "Border", t: "text"},
-                {k: "visible", lb: "Visible", t: "bool"},
-                {sep: "説明"},
-                {k: "description", lb: "説明（任意）", t: "area"},
+                ...PP_POS,
+                {sep: "画像"},
+                {k: "src", lb: "ImagePath", t: "text"},
+                {k: "objectFit", lb: "ObjectFit", t: "sel", opts: ["contain", "cover", "fill", "none"]},
+                ...PP_TAIL,
             ],
             datagrid: [
-                {k: "name", lb: "Name", t: "text", sp: "name"},
-                {k: "x", lb: "Left", t: "num", sp: "x"},
-                {k: "y", lb: "Top", t: "num", sp: "y"},
-                {k: "w", lb: "Width", t: "num", sp: "w"},
-                {k: "h", lb: "Height", t: "num", sp: "h"},
-                {sep: "カラム定義"},
+                ...PP_POS,
+                {sep: "外観"},
                 {k: "columns", lb: "Columns", t: "coldef"},
-                {k: "maxRows", lb: "MaxRows", t: "num"},
-                {sep: "ヘッダー"},
+                {k: "bg", lb: "BackColor", t: "color"},
+                {k: "fg", lb: "ForeColor", t: "color"},
                 {k: "headerBg", lb: "HeaderBg", t: "color"},
                 {k: "headerFg", lb: "HeaderFg", t: "color"},
-                {sep: "行"},
-                {k: "rowBg", lb: "RowBg", t: "color"},
-                {k: "rowAltBg", lb: "RowAltBg", t: "color"},
-                {k: "rowFg", lb: "RowFg", t: "color"},
-                {sep: "外観"},
-                {k: "borderColor", lb: "BorderColor", t: "color"},
-                {k: "fontSize", lb: "FontSize", t: "num"},
-                {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
-                {k: "visible", lb: "Visible", t: "bool"},
-                {sep: "説明"},
-                {k: "description", lb: "説明（任意）", t: "area"},
+                ...PP_FONT,
+                ...PP_BORDER,
+                {k: "rowHeight", lb: "RowHeight", t: "num"},
+                {k: "headerHeight", lb: "HeaderHeight", t: "num"},
+                ...PP_TAIL,
             ],
             hscroll: [
-                {k: "name", lb: "Name", t: "text", sp: "name"},
-                {k: "x", lb: "Left", t: "num", sp: "x"},
-                {k: "y", lb: "Top", t: "num", sp: "y"},
-                {k: "w", lb: "Width", t: "num", sp: "w"},
-                {k: "h", lb: "Height", t: "num", sp: "h"},
-                {k: "visible", lb: "Visible", t: "bool"},
-                {sep: "説明"},
-                {k: "description", lb: "説明（任意）", t: "area"},
+                ...PP_POS,
+                {sep: "値"},
+                {k: "min", lb: "Min", t: "num"},
+                {k: "max", lb: "Max", t: "num"},
+                {k: "val", lb: "Value", t: "num"},
+                ...PP_TAIL,
             ],
             vscroll: [
-                {k: "name", lb: "Name", t: "text", sp: "name"},
-                {k: "x", lb: "Left", t: "num", sp: "x"},
-                {k: "y", lb: "Top", t: "num", sp: "y"},
-                {k: "w", lb: "Width", t: "num", sp: "w"},
-                {k: "h", lb: "Height", t: "num", sp: "h"},
-                {k: "visible", lb: "Visible", t: "bool"},
-                {sep: "説明"},
-                {k: "description", lb: "説明（任意）", t: "area"},
+                ...PP_POS,
+                {sep: "値"},
+                {k: "min", lb: "Min", t: "num"},
+                {k: "max", lb: "Max", t: "num"},
+                {k: "val", lb: "Value", t: "num"},
+                ...PP_TAIL,
             ],
         };
 
@@ -1473,7 +1397,7 @@
                 renderFormProps();
                 return;
             }
-            const w = widgets.find((x) => x.id === selId);
+            const w = getWidget(selId);
             if (!w) return;
             const defs = PDEFS[w.tag] || [];
             defs.forEach((d) => {
@@ -1510,7 +1434,7 @@
             const w2 = wid;
             switch (d.t) {
                 case "text":
-                    return `<input type="text" value="${esc(val ?? "")}" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">`;
+                    return `<input type="text" value="${esc(val ?? "")}" oninput="setProp('${d.k}','${d.sp || ""}',this.value,${w2})" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">`;
                 case "num": {
                     const nid = "pn_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
                     const nMin = d.min ?? -9999;
@@ -1541,7 +1465,7 @@
                         `</div>`;
                 }
                 case "color":
-                    return `<input type="color" value="${val || "#000000"}" style="width:100%;height:22px;padding:1px 2px;cursor:pointer;border:1px solid var(--border);border-radius:2px;background:var(--bg3)" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">`;
+                    return `<input type="color" value="${val || "#000000"}" style="width:100%;height:22px;padding:1px 2px;cursor:pointer;border:1px solid var(--border);border-radius:2px;background:var(--bg3)" oninput="setProp('${d.k}','${d.sp || ""}',this.value,${w2})" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">`;
                 case "sel": {
                     const sid = "pvs_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
                     const opts = d.opts || [];
@@ -1555,9 +1479,9 @@
                         `</div>`;
                 }
                 case "area":
-                    return `<textarea style="width:100%;height:56px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:11px;resize:none;outline:none;padding:3px 4px;box-sizing:border-box" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">${esc(val || "")}</textarea>`;
+                    return `<textarea class="pv-textarea" style="height:56px" oninput="setProp('${d.k}','${d.sp || ""}',this.value,${w2})" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">${esc(val || "")}</textarea>`;
                 case "coldef":
-                    return `<button onclick="openColDefEditor(${w2})" style="width:100%;height:24px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--accent);font-size:11px;cursor:pointer;text-align:left;padding:0 6px">✏ カラム編集…</button>`;
+                    return `<button onmousedown="openColDefEditor(${w2})" class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ カラム編集…</button>`;
                 case "fontsel": {
                     const curFF = val || "";
                     const curFFL = WIDGET_FONTS.find(f => f.value === curFF)?.label || "（デフォルト）";
@@ -1576,7 +1500,7 @@
         }
 
         function setProp(k, sp, val, wid) {
-            const w = widgets.find((x) => x.id == wid);
+            const w = getWidget(wid);
             if (!w) return;
             if (sp === "name") w.name = val;
             else if (sp === "x") w.x = +val;
@@ -1584,14 +1508,51 @@
             else if (sp === "w") w.w = +val;
             else if (sp === "h") w.h = +val;
             else w.props[k] = val;
+            commitWidget(w, {name: sp === "name", props: true});
+        }
+
+        // モーダルヘッダー生成ヘルパー
+        function mhdrHTML(title) {
+            return "<div class='mhdr'><h4>" + title + "</h4>" +
+                "<button class='mclose' onmousedown='closeModal()'>✕</button></div>";
+        }
+        // モーダルフッター生成ヘルパー
+        function mfootHTML(btns) {
+            // btns: [{label, cls, action}]
+            return "<div class='mfoot'>" +
+                btns.map(b => `<button class='${b.cls || ""}' onmousedown='${b.action}'>${b.label}</button>`).join("") +
+                "</div>";
+        }
+
+        // ③ モーダル再描画共通ラッパー
+        // 現在開いているモーダルを関数で再構築する
+        function reopenModal(renderFn) {
+            renderFn();
+        }
+
+        // ④ ウィジェット変更確定の共通関数
+        function commitWidget(w, opts = {}) {
             renderWidget(w, false);
-            applyWPos($("w" + wid), w);
-            if (sp === "name") $("prop-obj").textContent = val;
+            applyWPos($("w" + w.id), w);
+            if (opts.name) $("prop-obj").textContent = w.name;
+            if (opts.props !== false) renderProps();
             pushUndo();
-            renderProps();
+        }
+
+        // ⑤ ウィジェット取得ヘルパー
+        function getWidget(wid) {
+            return widgets.find((x) => x.id == wid) || null;
         }
 
         // 数値入力の▲▼ボタン処理
+        function pvFormNumStep(fnid, dir, k) {
+            const inp = $(fnid);
+            if (!inp) return;
+            const cur = parseFloat(inp.value) || 0;
+            const next = cur + dir;
+            inp.value = next;
+            setFormCfg(k, next);
+        }
         function pvNumStep(nid, dir, k, sp, wid, min, max) {
             const inp = $(nid);
             if (!inp) return;
@@ -1603,12 +1564,10 @@
         }
 
         function setFontFamilyProp(idx, wid) {
-            const w = widgets.find((x) => x.id == wid);
+            const w = getWidget(wid);
             if (!w) return;
             w.props.fontFamily = (WIDGET_FONTS[idx] || WIDGET_FONTS[0]).value;
-            renderWidget(w, false);
-            applyWPos($("w" + wid), w);
-            pushUndo();
+            commitWidget(w, {props: false});
         }
         pvRegister("setFF", setFontFamilyProp);
 
@@ -1647,13 +1606,23 @@
                 row.className = "prow";
                 let inp = "";
                 if (d.t === "text")
-                    inp = `<input type="text" value="${esc(formCfg[d.k] ?? "")}" onchange="setFormCfg('${d.k}',this.value)">`;
-                if (d.t === "num")
-                    inp = `<input type="number" value="${formCfg[d.k] ?? 0}" onchange="setFormCfg('${d.k}',+this.value)">`;
+                    inp = `<input type="text" class="pv-input" value="${esc(formCfg[d.k] ?? "")}" oninput="setFormCfg('${d.k}',this.value)" onchange="setFormCfg('${d.k}',this.value)">`;
+                if (d.t === "num") {
+                    const fnid = "pfn_" + d.k;
+                    inp = `<div style="display:flex;align-items:center;gap:2px;width:100%">` +
+                        `<input type="number" id="${fnid}" value="${formCfg[d.k] ?? 0}" ` +
+                        `style="flex:1;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:13px;padding:0 4px;outline:none;text-align:right" ` +
+                        `onchange="setFormCfg('${d.k}',+this.value)">` +
+                        `<button onmousedown="pvFormNumStep('${fnid}',1,'${d.k}')" ` +
+                        `style="width:18px;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:10px;cursor:pointer;padding:0;flex-shrink:0">▲</button>` +
+                        `<button onmousedown="pvFormNumStep('${fnid}',-1,'${d.k}')" ` +
+                        `style="width:18px;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:10px;cursor:pointer;padding:0;flex-shrink:0">▼</button>` +
+                        `</div>`;
+                }
                 if (d.t === "color")
-                    inp = `<input type="color" value="${formCfg[d.k] || "#ececec"}" style="width:100%;height:20px;padding:0;border:none;cursor:pointer" onchange="setFormCfg('${d.k}',this.value)">`;
+                    inp = `<input type="color" class="pv-color" value="${formCfg[d.k] || "#ececec"}" oninput="setFormCfg('${d.k}',this.value)" onchange="setFormCfg('${d.k}',this.value)">`;
                 if (d.t === "area")
-                    inp = `<textarea style="width:100%;height:60px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:13px;resize:vertical;outline:none;padding:3px 4px;box-sizing:border-box" onchange="setFormCfg('${d.k}',this.value)">${esc(formCfg[d.k] || "")}</textarea>`;
+                    inp = `<textarea class="pv-textarea" style="height:60px;resize:vertical;font-size:13px" oninput="setFormCfg('${d.k}',this.value)" onchange="setFormCfg('${d.k}',this.value)">${esc(formCfg[d.k] || "")}</textarea>`;
                 row.innerHTML = `<div class="pk">${d.lb}</div><div class="pv">${inp}</div>`;
                 pl.appendChild(row);
             });
@@ -1667,12 +1636,13 @@
         }
 
         /* ── イベントタブ ── */
-        function deleteYaml(wid, evName) {
-            const w = widgets.find((x) => x.id === wid);
+        async function deleteYaml(wid, evName) {
+            const w = getWidget(wid);
             if (!w) return;
             const hasY = w.events?.[evName]?.trim().length > 0;
             if (!hasY) return;
-            if (!confirm("「" + evName + "」のイベント定義を削除してよろしいですか？")) return;
+            const _dlg1 = await vja.app.showConfirm("「" + evName + "」のイベント定義を削除してよろしいですか？");
+            if (!_dlg1?.confirmed) return;
             if (w.events) delete w.events[evName];
             renderEvents();
             pushUndo();
@@ -1686,7 +1656,7 @@
                     '<div style="padding:8px;font-size:11px;color:var(--text3)">ウィジェットを選択してください</div>';
                 return;
             }
-            const w = widgets.find((x) => x.id === selId);
+            const w = getWidget(selId);
             if (!w) return;
             (EVENTS[w.tag] || []).forEach((ev) => {
                 const hasY = w.events?.[ev]?.trim().length > 0;
@@ -1720,7 +1690,7 @@
           YAML EDITOR
         ═══════════════════════════════════════════ */
         function openYaml(wid, evName) {
-            const w = widgets.find((x) => x.id == wid);
+            const w = getWidget(wid);
             if (!w) return;
             if (!w.events) w.events = {};
             const cur = w.events[evName] ||
@@ -1733,13 +1703,11 @@
                 "  " + w.name + "の" + evName + "が発生した時の処理を生成してください。\n" +
                 "  入力値を検証してForm2に遷移します。\n";
 
-
             const curJs = (w.jsCode && w.jsCode[evName]) || "";
             const aiEnabled = aiConfig.enabled;
             showModal(
                 "<div class='modal-yaml'>" +
-                "<div class='mhdr'><h4>📋 " + esc(w.name) + " — " + esc(evName) + "</h4>" +
-                "<button class='mclose' onmousedown='closeModal()'>✕</button></div>" +
+                mhdrHTML("📋 " + esc(w.name) + " — " + esc(evName)) +
                 "<div class='mbody' style='padding:0;gap:0;overflow:hidden;display:flex;flex-direction:column'>" +
                 // メインレイアウト
                 "<div class='yaml-editor-layout' id='yaml-layout'>" +
@@ -1752,20 +1720,28 @@
                 "</div>" +
                 // YAMLペイン
                 "<div class='yaml-pane active' id='pane-yaml'>" +
-                "<div class='yaml-hl-wrap' style='flex:1;min-height:0'>" +
+                "<div class='editor-wrap'>" +
+                "<div class='editor-gutter' id='yaml-gutter'></div>" +
+                "<div class='editor-main'>" +
+                "<div class='yaml-hl-wrap'>" +
                 "<div class='yaml-hl-bg' id='yaml-hl'></div>" +
                 "<textarea class='yaml' id='yaml-ta' style='height:100%;min-height:300px' " +
-                "oninput='yamlHlUpdate()' onscroll='yamlHlSync()'>" + esc(cur) + "</textarea>" +
-                "</div></div>" +
+                "oninput='yamlHlUpdate();editorUpdateGutter(\"yaml-ta\",\"yaml-gutter\")' " +
+                "onscroll='yamlHlSync();editorSyncGutter(\"yaml-ta\",\"yaml-gutter\")' " +
+                ">" + esc(cur) + "</textarea>" +
+                "</div></div></div></div>" +
                 // JSペイン
                 "<div class='yaml-pane' id='pane-js'>" +
+                "<div class='editor-wrap'>" +
+                "<div class='editor-gutter' id='js-gutter'></div>" +
+                "<div class='editor-main'>" +
                 "<div class='js-hl-wrap'>" +
                 "<div class='js-hl-bg' id='js-hl'></div>" +
                 "<textarea class='yaml' id='js-ta' " +
-                "oninput='jsHlUpdate()' onscroll='jsHlSync()' " +
+                "oninput='jsHlUpdate();editorUpdateGutter(\"js-ta\",\"js-gutter\")' " +
+                "onscroll='jsHlSync();editorSyncGutter(\"js-ta\",\"js-gutter\")' " +
                 "placeholder='// AIでJavaScriptを生成、または直接編集できます'>" + esc(curJs) + "</textarea>" +
-                "</div>" +
-                "</div>" +
+                "</div></div></div></div>" +
                 // AIバー
                 "<div class='yaml-ai-bar' style='padding-bottom:8px'>" +
                 "<input id='ai-prompt-in' placeholder='AIへの追加指示（任意）'>" +
@@ -1783,7 +1759,7 @@
                 "</div>" +
                 "</div>" +
                 "<div class='mfoot'>" +
-                "<button onmousedown='closeModal()'>キャンセル</button>" +
+                mfootHTML([{label: "キャンセル", action: "closeModal()"}]) + "" +
                 "<button class='pri' onmousedown='pvCall(\"yamlSave\")'>保存</button>" +
                 "</div>"
             );
@@ -1793,6 +1769,101 @@
             requestAnimationFrame(() => {
                 applyEditorConfig(); // フォント設定を即時反映
                 yamlHlUpdate();
+                editorUpdateGutter("yaml-ta", "yaml-gutter");
+                jsHlUpdate();
+                editorUpdateGutter("js-ta", "js-gutter");
+                // Tab → インデント、Ctrl+[ → アウトデント（WebKitGTK制約でShift+Tabは使用不可）
+                const _ytaEl = $("yaml-ta");
+                const _jtaEl = $("js-ta");
+                function _tabHandler(e) {
+                    const ta = ($("pane-js")?.classList.contains("active")) ? $("js-ta") : $("yaml-ta");
+                    if (!ta) return;
+                    const INDENT = "    ";
+                    const start = ta.selectionStart, end = ta.selectionEnd;
+                    const val = ta.value;
+                    const lineStart = val.lastIndexOf("\n", start - 1) + 1;
+                    const lineEnd = val.indexOf("\n", end);
+                    const block = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
+                    let handled = false;
+                    const ctrl = e.ctrlKey || e.metaKey;
+
+                    if (e.key === "Tab" && !e.shiftKey) {
+                        // Tab → インデント
+                        e.preventDefault(); e.stopPropagation();
+                        if (start === end) {
+                            ta.value = val.slice(0, start) + INDENT + val.slice(end);
+                            ta.selectionStart = ta.selectionEnd = start + INDENT.length;
+                        } else {
+                            const nb = block.split("\n").map(l => INDENT + l).join("\n");
+                            ta.value = val.slice(0, lineStart) + nb + (lineEnd === -1 ? "" : val.slice(lineEnd));
+                            ta.selectionStart = lineStart;
+                            ta.selectionEnd = lineStart + nb.length;
+                        }
+                        handled = true;
+                    } else if (e.key === "[" && ctrl) {
+                        // Ctrl+[ → アウトデント（VSCode互換）
+                        e.preventDefault(); e.stopPropagation();
+                        const nb = block.split("\n").map(l => {
+                            if (l.startsWith("    ")) return l.slice(4);
+                            if (l.startsWith("   ")) return l.slice(3);
+                            if (l.startsWith("  ")) return l.slice(2);
+                            if (l.startsWith(" ")) return l.slice(1);
+                            return l;
+                        }).join("\n");
+                        ta.value = val.slice(0, lineStart) + nb + (lineEnd === -1 ? "" : val.slice(lineEnd));
+                        ta.selectionStart = lineStart;
+                        ta.selectionEnd = lineStart + nb.length;
+                        handled = true;
+                    } else if (e.key === "]" && ctrl) {
+                        // Ctrl+] → インデント（VSCode互換）
+                        e.preventDefault(); e.stopPropagation();
+                        const nb = block.split("\n").map(l => INDENT + l).join("\n");
+                        ta.value = val.slice(0, lineStart) + nb + (lineEnd === -1 ? "" : val.slice(lineEnd));
+                        ta.selectionStart = lineStart;
+                        ta.selectionEnd = lineStart + nb.length;
+                        handled = true;
+                    } else if (e.key === "/" && ctrl) {
+                        // Ctrl+/ → 行コメントトグル
+                        e.preventDefault(); e.stopPropagation();
+                        const isJs = ta.id === "js-ta";
+                        const COM = isJs ? "// " : "# ";
+                        const nb = block.split("\n").map(l => {
+                            if (l.trimStart().startsWith(COM.trim())) {
+                                // コメント解除
+                                const idx = l.indexOf(COM.trim());
+                                return l.slice(0, idx) + l.slice(idx + COM.length);
+                            }
+                            return COM + l;
+                        }).join("\n");
+                        ta.value = val.slice(0, lineStart) + nb + (lineEnd === -1 ? "" : val.slice(lineEnd));
+                        ta.selectionStart = lineStart;
+                        ta.selectionEnd = lineStart + nb.length;
+                        handled = true;
+                    } else if (e.key === "d" && ctrl) {
+                        // Ctrl+D → 現在行を複製
+                        e.preventDefault(); e.stopPropagation();
+                        const curLine = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
+                        const ins = "\n" + curLine;
+                        ta.value = val.slice(0, lineEnd === -1 ? val.length : lineEnd) + ins + (lineEnd === -1 ? "" : val.slice(lineEnd));
+                        ta.selectionStart = ta.selectionEnd = (lineEnd === -1 ? val.length : lineEnd) + ins.length;
+                        handled = true;
+                    } else if (e.key === "k" && ctrl) {
+                        // Ctrl+K → 現在行を削除
+                        e.preventDefault(); e.stopPropagation();
+                        const delStart = lineStart;
+                        const delEnd = lineEnd === -1 ? val.length : lineEnd + 1;
+                        ta.value = val.slice(0, delStart) + val.slice(delEnd);
+                        ta.selectionStart = ta.selectionEnd = delStart;
+                        handled = true;
+                    }
+
+                    if (!handled) return;
+                    const isJs = ta.id === "js-ta";
+                    if (isJs) {jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter");}
+                    else {yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter");}
+                }
+                if (_ytaEl) _ytaEl.addEventListener("keydown", _tabHandler, {capture: true});
+                if (_jtaEl) _jtaEl.addEventListener("keydown", _tabHandler, {capture: true});
                 yamlUndoInit(cur);
                 yamlInitResize();
                 yamlInitRpanelEvents();
@@ -1811,7 +1882,6 @@
             });
 
         }
-
 
         /* ── YAMLエディタ 右パネル ── */
 
@@ -1939,7 +2009,6 @@
 
         // 画面詳細グローバル関数
         window.yamlFormDetail = function (fi) {
-            console.log("[yamlFormDetail] fi=", fi);
             const f = forms[fi];
             if (!f) return;
             const wids = f.widgets || [];
@@ -2000,9 +2069,6 @@
             btn.textContent = open ? "▼" : "▶";
         }
 
-
-
-
         // 右パネルのイベントデリゲーション登録
         function yamlInitRpanelEvents() {
             const rp = $("yaml-rpanel");
@@ -2036,7 +2102,6 @@
             rp.addEventListener("click", handler);
         }
 
-
         // ドラッグリサイズ初期化
         function yamlInitResize() {
             const handle = $("yaml-rhandle");
@@ -2066,21 +2131,24 @@
 
         // YAMLエリアにテキストを挿入
         function yamlInsert(text) {
-            const ta = $("yaml-ta");
+            // アクティブなタブのテキストエリアに挿入
+            const isJs = $("pane-js")?.classList.contains("active");
+            const ta = isJs ? $("js-ta") : $("yaml-ta");
             if (!ta) return;
             const s = ta.selectionStart, e = ta.selectionEnd;
             ta.value = ta.value.slice(0, s) + text + ta.value.slice(e);
             ta.selectionStart = ta.selectionEnd = s + text.length;
             ta.focus();
-            yamlHlUpdate();
+            if (isJs) jsHlUpdate();
+            else yamlHlUpdate();
         }
 
         // AI生成（llama-server 経由）
         async function yamlAiGenerate(wid, evName) {
-            const w = widgets.find(x => x.id == wid);
+            const w = getWidget(wid);
             if (!w) return;
             if (!aiConfig.enabled) {
-                if (confirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
+                if ((await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？"))?.confirmed) {
                     closeModal();
                     openAiConfig();
                 }
@@ -2322,7 +2390,7 @@
             const modelListHtml = aiCfgModelListHtml(aiConfig.models, aiConfig.model, isRouter);
 
             showModal(
-                "<div class='mhdr'><h4>🤖 AI接続設定</h4><button class='mclose' onmousedown='closeModal()'>✕</button></div>" +
+                mhdrHTML("🤖 AI接続設定") +
                 "<div class='mbody' style='gap:12px'>" +
                 "<div class='infobox'>llama-server（またはOpenAI互換API）の接続設定を行います。</div>" +
 
@@ -2369,7 +2437,7 @@
 
                 "</div>" +
                 "<div class='mfoot'>" +
-                "<button onmousedown='closeModal()'>キャンセル</button>" +
+                mfootHTML([{label: "キャンセル", action: "closeModal()"}]) + "" +
                 "<button class='pri' onclick='saveAiConfig()'>保存</button>" +
                 "</div>"
             );
@@ -2448,9 +2516,7 @@
             showToast("AI設定を保存しました");
         }
 
-
         /* ── YAML シンタックスハイライト ── */
-
 
         /* ── JavaScript シンタックスハイライト ── */
         function jsHlUpdate() {
@@ -2512,6 +2578,33 @@
                 return out;
             }).join("\n");
         }
+
+
+        /* ═══════════════════════════════════════════
+           エディタ共通ユーティリティ（行番号・タブ）
+        ═══════════════════════════════════════════ */
+
+        // 行番号を更新
+        function editorUpdateGutter(taId, gutId) {
+            const ta = $(taId);
+            const gut = $(gutId);
+            if (!ta || !gut) return;
+            const lines = ta.value.split("\n").length;
+            let html = "";
+            for (let i = 1; i <= lines; i++) html += i + "\n";
+            gut.textContent = html;
+            editorSyncGutter(taId, gutId);
+        }
+
+        // gutterのスクロールをtextareaに同期
+        function editorSyncGutter(taId, gutId) {
+            const ta = $(taId);
+            const gut = $(gutId);
+            if (!ta || !gut) return;
+            gut.scrollTop = ta.scrollTop;
+        }
+
+        // Tab / Shift+Tab 処理
 
         /* ── YAMLエディタ タブ切り替え ── */
         function yamlTabSwitch(tab) {
@@ -2647,9 +2740,8 @@
             return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
 
-
         function saveYaml(wid, evName) {
-            const w = widgets.find((x) => x.id == wid);
+            const w = getWidget(wid);
             if (!w) return;
             if (!w.events) w.events = {};
             if (!w.jsCode) w.jsCode = {};
@@ -2681,7 +2773,11 @@
             $("modal-root").innerHTML = "";
         }
         function ovClick(e) {
-            if (e.target.classList.contains("ov")) closeModal();
+            if (!e.target.classList.contains("ov")) return;
+            // YAMLエディタモーダルは外クリックで閉じない
+            const modal = document.querySelector(".modal");
+            if (modal && modal.classList.contains("modal-yaml")) return;
+            closeModal();
         }
 
         /* ═══════════════════════════════════════════
@@ -2696,20 +2792,20 @@
         }
         function ctxYaml() {
             hideCtx();
-            const w = widgets.find((x) => x.id === ctxId);
+            const w = getWidget(ctxId);
             if (!w) return;
             openYaml(w.id, (EVENTS[w.tag] || ["Click"])[0]);
         }
         function ctxFront() {
             hideCtx();
-            const w = widgets.find((x) => x.id === ctxId);
+            const w = getWidget(ctxId);
             if (!w) return;
             w.z = (w.z || 0) + 1;
             applyWPos($("w" + w.id), w);
         }
         function ctxBack() {
             hideCtx();
-            const w = widgets.find((x) => x.id === ctxId);
+            const w = getWidget(ctxId);
             if (!w) return;
             w.z = Math.max(0, (w.z || 0) - 1);
             applyWPos($("w" + w.id), w);
@@ -2720,7 +2816,7 @@
         ═══════════════════════════════════════════ */
         // プロジェクト全体スナップショット
         function snapshot() {
-            return JSON.stringify({forms, curFormIdx, constants, startFormId, aiConfig, tables, snapOn, showGrid, editorConfig});
+            return JSON.stringify({forms, curFormIdx, constants, startFormId, aiConfig, tables, snapOn, showGrid, editorConfig, projectInfo});
         }
         function pushUndo() {
             // 編集前に現フォームのidCntを書き戻す
@@ -2739,6 +2835,7 @@
             snapOn = d.snapOn !== undefined ? d.snapOn : true;
             showGrid = d.showGrid !== undefined ? d.showGrid : false;
             if (d.editorConfig) editorConfig = {...editorConfig, ...d.editorConfig};
+            if (d.projectInfo) projectInfo = {...projectInfo, ...d.projectInfo};
             const _ac = d.aiConfig || {};
             aiConfig = {endpoint: _ac.endpoint || "http://localhost:8080", apiKey: _ac.apiKey || "", model: _ac.model || "", models: _ac.models || [], enabled: !!_ac.enabled, routerMode: !!_ac.routerMode};
             syncCurForm();
@@ -2776,7 +2873,7 @@
         }
         function actDuplicate() {
             hideCtx();
-            const src = widgets.find((x) => x.id === (ctxId ?? selId));
+            const src = getWidget(ctxId ?? selId);
             if (!src) return;
             const nw = {
                 ...src,
@@ -2797,11 +2894,11 @@
         /* ═══════════════════════════════════════════
           SAVE / OPEN / EXPORT
         ═══════════════════════════════════════════ */
-        function actNew() {
+        async function actNew() {
             if (
-                !confirm(
-                    "新規プロジェクトを作成しますか？（現在の内容は失われます）",
-                )
+                !(await vja.app.showConfirm(
+                    "新規プロジェクトを作成しますか？（現在の内容は失われます）"
+                ))?.confirmed
             )
                 return;
             forms = [makeFormData("Form1")];
@@ -2849,6 +2946,7 @@
                 snapOn = d.snapOn !== undefined ? d.snapOn : true;
                 showGrid = d.showGrid !== undefined ? d.showGrid : false;
                 if (d.editorConfig) editorConfig = {...editorConfig, ...d.editorConfig};
+                if (d.projectInfo) projectInfo = {...projectInfo, ...d.projectInfo};
                 const _ac = d.aiConfig || {};
                 aiConfig = {endpoint: _ac.endpoint || "http://localhost:8080", apiKey: _ac.apiKey || "", model: _ac.model || "", models: _ac.models || [], enabled: !!_ac.enabled, routerMode: !!_ac.routerMode};
                 syncCurForm();
@@ -2900,13 +2998,11 @@
                 return;
             }
             try {
-                console.log("[actSave] calling bunSaveProject, lastPath:", _lastSavePath);
                 const result = await window.bunSaveProject({
                     content,
                     defaultName: projName + ".vjaproj",
                     lastPath: _lastSavePath, // nullなら名前を付けて保存ダイアログ
                 });
-                console.log("[actSave] result:", JSON.stringify(result));
                 if (result && result.ok && result.path) {
                     _lastSavePath = result.path;
                     _lastOpenPath = result.path;
@@ -2921,14 +3017,11 @@
 
         // 名前を付けて保存（_lastSavePath を null にして actSave を呼ぶ）
         async function actSaveAs() {
-            console.log("[actSaveAs] called");
             const prevPath = _lastSavePath;
             _lastSavePath = null;
-            console.log("[actSaveAs] calling actSave with lastPath=null");
             await actSave();
             // キャンセルされた場合は元のパスに戻す
             if (!_lastSavePath) _lastSavePath = prevPath;
-            console.log("[actSaveAs] done, _lastSavePath:", _lastSavePath);
         }
 
         // トースト通知（一時的なメッセージ表示）
@@ -2972,12 +3065,12 @@
                     switch (w.tag) {
                         case "button":
                             lines2.push(
-                                `<button id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};border-radius:${p.borderRadius || 2}px;cursor:pointer">${esc(p.text)}</button>`,
+                                `<button id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};border-radius:${p.borderRadius || 2}px;cursor:pointer">${esc(p.text)}</button>`,
                             );
                             break;
                         case "label":
                             lines2.push(
-                                `<label  id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};text-align:${p.align};display:flex;align-items:center">${esc(p.text)}</label>`,
+                                `<label  id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};text-align:${p.align};display:flex;align-items:center">${esc(p.text)}</label>`,
                             );
                             break;
                         case "inputtype": {
@@ -2989,33 +3082,33 @@
                             const ro = p.readonly ? " readonly" : "";
                             const dis = p.disabled ? " disabled" : "";
                             lines2.push(
-                                `<input type="${itype2}" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};padding:0 4px">`,
+                                `<input type="${itype2}" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px">`,
                             );
                             break;
                         }
                         case "input":
                             if (p.multiline)
                                 lines2.push(
-                                    `<textarea id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};padding:2px 4px;resize:none">${esc(p.text)}</textarea>`,
+                                    `<textarea id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:2px 4px;resize:none">${esc(p.text)}</textarea>`,
                                 );
                             else
                                 lines2.push(
-                                    `<input type="text" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border};padding:0 4px">`,
+                                    `<input type="text" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px">`,
                                 );
                             break;
                         case "checkbox":
                             lines2.push(
-                                `<label id="${w.name}" style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};cursor:pointer"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
+                                `<label id="${w.name}" style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};cursor:pointer"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
                             );
                             break;
                         case "radio":
                             lines2.push(
-                                `<label id="${w.name}" style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};cursor:pointer"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
+                                `<label id="${w.name}" style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};cursor:pointer"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
                             );
                             break;
                         case "listbox":
                             lines2.push(
-                                `<select id="${w.name}" multiple style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border}">${(
+                                `<select id="${w.name}" multiple style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")}">${(
                                     p.items || ""
                                 )
                                     .split("\n")
@@ -3027,7 +3120,7 @@
                             break;
                         case "selectBox":
                             lines2.push(
-                                `<select id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border}">${(
+                                `<select id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")}">${(
                                     p.items || ""
                                 )
                                     .split("\n")
@@ -3039,7 +3132,7 @@
                             break;
                         case "groupbox":
                             lines2.push(
-                                `<fieldset id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};border:${p.border}"><legend>${esc(p.text)}</legend></fieldset>`,
+                                `<fieldset id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")}"><legend>${esc(p.text)}</legend></fieldset>`,
                             );
                             break;
                         case "datagrid": {
@@ -3150,7 +3243,7 @@
                                 .map((l) => "    " + l)
                                 .join(
                                     "\n",
-                                )}\n  */\n  console.log('${w.name}.${ev}');\n});`,
+                                )}\n  */\n  \n});`,
                         );
                     });
                 });
@@ -3167,7 +3260,7 @@
 
             const html = lines.join("\n");
             showModal(`
-    <div class="mhdr"><h4>📤 HTMLエクスポート</h4><button class="mclose" onmousedown="closeModal()">✕</button></div>
+    ${mhdrHTML("📤 HTMLエクスポート")}
     <div class="mbody">
       <textarea class="yaml" style="height:260px;font-size:10px" readonly>${esc(html)}</textarea>
     </div>
@@ -3291,12 +3384,12 @@
         }
 
         // 現在の画面を削除
-        function formDelete() {
+        async function formDelete() {
             if (forms.length <= 1) {
                 alert("最後の画面は削除できません");
                 return;
             }
-            if (!confirm(`"${formCfg.title}" を削除しますか？`)) return;
+            if (!(await vja.app.showConfirm(`"${formCfg.title}" を削除しますか？`))?.confirmed) return;
             commitIdCnt();
             pushUndo();
             forms.splice(curFormIdx, 1);
@@ -3348,7 +3441,6 @@
         }
         // Escキーで確認ダイアログを閉じる
 
-
         /* ── 定数エディタ ── */
         function openConstEditor() {
             window._constRows = constants.map(c => ({name: c.name || "", value: c.value || ""}));
@@ -3370,7 +3462,7 @@
                     + "</tr>";
             });
             showModal("<div id='const-modal'>"
-                + "<div class='mhdr'><h4>📌 定数エディタ</h4><button class='mclose' onmousedown='closeModal()'>✕</button></div>"
+                + mhdrHTML("📌 定数エディタ")
                 + "<div class='mbody' style='gap:6px'>"
                 + "<div class='infobox'>イベントのYAMLから参照できる定数を定義します。プロジェクトファイルに保存されます。</div>"
                 + "<div class='const-scroll'>"
@@ -3382,7 +3474,7 @@
                 + "<button class='add-row-btn' onclick='constAddRow()'>＋ 行を追加</button>"
                 + "</div>"
                 + "<div class='mfoot'>"
-                + "<button onmousedown='closeModal()'>キャンセル</button>"
+                + mfootHTML([{label: "キャンセル", action: "closeModal()"}]) + ""
                 + "<button class='pri' onclick='constSave()'>保存</button>"
                 + "</div>"
                 + "</div>");
@@ -3433,7 +3525,6 @@
             pushUndo();
         }
 
-
         /* ── プロパティパネル カスタムセレクト ── */
         function pvSelOpen(id, e) {
             if (e) e.stopPropagation();
@@ -3465,7 +3556,6 @@
                     el.textContent === String(val) || el.getAttribute("data-v") === String(val));
             });
         }
-
 
         /* ═══════════════════════════════════════════
            テーブル管理
@@ -3500,7 +3590,7 @@
                 : "<tr><td colspan='6' class='tbl-empty'>テーブルが未登録です。「＋ テーブル追加」から追加してください。</td></tr>";
 
             showModal(
-                "<div class='mhdr'><h4>🗄 テーブル管理</h4><button class='mclose' onmousedown='closeModal()'>✕</button></div>" +
+                mhdrHTML("🗄 テーブル管理") +
                 "<div class='mbody tbl-mgr-wrap'>" +
                 "<div class='tbl-mgr-header'>" +
                 "<span style='font-size:12px;color:var(--text2)'>SQLiteテーブル定義（全" + tables.length + "件）</span>" +
@@ -3526,13 +3616,13 @@
         }
 
         // テーブル削除
-        function deleteTable(idx) {
+        async function deleteTable(idx) {
             const t = tables[idx];
             if (!t) return;
-            if (!confirm("テーブル「" + t.name + "」を削除しますか？この操作は元に戻せません。")) return;
+            if (!(await vja.app.showConfirm("テーブル「" + t.name + "」を削除しますか？この操作は元に戻せません。"))?.confirmed) return;
             tables.splice(idx, 1);
             pushUndo();
-            renderTableManagerModal();
+            reopenModal(renderTableManagerModal);
         }
 
         // テーブル新規作成 / 編集モーダル
@@ -3583,8 +3673,7 @@
             }).join("");
 
             showModal(
-                "<div class='mhdr'><h4>" + (isNew ? "➕ テーブル新規作成" : "✏ テーブル編集") + "</h4>" +
-                "<button class='mclose' onclick='openTableManager()'>✕</button></div>" +
+                mhdrHTML(isNew ? "➕ テーブル新規作成" : "✏ テーブル編集") +
                 "<div class='mbody tbl-edit-wrap'>" +
                 // テーブル名
                 "<div class='tbl-name-row'><label>テーブル名</label>" +
@@ -3733,9 +3822,8 @@
         }
 
         function tblTypeOpen(idx, btn) {
-            console.log("[tblTypeOpen] idx:", idx, "btn:", btn);
             const float = $("col-type-float");
-            if (!float) {console.log("[tblTypeOpen] float not found"); return;}
+            if (!float) {return;}
             if (!window._tblEdit || !window._tblEdit.columns[idx]) return;
             const curType = window._tblEdit.columns[idx].type || "TEXT";
             // 既に開いていて同じインデックスならclose
@@ -3763,7 +3851,6 @@
             float.style.minWidth = r.width + "px";
             float.dataset.colidx = idx;
             float.classList.add("open");
-            console.log("[tblTypeOpen] opened at", r.left, r.bottom);
         }
 
         // カラム型の選択
@@ -3801,7 +3888,6 @@
             renderTableManagerModal();
         }
 
-
         /* ── フォーム定数エディタ ── */
         function openFormConstEditor() {
             const f = forms[curFormIdx];
@@ -3829,7 +3915,7 @@
                     "</tr>";
             });
             showModal("<div id='const-modal'>" +
-                "<div class='mhdr'><h4>📌 フォーム定数 — " + esc(formTitle) + "</h4><button class='mclose' onmousedown='closeModal()'>✕</button></div>" +
+                mhdrHTML("📌 フォーム定数 — " + esc(formTitle)) +
                 "<div class='mbody' style='gap:6px'>" +
                 "<div class='infobox'>このフォーム（" + esc(formTitle) + "）専用の定数を定義します。グローバル定数と合わせてYAMLから参照できます。</div>" +
                 "<div class='const-scroll'>" +
@@ -3841,7 +3927,7 @@
                 "<button class='add-row-btn' onclick='formConstAddRow()'>＋ 行を追加</button>" +
                 "</div>" +
                 "<div class='mfoot'>" +
-                "<button onmousedown='closeModal()'>キャンセル</button>" +
+                mfootHTML([{label: "キャンセル", action: "closeModal()"}]) + "" +
                 "<button class='pri' onclick='saveFormConst()'>保存</button>" +
                 "</div>" +
                 "</div>");
@@ -3867,6 +3953,64 @@
             showToast("フォーム定数を保存しました（" + f.constants.length + "件）");
         }
 
+
+        /* ── プロジェクト情報 ── */
+        function openProjectInfo() {
+            showModal(
+                mhdrHTML("📁 プロジェクト情報") +
+                "<div class='mbody' style='gap:10px'>" +
+                "<div class='ai-cfg-row'><label>プロジェクト名</label>" +
+                "<input id='pi-name' class='pv-input' style='height:28px;font-size:13px' value='" + esc(projectInfo.name) + "' placeholder='マイプロジェクト'>" +
+                "</div>" +
+                "<div class='ai-cfg-row'><label>説明</label>" +
+                "<textarea id='pi-desc' class='pv-textarea' style='height:60px;font-size:13px'>" + esc(projectInfo.description) + "</textarea>" +
+                "</div>" +
+                "<div class='ai-cfg-row'><label>バージョン</label>" +
+                "<div style='display:flex;align-items:center;gap:4px;flex:1'>" +
+                "<input id='pi-ver' class='pv-input' style='height:28px;font-size:13px;flex:1' value='" + esc(projectInfo.version) + "' placeholder='1.0.0'>" +
+                "<button onmousedown='piVerStep(1)' style='width:24px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);cursor:pointer;font-size:11px;flex-shrink:0'>▲</button>" +
+                "<button onmousedown='piVerStep(-1)' style='width:24px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);cursor:pointer;font-size:11px;flex-shrink:0'>▼</button>" +
+                "</div>" +
+                "</div>" +
+                "<div class='ai-cfg-row'><label>作成者</label>" +
+                "<input id='pi-author' class='pv-input' style='height:28px;font-size:13px' value='" + esc(projectInfo.author) + "' placeholder='作成者名'>" +
+                "</div>" +
+                "<div class='ai-cfg-row'><label>会社名</label>" +
+                "<input id='pi-company' class='pv-input' style='height:28px;font-size:13px' value='" + esc(projectInfo.company) + "' placeholder='会社・組織名'>" +
+                "</div>" +
+                "</div>" +
+                "<div class='mfoot'>" +
+                "<button onmousedown='closeModal()'>キャンセル</button>" +
+                "<button class='pri' id='pi-save-btn'>保存</button>" +
+                "</div>"
+            );
+            rAfBind("#pi-save-btn", "click", saveProjectInfo);
+        }
+
+        function piVerStep(dir) {
+            const inp = $("pi-ver");
+            if (!inp) return;
+            const parts = inp.value.split(".");
+            // 最後の数字をdir分増減
+            const last = parseInt(parts[parts.length - 1]) || 0;
+            const next = Math.max(0, last + dir);
+            parts[parts.length - 1] = String(next);
+            inp.value = parts.join(".");
+        }
+
+        function saveProjectInfo() {
+            projectInfo = {
+                name: $("pi-name")?.value || "",
+                description: $("pi-desc")?.value || "",
+                version: $("pi-ver")?.value || "1.0.0",
+                author: $("pi-author")?.value || "",
+                company: $("pi-company")?.value || "",
+            };
+            applyProjectInfo();
+            closeModal();
+            pushUndo();
+            showToast("プロジェクト情報を保存しました");
+        }
 
         /* ── フォント設定 ── */
 
@@ -3902,8 +4046,7 @@
             const curFontLabel = EDITOR_FONTS.find(f => f.value === curFont)?.label || "Courier New";
 
             showModal(
-                "<div class='mhdr'><h4>🔤 エディタフォント設定</h4>" +
-                "<button class='mclose' onmousedown='closeModal()'>✕</button></div>" +
+                mhdrHTML("🔤 エディタフォント設定") +
                 "<div class='mbody' style='gap:14px'>" +
                 // フォントサイズ
                 "<div class='ai-cfg-row'><label>フォントサイズ</label>" +
@@ -3935,7 +4078,7 @@
                 "</div>" +
                 "</div>" +
                 "<div class='mfoot'>" +
-                "<button onmousedown='closeModal()'>キャンセル</button>" +
+                mfootHTML([{label: "キャンセル", action: "closeModal()"}]) + "" +
                 "<button class='pri' id='ef-save-btn'>保存</button>" +
                 "</div>"
             );
@@ -3960,9 +4103,6 @@
             }, 150);
         }
 
-
-
-
         pvRegister("fontSave", saveFontConfig);
 
         function saveFontConfig() {
@@ -3970,7 +4110,6 @@
             const sel = $("ef-font-sel");
             const fontIdx = sel ? (parseInt(sel.options[sel.selectedIndex]?.value) || 0) : 0;
             const font = (EDITOR_FONTS[fontIdx] || EDITOR_FONTS[0]).value;
-            console.log("[saveFontConfig] size=", size, "fontIdx=", fontIdx, "font=", font);
             editorConfig = {fontSize: size, fontFamily: font};
             applyEditorConfig();
             closeModal();
@@ -3980,7 +4119,7 @@
 
         /* ── カラム定義エディタ ── */
         function openColDefEditor(wid) {
-            const w = widgets.find(x => x.id == wid);
+            const w = getWidget(wid);
             if (!w) return;
             const rows = (w.props.columns || "").split(/[;\n]/).filter(s => s.trim()).map((c) => {
                 const parts = c.trim().split(":");
@@ -4003,7 +4142,7 @@
                     + "</tr>";
             });
             showModal("<div id='coldef-modal'>"
-                + "<div class='mhdr'><h4>📊 カラム定義エディタ</h4><button class='mclose' onmousedown='closeModal()'>✕</button></div>"
+                + mhdrHTML("📊 カラム定義エディタ")
                 + "<div class='mbody' style='gap:6px'>"
                 + "<div class='infobox'>カラム名と幅(px)を定義します。Noは自動採番。最大100列。</div>"
                 + "<div class='coldef-scroll'>"
@@ -4015,7 +4154,7 @@
                 + (rows.length < 100 ? "<button class='add-row-btn' onclick='coldefAddRow()'>＋ 行を追加</button>" : "")
                 + "</div>"
                 + "<div class='mfoot'>"
-                + "<button onmousedown='closeModal()'>キャンセル</button>"
+                + mfootHTML([{label: "キャンセル", action: "closeModal()"}]) + ""
                 + "<button class='pri' onclick='coldefSave()'>保存</button>"
                 + "</div>"
                 + "</div>");
@@ -4036,7 +4175,7 @@
         }
         function coldefSave() {
             const wid = window._coldefWid;
-            const w = widgets.find(x => x.id == wid);
+            const w = getWidget(wid);
             if (!w) return;
             const valid = (window._coldefRows || []).filter(r => r.label.trim());
             if (valid.length === 0) {alert("カラム名を1つ以上入力してください"); return;}
@@ -4048,6 +4187,16 @@
             renderProps();
         }
 
+        function applyProjectInfo() {
+            // Electrobun側のウィンドウタイトルは変更できないため
+            // ステータスバーにプロジェクト名を表示
+            const nameEl = $("st-project-name");
+            if (nameEl) {
+                nameEl.textContent = projectInfo.name
+                    ? "📁 " + projectInfo.name + (projectInfo.version ? " v" + projectInfo.version : "")
+                    : "";
+            }
+        }
 
         function applyEditorConfig() {
             const fs = editorConfig.fontSize + "px";
@@ -4069,6 +4218,7 @@
 
         function applyViewSettings() {
             applyEditorConfig();
+            applyProjectInfo();
             // グリッド
             fb().classList.toggle("show-grid", showGrid);
             const stg = $("st-grid");
@@ -4170,7 +4320,7 @@
                 ].includes(e.key)
             ) {
                 e.preventDefault();
-                const w = widgets.find((x) => x.id === selId);
+                const w = getWidget(selId);
                 if (!w) return;
                 const d = e.shiftKey ? SNAP : 1;
                 if (e.key === "ArrowLeft") w.x = Math.max(0, w.x - d);
