@@ -1625,6 +1625,7 @@
                 "  " + w.name + "の" + evName + "が発生した時の処理を生成してください。\n" +
                 "  入力値を検証してForm2に遷移します。\n";
 
+
             const aiEnabled = aiConfig.enabled;
             showModal(
                 "<div class='modal-yaml'>" +
@@ -1718,17 +1719,53 @@
 
             // ── 現在フォームのウィジェット ──
             const widBody = widgets.length > 0
-                ? "<table class='rp-table'>"
-                + widgets.map(ww => {
-                    const n = esc(ww.name);
-                    const desc = esc(ww.props?.description || "");
-                    return "<tr class='rp-insert' data-insert='" + n + "'>"
-                        + "<td class='rp-name-col'>" + n + "</td>"
-                        + "<td class='rp-tag-col'>" + esc(ww.tag) + "</td>"
-                        + (desc ? "<td class='rp-val-col'>" + desc + "</td>" : "<td></td>")
-                        + "</tr>";
-                }).join("") + "</table>"
-                : "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>\u30a6\u30a3\u30b8\u30a7\u30c3\u30c8\u306a\u3057</div>";
+                ? "<div>" + widgets.map(ww => {
+                    try {
+                        const n = esc(ww.name);
+                        const tag = (ww.tag || "").toLowerCase();
+                        const desc = esc(ww.props?.description || "");
+                        let extraRows = "";
+                        if (tag === "radio" && ww.props?.group) {
+                            extraRows += "<tr class='rp-insert' data-insert='" + esc(ww.props.group) + "'>"
+                                + "<td class='col-name'>groupName</td>"
+                                + "<td class='col-type'>" + esc(ww.props.group) + "</td>"
+                                + "<td></td></tr>";
+                        }
+                        if ((tag === "selectbox" || tag === "listbox") && ww.props?.items) {
+                            const itemList = String(ww.props.items).split("\n").map(s => s.trim()).filter(Boolean);
+                            extraRows += itemList.map(item =>
+                                "<tr class='rp-insert' data-insert='" + esc(item) + "'>"
+                                + "<td class='col-name'>" + esc(item) + "</td>"
+                                + "<td class='col-type'></td><td></td></tr>"
+                            ).join("");
+                        }
+                        if (tag === "datagrid" && ww.props?.columns) {
+                            const colStr = String(ww.props.columns);
+                            const colItems = colStr.split(/[;\n]/).map(s => s.trim()).filter(Boolean);
+                            extraRows += colItems.map(c => {
+                                const label = c.split(":")[0].trim();
+                                return "<tr class='rp-insert' data-insert='" + esc(label) + "'>"
+                                    + "<td class='col-name'>" + esc(label) + "</td>"
+                                    + "<td class='col-type'></td><td></td></tr>";
+                            }).join("");
+                        }
+                        const hasExtra = extraRows.length > 0;
+                        return "<div class='rp-tbl-row'>"
+                            + "<div class='rp-tbl-header'>"
+                            + "<span class='rp-tbl-name rp-insert' data-insert='" + n + "'>" + n + "</span>"
+                            + "<span class='rp-tbl-desc'>" + esc(ww.tag) + "</span>"
+                            + (desc ? "<span class='rp-tbl-desc'>" + desc + "</span>" : "")
+                            + (hasExtra ? "<button class='rp-tbl-expand' onclick='event.stopPropagation();yamlToggleTblCols(this)'>▶</button>" : "")
+                            + "</div>"
+                            + (hasExtra ? "<div class='rp-tbl-cols'><table>" + extraRows + "</table></div>" : "")
+                            + "</div>";
+                    } catch (e) {
+                        return "<div class='rp-tbl-row'><div class='rp-tbl-header'>"
+                            + "<span class='rp-tbl-name'>" + esc(ww.name || "?") + "</span>"
+                            + "</div></div>";
+                    }
+                }).join("") + "</div>"
+                : "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>ウィジェットなし</div>";
 
             // ── テーブル一覧 ──
             const tblBody = tables.length > 0
@@ -1745,6 +1782,7 @@
                     return "<div class='rp-tbl-row'>"
                         + "<div class='rp-tbl-header'>"
                         + "<span class='rp-tbl-name rp-insert' data-insert='" + tn + "'>" + tn + "</span>"
+
                         + (cols ? "<button class='rp-tbl-expand' onclick='event.stopPropagation();yamlToggleTblCols(this)'>▶</button>" : "")
                         + "</div>"
                         + (cols ? "<div class='rp-tbl-cols'><table>" + cols + "</table></div>" : "")
@@ -1822,6 +1860,9 @@
             const open = cols.classList.toggle("open");
             btn.textContent = open ? "▼" : "▶";
         }
+
+
+
 
         // 右パネルのイベントデリゲーション登録
         function yamlInitRpanelEvents() {

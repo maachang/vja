@@ -804,7 +804,7 @@ body {
     gap: 6px;
     padding: 7px 10px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text);
     font-weight: bold;
     background: var(--bg3);
@@ -841,7 +841,7 @@ body {
 .rp-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .rp-table tr {
@@ -866,12 +866,12 @@ body {
 
 .rp-table .rp-tag-col {
     color: var(--text3);
-    font-size: 12px;
+    font-size: 13px;
 }
 
 .rp-table .rp-val-col {
     color: var(--text2);
-    font-size: 12px;
+    font-size: 13px;
     max-width: 80px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -912,7 +912,7 @@ body {
     gap: 6px;
     padding: 5px 8px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .rp-tbl-header:hover {
@@ -934,7 +934,7 @@ body {
 
 .rp-tbl-desc {
     color: var(--text3);
-    font-size: 12px;
+    font-size: 13px;
     font-style: italic;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -943,7 +943,7 @@ body {
 }
 
 .rp-tbl-expand {
-    font-size: 12px;
+    font-size: 13px;
     color: #fff;
     background: var(--accent);
     cursor: pointer;
@@ -970,7 +970,7 @@ body {
 .rp-tbl-cols table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 12px;
+    font-size: 13px;
 }
 
 .rp-tbl-cols td {
@@ -996,7 +996,7 @@ body {
 
 .rp-tbl-cols .col-flag {
     color: var(--accent2);
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .mhdr {
