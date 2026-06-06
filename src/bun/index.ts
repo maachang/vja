@@ -1,7 +1,7 @@
 // src/bun/index.ts
 // VJA Form Designer - Electrobun メインプロセス
 
-import { BrowserWindow, BrowserView, Utils } from "electrobun/bun";
+import { BrowserWindow, BrowserView, Utils, Screen } from "electrobun/bun";
 import { homedir } from "os";
 import { execFile } from "child_process";
 import { promisify } from "util";
@@ -548,14 +548,18 @@ const isWin = process.platform === "win32";
 let initW = 1280,
     initH = 800;
 if (isWin) {
+    // 一旦Windowsの最大画像の調整は 一応以下でうまくいく。
     try {
+        // OSで設定されている全体サイズを取得.
         const ps = `Add-Type -AssemblyName System.Windows.Forms;[System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width.ToString()+','+[System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height.ToString()`;
         const { stdout } = await execFileAsync("powershell", ["-Command", ps]);
         const [w, h] = stdout.trim().split(",").map(Number);
-        if (w > 0 && h > 0) {
-            initW = w;
-            initH = h;
-        }
+
+        // ディスプレイの有効領域（タスクバーを除いたサイズ）を取得
+        const primaryDisplay = Screen.getPrimaryDisplay();
+        const { width, height } = primaryDisplay.workArea;
+        initW = width;
+        initH = height - (((h - height) >> 1) - 1);
     } catch {}
 }
 
@@ -566,16 +570,5 @@ const browserWindow = new BrowserWindow({
     rpc: vjaRPC,
 });
 
+// フルスクリーン.
 browserWindow.maximize();
-if (isWin) {
-    setTimeout(() => {
-        try {
-            browserWindow.maximize();
-        } catch {}
-    }, 300);
-    setTimeout(() => {
-        try {
-            browserWindow.maximize();
-        } catch {}
-    }, 1000);
-}
