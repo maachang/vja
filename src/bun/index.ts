@@ -141,13 +141,7 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                     _lastDir = dirname(path);
                     await saveLastDir(path);
                     console.log("[open]", path);
-                    // プロジェクトデータをメモリに保持（実行時に使用）
-                    try {
-                        const proj = JSON.parse(content);
-                        _currentProjectForms = proj.forms || [];
-                        _currentProjectName = proj.projectInfo?.name ||
-                            path.split("/").pop()?.replace(/\.vjaproj$/, "") || "project";
-                    } catch {}
+                    _updateProjectData(content, path);
                     browserWindow.webview.rpc.send.openFileResult({ content, path });
                 } catch (e: any) {
                     console.error("[open error]", e.message);
@@ -170,13 +164,7 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                     _lastDir = dirname(savePath);
                     await saveLastDir(savePath);
                     console.log("[saved]", savePath);
-                    // プロジェクトデータをメモリに保持（実行時に使用）
-                    try {
-                        const proj = JSON.parse(content);
-                        _currentProjectForms = proj.forms || [];
-                        _currentProjectName = proj.projectInfo?.name ||
-                            savePath.split("/").pop()?.replace(/\.vjaproj$/, "") || "project";
-                    } catch {}
+                    _updateProjectData(content, savePath);
                     browserWindow.webview.rpc.send.saveFileResult({ ok: true, path: savePath, cancelled: false });
                 } catch (e: any) {
                     console.error("[save error]", e.message);
@@ -422,14 +410,7 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                         return;
                     }
                     // フロントから受け取った最新データを使用
-                    try {
-                        const proj = JSON.parse(projectData);
-                        _currentProjectForms = proj.forms || [];
-                        _currentProjectName  = proj.projectInfo?.name || "project";
-                        // AppEventsコードをBun側に保持（TSとして実行）
-                        _onStartCode = proj.projectInfo?.appEvents?.onStart || "";
-                        _onExitCode  = proj.projectInfo?.appEvents?.onExit  || "";
-                    } catch (e: any) {
+                    if (!_updateProjectData(projectData)) {
                         browserWindow.webview.rpc.send.runProjectResult({ ok: false, error: "プロジェクトデータの解析に失敗しました" });
                         return;
                     }
@@ -498,6 +479,22 @@ let _projectWindow: BrowserWindow | null = null;
 let _currentProjectForms: any[] = [];
 let _currentProjectName: string = "";
 
+// プロジェクトデータをメモリに反映する共通関数
+const _updateProjectData = (jsonStr: string, filePath?: string): boolean => {
+    try {
+        const proj = JSON.parse(jsonStr);
+        _currentProjectForms = proj.forms || [];
+        _currentProjectName  = proj.projectInfo?.name
+            || filePath?.split("/").pop()?.replace(/\.vjaproj$/, "")
+            || "project";
+        _onStartCode = proj.projectInfo?.appEvents?.onStart || "";
+        _onExitCode  = proj.projectInfo?.appEvents?.onExit  || "";
+        return true;
+    } catch {
+        return false;
+    }
+};
+
 // プロジェクトのフォームHTMLを生成して出力先に書き出す
 const buildProjectFiles = async (): Promise<{
     ok: boolean; error?: string;
@@ -517,6 +514,11 @@ const buildProjectFiles = async (): Promise<{
         const runtimeSrc = join(import.meta.dir, "..", "mainview", "vja-runtime.js");
         if (existsSync(runtimeSrc)) {
             copyFileSync(runtimeSrc, join(outDir, "vja-runtime.js"));
+        }
+        // project-bridge.ts をコピー
+        const bridgeSrc = join(import.meta.dir, "..", "mainview", "project-bridge.ts");
+        if (existsSync(bridgeSrc)) {
+            copyFileSync(bridgeSrc, join(outDir, "project-bridge.ts"));
         }
 
         // 各フォームのHTMLを生成
@@ -571,6 +573,7 @@ body { overflow: hidden; background: ${esc2(cfg.bg || "#ececec")}; }
 ${widgetsHtml}
 </div>
 <script src="./vja-runtime.js"></script>
+<script src="./project-bridge.ts"></script>
 <script>
 ${eventsJs}
 </script>
@@ -694,8 +697,6 @@ const _runAppEventCode = async (name: string, code: string): Promise<void> => {
     try {
         // Bun側で使えるAPIをvjaオブジェクトとして注入
         const wrapper = `
-import { Database } from "bun:sqlite";
-const _db = _getDb();
 export const vja = {
     session: {
         get: (key: string) => _getSession(key),
