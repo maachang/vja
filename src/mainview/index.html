@@ -4071,26 +4071,24 @@
 
         /* ── フォント設定 ── */
 
+        const FONT_LIST = [
+            {label: "Courier New",     value: "'Courier New', Courier, monospace"},
+            {label: "Consolas",        value: "'Consolas', 'Courier New', monospace"},
+            {label: "Fira Code",       value: "'Fira Code', 'Courier New', monospace"},
+            {label: "Source Code Pro", value: "'Source Code Pro', monospace"},
+            {label: "Menlo",           value: "'Menlo', 'DejaVu Sans Mono', monospace"},
+            {label: "monospace",       value: "monospace"},
+            {label: "sans-serif",      value: "sans-serif"},
+            {label: "serif",           value: "serif"},
+        ];
+        // ウィジェット用（先頭に「デフォルト」を追加）
         const WIDGET_FONTS = [
             {label: "（デフォルト）", value: ""},
-            {label: "Courier New", value: "'Courier New', Courier, monospace"},
-            {label: "Consolas", value: "'Consolas', 'Courier New', monospace"},
-            {label: "Fira Code", value: "'Fira Code', 'Courier New', monospace"},
-            {label: "Source Code Pro", value: "'Source Code Pro', monospace"},
-            {label: "Menlo", value: "'Menlo', 'DejaVu Sans Mono', monospace"},
-            {label: "sans-serif", value: "sans-serif"},
-            {label: "serif", value: "serif"},
-            {label: "monospace", value: "monospace"},
+            ...FONT_LIST,
         ];
+        // エディタ用（FONT_LISTをそのまま使用）
+        const EDITOR_FONTS = FONT_LIST;
 
-        const EDITOR_FONTS = [
-            {label: "Courier New", value: "'Courier New', Courier, monospace"},
-            {label: "Consolas", value: "'Consolas', 'Courier New', monospace"},
-            {label: "Fira Code", value: "'Fira Code', 'Courier New', monospace"},
-            {label: "Source Code Pro", value: "'Source Code Pro', monospace"},
-            {label: "Menlo", value: "'Menlo', 'DejaVu Sans Mono', monospace"},
-            {label: "monospace", value: "monospace"},
-        ];
 
         function openFontConfig() {
             const curFont = editorConfig.fontFamily;
@@ -4105,6 +4103,8 @@
                 "<input id='ef-size' type='number' value='" + curSize + "' min='10' max='32' step='1' " +
                 "style='width:70px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:13px;padding:0 8px;outline:none;text-align:center' " +
                 ">" +
+                "<button onmousedown='efSizeStep(1)'  style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:13px;cursor:pointer'>▲</button>" +
+                "<button onmousedown='efSizeStep(-1)' style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:13px;cursor:pointer'>▼</button>" +
                 "<span style='color:var(--text2);font-size:12px'>px (10〜32)</span>" +
                 "</div></div>" +
                 // フォントファミリー
@@ -4154,6 +4154,13 @@
             }, 150);
         }
 
+
+        function efSizeStep(dir) {
+            const el = $("ef-size");
+            if (!el) return;
+            const v = Math.max(10, Math.min(32, (parseInt(el.value) || 16) + dir));
+            el.value = v;
+        }
 
         function saveFontConfig() {
             const size = Math.max(10, Math.min(32, parseInt($("ef-size")?.value) || 16));
