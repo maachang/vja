@@ -591,6 +591,14 @@
                 "LostFocus",
                 "Click",
             ],
+            inputtype: [
+                "TextChanged",
+                "KeyDown",
+                "KeyUp",
+                "GotFocus",
+                "LostFocus",
+                "Click",
+            ],
             checkbox: ["Click", "CheckedChanged"],
             radio: ["Click", "CheckedChanged"],
             listbox: ["SelectedIndexChanged", "Click", "MouseDown"],
@@ -1642,7 +1650,6 @@
             w.props.fontFamily = (WIDGET_FONTS[idx] || WIDGET_FONTS[0]).value;
             commitWidget(w, {props: false});
         }
-        pvRegister("setFF", setFontFamilyProp);
 
         function syncPropXY(w) {
             // live update while dragging
@@ -1920,42 +1927,6 @@
                 showWidgets ? yamlRpSection("🔲 現在フォームのウィジェット", widBody, true) : "",
                 yamlRpSection("🗄 テーブル一覧", tblBody, true),
             ].join("");
-        }
-
-        // 画面詳細グローバル関数
-        window.yamlFormDetail = function (fi) {
-            const f = forms[fi];
-            if (!f) return;
-            const wids = f.widgets || [];
-            const rows = wids.length > 0
-                ? wids.map(ww => {
-                    const n = ww.name.replace(/"/g, '\"');
-                    return "<div class='dp-item' onmousedown='yamlInsert(\"" + n + "\");yamlCloseDetailPopup()'>"
-                        + "<span class='dp-item-name'>" + esc(ww.name) + "</span>"
-                        + "<span class='dp-item-tag'>" + esc(ww.tag) + "</span>"
-                        + (ww.props?.description ? "<span class='dp-item-desc'>" + esc(ww.props.description) + "</span>" : "")
-                        + "</div>";
-                }).join("")
-                : "<div style='padding:8px;color:var(--text3);font-size:11px'>\u30a6\u30a3\u30b8\u30a7\u30c3\u30c8\u306a\u3057</div>";
-            const popup = document.createElement("div");
-            popup.id = "yaml-detail-popup";
-            popup.className = "yaml-detail-popup";
-            popup.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999";
-            popup.innerHTML =
-                "<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px'>"
-                + "<h5 style='margin:0;font-size:12px;color:var(--accent)'>" + esc(f.cfg.title) + "</h5>"
-                + "<span style='cursor:pointer;font-size:16px;padding:0 4px' onmousedown='yamlCloseDetailPopup()'>\u2715</span>"
-                + "</div>" + (f.cfg.description ? "<div style='color:var(--text3);font-size:11px;margin-bottom:6px'>" + esc(f.cfg.description) + "</div>" : "") + rows;
-            yamlCloseDetailPopup();
-            document.body.appendChild(popup);
-            setTimeout(() => document.addEventListener("mousedown", _yamlOutside), 100);
-        };
-        function _yamlOutside(e) {
-            const p = $("yaml-detail-popup");
-            if (p && !p.contains(e.target)) {
-                p.remove();
-                document.removeEventListener("mousedown", _yamlOutside);
-            }
         }
 
         // アコーディオンセクションHTML
@@ -3207,8 +3178,7 @@
             const dgScripts = [];
             const formHtmls = forms.map((f) => {
                 const lines2 = [];
-                const ws = f.widgets,
-                    cfg = f.cfg;
+                const cfg = f.cfg;
                 lines2.push(
                     `<div class="vja-form" id="form-${f.id}" style="display:none;position:relative;width:${cfg.w}px;height:${cfg.h}px;background:${cfg.bg}">`,
                 );
@@ -3684,7 +3654,6 @@
             const cols = tbl.columns || [];
 
             let tbody = cols.map((c, i) => {
-                const did = "ctype_" + i;
                 const oi_name = "tblColUpdate(" + i + ",'name',this.value)";
                 const oi_notNull = "tblColUpdate(" + i + ",'notNull',this.checked)";
                 const oi_pk = "tblColUpdatePk(" + i + ",this.checked)";
@@ -3929,7 +3898,6 @@
             const f = forms[curFormIdx];
             if (!f) return;
             if (!f.constants) f.constants = [];
-            window._constTarget = "form"; // グローバルと区別
             window._constRows = f.constants.map(c => ({name: c.name || "", value: c.value || ""}));
             if (window._constRows.length === 0) window._constRows.push({name: "", value: ""});
             renderFormConstModal();
@@ -4096,12 +4064,6 @@
         function openFontConfig() {
             const curFont = editorConfig.fontFamily;
             const curSize = editorConfig.fontSize;
-            const fontOpts = EDITOR_FONTS.map(f =>
-                "<div class='pv-sel-opt " + (f.value === curFont ? "active" : "") + "' " +
-                "data-label='" + esc(f.label) + "' data-value='" + esc(f.value) + "'>" +
-                f.label + "</div>"
-            ).join("");
-            const curFontLabel = EDITOR_FONTS.find(f => f.value === curFont)?.label || "Courier New";
 
             showModal(
                 mhdrHTML("🔤 エディタフォント設定") +
@@ -4161,7 +4123,6 @@
             }, 150);
         }
 
-        pvRegister("fontSave", saveFontConfig);
 
         function saveFontConfig() {
             const size = Math.max(10, Math.min(32, parseInt($("ef-size")?.value) || 16));

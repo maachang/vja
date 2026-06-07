@@ -353,20 +353,6 @@ body {
     z-index: 11;
 }
 
-.ruler-tick {
-    position: absolute;
-    background: var(--text3);
-}
-
-.ruler-label {
-    position: absolute;
-    font-size: 8px;
-    color: var(--text3);
-    font-family: monospace;
-    line-height: 1;
-    pointer-events: none;
-}
-
 /* ── ウィジェット ── */
 .widget {
     position: absolute;
@@ -886,28 +872,11 @@ body {
     white-space: nowrap;
 }
 
-.rp-table .rp-act-col {
-    text-align: right;
-    white-space: nowrap;
-}
+.rp-table 
 
-.rp-table .rp-badge {
-    display: inline-block;
-    background: var(--bg4);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    padding: 0 5px;
-    font-size: 10px;
-    color: var(--accent2);
-    cursor: pointer;
-    margin-left: 2px;
-    font-family: var(--font);
-}
+.rp-table 
 
-.rp-table .rp-badge:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-}
+.rp-table 
 
 /* ── テーブル一覧 ── */
 .rp-tbl-row {
@@ -925,12 +894,6 @@ body {
 
 .rp-tbl-header:hover {
     background: #ffffff0d;
-}
-
-.rp-tbl-check {
-    accent-color: var(--accent);
-    cursor: pointer;
-    flex-shrink: 0;
 }
 
 .rp-tbl-name {
@@ -1647,44 +1610,6 @@ textarea.yaml:focus {
 }
 
 /* ── YAMLエディタ拡張 ── */
-.yaml-modal-wrap {
-    display: flex;
-    flex-direction: column;
-    gap: 8px
-}
-
-.yaml-ref-panel {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 8px;
-    font-size: 11px;
-    max-height: 100px;
-    overflow-y: auto
-}
-
-.yaml-ref-panel b {
-    color: var(--accent2);
-    display: block;
-    margin-bottom: 4px
-}
-
-.yaml-ref-item {
-    display: inline-block;
-    margin: 1px 4px 1px 0;
-    background: var(--bg4);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    padding: 1px 6px;
-    font-family: monospace;
-    font-size: 10px;
-    color: var(--accent);
-    cursor: pointer
-}
-
-.yaml-ref-item:hover {
-    border-color: var(--accent)
-}
 
 .yaml-ai-bar {
     display: flex;
@@ -2342,11 +2267,6 @@ input[type=number] {
     padding: 8px 6px 8px 0;
     box-sizing: border-box;
     white-space: pre
-}
-
-.editor-gutter-line {
-    display: block;
-    padding-right: 6px
 }
 
 .editor-main {
