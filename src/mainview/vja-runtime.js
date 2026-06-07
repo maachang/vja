@@ -30,7 +30,7 @@
     const _send = (level, msg) => {
         const fn = window?.vja?.log?.[level];
         if (fn) {
-            fn(msg).catch(() => { });
+            fn(msg).catch(() => {});
         } else {
             _queue.push({ level, msg });
         }
@@ -40,7 +40,7 @@
     window._flushLogQueue = () => {
         while (_queue.length > 0) {
             const { level, msg } = _queue.shift();
-            window?.vja?.log?.[level]?.(msg).catch(() => { });
+            window?.vja?.log?.[level]?.(msg).catch(() => {});
         }
     };
 
@@ -62,7 +62,7 @@
     });
 })();
 
-(function (global) {
+(function(global) {
     "use strict";
 
     const vja = global.vja || (global.vja = {});
@@ -100,7 +100,7 @@
                 if (el.type === "checkbox" || el.type === "radio") return el.checked;
                 return el.value;
             }
-            if (tag === "select") return el.value;
+            if (tag === "select")   return el.value;
             if (tag === "textarea") return el.value;
             if (tag === "span" || tag === "div" || tag === "label") return el.textContent;
             return el.value ?? el.textContent ?? null;
@@ -237,14 +237,14 @@
         // 初期化（デザイナーまたはコンパイル済みから呼ぶ）
         init(globalConsts, formConsts) {
             this._global = {};
-            this._form = {};
+            this._form   = {};
             (globalConsts || []).forEach(c => { this._global[c.name] = c.value; });
-            (formConsts || []).forEach(c => { this._form[c.name] = c.value; });
+            (formConsts   || []).forEach(c => { this._form[c.name]   = c.value; });
         },
 
         // 取得（フォーム定数優先、なければグローバル）
         get(key, defaultVal = null) {
-            if (key in this._form) return this._form[key];
+            if (key in this._form)   return this._form[key];
             if (key in this._global) return this._global[key];
             return defaultVal;
         },
@@ -271,7 +271,7 @@
 
     // 画面履歴スタック
     const _formHistory = [];   // { formName, inputs }
-    const _formParams = {};   // 画面間パラメータ
+    const _formParams  = {};   // 画面間パラメータ
 
     vja.form = {
 
@@ -432,11 +432,11 @@
             const d = date instanceof Date ? date : new Date(date);
             return format
                 .replace("YYYY", d.getFullYear())
-                .replace("MM", String(d.getMonth() + 1).padStart(2, "0"))
-                .replace("DD", String(d.getDate()).padStart(2, "0"))
-                .replace("HH", String(d.getHours()).padStart(2, "0"))
-                .replace("mm", String(d.getMinutes()).padStart(2, "0"))
-                .replace("ss", String(d.getSeconds()).padStart(2, "0"));
+                .replace("MM",   String(d.getMonth() + 1).padStart(2, "0"))
+                .replace("DD",   String(d.getDate()).padStart(2, "0"))
+                .replace("HH",   String(d.getHours()).padStart(2, "0"))
+                .replace("mm",   String(d.getMinutes()).padStart(2, "0"))
+                .replace("ss",   String(d.getSeconds()).padStart(2, "0"));
         },
 
         // UUID生成
@@ -560,10 +560,10 @@
 
         // ダウンロード共通処理
         _download(content, filename, mimeType) {
-            const bom = mimeType.includes("csv") ? "\uFEFF" : "";
+            const bom  = mimeType.includes("csv") ? "\uFEFF" : "";
             const blob = new Blob([bom + content], { type: mimeType });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement("a");
             a.href = url; a.download = filename;
             document.body.appendChild(a);
             a.click();
@@ -571,8 +571,8 @@
         },
 
         // 印刷
-        print() { global.print(); },
-        printElement(name) {
+        print()              { global.print(); },
+        printElement(name)   {
             const el = document.querySelector(`[data-name="${name}"]`);
             if (!el) return;
             const w = global.open("", "_blank");
@@ -692,22 +692,22 @@
 
         // AES-GCM 暗号化 → Base64文字列
         async encrypt(text, key) {
-            const k = await this._importKey(key);
-            const iv = crypto.getRandomValues(new Uint8Array(12));
-            const enc = new TextEncoder();
+            const k    = await this._importKey(key);
+            const iv   = crypto.getRandomValues(new Uint8Array(12));
+            const enc  = new TextEncoder();
             const data = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, k, enc.encode(text));
-            const buf = new Uint8Array(iv.length + data.byteLength);
+            const buf  = new Uint8Array(iv.length + data.byteLength);
             buf.set(iv); buf.set(new Uint8Array(data), iv.length);
             return btoa(String.fromCharCode(...buf));
         },
 
         // AES-GCM 復号化
         async decrypt(b64, key) {
-            const k = await this._importKey(key);
-            const buf = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-            const iv = buf.slice(0, 12);
+            const k    = await this._importKey(key);
+            const buf  = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+            const iv   = buf.slice(0, 12);
             const data = buf.slice(12);
-            const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, k, data);
+            const dec  = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, k, data);
             return new TextDecoder().decode(dec);
         },
 
@@ -721,13 +721,13 @@
     // ════════════════════════════════════════════════
     // グローバルエラーハンドラ（AIコード向け）
     // ════════════════════════════════════════════════
-    global._vjaRun = async function (fn) {
+    global._vjaRun = async function(fn) {
         try {
             await fn();
         } catch (e) {
             const msg = e?.message || String(e);
             console.error("[vja] イベントエラー:", msg, e);
-            await vja.log?.error?.("イベントエラー: " + msg).catch(() => { });
+            await vja.log?.error?.("イベントエラー: " + msg).catch(() => {});
             await vja.app?.showDialog?.("エラーが発生しました:\n" + msg).catch(
                 () => alert("エラー: " + msg)
             );
@@ -739,23 +739,23 @@
     // ════════════════════════════════════════════════
 
     // 起動時イベント実行（vja-runtime ロード完了後に呼ばれる）
-    global._vjaOnStart = async function (code) {
+    global._vjaOnStart = async function(code) {
         if (!code || !code.trim()) return;
         try {
             const fn = new Function("vja", "return (async()=>{" + code + "})()");
             await fn(vja);
-        } catch (e) {
+        } catch(e) {
             console.error("[vja] OnStartエラー:", e?.message || e);
         }
     };
 
     // 終了時イベント実行（beforeunload で呼ばれる）
-    global._vjaOnExit = async function (code) {
+    global._vjaOnExit = async function(code) {
         if (!code || !code.trim()) return;
         try {
             const fn = new Function("vja", "return (async()=>{" + code + "})()");
             await fn(vja);
-        } catch (e) {
+        } catch(e) {
             console.error("[vja] OnExitエラー:", e?.message || e);
         }
     };
@@ -766,6 +766,55 @@
             _vjaOnExit(global._vjaOnExitCode);
         }
     });
+
+    // ════════════════════════════════════════════════
+    // location 無効化（vja.navigate() を使うこと）
+    // ════════════════════════════════════════════════
+    (function() {
+        const _realLocation = window.location;
+        let _blocked = false;
+        try {
+            Object.defineProperty(window, "location", {
+                get: () => _realLocation,
+                set: (v) => {
+                    if (!_blocked) {
+                        _blocked = true;
+                        alert("location への直接代入は禁止されています。\nvja.navigate(\"フォーム名\") を使用してください。");
+                        console.warn("[vja] location代入禁止: vja.navigate()を使用してください");
+                        setTimeout(() => { _blocked = false; }, 100);
+                    }
+                },
+                configurable: false,
+            });
+        } catch(e) {
+            // 一部環境では上書き不可のため、hrefのみガード
+            try {
+                const _origHref = Object.getOwnPropertyDescriptor(window.location, "href");
+                Object.defineProperty(window.location, "href", {
+                    get: () => _origHref?.get?.call(window.location),
+                    set: (v) => {
+                        alert("location.href への直接代入は禁止されています。\nvja.navigate(\"フォーム名\") を使用してください。");
+                        console.warn("[vja] location.href代入禁止: vja.navigate()を使用してください");
+                    },
+                    configurable: true,
+                });
+            } catch(e2) {}
+        }
+    })();
+
+    // ════════════════════════════════════════════════
+    // vja.navigate — フォーム切り替え（RPC経由）
+    // ════════════════════════════════════════════════
+    vja.navigate = async function(formName) {
+        try {
+            const result = await vja.project.navigate(formName);
+            if (!result.ok) {
+                console.error("[vja] navigate error:", result.error);
+            }
+        } catch(e) {
+            console.error("[vja] navigate failed:", e?.message || e);
+        }
+    };
 
     console.log("[vja-runtime] loaded ✓");
 

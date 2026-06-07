@@ -128,12 +128,15 @@
                 <path d="M9 6V4h6v2" />
             </svg>削除
         </button>
-        <button class="tb-btn" onmousedown="actExport()">
+        <button id="btn-run-project" class="tb-btn" onmousedown="actRunProject()" title="プロジェクトを実行">
             <svg viewBox="0 0 24 24">
-                <polyline points="8 17 12 21 16 17" />
-                <line x1="12" y1="12" x2="12" y2="21" />
-                <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29" />
-            </svg>エクスポート
+                <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>実行
+        </button>
+        <button id="btn-stop-project" class="tb-btn" onmousedown="actStopProject()" title="実行を停止" style="display:none">
+            <svg viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            </svg>停止
         </button>
         <div class="tb-sep"></div>
         <button class="tb-btn" onmousedown="openConstEditor()" title="グローバル定数の編集">
@@ -2062,6 +2065,7 @@
 
         // AI生成（llama-server 経由）
         async function yamlAiGenerate(wid, evName) {
+            const isAppEvent = (wid === "appev");
             const w = getWidget(wid);
             if (!w) return;
             if (!aiConfig.enabled) {
@@ -2233,8 +2237,12 @@
             // ── ⑦ ユーザープロンプト ──
             const userPrompt = [
                 yamlCur.trim()
-                    ? "以下のYAML仕様に基づいてJavaScriptコードを生成してください。\n\n```yaml\n" + yamlCur + "\n```"
-                    : "「" + w.name + "」の「" + evName + "」イベント処理のJavaScriptコードを生成してください。",
+                    ? (isAppEvent
+                        ? "以下のYAML仕様に基づいて、Bun.jsで実行されるTypeScriptコードを生成してください。\nvja.db.query()/vja.session.get()等のAPIが利用可能です。\n\n```yaml\n" + yamlCur + "\n```"
+                        : "以下のYAML仕様に基づいてJavaScriptコードを生成してください。\n\n```yaml\n" + yamlCur + "\n```")
+                    : (isAppEvent
+                        ? "アプリイベント「" + evName + "」のTypeScriptコードをBun.js用に生成してください。vja.db/vja.session等が使用できます。"
+                        : "「" + w.name + "」の「" + evName + "」イベント処理のJavaScriptコードを生成してください。"),
                 addPrompt ? "\n追加指示: " + addPrompt : "",
             ].join("");
 
@@ -3202,6 +3210,57 @@
             }, 2500);
         }
 
+        /* ── プロジェクト実行 ── */
+        // Bun側に渡す現在のプロジェクトデータを返す
+        window._getProjectData = function() {
+            return {
+                projectInfo,
+                forms,
+                constants,
+                tables,
+            };
+        };
+
+        async function actRunProject() {
+            if (!bunSaveProject) { alert("bridge が読み込まれていません"); return; }
+            const runBtn  = $("btn-run-project");
+            const stopBtn = $("btn-stop-project");
+if (runBtn)  runBtn.disabled = true;
+            showToast("プロジェクトをビルド中…");
+            try {
+                const result = await vja.project.run();
+                if (result.ok) {
+                    if (runBtn)  runBtn.style.display  = "none";
+                    if (stopBtn) stopBtn.style.display = "";
+                    showToast("プロジェクトを起動しました");
+                } else {
+                    if (result.error === "already running") {
+                        alert("プロジェクトは既に実行中です");
+                    } else {
+                        alert("実行エラー: " + (result.error || "不明なエラー"));
+                    }
+                }
+            } catch(e) {
+                alert("実行に失敗しました: " + e.message);
+            } finally {
+                // 実行ボタンが非表示でない場合は必ずdisabledを解除
+                if (runBtn && runBtn.style.display !== "none") {
+                    runBtn.disabled = false;
+                }
+            }
+        }
+
+        async function actStopProject() {
+            const runBtn  = $("btn-run-project");
+            const stopBtn = $("btn-stop-project");
+            try {
+                await vja.project.stop();
+            } catch(e) {}
+            if (runBtn)  { runBtn.style.display = ""; runBtn.disabled = false; }
+            if (stopBtn) stopBtn.style.display = "none";
+            showToast("プロジェクトを停止しました");
+        }
+
         function actExport() {
             commitIdCnt();
             const projTitle = forms[0]?.cfg?.title || "project";
@@ -3979,7 +4038,11 @@
             _curAppEvKey = evKey;
             const ae = projectInfo.appEvents || {};
             const cur   = ae[evKey + "_yaml"] || "# アプリイベント: " + evKey + "\n# YAML形式でAIへの指示を記述します\n";
-            const curJs = ae[evKey]           || "// アプリイベント: " + evKey + "\n";
+            // OnStart/OnExitはBun側でTypeScriptとして実行される
+            const _tsHint = evKey === "onStart"
+                ? "// ⚠️ このコードはBun側でTypeScriptとして実行されます\n// vja.db.query() / vja.session.get() 等が使用できます\n\n"
+                : "// ⚠️ このコードはBun側でTypeScriptとして実行されます（アプリ終了時）\n// vja.db / vja.session 等が使用できます\n\n";
+            const curJs = ae[evKey] || _tsHint;
             const evTabs = APP_EV_TYPES.map(t =>
                 "<div class='yaml-tab " + (t.key === evKey ? "active" : "") + "' " +
                 "id='appev-tab-" + t.key + "'>" + t.label + "</div>"

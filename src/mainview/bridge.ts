@@ -31,6 +31,11 @@ const pending = {
     log          : null as Pending<{ ok:boolean }>                                | null,
     appInfo      : null as Pending<{ ok:boolean; info:any }>                      | null,
     appDialog    : null as Pending<{ ok:boolean; confirmed?:boolean }>            | null,
+    runProject   : null as Pending<{ ok:boolean; error?:string }>                 | null,
+    stopProject  : null as Pending<{ ok:boolean }>                                | null,
+    navigateForm : null as Pending<{ ok:boolean; error?:string }>                 | null,
+    sessionGet   : null as Pending<{ ok:boolean; value:string|null }>             | null,
+    sessionSet   : null as Pending<{ ok:boolean }>                                | null,
 };
 
 const resolve = <K extends keyof typeof pending>(
@@ -73,6 +78,23 @@ const rpc = Electroview.defineRPC({
             logResult       : (v: any) => resolve("log",           v),
             appInfoResult   : (v: any) => resolve("appInfo",       v),
             appDialogResult : (v: any) => resolve("appDialog",     v),
+            runProjectResult   : (v: any) => resolve("runProject",    v),
+            stopProjectResult  : (v: any) => {
+                // Promiseが待機中なら解決（停止ボタン押下）
+                if (pending.stopProject) {
+                    resolve("stopProject", v);
+                }
+                // 常にボタン状態をリセット（×ボタンで閉じた場合も含む）
+                try {
+                    const runBtn  = document.getElementById("btn-run-project") as HTMLButtonElement | null;
+                    const stopBtn = document.getElementById("btn-stop-project") as HTMLButtonElement | null;
+                    if (runBtn)  { runBtn.style.display = ""; runBtn.disabled = false; }
+                    if (stopBtn) stopBtn.style.display = "none";
+                } catch {}
+            },
+            navigateFormResult : (v: any) => resolve("navigateForm",  v),
+            sessionGetResult   : (v: any) => resolve("sessionGet",    v),
+            sessionSetResult   : (v: any) => resolve("sessionSet",    v),
         },
     },
 });
@@ -139,6 +161,22 @@ w.vja = {
             mkPromise("appDialog", () => s.appDialogRequest({ type: "alert", message })),
         showConfirm: (message: string) =>
             mkPromise("appDialog", () => s.appDialogRequest({ type: "confirm", message })),
+    },
+    // ── プロジェクト実行 ──────────────────────────────
+    project: {
+        run: () =>
+            mkPromise("runProject", () => s.runProjectRequest({ projectData: JSON.stringify((window as any)._getProjectData?.() || {}) })),
+        stop: () =>
+            mkPromise("stopProject", () => s.stopProjectRequest({})),
+        navigate: (formName: string) =>
+            mkPromise("navigateForm", () => s.navigateFormRequest({ formName })),
+    },
+    // ── セッション管理 ────────────────────────────────
+    session: {
+        get: (key: string) =>
+            mkPromise("sessionGet", () => s.sessionGetRequest({ key })),
+        set: (key: string, value: string | null) =>
+            mkPromise("sessionSet", () => s.sessionSetRequest({ key, value })),
     },
 };
 

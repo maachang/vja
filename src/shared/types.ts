@@ -104,7 +104,7 @@ export type VjaRPCType = {
 
             // ── ログ ──────────────────────────────────────
             logRequest: {
-                level: "info" | "warn" | "error";
+                level: "info" | "warn" | "error" | "debug" | "trace" | "log";
                 message: string;
             };
 
@@ -116,6 +116,21 @@ export type VjaRPCType = {
                 type: "alert" | "confirm";
                 message: string;
             };
+
+            // ── プロジェクト実行 ──────────────────────────
+            runProjectRequest: { projectData: string };
+
+            // ── プロジェクト停止 ──────────────────────────
+            stopProjectRequest: { _?: never };
+
+            // ── フォーム切り替え（プロジェクト実行中） ────
+            navigateFormRequest: { formName: string };
+
+            // ── セッション取得 ────────────────────────────
+            sessionGetRequest: { key: string };
+
+            // ── セッション設定 ────────────────────────────
+            sessionSetRequest: { key: string; value: string | null };
         };
     }>;
 
@@ -158,7 +173,7 @@ export type VjaRPCType = {
             dirListResult: DirListResult;
             dirExistsResult: BoolResult;
 
-            // ── ログ結果（確認用） ────────────────────────
+            // ── ログ結果 ──────────────────────────────────
             logResult: { ok: boolean };
 
             // ── アプリ情報結果 ────────────────────────────
@@ -166,6 +181,21 @@ export type VjaRPCType = {
 
             // ── ダイアログ結果 ────────────────────────────
             appDialogResult: { ok: boolean; confirmed?: boolean };
+
+            // ── プロジェクト実行結果 ──────────────────────
+            runProjectResult: { ok: boolean; error?: string };
+
+            // ── プロジェクト停止結果 ──────────────────────
+            stopProjectResult: { ok: boolean };
+
+            // ── フォーム切り替え結果 ──────────────────────
+            navigateFormResult: { ok: boolean; error?: string };
+
+            // ── セッション取得結果 ────────────────────────
+            sessionGetResult: { ok: boolean; value: string | null };
+
+            // ── セッション設定結果 ────────────────────────
+            sessionSetResult: { ok: boolean };
         };
     }>;
 };
