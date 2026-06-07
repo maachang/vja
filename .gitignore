@@ -5,3 +5,5 @@
 build
 bun.lock
 node_modules
+
+docs/memo

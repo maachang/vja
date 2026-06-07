@@ -520,6 +520,7 @@
                     h: 80,
                     src: "",
                     bg: "#ddd",
+                    objectFit: "contain",
                     borderSize: 1, borderColor: "#cccccc",
                     visible: true,
                     description: "",
@@ -869,7 +870,7 @@
                 case "groupbox":
                     return `<fieldset style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};${vis}"><legend style="padding:0 4px;font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"}">${esc(p.text)}</legend></fieldset>`;
                 case "picture":
-                    return `<div style="${base}background:${p.bg};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};display:flex;align-items:center;justify-content:center;color:#888;font-size:11px;${vis}">${p.src ? `<img src="${esc(p.src)}" style="max-width:100%;max-height:100%">` : "📷"}</div>`;
+                    return `<div style="${base}background:${p.bg};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};display:flex;align-items:center;justify-content:center;color:#888;font-size:11px;${vis}">${p.src ? `<img src="${esc(p.src)}" style="max-width:100%;max-height:100%;object-fit:${p.objectFit || "contain"}">` : "📷"}</div>`;
                 case "datagrid": {
                     const cols = (p.columns || "ID:60\n名前:120").split(/[;\n]/).filter(s => s.trim()).map((c, ci) => {
                         const parts = c.trim().split(":");
@@ -1328,7 +1329,6 @@
                 ...PP_POS,
                 {sep: "外観"},
                 {k: "text", lb: "Text", t: "text"},
-                {k: "group", lb: "GroupName", t: "text"},
                 {k: "fg", lb: "ForeColor", t: "color"},
                 ...PP_FONT,
                 {sep: "状態"},
@@ -1381,6 +1381,8 @@
                 {sep: "画像"},
                 {k: "src", lb: "ImagePath", t: "text"},
                 {k: "objectFit", lb: "ObjectFit", t: "sel", opts: ["contain", "cover", "fill", "none"]},
+                {k: "bg", lb: "BackColor", t: "color"},
+                ...PP_BORDER,
                 ...PP_TAIL,
             ],
             datagrid: [
@@ -1750,231 +1752,11 @@
                 "ai_prompt: |\n" +
                 "  " + w.name + "の" + evName + "が発生した時の処理を生成してください。\n" +
                 "  入力値を検証してForm2に遷移します。\n";
-
             const curJs = (w.jsCode && w.jsCode[evName]) || "";
-            const aiEnabled = aiConfig.enabled;
-            showModal(
-                "<div class='modal-yaml'>" +
-                mhdrHTML("📋 " + esc(w.name) + " — " + esc(evName)) +
-                "<div class='mbody' style='padding:0;gap:0;overflow:hidden;display:flex;flex-direction:column'>" +
-                // メインレイアウト
-                "<div class='yaml-editor-layout' id='yaml-layout'>" +
-                // 左: YAMLエリア
-                "<div class='yaml-editor-left'>" +
-                // タブバー
-                "<div class='yaml-tab-bar'>" +
-                "<div class='yaml-tab active' id='tab-yaml'>📋 YAML</div>" +
-                "<div class='yaml-tab' id='tab-js'>📜 JavaScript</div>" +
-                "</div>" +
-                // YAMLペイン
-                "<div class='yaml-pane active' id='pane-yaml'>" +
-                "<div class='editor-wrap'>" +
-                "<div class='editor-gutter' id='yaml-gutter'></div>" +
-                "<div class='editor-main'>" +
-                "<div class='yaml-hl-wrap'>" +
-                "<div class='yaml-hl-bg' id='yaml-hl'></div>" +
-                "<textarea class='yaml' id='yaml-ta' style='height:100%;min-height:300px' " +
-                "oninput='yamlHlUpdate();editorUpdateGutter(\"yaml-ta\",\"yaml-gutter\")' " +
-                "onscroll='yamlHlSync();editorSyncGutter(\"yaml-ta\",\"yaml-gutter\")' " +
-                ">" + esc(cur) + "</textarea>" +
-                "</div></div></div></div>" +
-                // JSペイン
-                "<div class='yaml-pane' id='pane-js'>" +
-                "<div class='editor-wrap'>" +
-                "<div class='editor-gutter' id='js-gutter'></div>" +
-                "<div class='editor-main'>" +
-                "<div class='js-hl-wrap'>" +
-                "<div class='js-hl-bg' id='js-hl'></div>" +
-                "<textarea class='yaml' id='js-ta' " +
-                "oninput='jsHlUpdate();editorUpdateGutter(\"js-ta\",\"js-gutter\")' " +
-                "onscroll='jsHlSync();editorSyncGutter(\"js-ta\",\"js-gutter\")' " +
-                "placeholder='// AIでJavaScriptを生成、または直接編集できます'>" + esc(curJs) + "</textarea>" +
-                "</div></div></div></div>" +
-                // AIバー
-                "<div class='yaml-ai-bar' style='padding-bottom:8px'>" +
-                "<input id='ai-prompt-in' placeholder='AIへの追加指示（任意）'>" +
-                "<button class='yaml-ai-btn' id='ai-gen-btn' onmousedown='pvCall(\"yamlAiGen\")'>" +
-                (aiEnabled ? "🤖 AI生成" : "🤖 AI生成（設定要）") + "</button>" +
-                "<span class='yaml-ai-status' id='ai-status'></span>" +
-                "</div>" +
-                "</div>" +
-                // リサイズハンドル
-                "<div class='yaml-resize-handle' id='yaml-rhandle'></div>" +
-                // 右: 参照パネル
-                "<div class='yaml-editor-right' id='yaml-rpanel'>" +
-                yamlBuildRightPanel() +
-                "</div>" +
-                "</div>" +
-                "</div>" +
-                "<div class='mfoot'>" +
-                mfootHTML([{label: "キャンセル", action: "closeModal()"}]) + "" +
-                "<button class='pri' onmousedown='pvCall(\"yamlSave\")'>保存</button>" +
-                "</div>"
-            );
-            // グローバルブリッジ（クォート衝突回避）
-            pvRegister("yamlSave", () => saveYaml(wid, evName));
-            pvRegister("yamlAiGen", () => yamlAiGenerate(wid, evName));
-            requestAnimationFrame(() => {
-                applyEditorConfig(); // フォント設定を即時反映
-                yamlHlUpdate();
-                editorUpdateGutter("yaml-ta", "yaml-gutter");
-                jsHlUpdate();
-                editorUpdateGutter("js-ta", "js-gutter");
-                // Tab → インデント、Ctrl+[ → アウトデント（WebKitGTK制約でShift+Tabは使用不可）
-                const _ytaEl = $("yaml-ta");
-                const _jtaEl = $("js-ta");
-                function _tabHandler(e) {
-                    const ta = e.target;
-                    if (!ta) return;
-                    const ctrl = e.ctrlKey || e.metaKey;
-                    const isJs = ta.id === "js-ta";
-
-                    // Ctrl+Z → Undo
-                    if (ctrl && e.key.toLowerCase() === "z" && !e.shiftKey) {
-                        e.preventDefault();
-                        editorUndo(ta.id, isJs ? _ju : _yu);
-                        return;
-                    }
-                    // Ctrl+Shift+Z / Ctrl+Y → Redo
-                    if ((ctrl && e.key.toLowerCase() === "z" && e.shiftKey) ||
-                        (ctrl && e.key.toLowerCase() === "y")) {
-                        e.preventDefault();
-                        editorRedo(ta.id, isJs ? _ju : _yu);
-                        return;
-                    }
-                    // Tab → インデント
-                    if (e.key === "Tab" && !e.shiftKey) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const INDENT = "    ";
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        if (start === end) {
-                            ta.value = val.slice(0, start) + INDENT + val.slice(end);
-                            ta.selectionStart = ta.selectionEnd = start + INDENT.length;
-                        } else {
-                            const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                            const lineEnd = val.indexOf("\n", end);
-                            const block = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
-                            const nb = block.split("\n").map(l => INDENT + l).join("\n");
-                            ta.value = val.slice(0, lineStart) + nb + (lineEnd === -1 ? "" : val.slice(lineEnd));
-                            ta.selectionStart = lineStart;
-                            ta.selectionEnd = lineStart + nb.length;
-                        }
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                    // Ctrl+[ → アウトデント
-                    if (e.key === "[" && ctrl) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                        const lineEnd = val.indexOf("\n", end);
-                        const block = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
-                        const nb = block.split("\n").map(l => {
-                            if (l.startsWith("    ")) return l.slice(4);
-                            if (l.startsWith("   "))  return l.slice(3);
-                            if (l.startsWith("  "))   return l.slice(2);
-                            if (l.startsWith(" "))    return l.slice(1);
-                            return l;
-                        }).join("\n");
-                        ta.value = val.slice(0, lineStart) + nb + (lineEnd === -1 ? "" : val.slice(lineEnd));
-                        ta.selectionStart = lineStart;
-                        ta.selectionEnd = lineStart + nb.length;
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                    // Ctrl+] → インデント
-                    if (e.key === "]" && ctrl) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                        const lineEnd = val.indexOf("\n", end);
-                        const block = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
-                        const nb = block.split("\n").map(l => "    " + l).join("\n");
-                        ta.value = val.slice(0, lineStart) + nb + (lineEnd === -1 ? "" : val.slice(lineEnd));
-                        ta.selectionStart = lineStart;
-                        ta.selectionEnd = lineStart + nb.length;
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                    // Ctrl+/ → 行コメントトグル
-                    if (e.key === "/" && ctrl) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                        const lineEnd = val.indexOf("\n", end);
-                        const block = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
-                        const COM = isJs ? "// " : "# ";
-                        const nb = block.split("\n").map(l => {
-                            if (l.trimStart().startsWith(COM.trim())) {
-                                const idx = l.indexOf(COM.trim());
-                                return l.slice(0, idx) + l.slice(idx + COM.length);
-                            }
-                            return COM + l;
-                        }).join("\n");
-                        ta.value = val.slice(0, lineStart) + nb + (lineEnd === -1 ? "" : val.slice(lineEnd));
-                        ta.selectionStart = lineStart;
-                        ta.selectionEnd = lineStart + nb.length;
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                    // Ctrl+D → 現在行を複製
-                    if (e.key === "d" && ctrl) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                        const lineEnd = val.indexOf("\n", end);
-                        const curLine = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
-                        const ins = "\n" + curLine;
-                        ta.value = val.slice(0, lineEnd === -1 ? val.length : lineEnd) + ins + (lineEnd === -1 ? "" : val.slice(lineEnd));
-                        ta.selectionStart = ta.selectionEnd = (lineEnd === -1 ? val.length : lineEnd) + ins.length;
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                    // Ctrl+K → 現在行を削除
-                    if (e.key === "k" && ctrl) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                        const lineEnd = val.indexOf("\n", end);
-                        const delEnd = lineEnd === -1 ? val.length : lineEnd + 1;
-                        ta.value = val.slice(0, lineStart) + val.slice(delEnd);
-                        ta.selectionStart = ta.selectionEnd = lineStart;
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                }
-                if (_ytaEl) _ytaEl.addEventListener("keydown", _tabHandler);
-                if (_jtaEl) _jtaEl.addEventListener("keydown", _tabHandler);
-                // Undo初期化（YAML・JS両方）
-                editorUndoInit("yaml-ta", _yu, cur);
-                editorUndoInit("js-ta",   _ju, curJs);
-                yamlInitResize();
-                yamlInitRpanelEvents();
-                // タブボタンにイベント登録
-                rAfBind("#tab-yaml", "click", () => yamlTabSwitch("yaml"));
-                rAfBind("#tab-js", "click", () => {yamlTabSwitch("js"); jsHlUpdate();});
-                // JS初期ハイライト
-                jsHlUpdate();
-            });
-
+            pvRegister("yamlSave",   () => saveYaml(wid, evName));
+            pvRegister("yamlAiGen",  () => yamlAiGenerate(wid, evName));
+            showModal(buildYamlEditorHTML(cur, curJs, true, mhdrHTML("📋 " + esc(w.name) + " — " + esc(evName))));
+            initYamlEditorModal(cur, curJs);
         }
 
         /* ── YAMLエディタ 右パネル ── */
@@ -2471,6 +2253,193 @@
             }
         }
 
+
+        /* ── エディタ共通キーハンドラ ── */
+        function editorKeyHandler(e) {
+            const ta = e.target;
+            if (!ta) return;
+            const ctrl = e.ctrlKey || e.metaKey;
+            const isJs = ta.id === "js-ta";
+            const state = isJs ? _ju : _yu;
+
+            if (ctrl && e.key.toLowerCase() === "z" && !e.shiftKey) {
+                e.preventDefault(); editorUndo(ta.id, state); return;
+            }
+            if ((ctrl && e.key.toLowerCase() === "z" && e.shiftKey) ||
+                (ctrl && e.key.toLowerCase() === "y")) {
+                e.preventDefault(); editorRedo(ta.id, state); return;
+            }
+            if (e.key === "Tab" && !e.shiftKey) {
+                e.preventDefault();
+                editorUndoPush(state, ta.value);
+                const INDENT = "    ";
+                const s = ta.selectionStart, en = ta.selectionEnd, v = ta.value;
+                if (s === en) {
+                    ta.value = v.slice(0,s) + INDENT + v.slice(en);
+                    ta.selectionStart = ta.selectionEnd = s + INDENT.length;
+                } else {
+                    const ls = v.lastIndexOf("\n", s-1)+1, le = v.indexOf("\n", en);
+                    const blk = v.slice(ls, le===-1?v.length:le);
+                    const nb = blk.split("\n").map(l=>INDENT+l).join("\n");
+                    ta.value = v.slice(0,ls)+nb+(le===-1?"":v.slice(le));
+                    ta.selectionStart=ls; ta.selectionEnd=ls+nb.length;
+                }
+                editorHlUpdate(ta.id); return;
+            }
+            if (e.key === "[" && ctrl) {
+                e.preventDefault();
+                editorUndoPush(state, ta.value);
+                const s=ta.selectionStart, en=ta.selectionEnd, v=ta.value;
+                const ls=v.lastIndexOf("\n",s-1)+1, le=v.indexOf("\n",en);
+                const blk=v.slice(ls,le===-1?v.length:le);
+                const nb=blk.split("\n").map(l=>{
+                    if(l.startsWith("    "))return l.slice(4);
+                    if(l.startsWith("   ")) return l.slice(3);
+                    if(l.startsWith("  "))  return l.slice(2);
+                    if(l.startsWith(" "))   return l.slice(1);
+                    return l;
+                }).join("\n");
+                ta.value=v.slice(0,ls)+nb+(le===-1?"":v.slice(le));
+                ta.selectionStart=ls; ta.selectionEnd=ls+nb.length;
+                editorHlUpdate(ta.id); return;
+            }
+            if (e.key === "]" && ctrl) {
+                e.preventDefault();
+                editorUndoPush(state, ta.value);
+                const s=ta.selectionStart, en=ta.selectionEnd, v=ta.value;
+                const ls=v.lastIndexOf("\n",s-1)+1, le=v.indexOf("\n",en);
+                const blk=v.slice(ls,le===-1?v.length:le);
+                const nb=blk.split("\n").map(l=>"    "+l).join("\n");
+                ta.value=v.slice(0,ls)+nb+(le===-1?"":v.slice(le));
+                ta.selectionStart=ls; ta.selectionEnd=ls+nb.length;
+                editorHlUpdate(ta.id); return;
+            }
+            if (e.key === "/" && ctrl) {
+                e.preventDefault();
+                editorUndoPush(state, ta.value);
+                const s=ta.selectionStart, en=ta.selectionEnd, v=ta.value;
+                const ls=v.lastIndexOf("\n",s-1)+1, le=v.indexOf("\n",en);
+                const blk=v.slice(ls,le===-1?v.length:le);
+                const COM=isJs?"// ":"# ";
+                const nb=blk.split("\n").map(l=>{
+                    if(l.trimStart().startsWith(COM.trim())){
+                        const i=l.indexOf(COM.trim());
+                        return l.slice(0,i)+l.slice(i+COM.length);
+                    }
+                    return COM+l;
+                }).join("\n");
+                ta.value=v.slice(0,ls)+nb+(le===-1?"":v.slice(le));
+                ta.selectionStart=ls; ta.selectionEnd=ls+nb.length;
+                editorHlUpdate(ta.id); return;
+            }
+            if (e.key === "d" && ctrl) {
+                e.preventDefault();
+                editorUndoPush(state, ta.value);
+                const s=ta.selectionStart, en=ta.selectionEnd, v=ta.value;
+                const ls=v.lastIndexOf("\n",s-1)+1, le=v.indexOf("\n",en);
+                const line=v.slice(ls,le===-1?v.length:le);
+                const ins="\n"+line;
+                ta.value=v.slice(0,le===-1?v.length:le)+ins+(le===-1?"":v.slice(le));
+                ta.selectionStart=ta.selectionEnd=(le===-1?v.length:le)+ins.length;
+                editorHlUpdate(ta.id); return;
+            }
+            if (e.key === "k" && ctrl) {
+                e.preventDefault();
+                editorUndoPush(state, ta.value);
+                const s=ta.selectionStart, en=ta.selectionEnd, v=ta.value;
+                const ls=v.lastIndexOf("\n",s-1)+1, le=v.indexOf("\n",en);
+                ta.value=v.slice(0,ls)+v.slice(le===-1?v.length:le+1);
+                ta.selectionStart=ta.selectionEnd=ls;
+                editorHlUpdate(ta.id); return;
+            }
+        }
+
+        function editorHlUpdate(taId) {
+            if (taId === "yaml-ta") { yamlHlUpdate(); editorUpdateGutter("yaml-ta","yaml-gutter"); }
+            else                    { jsHlUpdate();   editorUpdateGutter("js-ta","js-gutter"); }
+        }
+
+
+        /* ── YAMLエディタ共通HTML生成 ── */
+        function buildYamlEditorHTML(cur, curJs, showWidgets=true, headerHTML="", extraTabsHTML="") {
+            const aiEnabled = aiConfig.enabled;
+            return (
+                "<div class='modal-yaml'>" +
+                headerHTML +
+                "<div class='mbody' style='padding:0;gap:0;overflow:hidden;display:flex;flex-direction:column'>" +
+                (extraTabsHTML ? "<div class='yaml-ev-tabs'>" + extraTabsHTML + "</div>" : "") +
+                "<div class='yaml-editor-layout' id='yaml-layout'>" +
+                "<div class='yaml-editor-left'>" +
+                "<div class='yaml-tab-bar'>" +
+                "<div class='yaml-tab active' id='tab-yaml'>📋 YAML</div>" +
+                "<div class='yaml-tab' id='tab-js'>📜 JavaScript</div>" +
+                "</div>" +
+                "<div class='yaml-pane active' id='pane-yaml'>" +
+                "<div class='editor-wrap'>" +
+                "<div class='editor-gutter' id='yaml-gutter'></div>" +
+                "<div class='editor-main'>" +
+                "<div class='yaml-hl-wrap'>" +
+                "<div class='yaml-hl-bg' id='yaml-hl'></div>" +
+                "<textarea class='yaml' id='yaml-ta' style='height:100%;min-height:300px' " +
+                "oninput='yamlHlUpdate();editorUpdateGutter(\"yaml-ta\",\"yaml-gutter\")' " +
+                "onscroll='yamlHlSync();editorSyncGutter(\"yaml-ta\",\"yaml-gutter\")' " +
+                ">" + esc(cur) + "</textarea>" +
+                "</div></div></div></div>" +
+                "<div class='yaml-pane' id='pane-js'>" +
+                "<div class='editor-wrap'>" +
+                "<div class='editor-gutter' id='js-gutter'></div>" +
+                "<div class='editor-main'>" +
+                "<div class='js-hl-wrap'>" +
+                "<div class='js-hl-bg' id='js-hl'></div>" +
+                "<textarea class='yaml' id='js-ta' " +
+                "oninput='jsHlUpdate();editorUpdateGutter(\"js-ta\",\"js-gutter\")' " +
+                "onscroll='jsHlSync();editorSyncGutter(\"js-ta\",\"js-gutter\")' " +
+                "placeholder='// AIでJavaScriptを生成、または直接編集できます'>" + esc(curJs) + "</textarea>" +
+                "</div></div></div></div>" +
+                "<div class='yaml-ai-bar' style='padding-bottom:8px'>" +
+                "<input id='ai-prompt-in' placeholder='AIへの追加指示（任意）'>" +
+                "<button class='yaml-ai-btn' id='ai-gen-btn' onmousedown='pvCall(\"yamlAiGen\")'>" +
+                (aiEnabled ? "🤖 AI生成" : "🤖 AI生成（設定要）") + "</button>" +
+                "<span class='yaml-ai-status' id='ai-status'></span>" +
+                "</div>" +
+                "</div>" +
+                "<div class='yaml-resize-handle' id='yaml-rhandle'></div>" +
+                "<div class='yaml-editor-right' id='yaml-rpanel'>" +
+                yamlBuildRightPanel(showWidgets) +
+                "</div>" +
+                "</div>" +
+                "</div>" +
+                "<div class='mfoot'>" +
+                mfootHTML([{label:"キャンセル", action:"closeModal()"}]) +
+                "<button class='pri' onmousedown='pvCall(\"yamlSave\")'>保存</button>" +
+                "</div>" +
+                "</div>"
+            );
+        }
+
+        /* ── YAMLエディタ初期化（requestAnimationFrame内の共通処理） ── */
+        function initYamlEditorModal(cur, curJs, onAfterInit) {
+            requestAnimationFrame(() => {
+                applyEditorConfig();
+                yamlHlUpdate();
+                editorUpdateGutter("yaml-ta", "yaml-gutter");
+                jsHlUpdate();
+                editorUpdateGutter("js-ta", "js-gutter");
+                const yta = $("yaml-ta");
+                const jta = $("js-ta");
+                if (yta) yta.addEventListener("keydown", editorKeyHandler);
+                if (jta) jta.addEventListener("keydown", editorKeyHandler);
+                editorUndoInit("yaml-ta", _yu, cur);
+                editorUndoInit("js-ta",   _ju, curJs);
+                yamlInitResize();
+                yamlInitRpanelEvents();
+                rAfBind("#tab-yaml", "click", () => yamlTabSwitch("yaml"));
+                rAfBind("#tab-js",   "click", () => { yamlTabSwitch("js"); jsHlUpdate(); });
+                jsHlUpdate();
+                if (onAfterInit) onAfterInit();
+            });
+        }
+
         // AI接続設定モーダル
         function openAiConfig() {
             // aiConfig の初期値保証
@@ -2871,222 +2840,12 @@
             if (!f.events) f.events = {};
             const cur = f.events[evName] ||
                 "# フォームイベント: " + evName + "\n" +
-                "# YAML形式でAIへの指示を記述します\n\n" +
-                "# --- 基本アクション例 ---\n" +
-                "action: navigate\ntarget: Form2\n\n" +
-                "# --- AI生成指示例 ---\n" +
-                "ai_prompt: |\n" +
-                "  フォームの" + evName + "イベントの処理を生成してください。\n";
+                "# YAML形式でAIへの指示を記述します\n";
             const curJs = f.events["_js_" + evName] || "";
-            const aiEnabled = aiConfig.enabled;
-            showModal(
-                "<div class='modal-yaml'>" +
-                mhdrHTML("📋 フォーム — " + esc(evName)) +
-                "<div class='mbody' style='padding:0;gap:0;overflow:hidden;display:flex;flex-direction:column'>" +
-                "<div class='yaml-editor-layout' id='yaml-layout'>" +
-                "<div class='yaml-editor-left'>" +
-                "<div class='yaml-tab-bar'>" +
-                "<div class='yaml-tab active' id='tab-yaml'>📋 YAML</div>" +
-                "<div class='yaml-tab' id='tab-js'>📜 JavaScript</div>" +
-                "</div>" +
-                "<div class='yaml-pane active' id='pane-yaml'>" +
-                "<div class='editor-wrap'>" +
-                "<div class='editor-gutter' id='yaml-gutter'></div>" +
-                "<div class='editor-main'>" +
-                "<div class='yaml-hl-wrap'>" +
-                "<div class='yaml-hl-bg' id='yaml-hl'></div>" +
-                "<textarea class='yaml' id='yaml-ta' style='height:100%;min-height:300px' " +
-                "oninput='yamlHlUpdate();editorUpdateGutter(\"yaml-ta\",\"yaml-gutter\")' " +
-                "onscroll='yamlHlSync();editorSyncGutter(\"yaml-ta\",\"yaml-gutter\")' " +
-                ">" + esc(cur) + "</textarea>" +
-                "</div></div></div></div>" +
-                "<div class='yaml-pane' id='pane-js'>" +
-                "<div class='editor-wrap'>" +
-                "<div class='editor-gutter' id='js-gutter'></div>" +
-                "<div class='editor-main'>" +
-                "<div class='js-hl-wrap'>" +
-                "<div class='js-hl-bg' id='js-hl'></div>" +
-                "<textarea class='yaml' id='js-ta' " +
-                "oninput='jsHlUpdate();editorUpdateGutter(\"js-ta\",\"js-gutter\")' " +
-                "onscroll='jsHlSync();editorSyncGutter(\"js-ta\",\"js-gutter\")' " +
-                "placeholder='// AIでJavaScriptを生成、または直接編集できます'>" + esc(curJs) + "</textarea>" +
-                "</div></div></div></div>" +
-                "<div class='yaml-ai-bar' style='padding-bottom:8px'>" +
-                "<input id='ai-prompt-in' placeholder='AIへの追加指示（任意）'>" +
-                "<button class='yaml-ai-btn' id='ai-gen-btn' onmousedown='pvCall(\"yamlAiGen\")'>" +
-                (aiEnabled ? "🤖 AI生成" : "🤖 AI生成（設定要）") + "</button>" +
-                "<span class='yaml-ai-status' id='ai-status'></span>" +
-                "</div>" +
-                "</div>" +
-                "<div class='yaml-resize-handle' id='yaml-rhandle'></div>" +
-                "<div class='yaml-editor-right' id='yaml-rpanel'>" +
-                yamlBuildRightPanel(false) +
-                "</div>" +
-                "</div>" +
-                "</div>" +
-                "<div class='mfoot'>" +
-                mfootHTML([{label: "キャンセル", action: "closeModal()"}]) +
-                "<button class='pri' onmousedown='pvCall(\"yamlSave\")'>保存</button>" +
-                "</div>"
-            );
-            pvRegister("yamlSave", () => saveFormYaml(evName));
+            pvRegister("yamlSave",  () => saveFormYaml(evName));
             pvRegister("yamlAiGen", () => yamlAiGenerate("form", evName));
-            requestAnimationFrame(() => {
-                applyEditorConfig();
-                yamlHlUpdate();
-                editorUpdateGutter("yaml-ta", "yaml-gutter");
-                jsHlUpdate();
-                editorUpdateGutter("js-ta", "js-gutter");
-                const _ytaEl = $("yaml-ta");
-                const _jtaEl = $("js-ta");
-                function _tabHandler(e) {
-                    const ta = e.target;
-                    if (!ta) return;
-                    const ctrl = e.ctrlKey || e.metaKey;
-                    const isJs = ta.id === "js-ta";
-
-                    // Ctrl+Z → Undo
-                    if (ctrl && e.key.toLowerCase() === "z" && !e.shiftKey) {
-                        e.preventDefault();
-                        editorUndo(ta.id, isJs ? _ju : _yu);
-                        return;
-                    }
-                    // Ctrl+Shift+Z / Ctrl+Y → Redo
-                    if ((ctrl && e.key.toLowerCase() === "z" && e.shiftKey) ||
-                        (ctrl && e.key.toLowerCase() === "y")) {
-                        e.preventDefault();
-                        editorRedo(ta.id, isJs ? _ju : _yu);
-                        return;
-                    }
-                    // Tab → インデント
-                    if (e.key === "Tab" && !e.shiftKey) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const INDENT = "    ";
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        if (start === end) {
-                            ta.value = val.slice(0, start) + INDENT + val.slice(end);
-                            ta.selectionStart = ta.selectionEnd = start + INDENT.length;
-                        } else {
-                            const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                            const lineEnd = val.indexOf("\n", end);
-                            const block = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
-                            const nb = block.split("\n").map(l => INDENT + l).join("\n");
-                            ta.value = val.slice(0, lineStart) + nb + (lineEnd === -1 ? "" : val.slice(lineEnd));
-                            ta.selectionStart = lineStart;
-                            ta.selectionEnd = lineStart + nb.length;
-                        }
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                    // Ctrl+[ → アウトデント
-                    if (e.key === "[" && ctrl) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                        const lineEnd = val.indexOf("\n", end);
-                        const block = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
-                        const nb = block.split("\n").map(l => {
-                            if (l.startsWith("    ")) return l.slice(4);
-                            if (l.startsWith("   "))  return l.slice(3);
-                            if (l.startsWith("  "))   return l.slice(2);
-                            if (l.startsWith(" "))    return l.slice(1);
-                            return l;
-                        }).join("\n");
-                        ta.value = val.slice(0, lineStart) + nb + (lineEnd === -1 ? "" : val.slice(lineEnd));
-                        ta.selectionStart = lineStart;
-                        ta.selectionEnd = lineStart + nb.length;
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                    // Ctrl+] → インデント
-                    if (e.key === "]" && ctrl) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                        const lineEnd = val.indexOf("\n", end);
-                        const block = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
-                        const nb = block.split("\n").map(l => "    " + l).join("\n");
-                        ta.value = val.slice(0, lineStart) + nb + (lineEnd === -1 ? "" : val.slice(lineEnd));
-                        ta.selectionStart = lineStart;
-                        ta.selectionEnd = lineStart + nb.length;
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                    // Ctrl+/ → 行コメントトグル
-                    if (e.key === "/" && ctrl) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                        const lineEnd = val.indexOf("\n", end);
-                        const block = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
-                        const COM = isJs ? "// " : "# ";
-                        const nb = block.split("\n").map(l => {
-                            if (l.trimStart().startsWith(COM.trim())) {
-                                const idx = l.indexOf(COM.trim());
-                                return l.slice(0, idx) + l.slice(idx + COM.length);
-                            }
-                            return COM + l;
-                        }).join("\n");
-                        ta.value = val.slice(0, lineStart) + nb + (lineEnd === -1 ? "" : val.slice(lineEnd));
-                        ta.selectionStart = lineStart;
-                        ta.selectionEnd = lineStart + nb.length;
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                    // Ctrl+D → 現在行を複製
-                    if (e.key === "d" && ctrl) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                        const lineEnd = val.indexOf("\n", end);
-                        const curLine = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
-                        const ins = "\n" + curLine;
-                        ta.value = val.slice(0, lineEnd === -1 ? val.length : lineEnd) + ins + (lineEnd === -1 ? "" : val.slice(lineEnd));
-                        ta.selectionStart = ta.selectionEnd = (lineEnd === -1 ? val.length : lineEnd) + ins.length;
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                    // Ctrl+K → 現在行を削除
-                    if (e.key === "k" && ctrl) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                        const lineEnd = val.indexOf("\n", end);
-                        const delEnd = lineEnd === -1 ? val.length : lineEnd + 1;
-                        ta.value = val.slice(0, lineStart) + val.slice(delEnd);
-                        ta.selectionStart = ta.selectionEnd = lineStart;
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                }
-                if (_ytaEl) _ytaEl.addEventListener("keydown", _tabHandler);
-                if (_jtaEl) _jtaEl.addEventListener("keydown", _tabHandler);
-                editorUndoInit("yaml-ta", _yu, cur);
-                editorUndoInit("js-ta",   _ju, curJs);
-                yamlInitResize();
-                yamlInitRpanelEvents();
-                rAfBind("#tab-yaml", "click", () => yamlTabSwitch("yaml"));
-                rAfBind("#tab-js", "click", () => { yamlTabSwitch("js"); jsHlUpdate(); });
-                jsHlUpdate();
-            });
+            showModal(buildYamlEditorHTML(cur, curJs, false, mhdrHTML("📋 フォーム — " + esc(evName))));
+            initYamlEditorModal(cur, curJs);
         }
 
         function saveFormYaml(evName) {
@@ -3809,6 +3568,15 @@
         }
 
         function renderConstModal() {
+            renderConstModalBase(
+                "📌 定数エディタ",
+                "イベントのYAMLから参照できる定数を定義します。プロジェクトファイルに保存されます。",
+                "constAddRow()",
+                "constSave()"
+            );
+        }
+
+        function renderConstModalBase(title, infoText, addAction, saveAction) {
             const rows = window._constRows || [];
             let tbody = "";
             rows.forEach((r, i) => {
@@ -3818,24 +3586,24 @@
                     + "<td>" + (i + 1) + "</td>"
                     + "<td><input type='text' value='" + esc(r.name) + "' oninput='" + oi_n + "' placeholder='定数名'></td>"
                     + "<td><input type='text' value='" + esc(r.value) + "' oninput='" + oi_v + "' placeholder='値'></td>"
-                    + "<td><button class='del-btn' onclick='constDelRow(" + i + ")' title='削除'>✕</button></td>"
+                    + "<td><button class='del-btn' onmousedown='constDelRow(" + i + ")' title='削除'>✕</button></td>"
                     + "</tr>";
             });
             showModal("<div id='const-modal'>"
-                + mhdrHTML("📌 定数エディタ")
+                + mhdrHTML(title)
                 + "<div class='mbody' style='gap:6px'>"
-                + "<div class='infobox'>イベントのYAMLから参照できる定数を定義します。プロジェクトファイルに保存されます。</div>"
+                + "<div class='infobox'>" + infoText + "</div>"
                 + "<div class='const-scroll'>"
                 + "<table class='const-table'>"
                 + "<thead><tr><th style='width:36px'>No</th><th>定数名</th><th>値</th><th style='width:30px'></th></tr></thead>"
                 + "<tbody>" + tbody + "</tbody>"
                 + "</table>"
                 + "</div>"
-                + "<button class='add-row-btn' onclick='constAddRow()'>＋ 行を追加</button>"
+                + "<button class='add-row-btn' onmousedown='" + addAction + "'>＋ 行を追加</button>"
                 + "</div>"
                 + "<div class='mfoot'>"
-                + mfootHTML([{label: "キャンセル", action: "closeModal()"}]) + ""
-                + "<button class='pri' onclick='constSave()'>保存</button>"
+                + mfootHTML([{label: "キャンセル", action: "closeModal()"}])
+                + "<button class='pri' onmousedown='" + saveAction + "'>保存</button>"
                 + "</div>"
                 + "</div>");
         }
@@ -4262,35 +4030,12 @@
         function renderFormConstModal() {
             const f = forms[curFormIdx];
             const formTitle = f?.cfg?.title || "フォーム";
-            const rows = window._constRows || [];
-            let tbody = "";
-            rows.forEach((r, i) => {
-                const oi_n = "constUpdate(" + i + ",'name',this.value)";
-                const oi_v = "constUpdate(" + i + ",'value',this.value)";
-                tbody += "<tr>" +
-                    "<td>" + (i + 1) + "</td>" +
-                    "<td><input type='text' value='" + esc(r.name) + "' oninput='" + oi_n + "' placeholder='定数名'></td>" +
-                    "<td><input type='text' value='" + esc(r.value) + "' oninput='" + oi_v + "' placeholder='値'></td>" +
-                    "<td><button class='del-btn' onclick='constDelRow(" + i + ")' title='削除'>✕</button></td>" +
-                    "</tr>";
-            });
-            showModal("<div id='const-modal'>" +
-                mhdrHTML("📌 フォーム定数 — " + esc(formTitle)) +
-                "<div class='mbody' style='gap:6px'>" +
-                "<div class='infobox'>このフォーム（" + esc(formTitle) + "）専用の定数を定義します。グローバル定数と合わせてYAMLから参照できます。</div>" +
-                "<div class='const-scroll'>" +
-                "<table class='const-table'>" +
-                "<thead><tr><th style='width:36px'>No</th><th>定数名</th><th>値</th><th style='width:30px'></th></tr></thead>" +
-                "<tbody>" + tbody + "</tbody>" +
-                "</table>" +
-                "</div>" +
-                "<button class='add-row-btn' onclick='formConstAddRow()'>＋ 行を追加</button>" +
-                "</div>" +
-                "<div class='mfoot'>" +
-                mfootHTML([{label: "キャンセル", action: "closeModal()"}]) + "" +
-                "<button class='pri' onclick='saveFormConst()'>保存</button>" +
-                "</div>" +
-                "</div>");
+            renderConstModalBase(
+                "📌 フォーム定数 — " + esc(formTitle),
+                "このフォーム（" + esc(formTitle) + "）専用の定数を定義します。グローバル定数と合わせてYAMLから参照できます。",
+                "formConstAddRow()",
+                "saveFormConst()"
+            );
         }
 
         function formConstAddRow() {
@@ -4328,228 +4073,22 @@
             const ae = projectInfo.appEvents || {};
             const cur   = ae[evKey + "_yaml"] || "# アプリイベント: " + evKey + "\n# YAML形式でAIへの指示を記述します\n";
             const curJs = ae[evKey]           || "// アプリイベント: " + evKey + "\n";
-            const aiEnabled = aiConfig.enabled;
-
             const evTabs = APP_EV_TYPES.map(t =>
                 "<div class='yaml-tab " + (t.key === evKey ? "active" : "") + "' " +
                 "id='appev-tab-" + t.key + "'>" + t.label + "</div>"
             ).join("");
-
-            showModal(
-                "<div class='modal-yaml'>" +
+            pvRegister("yamlSave",  saveAppEvent);
+            pvRegister("yamlAiGen", () => yamlAiGenerate("appev", evKey));
+            const appEvHeader =
                 "<div class='mhdr' style='flex-shrink:0'>" +
                 "<div style='display:flex;align-items:center;gap:0;flex:1'>" +
                 "<h4 style='margin:0 12px 0 0'>⚡ アプリイベント</h4>" +
                 "<div class='yaml-tab-bar' style='border-bottom:none;flex:1'>" + evTabs + "</div>" +
                 "</div>" +
                 "<button class='mclose' onmousedown='closeModal()'>✕</button>" +
-                "</div>" +
-                "<div class='mbody' style='padding:0;gap:0;overflow:hidden;display:flex;flex-direction:column'>" +
-                "<div class='yaml-editor-layout' id='yaml-layout'>" +
-                "<div class='yaml-editor-left'>" +
-                "<div class='yaml-tab-bar'>" +
-                "<div class='yaml-tab active' id='tab-yaml'>📋 YAML</div>" +
-                "<div class='yaml-tab' id='tab-js'>📜 JavaScript</div>" +
-                "</div>" +
-                "<div class='yaml-pane active' id='pane-yaml'>" +
-                "<div class='editor-wrap'>" +
-                "<div class='editor-gutter' id='yaml-gutter'></div>" +
-                "<div class='editor-main'>" +
-                "<div class='yaml-hl-wrap'>" +
-                "<div class='yaml-hl-bg' id='yaml-hl'></div>" +
-                "<textarea class='yaml' id='yaml-ta' style='height:100%;min-height:300px' " +
-                "oninput='yamlHlUpdate();editorUpdateGutter(\"yaml-ta\",\"yaml-gutter\")' " +
-                "onscroll='yamlHlSync();editorSyncGutter(\"yaml-ta\",\"yaml-gutter\")' " +
-                ">" + esc(cur) + "</textarea>" +
-                "</div></div></div></div>" +
-                "<div class='yaml-pane' id='pane-js'>" +
-                "<div class='editor-wrap'>" +
-                "<div class='editor-gutter' id='js-gutter'></div>" +
-                "<div class='editor-main'>" +
-                "<div class='js-hl-wrap'>" +
-                "<div class='js-hl-bg' id='js-hl'></div>" +
-                "<textarea class='yaml' id='js-ta' " +
-                "oninput='jsHlUpdate();editorUpdateGutter(\"js-ta\",\"js-gutter\")' " +
-                "onscroll='jsHlSync();editorSyncGutter(\"js-ta\",\"js-gutter\")' " +
-                "placeholder='// AIでJavaScriptを生成、または直接編集できます'>" + esc(curJs) + "</textarea>" +
-                "</div></div></div></div>" +
-                "<div class='yaml-ai-bar' style='padding-bottom:8px'>" +
-                "<input id='ai-prompt-in' placeholder='AIへの追加指示（任意）'>" +
-                "<button class='yaml-ai-btn' id='ai-gen-btn' onmousedown='pvCall(\"yamlAiGen\")'>" +
-                (aiEnabled ? "🤖 AI生成" : "🤖 AI生成（設定要）") + "</button>" +
-                "<span class='yaml-ai-status' id='ai-status'></span>" +
-                "</div>" +
-                "</div>" +
-                "<div class='yaml-resize-handle' id='yaml-rhandle'></div>" +
-                "<div class='yaml-editor-right' id='yaml-rpanel'>" +
-                yamlBuildRightPanel(false) +
-                "</div>" +
-                "</div>" +
-                "</div>" +
-                "<div class='mfoot'>" +
-                "<button onmousedown='closeModal()'>キャンセル</button>" +
-                "<button class='pri' onmousedown='pvCall(\"yamlSave\")'>保存</button>" +
-                "</div>" +
-                "</div>"
-            );
-            pvRegister("yamlSave", saveAppEvent);
-            pvRegister("yamlAiGen", () => yamlAiGenerate("appev", evKey));
-            requestAnimationFrame(() => {
-                applyEditorConfig();
-                yamlHlUpdate();
-                editorUpdateGutter("yaml-ta", "yaml-gutter");
-                jsHlUpdate();
-                editorUpdateGutter("js-ta", "js-gutter");
-                const _ytaEl = $("yaml-ta");
-                const _jtaEl = $("js-ta");
-                function _tabHandler(e) {
-                    const ta = e.target;
-                    if (!ta) return;
-                    const ctrl = e.ctrlKey || e.metaKey;
-                    const isJs = ta.id === "js-ta";
-
-                    // Ctrl+Z → Undo
-                    if (ctrl && e.key.toLowerCase() === "z" && !e.shiftKey) {
-                        e.preventDefault();
-                        editorUndo(ta.id, isJs ? _ju : _yu);
-                        return;
-                    }
-                    // Ctrl+Shift+Z / Ctrl+Y → Redo
-                    if ((ctrl && e.key.toLowerCase() === "z" && e.shiftKey) ||
-                        (ctrl && e.key.toLowerCase() === "y")) {
-                        e.preventDefault();
-                        editorRedo(ta.id, isJs ? _ju : _yu);
-                        return;
-                    }
-                    // Tab → インデント
-                    if (e.key === "Tab" && !e.shiftKey) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const INDENT = "    ";
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        if (start === end) {
-                            ta.value = val.slice(0, start) + INDENT + val.slice(end);
-                            ta.selectionStart = ta.selectionEnd = start + INDENT.length;
-                        } else {
-                            const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                            const lineEnd = val.indexOf("\n", end);
-                            const block = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
-                            const nb = block.split("\n").map(l => INDENT + l).join("\n");
-                            ta.value = val.slice(0, lineStart) + nb + (lineEnd === -1 ? "" : val.slice(lineEnd));
-                            ta.selectionStart = lineStart;
-                            ta.selectionEnd = lineStart + nb.length;
-                        }
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                    // Ctrl+[ → アウトデント
-                    if (e.key === "[" && ctrl) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                        const lineEnd = val.indexOf("\n", end);
-                        const block = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
-                        const nb = block.split("\n").map(l => {
-                            if (l.startsWith("    ")) return l.slice(4);
-                            if (l.startsWith("   "))  return l.slice(3);
-                            if (l.startsWith("  "))   return l.slice(2);
-                            if (l.startsWith(" "))    return l.slice(1);
-                            return l;
-                        }).join("\n");
-                        ta.value = val.slice(0, lineStart) + nb + (lineEnd === -1 ? "" : val.slice(lineEnd));
-                        ta.selectionStart = lineStart;
-                        ta.selectionEnd = lineStart + nb.length;
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                    // Ctrl+] → インデント
-                    if (e.key === "]" && ctrl) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                        const lineEnd = val.indexOf("\n", end);
-                        const block = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
-                        const nb = block.split("\n").map(l => "    " + l).join("\n");
-                        ta.value = val.slice(0, lineStart) + nb + (lineEnd === -1 ? "" : val.slice(lineEnd));
-                        ta.selectionStart = lineStart;
-                        ta.selectionEnd = lineStart + nb.length;
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                    // Ctrl+/ → 行コメントトグル
-                    if (e.key === "/" && ctrl) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                        const lineEnd = val.indexOf("\n", end);
-                        const block = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
-                        const COM = isJs ? "// " : "# ";
-                        const nb = block.split("\n").map(l => {
-                            if (l.trimStart().startsWith(COM.trim())) {
-                                const idx = l.indexOf(COM.trim());
-                                return l.slice(0, idx) + l.slice(idx + COM.length);
-                            }
-                            return COM + l;
-                        }).join("\n");
-                        ta.value = val.slice(0, lineStart) + nb + (lineEnd === -1 ? "" : val.slice(lineEnd));
-                        ta.selectionStart = lineStart;
-                        ta.selectionEnd = lineStart + nb.length;
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                    // Ctrl+D → 現在行を複製
-                    if (e.key === "d" && ctrl) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                        const lineEnd = val.indexOf("\n", end);
-                        const curLine = val.slice(lineStart, lineEnd === -1 ? val.length : lineEnd);
-                        const ins = "\n" + curLine;
-                        ta.value = val.slice(0, lineEnd === -1 ? val.length : lineEnd) + ins + (lineEnd === -1 ? "" : val.slice(lineEnd));
-                        ta.selectionStart = ta.selectionEnd = (lineEnd === -1 ? val.length : lineEnd) + ins.length;
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                    // Ctrl+K → 現在行を削除
-                    if (e.key === "k" && ctrl) {
-                        e.preventDefault();
-                        editorUndoPush(isJs ? _ju : _yu, ta.value);
-                        const start = ta.selectionStart, end = ta.selectionEnd;
-                        const val = ta.value;
-                        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-                        const lineEnd = val.indexOf("\n", end);
-                        const delEnd = lineEnd === -1 ? val.length : lineEnd + 1;
-                        ta.value = val.slice(0, lineStart) + val.slice(delEnd);
-                        ta.selectionStart = ta.selectionEnd = lineStart;
-                        if (isJs) { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-                        else { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
-                        return;
-                    }
-                }
-                if (_ytaEl) _ytaEl.addEventListener("keydown", _tabHandler);
-                if (_jtaEl) _jtaEl.addEventListener("keydown", _tabHandler);
-                editorUndoInit("yaml-ta", _yu, cur);
-                editorUndoInit("js-ta",   _ju, curJs);
-                yamlInitResize();
-                yamlInitRpanelEvents();
-                rAfBind("#tab-yaml", "click", () => yamlTabSwitch("yaml"));
-                rAfBind("#tab-js",  "click", () => { yamlTabSwitch("js"); jsHlUpdate(); });
-                jsHlUpdate();
-                // イベント種別タブ切り替え
+                "</div>";
+            showModal(buildYamlEditorHTML(cur, curJs, false, appEvHeader));
+            initYamlEditorModal(cur, curJs, () => {
                 APP_EV_TYPES.forEach(t => {
                     const tabEl = $("appev-tab-" + t.key);
                     if (tabEl) tabEl.addEventListener("click", () => openAppEvents(t.key));
