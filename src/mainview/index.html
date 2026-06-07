@@ -396,6 +396,8 @@
                     bg: "#fff",
                     fg: "#000",
                     fontSize: 12,
+                    fontFamily: "",
+                    fontBold: false,
                     borderSize: 1, borderColor: "#cccccc",
                     multiline: false,
                     disabled: false,
@@ -438,6 +440,8 @@
                     checked: false,
                     fg: "#000",
                     fontSize: 12,
+                    fontFamily: "",
+                    fontBold: false,
                     visible: true,
                     description: "",
                 },
@@ -455,6 +459,8 @@
                     group: "Group1",
                     fg: "#000",
                     fontSize: 12,
+                    fontFamily: "",
+                    fontBold: false,
                     visible: true,
                     description: "",
                 },
@@ -505,6 +511,8 @@
                     bg: "transparent",
                     fg: "#000",
                     fontSize: 12,
+                    fontFamily: "",
+                    fontBold: false,
                     borderSize: 1, borderColor: "#cccccc",
                     visible: true,
                     description: "",
@@ -699,17 +707,6 @@
         }
 
         // ② モーダル構築ヘルパー
-        function buildModal({title = "", body = "", footer = "", extraClass = ""} = {}) {
-            const hdr = "<div class='mhdr'><h4>" + title + "</h4>" +
-                "<button class='mclose' onmousedown='closeModal()'>✕</button></div>";
-            const foot = footer ? "<div class='mfoot'>" + footer + "</div>" : "";
-            if (extraClass) {
-                return "<div class='" + extraClass + "'>" + hdr +
-                    "<div class='mbody'>" + body + "</div>" + foot + "</div>";
-            }
-            return hdr + "<div class='mbody'>" + body + "</div>" + foot;
-        }
-
         // ③ addEventListener ヘルパー（WebKitGTK対応）
         function rAfBind(selector, event, fn, root) {
             requestAnimationFrame(() => {
@@ -719,14 +716,6 @@
                 if (el) el.addEventListener(event, fn);
             });
         }
-        function rAfBindAll(selector, event, fn, root) {
-            requestAnimationFrame(() => {
-                (root || document).querySelectorAll(selector).forEach(el => {
-                    el.addEventListener(event, fn);
-                });
-            });
-        }
-
         const esc = (s) =>
             String(s ?? "")
                 .replace(/&/g, "&amp;")
@@ -832,19 +821,6 @@
                     }
                     return `<input type="${itype}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" ${p.maxLength ? `maxlength="${p.maxLength}"` : ""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px;pointer-events:none;${vis}">`;
                 }
-                case "inputtype": {
-                    const itype2 = p.inputType || "text";
-                    const maxl = p.maxLength
-                        ? ` maxlength="${p.maxLength}"`
-                        : "";
-                    const req = p.required ? " required" : "";
-                    const ro = p.readonly ? " readonly" : "";
-                    const dis = p.disabled ? " disabled" : "";
-                    lines2.push(
-                        `<input type="${itype2}" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px">`,
-                    );
-                    break;
-                }
                 case "input":
                     if (p.multiline)
                         return `<textarea style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};resize:none;padding:2px 4px;pointer-events:none;${vis}">${esc(p.text)}</textarea>`;
@@ -911,6 +887,69 @@
                     return `<div style="${base}background:${p.bg};border:1px solid #999;border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;${vis}"><span style="font-size:9px">▲</span><div style="width:50%;flex:1;background:#999;margin:3px 0;border-radius:1px"></div><span style="font-size:9px">▼</span></div>`;
                 default:
                     return `<div style="${base}background:#eee;border:1px dashed #aaa"></div>`;
+            }
+        }
+
+
+        /* ── ウィジェットのエクスポート用HTML生成 ── */
+        function makeExportWidget(w, dgScripts) {
+            const p = w.props;
+            const vis = p.visible === false ? "visibility:hidden;" : "";
+            const base = `position:absolute;left:${w.x}px;top:${w.y}px;width:${w.w}px;height:${w.h}px;z-index:${w.z || 0};box-sizing:border-box;${vis}`;
+            const font = `font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"}`;
+            const border = `border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")}`;
+            const id = `id="${w.name}"`;
+            switch (w.tag) {
+                case "button":
+                    return `<button ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border};border-radius:${p.borderRadius || 2}px;cursor:pointer">${esc(p.text)}</button>`;
+                case "label":
+                    return `<label ${id} style="${base}background:${p.bg};color:${p.fg};${font};text-align:${p.align || "left"};display:flex;align-items:center">${esc(p.text)}</label>`;
+                case "inputtype": {
+                    const itype = p.inputType || "text";
+                    const maxl = p.maxLength ? ` maxlength="${p.maxLength}"` : "";
+                    const req = p.required ? " required" : "";
+                    const ro = p.readonly ? " readonly" : "";
+                    const dis = p.disabled ? " disabled" : "";
+                    return `<input type="${itype}" ${id} value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
+                }
+                case "input":
+                    if (p.multiline)
+                        return `<textarea ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:2px 4px;resize:none">${esc(p.text)}</textarea>`;
+                    return `<input type="text" ${id} value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
+                case "checkbox":
+                    return `<label ${id} style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};${font};cursor:pointer"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`;
+                case "radio":
+                    return `<label ${id} style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};${font};cursor:pointer"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`;
+                case "listbox":
+                    return `<select ${id} multiple style="${base}background:${p.bg};color:${p.fg};${font};${border}">${(p.items || "").split("\n").map(i => `<option>${esc(i)}</option>`).join("")}</select>`;
+                case "selectBox":
+                    return `<select ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border}">${(p.items || "").split("\n").map(i => `<option>${esc(i)}</option>`).join("")}</select>`;
+                case "groupbox":
+                    return `<fieldset ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border}"><legend>${esc(p.text)}</legend></fieldset>`;
+                case "datagrid": {
+                    const dgCols = (p.columns || "").split(/[;\n]/).filter(s => s.trim()).map((c, ci) => {
+                        const parts = c.trim().split(":");
+                        return {key: "col" + ci, label: parts[0] || ("列" + (ci + 1)), width: parseInt(parts[1]) || 80};
+                    });
+                    const dgMaxR = p.maxRows || 10;
+                    const dgHbg = p.headerBg || "#4a4a6a";
+                    const dgHfg = p.headerFg || "#ffffff";
+                    const dgRbg = p.rowBg || "#ffffff";
+                    const dgRabg = p.rowAltBg || "#f5f5f5";
+                    const dgRfg = p.rowFg || "#000000";
+                    const dgBc = p.borderColor || "#cccccc";
+                    const dgFs = p.fontSize || 12;
+                    let html = `<div ${id} style="${base}overflow:auto;border:1px solid ${dgBc};box-sizing:border-box;font-size:${dgFs}px;">`;
+                    html += `<table style="width:100%;border-collapse:collapse;table-layout:fixed">`;
+                    html += `<thead><tr style="background:${dgHbg};color:${dgHfg}">`;
+                    dgCols.forEach(c => { html += `<th data-key="${esc(c.key)}" style="width:${c.width}px;padding:3px 6px;border:1px solid ${dgBc};text-align:left">${esc(c.label)}</th>`; });
+                    html += `</tr></thead><tbody id="${w.name}_body"></tbody></table></div>`;
+                    const dgKeys = JSON.stringify(dgCols.map(c => c.key));
+                    dgScripts.push(`/* ${w.name} データ設定ヘルパー */\nwindow["${w.name}_setData"]=function(rows){var keys=${dgKeys};var maxR=${dgMaxR},rbg="${dgRbg}",rabg="${dgRabg}",rfg="${dgRfg}",bc="${dgBc}";var tbody=document.getElementById("${w.name}_body");if(!tbody)return;tbody.innerHTML="";(rows||[]).slice(0,maxR).forEach(function(row,i){var tr=document.createElement("tr");tr.style.background=i%2===0?rbg:rabg;tr.style.color=rfg;keys.forEach(function(k){var td=document.createElement("td");td.style.cssText="padding:2px 6px;border:1px solid "+bc;td.textContent=(row[k]!==undefined&&row[k]!==null)?String(row[k]):"";tr.appendChild(td);});tbody.appendChild(tr);});};`);
+                    return html;
+                }
+                default:
+                    return "";
             }
         }
 
@@ -2761,9 +2800,6 @@
             setTimeout(() => { state.busy = false; }, 50);
         }
 
-        function yamlUndoPush() { /* 互換用 */ }
-        function yamlUndoKey(e) { /* 互換用 */ }
-        function jsUndoPush()   { /* 互換用 */ }
 
         function yamlHlUpdate() {
             const ta = $("yaml-ta");
@@ -3177,136 +3213,8 @@
                     `<div class="vja-form" id="form-${f.id}" style="display:none;position:relative;width:${cfg.w}px;height:${cfg.h}px;background:${cfg.bg}">`,
                 );
                 f.widgets.forEach((w) => {
-                    const p = w.props;
-                    const vis =
-                        p.visible === false ? "visibility:hidden;" : "";
-                    const base = `position:absolute;left:${w.x}px;top:${w.y}px;width:${w.w}px;height:${w.h}px;z-index:${w.z || 0};box-sizing:border-box;${vis}`;
-                    switch (w.tag) {
-                        case "button":
-                            lines2.push(
-                                `<button id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};border-radius:${p.borderRadius || 2}px;cursor:pointer">${esc(p.text)}</button>`,
-                            );
-                            break;
-                        case "label":
-                            lines2.push(
-                                `<label  id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};text-align:${p.align};display:flex;align-items:center">${esc(p.text)}</label>`,
-                            );
-                            break;
-                        case "inputtype": {
-                            const itype2 = p.inputType || "text";
-                            const maxl = p.maxLength
-                                ? ` maxlength="${p.maxLength}"`
-                                : "";
-                            const req = p.required ? " required" : "";
-                            const ro = p.readonly ? " readonly" : "";
-                            const dis = p.disabled ? " disabled" : "";
-                            lines2.push(
-                                `<input type="${itype2}" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px">`,
-                            );
-                            break;
-                        }
-                        case "input":
-                            if (p.multiline)
-                                lines2.push(
-                                    `<textarea id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:2px 4px;resize:none">${esc(p.text)}</textarea>`,
-                                );
-                            else
-                                lines2.push(
-                                    `<input type="text" id="${w.name}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px">`,
-                                );
-                            break;
-                        case "checkbox":
-                            lines2.push(
-                                `<label id="${w.name}" style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};cursor:pointer"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
-                            );
-                            break;
-                        case "radio":
-                            lines2.push(
-                                `<label id="${w.name}" style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};cursor:pointer"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
-                            );
-                            break;
-                        case "listbox":
-                            lines2.push(
-                                `<select id="${w.name}" multiple style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")}">${(
-                                    p.items || ""
-                                )
-                                    .split("\n")
-                                    .map(
-                                        (i) => `<option>${esc(i)}</option>`,
-                                    )
-                                    .join("")}</select>`,
-                            );
-                            break;
-                        case "selectBox":
-                            lines2.push(
-                                `<select id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")}">${(
-                                    p.items || ""
-                                )
-                                    .split("\n")
-                                    .map(
-                                        (i) => `<option>${esc(i)}</option>`,
-                                    )
-                                    .join("")}</select>`,
-                            );
-                            break;
-                        case "groupbox":
-                            lines2.push(
-                                `<fieldset id="${w.name}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")}"><legend>${esc(p.text)}</legend></fieldset>`,
-                            );
-                            break;
-                        case "datagrid": {
-                            const dgCols = (p.columns || "").split(/[;\n]/).filter(function (s) {return s.trim();}).map(function (c, ci) {
-                                const parts = c.trim().split(":");
-                                return {key: "col" + ci, label: parts[0] || ("列" + (ci + 1)), width: parseInt(parts[1]) || 80};
-                            });
-                            const dgMaxR = p.maxRows || 10;
-                            const dgHbg = p.headerBg || "#4a4a6a";
-                            const dgHfg = p.headerFg || "#ffffff";
-                            const dgRbg = p.rowBg || "#ffffff";
-                            const dgRabg = p.rowAltBg || "#f5f5f5";
-                            const dgRfg = p.rowFg || "#000000";
-                            const dgBc = p.borderColor || "#cccccc";
-                            const dgFs = p.fontSize || 12;
-                            const dgVis = p.visible === false ? "visibility:hidden;" : "";
-                            // テーブルHTML
-                            let dgHtml = '<div id="' + w.name + '" style="' + base + 'overflow:auto;border:1px solid ' + dgBc + ';box-sizing:border-box;font-size:' + dgFs + 'px;' + dgVis + '">';
-                            dgHtml += '<table style="width:100%;border-collapse:collapse;table-layout:fixed">';
-                            dgHtml += '<thead><tr style="background:' + dgHbg + ';color:' + dgHfg + '">';
-                            dgCols.forEach(function (c) {
-                                dgHtml += '<th data-key="' + esc(c.key) + '" style="width:' + c.width + 'px;padding:3px 6px;border:1px solid ' + dgBc + ';text-align:left">' + esc(c.label) + '</th>';
-                            });
-                            dgHtml += '</tr></thead>';
-                            dgHtml += '<tbody id="' + w.name + '_body"></tbody>';
-                            dgHtml += '</table></div>';
-                            lines2.push(dgHtml);
-                            // データ設定用ヘルパーJS（script タグを文字列分割で出力）
-                            const dgKeys = JSON.stringify(dgCols.map(function (c) {return c.key;}));
-                            const dgScript = [
-                                'window["' + w.name + '_setData"]=function(rows){',
-                                '  var keys=' + dgKeys + ';',
-                                '  var maxR=' + dgMaxR + ',rbg="' + dgRbg + '",rabg="' + dgRabg + '",rfg="' + dgRfg + '",bc="' + dgBc + '";',
-                                '  var tbody=document.getElementById("' + w.name + '_body");',
-                                '  if(!tbody)return;',
-                                '  tbody.innerHTML="";',
-                                '  (rows||[]).slice(0,maxR).forEach(function(row,i){',
-                                '    var tr=document.createElement("tr");',
-                                '    tr.style.background=i%2===0?rbg:rabg;',
-                                '    tr.style.color=rfg;',
-                                '    keys.forEach(function(k){',
-                                '      var td=document.createElement("td");',
-                                '      td.style.cssText="padding:2px 6px;border:1px solid "+bc;',
-                                '      td.textContent=(row[k]!==undefined&&row[k]!==null)?String(row[k]):"";',
-                                '      tr.appendChild(td);',
-                                '    });',
-                                '    tbody.appendChild(tr);',
-                                '  });',
-                                '};',
-                            ].join('\n');
-                            // dgScripts に追加（後で evLines と一緒に出力）
-                            dgScripts.push('/* ' + w.name + ' データ設定ヘルパー */\n' + dgScript);
-                            break;
-                        }
-                    } // end switch
+                    const html = makeExportWidget(w, dgScripts);
+                    if (html) lines2.push(html);
                 });
                 lines2.push("</div>");
                 return lines2.join("\n");
