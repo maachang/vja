@@ -71,6 +71,9 @@ w.vja.app = {
     showConfirm: (message: string) =>
         mkPromise("appDialog", () => s.appDialogRequest({ type: "confirm", message })),
 };
+// ショートハンド
+w.vja.dialog  = (message: string) => w.vja.app.showDialog(message);
+w.vja.confirm = (message: string) => w.vja.app.showConfirm(message);
 
 // フォーム切り替え
 w.vja.project = {
