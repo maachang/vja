@@ -651,6 +651,12 @@ const buildWidgetHtml = (w: any): string => {
             return `<fieldset ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border}"><legend>${esc2(p.text)}</legend></fieldset>`;
         case "picture":
             return `<div ${id} style="${base}background:${p.bg};${border};display:flex;align-items:center;justify-content:center">${p.src?`<img src="${esc2(p.src)}" style="max-width:100%;max-height:100%;object-fit:${p.objectFit||"contain"}">`:""}</div>`;
+        case "datepicker": {
+            const _itype = p.inputType || "date";
+            return `<input type="${_itype}" ${id} value="${esc2(p.value||"")}" ${p.min?`min="${esc2(p.min)}"`:""} ${p.max?`max="${esc2(p.max)}"`:""} ${p.disabled?"disabled":""} ${p.readonly?"readonly":""} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
+        }
+        case "slider":
+            return `<input type="range" ${id} min="${p.min||0}" max="${p.max||100}" value="${p.value||0}" step="${p.step||1}" ${p.disabled?"disabled":""} style="${base}accent-color:#5b7bfa">`;
         default:
             return `<div ${id} style="${base}"></div>`;
     }

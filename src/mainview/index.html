@@ -576,6 +576,37 @@
                 },
             },
             {
+                id: "datepicker",
+                label: "日付/時刻",
+                icon: "📅",
+                tag: "datepicker",
+                def: {
+                    w: 160, h: 28,
+                    inputType: "date",
+                    value: "",
+                    min: "", max: "",
+                    bg: "#fff", fg: "#000",
+                    fontSize: 12, fontFamily: "", fontBold: false,
+                    borderSize: 1, borderColor: "#cccccc",
+                    disabled: false, readonly: false, visible: true,
+                    description: "",
+                },
+            },
+            {
+                id: "slider",
+                label: "スライダー",
+                icon: "🎚️",
+                tag: "slider",
+                def: {
+                    w: 160, h: 28,
+                    min: 0, max: 100, value: 0, step: 1,
+                    orient: "horizontal",
+                    bg: "transparent",
+                    disabled: false, visible: true,
+                    description: "",
+                },
+            },
+            {
                 id: "datagrid",
                 label: "テーブル",
                 icon: "🗃️",
@@ -640,6 +671,8 @@
             picture: ["Click", "MouseDown", "MouseUp"],
             hscroll: ["Scroll", "ValueChanged"],
             vscroll: ["Scroll", "ValueChanged"],
+            datepicker: ["TextChanged", "GotFocus", "LostFocus", "Click"],
+            slider: ["ValueChanged", "MouseDown", "MouseUp"],
             datagrid: ["Click", "RowClick", "HeaderClick"],
             form: [
                 "Load",
@@ -926,69 +959,14 @@
                     return `<div style="${base}background:${p.bg||"#ddd"};border:1px solid #999;border-radius:2px;display:flex;align-items:center;justify-content:space-between;padding:0 2px;${vis}"><span style="font-size:9px">◀</span><div style="flex:1;height:50%;background:#999;margin:0 3px;border-radius:1px"></div><span style="font-size:9px">▶</span></div>`;
                 case "vscroll":
                     return `<div style="${base}background:${p.bg||"#ddd"};border:1px solid #999;border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;${vis}"><span style="font-size:9px">▲</span><div style="width:50%;flex:1;background:#999;margin:3px 0;border-radius:1px"></div><span style="font-size:9px">▼</span></div>`;
-                default:
-                    return `<div style="${base}background:#eee;border:1px dashed #aaa"></div>`;
-            }
-        }
-
-
-        /* ── ウィジェットのエクスポート用HTML生成 ── */
-        function makeExportWidget(w, dgScripts) {
-            const p = w.props;
-            const vis = p.visible === false ? "visibility:hidden;" : "";
-            const base = `position:absolute;left:${w.x}px;top:${w.y}px;width:${w.w}px;height:${w.h}px;z-index:${w.z || 0};box-sizing:border-box;${vis}`;
-            const font = `font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"}`;
-            const border = `border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")}`;
-            const id = `id="${w.name}"`;
-            switch (w.tag) {
-                case "button":
-                    return `<button ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border};border-radius:${p.borderRadius || 2}px;cursor:pointer">${esc(p.text)}</button>`;
-                case "label":
-                    return `<label ${id} style="${base}background:${p.bg};color:${p.fg};${font};text-align:${p.align || "left"};display:flex;align-items:center">${esc(p.text)}</label>`;
-                case "inputtype": {
-                    const itype = p.inputType || "text";
-                    const maxl = p.maxLength ? ` maxlength="${p.maxLength}"` : "";
-                    const req = p.required ? " required" : "";
-                    const ro = p.readonly ? " readonly" : "";
-                    const dis = p.disabled ? " disabled" : "";
-                    return `<input type="${itype}" ${id} value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
-                }
-                case "input":
-                    if (p.multiline)
-                        return `<textarea ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:2px 4px;resize:none">${esc(p.text)}</textarea>`;
-                    return `<input type="text" ${id} value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
-                case "checkbox":
-                    return `<label ${id} style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};${font};cursor:pointer"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`;
-                case "radio":
-                    return `<label ${id} style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};${font};cursor:pointer"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`;
-                case "listbox":
-                    return `<select ${id} multiple style="${base}background:${p.bg};color:${p.fg};${font};${border}">${(p.items || "").split("\n").map(i => `<option>${esc(i)}</option>`).join("")}</select>`;
-                case "selectBox":
-                    return `<select ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border}">${(p.items || "").split("\n").map(i => `<option>${esc(i)}</option>`).join("")}</select>`;
-                case "groupbox":
-                    return `<fieldset ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border}"><legend>${esc(p.text)}</legend></fieldset>`;
-                case "datagrid": {
-                    const dgCols = (p.columns || "").split(/[;\n]/).filter(s => s.trim()).map((c, ci) => {
-                        const parts = c.trim().split(":");
-                        return {key: "col" + ci, label: parts[0] || ("列" + (ci + 1)), width: parseInt(parts[1]) || 80};
-                    });
-                    const dgMaxR = p.maxRows || 10;
-                    const dgHbg = p.headerBg || "#4a4a6a";
-                    const dgHfg = p.headerFg || "#ffffff";
-                    const dgRbg = p.rowBg || "#ffffff";
-                    const dgRabg = p.rowAltBg || "#f5f5f5";
-                    const dgRfg = p.rowFg || "#000000";
-                    const dgBc = p.borderColor || "#cccccc";
-                    const dgFs = p.fontSize || 12;
-                    let html = `<div ${id} style="${base}overflow:auto;border:1px solid ${dgBc};box-sizing:border-box;font-size:${dgFs}px;">`;
-                    html += `<table style="width:100%;border-collapse:collapse;table-layout:fixed">`;
-                    html += `<thead><tr style="background:${dgHbg};color:${dgHfg}">`;
-                    dgCols.forEach(c => { html += `<th data-key="${esc(c.key)}" style="width:${c.width}px;padding:3px 6px;border:1px solid ${dgBc};text-align:left">${esc(c.label)}</th>`; });
-                    html += `</tr></thead><tbody id="${w.name}_body"></tbody></table></div>`;
-                    const dgKeys = JSON.stringify(dgCols.map(c => c.key));
-                    dgScripts.push(`/* ${w.name} データ設定ヘルパー */\nwindow["${w.name}_setData"]=function(rows){var keys=${dgKeys};var maxR=${dgMaxR},rbg="${dgRbg}",rabg="${dgRabg}",rfg="${dgRfg}",bc="${dgBc}";var tbody=document.getElementById("${w.name}_body");if(!tbody)return;tbody.innerHTML="";(rows||[]).slice(0,maxR).forEach(function(row,i){var tr=document.createElement("tr");tr.style.background=i%2===0?rbg:rabg;tr.style.color=rfg;keys.forEach(function(k){var td=document.createElement("td");td.style.cssText="padding:2px 6px;border:1px solid "+bc;td.textContent=(row[k]!==undefined&&row[k]!==null)?String(row[k]):"";tr.appendChild(td);});tbody.appendChild(tr);});};`);
-                    return html;
-                }
+                case "datepicker": { const _itype = p.inputType||"date";
+                    return `<input type="${_itype}" value="${esc(p.value||"")}" ${p.min?`min="${esc(p.min)}"`:""}  ${p.max?`max="${esc(p.max)}"`:""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily||""};font-weight:${p.fontBold?"bold":"normal"};border:${(p.borderSize||0)+"px solid "+(p.borderColor||"#cccccc")};padding:0 4px;pointer-events:none;${vis}">`; }
+                case "slider":
+                    return `<div style="${base}display:flex;align-items:center;${vis}"><input type="range" min="${p.min||0}" max="${p.max||100}" value="${p.value||0}" step="${p.step||1}" style="width:100%;pointer-events:none;accent-color:#5b7bfa"></div>`;
+                case "datepicker": { const _itype2 = p.inputType||"date";
+                    return `<input type="${_itype2}" ${id} value="${esc(p.value||"")}" ${p.min?`min="${esc(p.min)}"`:""}  ${p.max?`max="${esc(p.max)}"`:""}  ${p.disabled?"disabled":""} ${p.readonly?"readonly":""} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`; }
+                case "slider":
+                    return `<input type="range" ${id} min="${p.min||0}" max="${p.max||100}" value="${p.value||0}" step="${p.step||1}" ${p.disabled?"disabled":""} style="${base}accent-color:#5b7bfa">`;
                 default:
                     return "";
             }
@@ -1500,6 +1478,38 @@
                 {k: "val", lb: "Value", t: "num"},
                 ...PP_TAIL,
             ],
+            datepicker: [
+                ...PP_POS,
+                {sep: "外観"},
+                {k: "bg", lb: "BackColor", t: "color"},
+                {k: "fg", lb: "ForeColor", t: "color"},
+                ...PP_FONT,
+                ...PP_BORDER,
+                {sep: "種別"},
+                {k: "inputType", lb: "InputType", t: "select", opts: ["date", "time", "datetime-local", "month"]},
+                {sep: "値"},
+                {k: "value", lb: "Value", t: "text"},
+                {k: "min",   lb: "Min",   t: "text"},
+                {k: "max",   lb: "Max",   t: "text"},
+                {sep: "動作"},
+                {k: "disabled", lb: "Disabled", t: "bool"},
+                {k: "readonly", lb: "ReadOnly",  t: "bool"},
+                ...PP_TAIL,
+            ],
+            slider: [
+                ...PP_POS,
+                {sep: "値"},
+                {k: "min",   lb: "Min",   t: "num"},
+                {k: "max",   lb: "Max",   t: "num"},
+                {k: "value", lb: "Value", t: "num"},
+                {k: "step",  lb: "Step",  t: "num"},
+                {sep: "外観"},
+                {k: "orient", lb: "Orient", t: "select", opts: ["horizontal", "vertical"]},
+                {k: "bg",     lb: "BackColor", t: "color"},
+                {sep: "動作"},
+                {k: "disabled", lb: "Disabled", t: "bool"},
+                ...PP_TAIL,
+            ],
         };
 
         function renderProps() {
@@ -1585,7 +1595,8 @@
                 }
                 case "color":
                     return `<input type="color" value="${val || "#000000"}" style="width:100%;height:22px;padding:1px 2px;cursor:pointer;border:1px solid var(--border);border-radius:2px;background:var(--bg3)" oninput="setProp('${d.k}','${d.sp || ""}',this.value,${w2})" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">`;
-                case "sel": {
+                case "sel":
+                case "select": {
                     const sid = "pvs_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
                     const opts = d.opts || [];
                     const sLabel = val ?? (opts[0] || "");
