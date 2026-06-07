@@ -535,15 +535,10 @@ const buildProjectFiles = async (): Promise<{
         const outDir = join(_projectWorkDir, projName);
         if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
 
-        // vja-runtime.js をコピー
-        const runtimeSrc = join(import.meta.dir, "..", "mainview", "vja-runtime.js");
-        if (existsSync(runtimeSrc)) {
-            copyFileSync(runtimeSrc, join(outDir, "vja-runtime.js"));
-        }
-        // project-bridge.ts をコピー
-        const bridgeSrc = join(import.meta.dir, "..", "mainview", "project-bridge.ts");
-        if (existsSync(bridgeSrc)) {
-            copyFileSync(bridgeSrc, join(outDir, "project-bridge.ts"));
+        // project-bridge.js は electrobun.config.ts の projectview エントリでビルド済み
+        const bridgeJsSrc = join(import.meta.dir, "..", "views", "projectview", "project-bridge.js");
+        if (existsSync(bridgeJsSrc)) {
+            copyFileSync(bridgeJsSrc, join(outDir, "project-bridge.js"));
         }
 
         // 各フォームのHTMLを生成
@@ -597,8 +592,7 @@ body { overflow: hidden; background: ${esc2(cfg.bg || "#ececec")}; }
 <div id="vja-form">
 ${widgetsHtml}
 </div>
-<script src="./vja-runtime.js"></script>
-<script src="./project-bridge.ts"></script>
+<script src="./project-bridge.js"></script>
 <script>
 ${eventsJs}
 </script>
@@ -926,7 +920,7 @@ try {
     })();
 };
 
-// フォーム名からファイルパス・サイズを取得
+// フォーム名からURL・サイズを取得
 const getProjectFormPath = (formName: string): {
     ok: boolean; error?: string; path?: string; w?: number; h?: number;
 } => {

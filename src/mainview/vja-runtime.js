@@ -3,64 +3,9 @@
  * VJA共通ランタイムライブラリ
  * デザイナー・コンパイル済みアプリ両方で利用可能
  *
- * 前提: bridge.ts (or bridge.js) が読み込まれ window.vja.db/file/dir/log/app が定義済み
+ * 前提: project-bridge.js が読み込まれ window.vja.* API が定義済み
+ * console.log 等のRPC転送は project-bridge.js 側で行う
  */
-
-/* ════════════════════════════════════════════════
-   コンソール上書き（ログをBun側ファイルに転送）
-   - bridge.ts 読み込み前はキューに溜める
-   - bridge.ts 読み込み後に window._flushLogQueue() で送信
-   ════════════════════════════════════════════════ */
-(function () {
-    const _queue = [];
-    const _orig = {};
-    const LEVELS = ["trace", "debug", "info", "warn", "error", "log"];
-
-    // 引数を文字列化（オブジェクトはJSON化）
-    const _fmt = (args) => Array.from(args).map(a => {
-        if (a === null) return "null";
-        if (a === undefined) return "undefined";
-        if (typeof a === "object") {
-            try { return JSON.stringify(a); } catch (e) { return String(a); }
-        }
-        return String(a);
-    }).join(" ");
-
-    // Bun側へ送信（bridge未ロード時はキューに溜める）
-    const _send = (level, msg) => {
-        const fn = window?.vja?.log?.[level];
-        if (fn) {
-            fn(msg).catch(() => {});
-        } else {
-            _queue.push({ level, msg });
-        }
-    };
-
-    // bridge.ts 読み込み後にキューを flush（bridge.ts の末尾から呼ばれる）
-    window._flushLogQueue = () => {
-        while (_queue.length > 0) {
-            const { level, msg } = _queue.shift();
-            window?.vja?.log?.[level]?.(msg).catch(() => {});
-        }
-    };
-
-    // console の各メソッドを上書き
-    LEVELS.forEach(level => {
-        _orig[level] = console[level]?.bind(console);
-        console[level] = function (...args) {
-            _orig[level]?.(...args);   // 元のconsoleにも出力
-            _send(level, _fmt(args));
-        };
-    });
-
-    // 未捕捉エラー・未処理Rejectionもログに流す
-    window.addEventListener("error", (e) => {
-        _send("error", `[UnhandledError] ${e.message} (${e.filename}:${e.lineno})`);
-    });
-    window.addEventListener("unhandledrejection", (e) => {
-        _send("error", `[UnhandledRejection] ${String(e.reason)}`);
-    });
-})();
 
 (function(global) {
     "use strict";
