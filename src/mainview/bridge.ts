@@ -36,6 +36,7 @@ const pending = {
     navigateForm : null as Pending<{ ok:boolean; error?:string }>                 | null,
     sessionGet   : null as Pending<{ ok:boolean; value:string|null }>             | null,
     sessionSet   : null as Pending<{ ok:boolean }>                                | null,
+    clearProjectDb: null as Pending<{ ok:boolean; error?:string }>               | null,
 };
 
 const resolve = <K extends keyof typeof pending>(
@@ -95,6 +96,7 @@ const rpc = Electroview.defineRPC({
             navigateFormResult : (v: any) => resolve("navigateForm",  v),
             sessionGetResult   : (v: any) => resolve("sessionGet",    v),
             sessionSetResult   : (v: any) => resolve("sessionSet",    v),
+            clearProjectDbResult: (v: any) => resolve("clearProjectDb", v),
         },
     },
 });
@@ -170,6 +172,8 @@ w.vja = {
             mkPromise("stopProject", () => s.stopProjectRequest({})),
         navigate: (formName: string) =>
             mkPromise("navigateForm", () => s.navigateFormRequest({ formName })),
+        clearDb: () =>
+            mkPromise("clearProjectDb", () => s.clearProjectDbRequest({})),
     },
     // ── セッション管理 ────────────────────────────────
     session: {

@@ -17,6 +17,8 @@ import {
 import { Database } from "bun:sqlite";
 import { type VjaRPCType, type DbRow, type DbResult } from "../shared/types";
 import { initLogger, writeLog } from "./logger";
+import { initProjectDb, clearProjectDb, getProjectDb, closeProjectDb } from "./db-manager";
+import type { TableDef } from "./db-manager";
 
 const _TITLE = "VJA Form Designer";
 const _VERSION = "0.1.0";
@@ -431,6 +433,22 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 browserWindow.webview.rpc.send.stopProjectResult({ ok: true });
             },
 
+            // ══ DBデータクリア ════════════════════════════
+
+            clearProjectDbRequest: async () => {
+                try {
+                    if (!_currentProjectDbDir) {
+                        browserWindow.webview.rpc.send.clearProjectDbResult({ ok: false, error: "プロジェクトが読み込まれていません" });
+                        return;
+                    }
+                    closeProjectDb();
+                    clearProjectDb(_currentProjectDbDir);
+                    browserWindow.webview.rpc.send.clearProjectDbResult({ ok: true });
+                } catch (e: any) {
+                    browserWindow.webview.rpc.send.clearProjectDbResult({ ok: false, error: e.message });
+                }
+            },
+
             navigateFormRequest: async ({ formName }) => {
                 try {
                     const result = getProjectFormPath(formName);
@@ -472,23 +490,30 @@ const _projectWorkDir = join(_dataDir, "projectWork");
 // セッション管理（メモリのみ・再起動でリセット）
 const _session = new Map<string, string>();
 
+// 現在のプロジェクトのDB管理ディレクトリ
+let _currentProjectDbDir = "";
+
 // 実行中のプロジェクトウィンドウ
 let _projectWindow: BrowserWindow | null = null;
 
 // 現在読み込まれているプロジェクトのフォームデータ（navigateで参照）
 let _currentProjectForms: any[] = [];
 let _currentProjectName: string = "";
+let _currentProjectTables: TableDef[] = [];
 
 // プロジェクトデータをメモリに反映する共通関数
 const _updateProjectData = (jsonStr: string, filePath?: string): boolean => {
     try {
         const proj = JSON.parse(jsonStr);
-        _currentProjectForms = proj.forms || [];
-        _currentProjectName  = proj.projectInfo?.name
+        _currentProjectForms  = proj.forms || [];
+        _currentProjectTables = proj.tables || [];
+        _currentProjectName   = proj.projectInfo?.name
             || filePath?.split("/").pop()?.replace(/\.vjaproj$/, "")
             || "project";
         _onStartCode = proj.projectInfo?.appEvents?.onStart || "";
         _onExitCode  = proj.projectInfo?.appEvents?.onExit  || "";
+        // プロジェクトのDB管理ディレクトリを更新
+        _currentProjectDbDir = join(_projectWorkDir, _currentProjectName, "db");
         return true;
     } catch {
         return false;
@@ -676,12 +701,24 @@ let _onExitCode  = "";
 
 // OnStart を Bun側で実行（TS文字列を一時ファイル経由でimport）
 const runOnStart = async (): Promise<void> => {
-    const code = _onStartCode.trim();
-    if (!code) return;
     // セッションで2度目の実行を阻止
     if (_session.get("__onStart_done__")) return;
     _session.set("__onStart_done__", "1");
-    await _runAppEventCode("onStart", code);
+
+    // ① テーブル定義があればDB初期化・マイグレーション
+    if (_currentProjectDbDir && _currentProjectTables.length > 0) {
+        try {
+            await initProjectDb(_currentProjectDbDir, _currentProjectTables);
+        } catch (e: any) {
+            console.error("[db] DB初期化エラー:", e.message);
+        }
+    }
+
+    // ② OnStartコードを実行
+    const code = _onStartCode.trim();
+    if (code) {
+        await _runAppEventCode("onStart", code);
+    }
 };
 
 // OnExit を Bun側で実行
@@ -730,12 +767,21 @@ const _getSession   = (key: string): string | null => _session.get(key) ?? null;
 const _setSession   = (key: string, val: string): void => { _session.set(key, val); };
 const _deleteSession = (key: string): void => { _session.delete(key); };
 const _dbQuery = (sql: string, params?: any[]): any[] => {
-    try { return getDb().query(sql).all(...(params || [])) as any[]; } catch { return []; }
+    try {
+        const db = _currentProjectDbDir
+            ? getProjectDb(_currentProjectDbDir)
+            : getDb();
+        return db.query(sql).all(...(params || [])) as any[];
+    } catch { return []; }
 };
 const _dbExecute = (sql: string, params?: any[]): any => {
-    try { return getDb().run(sql, ...(params || [])); } catch { return null; }
+    try {
+        const db = _currentProjectDbDir
+            ? getProjectDb(_currentProjectDbDir)
+            : getDb();
+        return db.run(sql, ...(params || []));
+    } catch { return null; }
 };
-const _getDb = (): any => getDb();
 
 // イベント名 → DOM イベント名
 const evNameToDom = (evName: string): string => {

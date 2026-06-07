@@ -39,6 +39,10 @@
                     <div class="dd-item" onmousedown="openAppEvents()">
                         アプリイベント…
                     </div>
+                    <div class="dd-sep"></div>
+                    <div class="dd-item" onmousedown="actClearProjectDb()">
+                        DBデータをクリア…
+                    </div>
                 </div>
             </div>
             <div class="menu-item" onmousedown="toggleMenu('me', event)">
@@ -3250,6 +3254,24 @@ if (runBtn)  runBtn.disabled = true;
             }
         }
 
+        async function actClearProjectDb() {
+            closeAllMenus();
+            const confirmed = await vja.app.showConfirm(
+                "このプロジェクトのDBデータを全て削除します。\nこの操作は元に戻せません。よろしいですか？"
+            );
+            if (!confirmed?.confirmed) return;
+            try {
+                const result = await vja.project.clearDb();
+                if (result.ok) {
+                    showToast("DBデータをクリアしました");
+                } else {
+                    alert("DBクリアに失敗しました: " + (result.error || "不明なエラー"));
+                }
+            } catch(e) {
+                alert("DBクリアに失敗しました: " + e.message);
+            }
+        }
+
         async function actStopProject() {
             const runBtn  = $("btn-run-project");
             const stopBtn = $("btn-stop-project");
@@ -3973,6 +3995,7 @@ if (runBtn)  runBtn.disabled = true;
             tbl.columns = (tbl.columns || []).filter(c => c.name.trim());
             if (tbl.columns.length === 0) {alert("カラムを1つ以上定義してください"); return;}
             tbl.name = tbl.name.trim();
+            tbl.updatedAt = new Date().toISOString(); // テーブル更新時刻を記録
             if (window._tblEditIdx < 0) {
                 tables.push(tbl);
             } else {

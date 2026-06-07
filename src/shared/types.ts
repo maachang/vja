@@ -123,6 +123,9 @@ export type VjaRPCType = {
             // ── プロジェクト停止 ──────────────────────────
             stopProjectRequest: { _?: never };
 
+            // ── DBデータクリア ────────────────────────────
+            clearProjectDbRequest: { _?: never };
+
             // ── フォーム切り替え（プロジェクト実行中） ────
             navigateFormRequest: { formName: string };
 
@@ -187,6 +190,9 @@ export type VjaRPCType = {
 
             // ── プロジェクト停止結果 ──────────────────────
             stopProjectResult: { ok: boolean };
+
+            // ── DBデータクリア結果 ────────────────────────
+            clearProjectDbResult: { ok: boolean; error?: string };
 
             // ── フォーム切り替え結果 ──────────────────────
             navigateFormResult: { ok: boolean; error?: string };
