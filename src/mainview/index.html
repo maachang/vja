@@ -1941,7 +1941,7 @@
                 ? "<div>" + tables.map((t, ti) => {
                     const tn = esc(t.name);
                     const cols = (t.columns || []).map(c => {
-                        const flags = [c.pk ? "PK" : "", c.notNull ? "NN" : "", c.index ? "IDX" : ""].filter(Boolean).join(" ");
+                        const flags = [c.pk ? "PK" : "", c.notNull ? "NN" : "", c.useDefault ? "DEF" : "", c.index ? "IDX" : ""].filter(Boolean).join(" ");
                         const cn = esc(c.name);
                         return "<tr class='rp-insert' data-insert='" + cn + "'>"
                             + "<td class='col-name'>" + cn + "</td>"
@@ -2136,6 +2136,10 @@
                         let def = "    - " + c.name + " (" + c.type + ")";
                         if (c.pk) def += " PK";
                         if (c.notNull) def += " NOT NULL";
+                        if (c.useDefault) {
+                    const dv = (c.default && c.default.trim() !== "") ? c.default.trim() : defaultValueForType(c.type);
+                    def += " DEFAULT " + dv;
+                }
                         if (c.index) def += " INDEX";
                         return def;
                     }).join("\n");
@@ -3757,7 +3761,7 @@ if (runBtn)  runBtn.disabled = true;
         }
 
         function defaultColumn() {
-            return {name: "", type: "TEXT", notNull: false, pk: false, index: false};
+            return {name: "", type: "TEXT", notNull: false, pk: false, index: false, useDefault: false, default: ""};
         }
 
         function renderTableEditModal() {
@@ -3766,25 +3770,32 @@ if (runBtn)  runBtn.disabled = true;
             const cols = tbl.columns || [];
 
             let tbody = cols.map((c, i) => {
-                const oi_name = "tblColUpdate(" + i + ",'name',this.value)";
-                const oi_notNull = "tblColUpdate(" + i + ",'notNull',this.checked)";
-                const oi_pk = "tblColUpdatePk(" + i + ",this.checked)";
-                const oi_index = "tblColUpdate(" + i + ",'index',this.checked)";
+                const oi_name    = "tblColUpdate(" + i + ",'name',this.value)";
+                const oi_notNull  = "tblColUpdate(" + i + ",'notNull',this.checked)";
+                const oi_pk      = "tblColUpdatePk(" + i + ",this.checked)";
+                const oi_index   = "tblColUpdate(" + i + ",'index',this.checked)";
+                const oi_default    = "tblColUpdate(" + i + ",'default',this.value)";
+                const oi_useDefault = "tblColUpdate(" + i + ",'useDefault',this.checked)";
+                const defCell =
+                    "<input class='col-check' type='checkbox' " + (c.useDefault ? "checked" : "") + " onchange=\"" + oi_useDefault + "\" style='margin-right:6px'>" +
+                    "<input class='col-input' type='text' value='" + esc(c.default || "") + "' " +
+                    "oninput=\"" + oi_default + "\" placeholder='" + esc(defaultValueForType(c.type)) + "' style='width:72px'>";
                 return "<tr id='col-row-" + i + "'>" +
                     "<td>" + (i + 1) + "</td>" +
                     "<td><input class='col-input' type='text' value='" + esc(c.name) + "' " +
-                    "oninput='" + oi_name + "' placeholder='カラム名'></td>" +
+                    "oninput=\"" + oi_name + "\" placeholder='カラム名'></td>" +
                     "<td>" +
                     "<button type='button' class='col-type-btn' data-colidx='" + i + "'>" +
                     "<span class='col-type-lbl'>" + esc(c.type || "TEXT") + "</span>" +
                     "<span class='arr'>▼</span></button>" +
                     "</td>" +
                     "<td><input class='col-check' type='checkbox' " + (c.notNull ? "checked" : "") + " " +
-                    "onchange='" + oi_notNull + "'></td>" +
+                    "onchange=\"" + oi_notNull + "\"></td>" +
                     "<td><input class='col-check' type='checkbox' " + (c.pk ? "checked" : "") + " " +
-                    "onchange='" + oi_pk + "'></td>" +
+                    "onchange=\"" + oi_pk + "\"></td>" +
                     "<td><input class='col-check' type='checkbox' " + (c.index ? "checked" : "") + " " +
-                    "onchange='" + oi_index + "'></td>" +
+                    "onchange=\"" + oi_index + "\"></td>" +
+                    "<td style='white-space:nowrap'>" + defCell + "</td>" +
                     "<td><button class='tbl-action-btn del' onclick='tblColDelete(" + i + ")'>✕</button></td>" +
                     "</tr>";
             }).join("");
@@ -3813,6 +3824,7 @@ if (runBtn)  runBtn.disabled = true;
                 "<th style='width:64px'>NOT NULL</th>" +
                 "<th style='width:48px'>KEY</th>" +
                 "<th style='width:72px'>インデックス</th>" +
+                "<th style='min-width:90px'>DEFAULT</th>" +
                 "<th style='width:40px'>削除</th>" +
                 "</tr></thead>" +
                 "<tbody id='col-tbody'>" + tbody + "</tbody>" +
@@ -3845,6 +3857,33 @@ if (runBtn)  runBtn.disabled = true;
         }
 
         // カラム値を更新
+        // 型に合わせたデフォルト値を返す
+        function defaultValueForType(type) {
+            switch ((type || "TEXT").toUpperCase()) {
+                case "INTEGER": return "0";
+                case "REAL":    return "0.0";
+                case "NUMERIC": return "0";
+                case "BLOB":    return "''";
+                default:        return "''";  // TEXT等
+            }
+        }
+
+        // デフォルト値が型に合っているか検証（空＝デフォルト値を使用、入力あり＝バリデート）
+        function validateDefaultValue(type, value) {
+            if (!value || value === "") return true;
+            var v = value.trim();
+            var t = (type || "TEXT").toUpperCase();
+            if (v.toUpperCase() === "NULL") return true;
+            if (t === "INTEGER") return /^-?[0-9]+$/.test(v);
+            if (t === "REAL" || t === "NUMERIC") return /^-?[0-9]+([.][0-9]+)?$/.test(v);
+            if (t === "TEXT" || t === "BLOB") {
+                return (v.charAt(0) === "'" && v.charAt(v.length-1) === "'")
+                    || /^-?[0-9]+$/.test(v)
+                    || v === "''";
+            }
+            return true;
+        }
+
         function tblColUpdate(idx, key, val) {
             if (!window._tblEdit || !window._tblEdit.columns[idx]) return;
             window._tblEdit.columns[idx][key] = val;
@@ -3900,6 +3939,10 @@ if (runBtn)  runBtn.disabled = true;
                 if (cbs[0]) tbl.columns[i].notNull = cbs[0].checked;
                 if (cbs[1]) tbl.columns[i].pk = cbs[1].checked;
                 if (cbs[2]) tbl.columns[i].index = cbs[2].checked;
+                // DEFAULT: 4番目のcheckboxがuseDefault、2番目のtextがdefault値
+                if (cbs[3] !== undefined) tbl.columns[i].useDefault = cbs[3].checked;
+                const txts = tr.querySelectorAll("input[type=text]");
+                if (txts[1]) tbl.columns[i].default = txts[1].value;
             });
         }
 
@@ -3923,6 +3966,10 @@ if (runBtn)  runBtn.disabled = true;
                 let def = "  " + c.name + " " + c.type;
                 if (c.pk && pkCols.length === 1) def += " PRIMARY KEY";
                 if (c.notNull && !c.pk) def += " NOT NULL";
+                if (c.useDefault) {
+                    const dv = (c.default && c.default.trim() !== "") ? c.default.trim() : defaultValueForType(c.type);
+                    def += " DEFAULT " + dv;
+                }
                 return def;
             });
             if (pkCols.length > 1) {
@@ -3994,6 +4041,25 @@ if (runBtn)  runBtn.disabled = true;
             // 空カラムを除去
             tbl.columns = (tbl.columns || []).filter(c => c.name.trim());
             if (tbl.columns.length === 0) {alert("カラムを1つ以上定義してください"); return;}
+            // DEFAULTバリデーション
+            for (const c of tbl.columns) {
+                if (!c.useDefault) continue;
+                // チェックON＋空 → 型別デフォルト値を自動セット
+                if (!c.default || c.default.trim() === "") {
+                    c.default = defaultValueForType(c.type);
+                } else if (!validateDefaultValue(c.type, c.default.trim())) {
+                    const hints = {
+                        "INTEGER": "整数値（例: 0, -1）またはNULL",
+                        "REAL":    "実数値（例: 0.0, 3.14）またはNULL",
+                        "NUMERIC": "数値（例: 0, 1.5）またはNULL",
+                        "TEXT":    "シングルクォート囲み（例: '' 、'default'）または数値、NULL",
+                        "BLOB":    "シングルクォート囲み（例: ''）またはNULL",
+                    };
+                    const hint = hints[(c.type || "TEXT").toUpperCase()] || "型に合った値";
+                    alert("カラム「" + c.name + "」のDEFAULT値が不正です。\n型: " + c.type + "\n期待する形式: " + hint);
+                    return;
+                }
+            }
             tbl.name = tbl.name.trim();
             tbl.updatedAt = new Date().toISOString(); // テーブル更新時刻を記録
             if (window._tblEditIdx < 0) {

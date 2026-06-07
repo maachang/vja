@@ -16,6 +16,7 @@ export interface TableColumn {
     notNull: boolean;
     pk: boolean;
     index: boolean;
+    useDefault?: boolean;
     default?: string;
 }
 
@@ -185,6 +186,17 @@ const _alterTable = async (db: Database, tbl: TableDef): Promise<void> => {
 };
 
 // ── DDL生成 ──────────────────────────────────────────
+// 型別デフォルト値
+const _defaultValueForType = (type: string): string => {
+    switch ((type || "TEXT").toUpperCase()) {
+        case "INTEGER": return "0";
+        case "REAL":    return "0.0";
+        case "NUMERIC": return "0";
+        case "BLOB":    return "''";
+        default:        return "''";
+    }
+};
+
 const _generateDDL = (tbl: TableDef, overrideName?: string): string => {
     const name = overrideName || tbl.name;
     const cols = tbl.columns.filter(c => c.name.trim());
@@ -194,7 +206,12 @@ const _generateDDL = (tbl: TableDef, overrideName?: string): string => {
         let def = `  ${c.name} ${c.type}`;
         if (c.pk && pkCols.length === 1) def += " PRIMARY KEY";
         if (c.notNull && !c.pk)          def += " NOT NULL";
-        if (c.default !== undefined && c.default !== "") def += ` DEFAULT ${c.default}`;
+        if (c.useDefault) {
+            const dv = (c.default !== undefined && c.default !== "")
+                ? c.default
+                : _defaultValueForType(c.type);
+            def += ` DEFAULT ${dv}`;
+        }
         return def;
     });
 
