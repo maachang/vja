@@ -217,6 +217,9 @@
             <div class="tool-grid" id="tool-grid"></div>
         </div>
 
+        <!-- 左パネルリサイズハンドル -->
+        <div id="resize-left" onmousedown="startPanelResize(event,'left')"></div>
+
         <!-- キャンバス -->
         <div id="canvas-wrap">
             <div id="ruler-corner"></div>
@@ -254,6 +257,9 @@
                 <div id="form-resize-br"></div>
             </div>
         </div>
+
+        <!-- 右パネルリサイズハンドル -->
+        <div id="resize-right" onmousedown="startPanelResize(event,'right')"></div>
 
         <!-- プロパティ -->
         <div id="props-panel">
@@ -668,6 +674,8 @@
         let editorConfig = {
             fontSize: 16,
             fontFamily: "'Courier New', Courier, monospace",
+            leftPanelW: 110,
+            rightPanelW: 420,
         };
 
         let aiConfig = {
@@ -1188,6 +1196,17 @@
                 if (!w) return;
                 const evList = EVENTS[w.tag] || [];
                 if (evList.length === 0) return;
+                openYaml(w.id, evList[0]);
+            });
+
+            el.addEventListener("dblclick", (e) => {
+                if (activeTool !== "pointer") return;
+                e.stopPropagation();
+                const w = getWidget(wid);
+                if (!w) return;
+                const evList = EVENTS[w.tag] || [];
+                if (evList.length === 0) return;
+                select(wid);
                 openYaml(w.id, evList[0]);
             });
 
@@ -4507,6 +4526,14 @@ if (runBtn)  runBtn.disabled = true;
         }
 
         function applyViewSettings() {
+            // パネル幅を復元
+            const lw = editorConfig.leftPanelW || 110;
+            const rw = editorConfig.rightPanelW || 420;
+            document.documentElement.style.setProperty("--panel", lw + "px");
+            document.documentElement.style.setProperty("--prop", rw + "px");
+            const tb = $("toolbox"), pp = $("props-panel");
+            if (tb) tb.style.width = lw + "px";
+            if (pp) pp.style.width = rw + "px";
             applyEditorConfig();
             applyProjectInfo();
             // グリッド
@@ -4644,6 +4671,42 @@ if (runBtn)  runBtn.disabled = true;
         /* ═══════════════════════════════════════════
           RULER（座標ルーラー）
         ═══════════════════════════════════════════ */
+
+        /* ── パネルリサイズ ── */
+        function startPanelResize(e, side) {
+            e.preventDefault();
+            const startX = e.clientX;
+            const tb = $("toolbox"), pp = $("props-panel");
+            const startW = side === "left" ? tb.offsetWidth : pp.offsetWidth;
+            const MIN_W = 80, MAX_W = 400;
+            const onMove = (me) => {
+                let newW;
+                if (side === "left") {
+                    newW = Math.min(MAX_W, Math.max(MIN_W, startW + (me.clientX - startX)));
+                    tb.style.width = newW + "px";
+                    document.documentElement.style.setProperty("--panel", newW + "px");
+                    editorConfig.leftPanelW = newW;
+                } else {
+                    newW = Math.min(MAX_W, Math.max(MIN_W, startW - (me.clientX - startX)));
+                    pp.style.width = newW + "px";
+                    document.documentElement.style.setProperty("--prop", newW + "px");
+                    editorConfig.rightPanelW = newW;
+                }
+                requestAnimationFrame(drawRulers);
+            };
+            const onUp = () => {
+                document.removeEventListener("mousemove", onMove);
+                document.removeEventListener("mouseup", onUp);
+                document.body.style.cursor = "";
+                document.body.style.userSelect = "";
+                pushUndo();
+            };
+            document.body.style.cursor = "col-resize";
+            document.body.style.userSelect = "none";
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+        }
+
         function initRuler() {
             drawRulers();
         }
