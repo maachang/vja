@@ -1180,6 +1180,17 @@
                 startMove(e, wid);
             });
 
+            el.addEventListener("dblclick", (e) => {
+                if (activeTool !== "pointer") return;
+                e.stopPropagation();
+                e.preventDefault();
+                const w = getWidget(wid);
+                if (!w) return;
+                const evList = EVENTS[w.tag] || [];
+                if (evList.length === 0) return;
+                openYaml(w.id, evList[0]);
+            });
+
             el.addEventListener("contextmenu", (e) => {
                 e.preventDefault();
                 e.stopPropagation();
