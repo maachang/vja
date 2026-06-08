@@ -55,7 +55,7 @@ const loadLastDir = (): string => {
             const saved = readFileSync(_lastDirFile, "utf-8").trim();
             if (saved && existsSync(saved)) return saved;
         }
-    } catch {}
+    } catch { }
     return homedir();
 };
 const saveLastDir = async (filePath: string): Promise<void> => {
@@ -63,7 +63,7 @@ const saveLastDir = async (filePath: string): Promise<void> => {
         const dir = dirname(filePath);
         if (!existsSync(_configDir)) mkdirSync(_configDir, { recursive: true });
         await Bun.write(_lastDirFile, dir);
-    } catch {}
+    } catch { }
 };
 let _lastDir: string = loadLastDir();
 
@@ -505,13 +505,13 @@ let _currentProjectTables: TableDef[] = [];
 const _updateProjectData = (jsonStr: string, filePath?: string): boolean => {
     try {
         const proj = JSON.parse(jsonStr);
-        _currentProjectForms  = proj.forms || [];
+        _currentProjectForms = proj.forms || [];
         _currentProjectTables = proj.tables || [];
-        _currentProjectName   = proj.projectInfo?.name
+        _currentProjectName = proj.projectInfo?.name
             || filePath?.split("/").pop()?.replace(/\.vjaproj$/, "")
             || "project";
         _onStartCode = proj.projectInfo?.appEvents?.onStart || "";
-        _onExitCode  = proj.projectInfo?.appEvents?.onExit  || "";
+        _onExitCode = proj.projectInfo?.appEvents?.onExit || "";
         // プロジェクトのDB管理ディレクトリを更新
         _currentProjectDbDir = join(_projectWorkDir, _currentProjectName, "db");
         return true;
@@ -613,44 +613,44 @@ const buildWidgetHtml = (w: any): string => {
     const p = w.props;
     const vis = p.visible === false ? "visibility:hidden;" : "";
     const base = `position:absolute;left:${w.x}px;top:${w.y}px;width:${w.w}px;height:${w.h}px;box-sizing:border-box;${vis}`;
-    const font = `font-size:${p.fontSize||12}px;font-family:${p.fontFamily||""};font-weight:${p.fontBold?"bold":"normal"}`;
-    const border = `border:${(p.borderSize||0)}px solid ${p.borderColor||"#cccccc"}`;
+    const font = `font-size:${p.fontSize || 12}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"}`;
+    const border = `border:${(p.borderSize || 0)}px solid ${p.borderColor || "#cccccc"}`;
     const id = `id="${w.name}" data-vja-name="${w.name}"`;
     switch (w.tag) {
         case "button":
-            return `<button ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border};border-radius:${p.borderRadius||2}px;cursor:pointer">${esc2(p.text)}</button>`;
+            return `<button ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border};border-radius:${p.borderRadius || 2}px;cursor:pointer">${esc2(p.text)}</button>`;
         case "label":
-            return `<label ${id} style="${base}background:${p.bg};color:${p.fg};${font};text-align:${p.align||"left"};display:flex;align-items:center">${esc2(p.text)}</label>`;
+            return `<label ${id} style="${base}background:${p.bg};color:${p.fg};${font};text-align:${p.align || "left"};display:flex;align-items:center">${esc2(p.text)}</label>`;
         case "input":
             if (p.multiline)
                 return `<textarea ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:2px 4px;resize:none">${esc2(p.text)}</textarea>`;
-            return `<input type="text" ${id} value="${esc2(p.text)}" placeholder="${esc2(p.placeholder||"")}" style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
+            return `<input type="text" ${id} value="${esc2(p.text)}" placeholder="${esc2(p.placeholder || "")}" style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
         case "inputtype": {
             const itype = p.inputType || "text";
             const maxl = p.maxLength ? ` maxlength="${p.maxLength}"` : "";
             const req = p.required ? " required" : "";
             const ro = p.readonly ? " readonly" : "";
             const dis = p.disabled ? " disabled" : "";
-            return `<input type="${itype}" ${id} value="${esc2(p.text)}" placeholder="${esc2(p.placeholder||"")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
+            return `<input type="${itype}" ${id} value="${esc2(p.text)}" placeholder="${esc2(p.placeholder || "")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
         }
         case "checkbox":
-            return `<label ${id} style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};${font};cursor:pointer"><input type="checkbox" ${p.checked?"checked":""}>${esc2(p.text)}</label>`;
+            return `<label ${id} style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};${font};cursor:pointer"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc2(p.text)}</label>`;
         case "radio":
-            return `<label ${id} style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};${font};cursor:pointer"><input type="radio" name="${esc2(p.group||"g")}" ${p.checked?"checked":""}>${esc2(p.text)}</label>`;
+            return `<label ${id} style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};${font};cursor:pointer"><input type="radio" name="${esc2(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc2(p.text)}</label>`;
         case "listbox":
-            return `<select ${id} multiple style="${base}background:${p.bg};color:${p.fg};${font};${border}">${(p.items||"").split("\n").map((i:string)=>`<option>${esc2(i)}</option>`).join("")}</select>`;
+            return `<select ${id} multiple style="${base}background:${p.bg};color:${p.fg};${font};${border}">${(p.items || "").split("\n").map((i: string) => `<option>${esc2(i)}</option>`).join("")}</select>`;
         case "selectBox":
-            return `<select ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border}">${(p.items||"").split("\n").map((i:string)=>`<option>${esc2(i)}</option>`).join("")}</select>`;
+            return `<select ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border}">${(p.items || "").split("\n").map((i: string) => `<option>${esc2(i)}</option>`).join("")}</select>`;
         case "groupbox":
             return `<fieldset ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border}"><legend>${esc2(p.text)}</legend></fieldset>`;
         case "picture":
-            return `<div ${id} style="${base}background:${p.bg};${border};display:flex;align-items:center;justify-content:center">${p.src?`<img src="${esc2(p.src)}" style="max-width:100%;max-height:100%;object-fit:${p.objectFit||"contain"}">`:""}</div>`;
+            return `<div ${id} style="${base}background:${p.bg};${border};display:flex;align-items:center;justify-content:center">${p.src ? `<img src="${esc2(p.src)}" style="max-width:100%;max-height:100%;object-fit:${p.objectFit || "contain"}">` : ""}</div>`;
         case "datepicker": {
             const _itype = p.inputType || "date";
-            return `<input type="${_itype}" ${id} value="${esc2(p.value||"")}" ${p.min?`min="${esc2(p.min)}"`:""} ${p.max?`max="${esc2(p.max)}"`:""} ${p.disabled?"disabled":""} ${p.readonly?"readonly":""} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
+            return `<input type="${_itype}" ${id} value="${esc2(p.value || "")}" ${p.min ? `min="${esc2(p.min)}"` : ""} ${p.max ? `max="${esc2(p.max)}"` : ""} ${p.disabled ? "disabled" : ""} ${p.readonly ? "readonly" : ""} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
         }
         case "slider":
-            return `<input type="range" ${id} min="${p.min||0}" max="${p.max||100}" value="${p.value||0}" step="${p.step||1}" ${p.disabled?"disabled":""} style="${base}accent-color:#5b7bfa">`;
+            return `<input type="range" ${id} min="${p.min || 0}" max="${p.max || 100}" value="${p.value || 0}" step="${p.step || 1}" ${p.disabled ? "disabled" : ""} style="${base}accent-color:#5b7bfa">`;
         default:
             return `<div ${id} style="${base}"></div>`;
     }
@@ -697,7 +697,7 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
 
 // 現在のプロジェクトのAppEventsコードを保持
 let _onStartCode = "";
-let _onExitCode  = "";
+let _onExitCode = "";
 
 // OnStart を Bun側で実行（TS文字列を一時ファイル経由でimport）
 const runOnStart = async (): Promise<void> => {
@@ -758,13 +758,13 @@ ${code}
     } catch (e: any) {
         console.error(`[app] ${name} 実行エラー:`, e.message);
     } finally {
-        try { rmSync(tmpFile); } catch {}
+        try { rmSync(tmpFile); } catch { }
     }
 };
 
 // AppEvents用のセッションヘルパー
-const _getSession   = (key: string): string | null => _session.get(key) ?? null;
-const _setSession   = (key: string, val: string): void => { _session.set(key, val); };
+const _getSession = (key: string): string | null => _session.get(key) ?? null;
+const _setSession = (key: string, val: string): void => { _session.set(key, val); };
 const _deleteSession = (key: string): void => { _session.delete(key); };
 const _dbQuery = (sql: string, params?: any[]): any[] => {
     try {
@@ -804,6 +804,27 @@ const evNameToDom = (evName: string): string => {
 let _projectRPC: ReturnType<typeof BrowserView.defineRPC> | null = null;
 
 // プロジェクトウィンドウを開く
+// プロジェクトウィンドウのURLを切り替えてリサイズ
+// プロジェクトウィンドウのURL読み込みコア（許可→loadURL→deny）
+const _loadProjectURL = async (htmlPath: string): Promise<void> => {
+    if (!_projectWindow) throw new Error("プロジェクトウィンドウが開いていません");
+    const projDir = join(_projectWorkDir, _currentProjectName || "project");
+    // 遷移を一時許可
+    _projectWindow.webview.setNavigationRules([`file://${projDir}/*`]);
+    // file:// が付いていない場合は付ける
+    if (!htmlPath.startsWith("file://")) {
+        htmlPath = "file://" + htmlPath;
+    }
+    await _projectWindow.webview.loadURL(htmlPath);
+    // ロックはフロント側の DOMContentLoaded 通知（pageLoadedRequest）で行う
+};
+
+const navigateProjectWindow = async (htmlPath: string, w: number, h: number): Promise<void> => {
+    await _loadProjectURL(htmlPath);
+    _projectWindow!.setSize(w, h);
+    console.log(`[project] navigate: ${htmlPath} (${w}x${h})`);
+};
+
 const openProjectWindow = async (htmlPath: string, w: number, h: number): Promise<void> => {
     closeProjectWindow();
     _session.clear();
@@ -815,6 +836,10 @@ const openProjectWindow = async (htmlPath: string, w: number, h: number): Promis
             messages: {
                 logRequest: ({ level, message }) => {
                     writeLog(level, `[proj] ${message}`);
+                },
+                pageLoadedRequest: () => {
+                    // ページ読み込み完了 → 遷移をロック
+                    _projectWindow?.webview.setNavigationRules(["^*"]);
                 },
                 navigateFormRequest: async ({ formName }) => {
                     try {
@@ -856,10 +881,13 @@ const openProjectWindow = async (htmlPath: string, w: number, h: number): Promis
     });
     _projectWindow = new BrowserWindow({
         title: _currentProjectName || "VJA Project",
-        url: `file://${htmlPath}`,
         frame: { x: 100, y: 100, width: w, height: h },
         rpc: _projectRPC,
     });
+    // 初期状態: 全遷移をブロック（vja.navigate()経由のみ許可）
+    _projectWindow.webview.setNavigationRules(["^*"]);
+    // 最初のフォームを読み込む
+    await _loadProjectURL(htmlPath);
     // win.on("close") で確実にクローズ検知
     _projectWindow.on("close", () => {
         _onProjectWindowClosed();
@@ -887,14 +915,14 @@ const closeProjectWindow = (): void => {
         } catch (e) {
             console.error("[project] closeProjectWindow エラー:", e);
         } finally {
-            try { _session.clear(); } catch {}
+            try { _session.clear(); } catch { }
         }
     }
 };
 
 // プロジェクトウィンドウが閉じられた時の処理
 const _onProjectWindowClosed = (): void => {
-// 非同期でOnExitを実行してから終了フラグをON
+    // 非同期でOnExitを実行してから終了フラグをON
     (async () => {
         try {
             await runOnExit();
@@ -907,7 +935,7 @@ const _onProjectWindowClosed = (): void => {
                 _session.clear();
                 // vjaデザイナー側にボタンリセットを通知
                 setTimeout(() => {
-try {
+                    try {
                         browserWindow.webview.rpc.send.stopProjectResult({ ok: true });
                     } catch (e) {
                         console.warn("[project] stopProjectResult送信エラー:", e);
@@ -933,13 +961,6 @@ const getProjectFormPath = (formName: string): {
     return { ok: true, path, w, h };
 };
 
-// プロジェクトウィンドウのURLを切り替えてリサイズ
-const navigateProjectWindow = async (htmlPath: string, w: number, h: number): Promise<void> => {
-    if (!_projectWindow) throw new Error("プロジェクトウィンドウが開いていません");
-    await _projectWindow.webview.loadURL(htmlPath);
-    _projectWindow.setSize(w, h);
-    console.log(`[project] navigate: ${htmlPath} (${w}x${h})`);
-};
 
 // ── BrowserWindow 生成 ────────────────────────────────
 const isWin = process.platform === "win32";
@@ -963,7 +984,7 @@ if (isWin) {
         const { width, height } = primaryDisplay.workArea;
         initW = width;
         initH = height - (((h - height) >> 1) - 1);
-    } catch {}
+    } catch { }
 }
 
 const browserWindow = new BrowserWindow({

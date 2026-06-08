@@ -112,6 +112,11 @@ console.warn  = (...a: any[]) => { _origConsole.warn(...a);  w.vja.log?.warn?.( 
 console.error = (...a: any[]) => { _origConsole.error(...a); w.vja.log?.error?.(_fmtArgs(...a))?.catch(() => {}); };
 console.debug = (...a: any[]) => { _origConsole.debug(...a); w.vja.log?.debug?.(_fmtArgs(...a))?.catch(() => {}); };
 
+// ページ読み込み完了をBun側に通知（Bun側でnavigationをロックする）
+document.addEventListener("DOMContentLoaded", () => {
+    s.pageLoadedRequest({});
+});
+
 // 未捕捉エラー・未処理Rejection もBun側ログに転送
 window.addEventListener("error", (e: ErrorEvent) => {
     w.vja.log?.error?.(`[UnhandledError] ${e.message} (${e.filename}:${e.lineno})`)?.catch(() => {});

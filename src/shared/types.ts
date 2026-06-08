@@ -128,6 +128,7 @@ export type VjaRPCType = {
 
             // ── フォーム切り替え（プロジェクト実行中） ────
             navigateFormRequest: { formName: string };
+            pageLoadedRequest: { _?: never };
 
             // ── セッション取得 ────────────────────────────
             sessionGetRequest: { key: string };
