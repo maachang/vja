@@ -927,15 +927,17 @@ const getProjectFormPath = (formName: string): {
     const form = _currentProjectForms.find(f => f.cfg.title === formName);
     if (!form) return { ok: false, error: `フォーム "${formName}" が見つかりません` };
     const projName = _currentProjectName || "project";
-    const path = join(_projectWorkDir, projName, `${formName}.html`);
-    return { ok: true, path, w: form.cfg.w, h: form.cfg.h };
+    const path = `file://${join(_projectWorkDir, projName, `${formName}.html`)}`;
+    const w = form.cfg.w || 640;
+    const h = form.cfg.h || 420;
+    return { ok: true, path, w, h };
 };
 
 // プロジェクトウィンドウのURLを切り替えてリサイズ
 const navigateProjectWindow = async (htmlPath: string, w: number, h: number): Promise<void> => {
     if (!_projectWindow) throw new Error("プロジェクトウィンドウが開いていません");
-    await _projectWindow.loadURL(`file://${htmlPath}`);
-    _projectWindow.setSize({ width: w, height: h });
+    await _projectWindow.webview.loadURL(htmlPath);
+    _projectWindow.setSize(w, h);
     console.log(`[project] navigate: ${htmlPath} (${w}x${h})`);
 };
 
