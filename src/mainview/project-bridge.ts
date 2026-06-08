@@ -16,6 +16,9 @@ const pending = {
     navigateForm: null as Pending<{ ok: boolean; error?: string }> | null,
     sessionGet:   null as Pending<{ ok: boolean; value: string | null }> | null,
     sessionSet:   null as Pending<{ ok: boolean }> | null,
+    dbQuery:      null as Pending<{ ok: boolean; rows: any[]; error?: string }> | null,
+    dbExecute:    null as Pending<{ ok: boolean; result: any; error?: string }> | null,
+    dbTransaction:null as Pending<{ ok: boolean; error?: string }> | null,
 };
 
 const resolve = <K extends keyof typeof pending>(
@@ -43,6 +46,9 @@ const rpc = Electroview.defineRPC<VjaRPCType>({
             navigateFormResult: (v: any) => resolve("navigateForm", v),
             sessionGetResult:   (v: any) => resolve("sessionGet",   v),
             sessionSetResult:   (v: any) => resolve("sessionSet",   v),
+            dbQueryResult:      (v: any) => resolve("dbQuery",      v),
+            dbExecuteResult:    (v: any) => resolve("dbExecute",    v),
+            dbTransactionResult:(v: any) => resolve("dbTransaction", v),
         },
     },
 });
@@ -74,6 +80,96 @@ w.vja.app = {
 // ショートハンド
 w.vja.dialog  = (message: string) => w.vja.app.showDialog(message);
 w.vja.confirm = (message: string) => w.vja.app.showConfirm(message);
+
+// DB操作
+w.vja.db = {
+    query: (sql: string, params?: any[]) =>
+        mkPromise("dbQuery", () => s.dbQueryRequest({ sql, params }))
+            .then((r: any) => r.rows),
+    execute: (sql: string, params?: any[]) =>
+        mkPromise("dbExecute", () => s.dbExecuteRequest({ sql, params })),
+    transaction: (statements: { sql: string; params?: any[] }[]) =>
+        mkPromise("dbTransaction", () => s.dbTransactionRequest({ statements })),
+
+    // テーブル全行削除
+    clearTable: (tableName: string) =>
+        mkPromise("dbExecute", () => s.dbExecuteRequest({ sql: `DELETE FROM ${tableName}` })),
+
+    // テーブル一覧取得
+    tables: async (): Promise<string[]> => {
+        const rows = await mkPromise<any>("dbQuery", () =>
+            s.dbQueryRequest({ sql: "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name" })
+        ).then((r: any) => r.rows);
+        return rows.map((r: any) => r.name);
+    },
+
+    // CSV取得（where句省略可）
+    exportCsv: async (tableName: string, where?: string): Promise<string> => {
+        const sql = where ? `SELECT * FROM ${tableName} WHERE ${where}` : `SELECT * FROM ${tableName}`;
+        const rows: any[] = await mkPromise<any>("dbQuery", () => s.dbQueryRequest({ sql })).then((r: any) => r.rows);
+        if (rows.length === 0) return "";
+        const headers = Object.keys(rows[0]);
+        const esc = (v: any) => {
+            const str = v === null || v === undefined ? "" : String(v);
+            if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+                return '"' + str.replace(/"/g, '""') + '"';
+            }
+            return str;
+        };
+        const lines = [headers.join(","), ...rows.map(r => headers.map(h => esc(r[h])).join(","))];
+        return lines.join("\n");
+    },
+
+        // JSON取得（where句省略可）
+    exportJson: async (tableName: string, where?: string): Promise<any[]> => {
+        const sql = where ? `SELECT * FROM ${tableName} WHERE ${where}` : `SELECT * FROM ${tableName}`;
+        return mkPromise<any>("dbQuery", () => s.dbQueryRequest({ sql })).then((r: any) => r.rows);
+    },
+
+    // CSVインポート（既存データに追記）
+    importCsv: async (tableName: string, csv: string): Promise<void> => {
+        const lines = csv.split("\n").filter((l: string) => l.trim());
+        if (lines.length < 2) return;
+        const parseCsvLine = (line: string): string[] => {
+            const result: string[] = [];
+            let cur = "", inQ = false;
+            for (let i = 0; i < line.length; i++) {
+                const c = line[i];
+                if (inQ) {
+                    if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
+                    else if (c === '"') inQ = false;
+                    else cur += c;
+                } else {
+                    if (c === '"') inQ = true;
+                    else if (c === ",") { result.push(cur); cur = ""; }
+                    else cur += c;
+                }
+            }
+            result.push(cur);
+            return result;
+        };
+        const headers = parseCsvLine(lines[0]);
+        const statements = lines.slice(1).map((line: string) => {
+            const vals = parseCsvLine(line);
+            return {
+                sql: `INSERT INTO ${tableName} (${headers.join(",")}) VALUES (${headers.map(() => "?").join(",")})`,
+                params: vals,
+            };
+        });
+        await mkPromise("dbTransaction", () => s.dbTransactionRequest({ statements }));
+    },
+
+        // JSONインポート（既存データに追記）
+    importJson: async (tableName: string, data: Record<string, any>[]): Promise<void> => {
+        if (!data || data.length === 0) return;
+        const headers = Object.keys(data[0]);
+        const statements = data.map(row => ({
+            sql: `INSERT INTO ${tableName} (${headers.join(",")}) VALUES (${headers.map(() => "?").join(",")})`,
+            params: headers.map(h => row[h] ?? null),
+        }));
+        await mkPromise("dbTransaction", () => s.dbTransactionRequest({ statements }));
+    },
+};
 
 // フォーム切り替え
 w.vja.project = {
