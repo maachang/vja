@@ -2330,6 +2330,7 @@
             const isJs = ta.id === "js-ta";
             const state = isJs ? _ju : _yu;
 
+            // ── Undo / Redo ───────────────────────────────────
             if (ctrl && e.key.toLowerCase() === "z" && !e.shiftKey) {
                 e.preventDefault(); editorUndo(ta.id, state); return;
             }
@@ -2337,96 +2338,101 @@
                 (ctrl && e.key.toLowerCase() === "y")) {
                 e.preventDefault(); editorRedo(ta.id, state); return;
             }
+
+            // ── 行ブロック操作の共通変数取得ヘルパー ─────────
+            // s/en: カーソル位置, v: テキスト全体
+            // ls: 行頭, le: 行末（-1=最終行）
+            const getBlock = () => {
+                const s = ta.selectionStart, en = ta.selectionEnd, v = ta.value;
+                const ls = v.lastIndexOf("\n", s - 1) + 1;
+                const le = v.indexOf("\n", en);
+                return { s, en, v, ls, le };
+            };
+            const applyBlock = (ls, le, v, nb) => {
+                ta.value = v.slice(0, ls) + nb + (le === -1 ? "" : v.slice(le));
+                ta.selectionStart = ls;
+                ta.selectionEnd = ls + nb.length;
+            };
+
+            // ── Tab: インデント追加 ───────────────────────────
             if (e.key === "Tab" && !e.shiftKey) {
                 e.preventDefault();
                 editorUndoPush(state, ta.value);
-                const INDENT = "    ";
-                const s = ta.selectionStart, en = ta.selectionEnd, v = ta.value;
+                const { s, en, v, ls, le } = getBlock();
                 if (s === en) {
-                    ta.value = v.slice(0,s) + INDENT + v.slice(en);
-                    ta.selectionStart = ta.selectionEnd = s + INDENT.length;
+                    ta.value = v.slice(0, s) + "    " + v.slice(s);
+                    ta.selectionStart = ta.selectionEnd = s + 4;
                 } else {
-                    const ls = v.lastIndexOf("\n", s-1)+1, le = v.indexOf("\n", en);
-                    const blk = v.slice(ls, le===-1?v.length:le);
-                    const nb = blk.split("\n").map(l=>INDENT+l).join("\n");
-                    ta.value = v.slice(0,ls)+nb+(le===-1?"":v.slice(le));
-                    ta.selectionStart=ls; ta.selectionEnd=ls+nb.length;
+                    const blk = v.slice(ls, le === -1 ? v.length : le);
+                    applyBlock(ls, le, v, blk.split("\n").map(l => "    " + l).join("\n"));
                 }
                 editorHlUpdate(ta.id); return;
             }
+
+            // ── Ctrl+[: インデント削除 ────────────────────────
             if (e.key === "[" && ctrl) {
                 e.preventDefault();
                 editorUndoPush(state, ta.value);
-                const s=ta.selectionStart, en=ta.selectionEnd, v=ta.value;
-                const ls=v.lastIndexOf("\n",s-1)+1, le=v.indexOf("\n",en);
-                const blk=v.slice(ls,le===-1?v.length:le);
-                const nb=blk.split("\n").map(l=>{
-                    if(l.startsWith("    "))return l.slice(4);
-                    if(l.startsWith("   ")) return l.slice(3);
-                    if(l.startsWith("  "))  return l.slice(2);
-                    if(l.startsWith(" "))   return l.slice(1);
-                    return l;
-                }).join("\n");
-                ta.value=v.slice(0,ls)+nb+(le===-1?"":v.slice(le));
-                ta.selectionStart=ls; ta.selectionEnd=ls+nb.length;
+                const { v, ls, le } = getBlock();
+                const blk = v.slice(ls, le === -1 ? v.length : le);
+                applyBlock(ls, le, v, blk.split("\n").map(l => l.replace(/^ {1,4}/, "")).join("\n"));
                 editorHlUpdate(ta.id); return;
             }
+
+            // ── Ctrl+]: インデント追加 ────────────────────────
             if (e.key === "]" && ctrl) {
                 e.preventDefault();
                 editorUndoPush(state, ta.value);
-                const s=ta.selectionStart, en=ta.selectionEnd, v=ta.value;
-                const ls=v.lastIndexOf("\n",s-1)+1, le=v.indexOf("\n",en);
-                const blk=v.slice(ls,le===-1?v.length:le);
-                const nb=blk.split("\n").map(l=>"    "+l).join("\n");
-                ta.value=v.slice(0,ls)+nb+(le===-1?"":v.slice(le));
-                ta.selectionStart=ls; ta.selectionEnd=ls+nb.length;
+                const { v, ls, le } = getBlock();
+                const blk = v.slice(ls, le === -1 ? v.length : le);
+                applyBlock(ls, le, v, blk.split("\n").map(l => "    " + l).join("\n"));
                 editorHlUpdate(ta.id); return;
             }
+
+            // ── Ctrl+/: コメントトグル ────────────────────────
             if (e.key === "/" && ctrl) {
                 e.preventDefault();
                 editorUndoPush(state, ta.value);
-                const s=ta.selectionStart, en=ta.selectionEnd, v=ta.value;
-                const ls=v.lastIndexOf("\n",s-1)+1, le=v.indexOf("\n",en);
-                const blk=v.slice(ls,le===-1?v.length:le);
-                const COM=isJs?"// ":"# ";
-                const nb=blk.split("\n").map(l=>{
-                    if(l.trimStart().startsWith(COM.trim())){
-                        const i=l.indexOf(COM.trim());
-                        return l.slice(0,i)+l.slice(i+COM.length);
+                const { v, ls, le } = getBlock();
+                const blk = v.slice(ls, le === -1 ? v.length : le);
+                const COM = isJs ? "// " : "# ";
+                applyBlock(ls, le, v, blk.split("\n").map(l => {
+                    if (l.trimStart().startsWith(COM.trim())) {
+                        const i = l.indexOf(COM.trim());
+                        return l.slice(0, i) + l.slice(i + COM.length);
                     }
-                    return COM+l;
-                }).join("\n");
-                ta.value=v.slice(0,ls)+nb+(le===-1?"":v.slice(le));
-                ta.selectionStart=ls; ta.selectionEnd=ls+nb.length;
+                    return COM + l;
+                }).join("\n"));
                 editorHlUpdate(ta.id); return;
             }
+
+            // ── Ctrl+D: 行複製 ────────────────────────────────
             if (e.key === "d" && ctrl) {
                 e.preventDefault();
                 editorUndoPush(state, ta.value);
-                const s=ta.selectionStart, en=ta.selectionEnd, v=ta.value;
-                const ls=v.lastIndexOf("\n",s-1)+1, le=v.indexOf("\n",en);
-                const line=v.slice(ls,le===-1?v.length:le);
-                const ins="\n"+line;
-                ta.value=v.slice(0,le===-1?v.length:le)+ins+(le===-1?"":v.slice(le));
-                ta.selectionStart=ta.selectionEnd=(le===-1?v.length:le)+ins.length;
+                const { v, ls, le } = getBlock();
+                const line = v.slice(ls, le === -1 ? v.length : le);
+                const ins = "\n" + line;
+                ta.value = v.slice(0, le === -1 ? v.length : le) + ins + (le === -1 ? "" : v.slice(le));
+                ta.selectionStart = ta.selectionEnd = (le === -1 ? v.length : le) + ins.length;
                 editorHlUpdate(ta.id); return;
             }
+
+            // ── Ctrl+K: 行削除 ────────────────────────────────
             if (e.key === "k" && ctrl) {
                 e.preventDefault();
                 editorUndoPush(state, ta.value);
-                const s=ta.selectionStart, en=ta.selectionEnd, v=ta.value;
-                const ls=v.lastIndexOf("\n",s-1)+1, le=v.indexOf("\n",en);
-                ta.value=v.slice(0,ls)+v.slice(le===-1?v.length:le+1);
-                ta.selectionStart=ta.selectionEnd=ls;
+                const { v, ls, le } = getBlock();
+                ta.value = v.slice(0, ls) + v.slice(le === -1 ? v.length : le + 1);
+                ta.selectionStart = ta.selectionEnd = ls;
                 editorHlUpdate(ta.id); return;
             }
-            // ── }: 現在行のインデントを1段下げる ─────────────
+
+            // ── }: JS の自動 dedent ───────────────────────────
             if (e.key === "}" && isJs) {
-                const s = ta.selectionStart, en = ta.selectionEnd, v = ta.value;
-                const ls = v.lastIndexOf("\n", s - 1) + 1;
+                const { s, en, v, ls } = getBlock();
                 const curLine = v.slice(ls, s);
-                // 現在行が空白のみ（インデントだけ）の場合に dedent
-                if (curLine.match(/^\s+$/) && curLine.length >= 4) {
+                if (/^\s+$/.test(curLine) && curLine.length >= 4) {
                     e.preventDefault();
                     editorUndoPush(state, ta.value);
                     const newIndent = curLine.slice(4);
@@ -2435,44 +2441,38 @@
                     editorHlUpdate(ta.id); return;
                 }
             }
-            // ── Enter: 自動インデント ──────────────────────────
+
+            // ── Enter: 自動インデント ─────────────────────────
             if (e.key === "Enter") {
                 e.preventDefault();
                 editorUndoPush(state, ta.value);
-                const s = ta.selectionStart, en = ta.selectionEnd, v = ta.value;
-                const ls = v.lastIndexOf("\n", s - 1) + 1;
+                const { s, en, v, ls } = getBlock();
                 const curLine = v.slice(ls, s);
                 const baseIndent = curLine.match(/^(\s*)/)[1];
-                let insert;
+                let extra = "";
                 if (isJs) {
-                    // JavaScript: { の後はインデント+1段
-                    const trimmed = curLine.trimEnd();
-                    const addIndent = trimmed.endsWith("{") ? "    " : "";
-                    // } の行で Enter: インデントを1段下げる
-                    const trimmedStart = curLine.trimStart();
-                    if (trimmedStart.startsWith("}") && baseIndent.length >= 4) {
-                        insert = "\n" + baseIndent.slice(4);
-                    } else {
-                        insert = "\n" + baseIndent + addIndent;
+                    // { で終わる行 → +1段、} で始まる行 → -1段
+                    if (curLine.trimEnd().endsWith("{")) {
+                        extra = "    ";
+                    } else if (curLine.trimStart().startsWith("}") && baseIndent.length >= 4) {
+                        const insert = "\n" + baseIndent.slice(4);
+                        ta.value = v.slice(0, s) + insert + v.slice(en);
+                        ta.selectionStart = ta.selectionEnd = s + insert.length;
+                        editorHlUpdate(ta.id); return;
                     }
                 } else {
-                    // YAML: "key:" の後は+2sp、"- " の次行も同レベル"- "
-                    const trimmed = curLine.trimStart();
-                    let extra = "";
-                    if (/:\s*$/.test(trimmed) && !trimmed.startsWith("-")) {
-                        extra = "  ";
-                    } else if (/^-\s/.test(trimmed)) {
-                        extra = "  ";
-                    }
-                    insert = "\n" + baseIndent + extra;
+                    // YAML: key: の後 +2sp、- の後 +2sp
+                    const t = curLine.trimStart();
+                    if (/:\s*$/.test(t) && !t.startsWith("-")) extra = "  ";
+                    else if (/^-\s/.test(t)) extra = "  ";
                 }
+                const insert = "\n" + baseIndent + extra;
                 ta.value = v.slice(0, s) + insert + v.slice(en);
                 ta.selectionStart = ta.selectionEnd = s + insert.length;
                 editorHlUpdate(ta.id); return;
             }
         }
 
-        // ── ダブルクリック: 区切り文字（./-/:/など）で単語を分割して選択 ──
         // ── ダブルクリック選択: 1回目mousedown後にsetTimeoutで位置確定 ──
         let _editorClickPos = -1;
         let _editorLastMouseDown = 0;
@@ -2747,23 +2747,8 @@
         /* ── YAML シンタックスハイライト ── */
 
         /* ── JavaScript シンタックスハイライト ── */
-        function jsHlUpdate() {
-            const ta = $("js-ta");
-            const hl = $("js-hl");
-            if (!ta || !hl) return;
-            hl.innerHTML = jsTokenize(ta.value);
-            hl.style.height = ta.offsetHeight + "px";
-            hl.style.width = ta.offsetWidth + "px";
-            jsHlSync();
-        }
-        function jsHlSync() {
-            const ta = $("js-ta");
-            const hl = $("js-hl");
-            if (!ta || !hl) return;
-            hl.scrollTop = ta.scrollTop;
-            hl.scrollLeft = ta.scrollLeft;
-            hl.style.height = ta.offsetHeight + "px";
-        }
+        function jsHlUpdate() { _hlUpdate("js-ta", "js-hl", jsTokenize); }
+        function jsHlSync()   { _hlSync("js-ta",  "js-hl"); }
         function jsTokenize(code) {
             const KW = /^(function|return|if|else|for|while|do|switch|case|break|continue|const|let|var|new|this|typeof|instanceof|try|catch|finally|throw|await|async|of|in|class|extends|import|export|default|void|delete|yield)$/;
             const BOOL = /^(true|false|null|undefined|NaN|Infinity)$/;
@@ -2899,18 +2884,14 @@
         }
 
         function editorUndo(taId, state) {
-            // まず現在の状態を保存
             const ta = $(taId);
             if (!ta) return;
-            if (state.stack[state.idx] !== ta.value) {
-                editorUndoPush(state, ta.value);
-            }
+            if (state.stack[state.idx] !== ta.value) editorUndoPush(state, ta.value);
             if (state.idx <= 0) return;
             state.busy = true;
             state.idx--;
             ta.value = state.stack[state.idx];
-            if (taId === "yaml-ta") { yamlHlUpdate(); editorUpdateGutter("yaml-ta","yaml-gutter"); }
-            else                    { jsHlUpdate();   editorUpdateGutter("js-ta",  "js-gutter");   }
+            editorHlUpdate(taId);
             setTimeout(() => { state.busy = false; }, 50);
         }
 
@@ -2921,30 +2902,29 @@
             state.busy = true;
             state.idx++;
             ta.value = state.stack[state.idx];
-            if (taId === "yaml-ta") { yamlHlUpdate(); editorUpdateGutter("yaml-ta","yaml-gutter"); }
-            else                    { jsHlUpdate();   editorUpdateGutter("js-ta",  "js-gutter");   }
+            editorHlUpdate(taId);
             setTimeout(() => { state.busy = false; }, 50);
         }
 
 
-        function yamlHlUpdate() {
-            const ta = $("yaml-ta");
-            const hl = $("yaml-hl");
+        // ── ハイライト共通処理 ───────────────────────────
+        function _hlSync(taId, hlId) {
+            const ta = $(taId), hl = $(hlId);
             if (!ta || !hl) return;
-            hl.innerHTML = yamlTokenize(ta.value);
-            // テキストエリアのサイズに合わせる
-            hl.style.height = ta.offsetHeight + "px";
-            hl.style.width = ta.offsetWidth + "px";
-            yamlHlSync();
-        }
-        function yamlHlSync() {
-            const ta = $("yaml-ta");
-            const hl = $("yaml-hl");
-            if (!ta || !hl) return;
-            hl.scrollTop = ta.scrollTop;
+            hl.scrollTop  = ta.scrollTop;
             hl.scrollLeft = ta.scrollLeft;
             hl.style.height = ta.offsetHeight + "px";
         }
+        function _hlUpdate(taId, hlId, tokenizeFn) {
+            const ta = $(taId), hl = $(hlId);
+            if (!ta || !hl) return;
+            hl.innerHTML = tokenizeFn(ta.value);
+            hl.style.height = ta.offsetHeight + "px";
+            hl.style.width  = ta.offsetWidth  + "px";
+            _hlSync(taId, hlId);
+        }
+        function yamlHlUpdate() { _hlUpdate("yaml-ta", "yaml-hl", yamlTokenize); }
+        function yamlHlSync()   { _hlSync("yaml-ta",  "yaml-hl"); }
         function yamlTokenize(text) {
             return text.split("\n").map(line => {
                 // コメント行
