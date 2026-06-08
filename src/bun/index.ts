@@ -651,6 +651,54 @@ const buildWidgetHtml = (w: any): string => {
         }
         case "slider":
             return `<input type="range" ${id} min="${p.min||0}" max="${p.max||100}" value="${p.value||0}" step="${p.step||1}" ${p.disabled?"disabled":""} style="${base}accent-color:#5b7bfa">`;
+        case "hscroll": {
+            const hmin = p.min||0, hmax = p.max||100, hval = p.value||0, hstep = p.step||1;
+            const hbg = p.bg||"#ddd";
+            return `<div ${id} data-min="${hmin}" data-max="${hmax}" data-val="${hval}" data-step="${hstep}"
+                style="${base}background:${hbg};border:1px solid #999;border-radius:2px;display:flex;align-items:center;justify-content:space-between;padding:0 2px;box-sizing:border-box;user-select:none"
+                onclick="(function(el){
+                    const min=+el.dataset.min,max=+el.dataset.max,step=+el.dataset.step;
+                    const rect=el.getBoundingClientRect(),btnW=14;
+                    const x=event.clientX-rect.left;
+                    let val=+el.dataset.val;
+                    if(x<btnW){val=Math.max(min,val-step);}
+                    else if(x>rect.width-btnW){val=Math.min(max,val+step);}
+                    else{val=Math.round(min+(max-min)*((x-btnW)/(rect.width-btnW*2))/step)*step;}
+                    el.dataset.val=val;
+                    el.querySelector('.hs-thumb').style.left=((val-min)/(max-min)*100)+'%';
+                    el.dispatchEvent(new CustomEvent('scroll',{detail:{value:val},bubbles:true}));
+                })(this)">
+                <span style="font-size:9px;flex-shrink:0">◀</span>
+                <div style="flex:1;height:6px;background:#bbb;margin:0 3px;border-radius:3px;position:relative">
+                    <div class="hs-thumb" style="position:absolute;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;background:#666;border-radius:50%;left:${Math.round((hval-hmin)/(hmax-hmin)*100)}%"></div>
+                </div>
+                <span style="font-size:9px;flex-shrink:0">▶</span>
+            </div>`;
+        }
+        case "vscroll": {
+            const vmin = p.min||0, vmax = p.max||100, vval = p.value||0, vstep = p.step||1;
+            const vbg = p.bg||"#ddd";
+            return `<div ${id} data-min="${vmin}" data-max="${vmax}" data-val="${vval}" data-step="${vstep}"
+                style="${base}background:${vbg};border:1px solid #999;border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;box-sizing:border-box;user-select:none"
+                onclick="(function(el){
+                    const min=+el.dataset.min,max=+el.dataset.max,step=+el.dataset.step;
+                    const rect=el.getBoundingClientRect(),btnH=14;
+                    const y=event.clientY-rect.top;
+                    let val=+el.dataset.val;
+                    if(y<btnH){val=Math.max(min,val-step);}
+                    else if(y>rect.height-btnH){val=Math.min(max,val+step);}
+                    else{val=Math.round(min+(max-min)*((y-btnH)/(rect.height-btnH*2))/step)*step;}
+                    el.dataset.val=val;
+                    el.querySelector('.vs-thumb').style.top=((val-min)/(max-min)*100)+'%';
+                    el.dispatchEvent(new CustomEvent('scroll',{detail:{value:val},bubbles:true}));
+                })(this)">
+                <span style="font-size:9px;flex-shrink:0">▲</span>
+                <div style="width:6px;flex:1;background:#bbb;margin:3px 0;border-radius:3px;position:relative">
+                    <div class="vs-thumb" style="position:absolute;left:50%;transform:translate(-50%,-50%);width:12px;height:12px;background:#666;border-radius:50%;top:${Math.round((vval-vmin)/(vmax-vmin)*100)}%"></div>
+                </div>
+                <span style="font-size:9px;flex-shrink:0">▼</span>
+            </div>`;
+        }
         default:
             return `<div ${id} style="${base}"></div>`;
     }
