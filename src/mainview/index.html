@@ -2420,6 +2420,99 @@
                 ta.selectionStart=ta.selectionEnd=ls;
                 editorHlUpdate(ta.id); return;
             }
+            // ── }: 現在行のインデントを1段下げる ─────────────
+            if (e.key === "}" && isJs) {
+                const s = ta.selectionStart, en = ta.selectionEnd, v = ta.value;
+                const ls = v.lastIndexOf("\n", s - 1) + 1;
+                const curLine = v.slice(ls, s);
+                // 現在行が空白のみ（インデントだけ）の場合に dedent
+                if (curLine.match(/^\s+$/) && curLine.length >= 4) {
+                    e.preventDefault();
+                    editorUndoPush(state, ta.value);
+                    const newIndent = curLine.slice(4);
+                    ta.value = v.slice(0, ls) + newIndent + "}" + v.slice(en);
+                    ta.selectionStart = ta.selectionEnd = ls + newIndent.length + 1;
+                    editorHlUpdate(ta.id); return;
+                }
+            }
+            // ── Enter: 自動インデント ──────────────────────────
+            if (e.key === "Enter") {
+                e.preventDefault();
+                editorUndoPush(state, ta.value);
+                const s = ta.selectionStart, en = ta.selectionEnd, v = ta.value;
+                const ls = v.lastIndexOf("\n", s - 1) + 1;
+                const curLine = v.slice(ls, s);
+                const baseIndent = curLine.match(/^(\s*)/)[1];
+                let insert;
+                if (isJs) {
+                    // JavaScript: { の後はインデント+1段
+                    const trimmed = curLine.trimEnd();
+                    const addIndent = trimmed.endsWith("{") ? "    " : "";
+                    // } の行で Enter: インデントを1段下げる
+                    const trimmedStart = curLine.trimStart();
+                    if (trimmedStart.startsWith("}") && baseIndent.length >= 4) {
+                        insert = "\n" + baseIndent.slice(4);
+                    } else {
+                        insert = "\n" + baseIndent + addIndent;
+                    }
+                } else {
+                    // YAML: "key:" の後は+2sp、"- " の次行も同レベル"- "
+                    const trimmed = curLine.trimStart();
+                    let extra = "";
+                    if (/:\s*$/.test(trimmed) && !trimmed.startsWith("-")) {
+                        extra = "  ";
+                    } else if (/^-\s/.test(trimmed)) {
+                        extra = "  ";
+                    }
+                    insert = "\n" + baseIndent + extra;
+                }
+                ta.value = v.slice(0, s) + insert + v.slice(en);
+                ta.selectionStart = ta.selectionEnd = s + insert.length;
+                editorHlUpdate(ta.id); return;
+            }
+        }
+
+        // ── ダブルクリック: 区切り文字（./-/:/など）で単語を分割して選択 ──
+        // ── ダブルクリック選択: 1回目mousedown後にsetTimeoutで位置確定 ──
+        let _editorClickPos = -1;
+        let _editorLastMouseDown = 0;
+        let _editorDblPending = false;
+        function editorMouseDownHandler2(e) {
+            const ta = e.target;
+            if (!ta) return;
+            const now = Date.now();
+            const isFirst = (now - _editorLastMouseDown) > 300;
+            _editorLastMouseDown = now;
+            if (isFirst) {
+                // 1回目: カーソル確定後に位置を記録
+                _editorClickPos = -1;
+                _editorDblPending = false;
+                setTimeout(() => {
+                    if (!_editorDblPending) {
+                        _editorClickPos = ta.selectionStart;
+                    }
+                }, 0);
+            }
+            // 2回目はsetTimeoutを実行しない（ブラウザ選択で上書きされるため）
+        }
+        function editorDblClickHandler(e) {
+            const ta = e.target;
+            if (!ta) return;
+            _editorDblPending = true;
+            const v = ta.value;
+            const pos = _editorClickPos >= 0 ? _editorClickPos : ta.selectionStart;
+            const SEP = /[\s\.\-\:\/\\,;\(\)\[\]\{\}"'`=+*&|!@#%^~<>?]/;
+            let start = pos;
+            let end = pos;
+            while (start > 0 && !SEP.test(v[start - 1])) start--;
+            while (end < v.length && !SEP.test(v[end])) end++;
+            if (start === end) {
+                start = pos;
+                end = Math.min(pos + 1, v.length);
+            }
+            ta.selectionStart = start;
+            ta.selectionEnd = end;
+            _editorClickPos = -1;
         }
 
         function editorHlUpdate(taId) {
@@ -2497,6 +2590,10 @@
                 const jta = $("js-ta");
                 if (yta) yta.addEventListener("keydown", editorKeyHandler);
                 if (jta) jta.addEventListener("keydown", editorKeyHandler);
+                if (yta) yta.addEventListener("mousedown", editorMouseDownHandler2);
+                if (jta) jta.addEventListener("mousedown", editorMouseDownHandler2);
+                if (yta) yta.addEventListener("dblclick", editorDblClickHandler);
+                if (jta) jta.addEventListener("dblclick", editorDblClickHandler);
                 editorUndoInit("yaml-ta", _yu, cur);
                 editorUndoInit("js-ta",   _ju, curJs);
                 yamlInitResize();
