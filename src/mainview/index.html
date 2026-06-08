@@ -743,6 +743,12 @@
         let constants = [];
         // SQLiteテーブル定義リスト
         let tables = [];
+        // ── モーダル編集用一時変数（window汚染を避けるためスコープ変数で管理） ──
+        let _constRows = [];
+        let _tblEdit = null;
+        let _tblEditIdx = -1;
+        let _coldefWid = null;
+        let _coldefRows = [];
         let undoStack = [];
         let redoStack = [];
         let activeTool = "pointer";
@@ -753,6 +759,16 @@
         const SNAP = 8;
 
         // 現在フォームの参照を更新する
+        // ── UI全更新（フォーム切替・Undo/Redo後など） ──
+        function refreshAll() {
+            syncCurForm();
+            buildFormSelect();
+            applyForm();
+            fullRedraw();
+            renderProps();
+            updateCount();
+        }
+
         function syncCurForm() {
             const f = forms[curFormIdx];
             widgets = f.widgets;
@@ -1700,27 +1716,17 @@
             commitWidget(w, {props: false});
         }
 
-        function syncPropXY(w) {
-            // live update while dragging
-            const rows = [...$("plist").querySelectorAll(".prow")];
-            rows.forEach((r) => {
+        // ── プロパティパネルの数値を直接更新（ドラッグ中のlive update） ──
+        function _syncPropValues(map) {
+            [...$("plist").querySelectorAll(".prow")].forEach((r) => {
                 const inp = r.querySelector("input[type=number]");
                 const lbl = r.querySelector(".pk")?.textContent;
-                if (!inp || !lbl) return;
-                if (lbl === "Left") inp.value = w.x;
-                if (lbl === "Top") inp.value = w.y;
+                if (!inp || !lbl || !(lbl in map)) return;
+                inp.value = map[lbl];
             });
         }
-        function syncPropWH(w) {
-            const rows = [...$("plist").querySelectorAll(".prow")];
-            rows.forEach((r) => {
-                const inp = r.querySelector("input[type=number]");
-                const lbl = r.querySelector(".pk")?.textContent;
-                if (!inp || !lbl) return;
-                if (lbl === "Width") inp.value = w.w;
-                if (lbl === "Height") inp.value = w.h;
-            });
-        }
+        function syncPropXY(w) { _syncPropValues({"Left": w.x, "Top":    w.y}); }
+        function syncPropWH(w) { _syncPropValues({"Width": w.w, "Height": w.h}); }
 
         function renderFormProps() {
             const pl = $("plist");
@@ -3017,16 +3023,12 @@
           MODAL
         ═══════════════════════════════════════════ */
         function showModal(html) {
-            // html の最外要素に modal-yaml クラスがあれば modal div にも付与
-            const extraClass = html.trimStart().startsWith("<div class='modal-yaml'>") ||
-                html.trimStart().startsWith("<div class=\"modal-yaml\">")
-                ? " modal-yaml" : "";
+            const isYaml = /^\s*<div class=["']modal-yaml["']>/.test(html);
+            const extraClass = isYaml ? " modal-yaml" : "";
             // modal-yaml ラッパーは不要なので中身を取り出す
-            let inner = html;
-            if (extraClass) {
-                inner = html.replace(/^<div class=['"]modal-yaml['"]>/, "")
-                    .replace(/<\/div>\s*$/, "");
-            }
+            const inner = isYaml
+                ? html.replace(/^\s*<div class=["']modal-yaml["']>/, "").replace(/<\/div>\s*$/, "")
+                : html;
             $("modal-root").innerHTML =
                 `<div class="ov" onclick="ovClick(event)"><div class="modal${extraClass}">${inner}</div></div>`;
         }
@@ -3086,26 +3088,33 @@
             if (undoStack.length > 60) undoStack.shift();
             redoStack = [];
         }
+        // ── プロジェクトデータ復元共通処理 ──────────────
+        function applyProjectData(d) {
+            constants   = d.constants  || [];
+            startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
+            tables      = d.tables     || [];
+            snapOn      = d.snapOn   !== undefined ? d.snapOn   : true;
+            showGrid    = d.showGrid !== undefined ? d.showGrid : false;
+            if (d.editorConfig) editorConfig = {...editorConfig, ...d.editorConfig};
+            if (d.projectInfo)  projectInfo  = {...projectInfo,  ...d.projectInfo};
+            const _ac = d.aiConfig || {};
+            aiConfig = {
+                endpoint:    _ac.endpoint    || "http://localhost:8080",
+                apiKey:      _ac.apiKey      || "",
+                model:       _ac.model       || "",
+                models:      _ac.models      || [],
+                enabled:     !!_ac.enabled,
+                routerMode:  !!_ac.routerMode,
+            };
+        }
+
         function restoreSnap(s) {
             const d = JSON.parse(s);
-            forms = d.forms;
+            forms      = d.forms;
             curFormIdx = d.curFormIdx;
-            constants = d.constants || [];
-            startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
-            tables = d.tables || [];
-            snapOn = d.snapOn !== undefined ? d.snapOn : true;
-            showGrid = d.showGrid !== undefined ? d.showGrid : false;
-            if (d.editorConfig) editorConfig = {...editorConfig, ...d.editorConfig};
-            if (d.projectInfo) projectInfo = {...projectInfo, ...d.projectInfo};
-            const _ac = d.aiConfig || {};
-            aiConfig = {endpoint: _ac.endpoint || "http://localhost:8080", apiKey: _ac.apiKey || "", model: _ac.model || "", models: _ac.models || [], enabled: !!_ac.enabled, routerMode: !!_ac.routerMode};
-            syncCurForm();
+            applyProjectData(d);
             selId = null;
-            buildFormSelect();
-            applyForm();
-            fullRedraw();
-            renderProps();
-            updateCount();
+            refreshAll();
         }
         function actUndo() {
             if (!undoStack.length) return;
@@ -3164,15 +3173,10 @@
                 return;
             forms = [makeFormData("Form1")];
             curFormIdx = 0;
-            syncCurForm();
             selId = null;
             undoStack = [];
             redoStack = [];
-            buildFormSelect();
-            applyForm();
-            fullRedraw();
-            renderProps();
-            updateCount();
+            refreshAll();
             pushUndo();
         }
 
@@ -3187,39 +3191,19 @@
         function loadProjectData(jsonStr) {
             try {
                 const d = JSON.parse(jsonStr);
+                // 旧フォーマット互換（formCfg/widgets のフラット構造）
                 if (d.formCfg && !d.forms) {
-                    forms = [
-                        {
-                            id: "f0",
-                            cfg: d.formCfg,
-                            widgets: d.widgets || [],
-                            idCnt: d.idCnt || 1,
-                        },
-                    ];
+                    forms = [{id: "f0", cfg: d.formCfg, widgets: d.widgets || [], idCnt: d.idCnt || 1}];
                     curFormIdx = 0;
                 } else {
                     forms = d.forms;
                     curFormIdx = d.curFormIdx || 0;
                 }
-                constants = d.constants || [];
-                startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
-                tables = d.tables || [];
-                snapOn = d.snapOn !== undefined ? d.snapOn : true;
-                showGrid = d.showGrid !== undefined ? d.showGrid : false;
-                if (d.editorConfig) editorConfig = {...editorConfig, ...d.editorConfig};
-                if (d.projectInfo) projectInfo = {...projectInfo, ...d.projectInfo};
-                const _ac = d.aiConfig || {};
-                aiConfig = {endpoint: _ac.endpoint || "http://localhost:8080", apiKey: _ac.apiKey || "", model: _ac.model || "", models: _ac.models || [], enabled: !!_ac.enabled, routerMode: !!_ac.routerMode};
-                syncCurForm();
+                applyProjectData(d);
                 selId = null;
                 undoStack = [];
                 redoStack = [];
-                buildFormSelect();
-                applyForm();
-                fullRedraw();
-                renderProps();
-                updateCount();
-                // 開いた直後は保存済み状態とする
+                refreshAll();
                 _savedSnapshot = snapshot();
                 applyViewSettings();
             } catch (err) {
@@ -3553,13 +3537,8 @@ if (runBtn)  runBtn.disabled = true;
             if (idx === curFormIdx) return;
             commitIdCnt();
             curFormIdx = idx;
-            syncCurForm();
             selId = null;
-            buildFormSelect();
-            applyForm();
-            fullRedraw();
-            renderProps();
-            updateCount();
+            refreshAll();
             requestAnimationFrame(drawRulers);
         }
 
@@ -3575,13 +3554,8 @@ if (runBtn)  runBtn.disabled = true;
             const f = makeFormData(title);
             forms.push(f);
             curFormIdx = forms.length - 1;
-            syncCurForm();
             selId = null;
-            buildFormSelect();
-            applyForm();
-            fullRedraw();
-            renderProps();
-            updateCount();
+            refreshAll();
         }
 
         // 現在の画面を削除
@@ -3595,13 +3569,8 @@ if (runBtn)  runBtn.disabled = true;
             pushUndo();
             forms.splice(curFormIdx, 1);
             curFormIdx = Math.min(curFormIdx, forms.length - 1);
-            syncCurForm();
             selId = null;
-            buildFormSelect();
-            applyForm();
-            fullRedraw();
-            renderProps();
-            updateCount();
+            refreshAll();
         }
 
         // 現在の画面名を変更
@@ -3644,8 +3613,8 @@ if (runBtn)  runBtn.disabled = true;
 
         /* ── 定数エディタ ── */
         function openConstEditor() {
-            window._constRows = constants.map(c => ({name: c.name || "", value: c.value || ""}));
-            if (window._constRows.length === 0) window._constRows.push({name: "", value: ""});
+            _constRows = constants.map(c => ({name: c.name || "", value: c.value || ""}));
+            if (_constRows.length === 0) _constRows.push({name: "", value: ""});
             renderConstModal();
         }
 
@@ -3659,7 +3628,7 @@ if (runBtn)  runBtn.disabled = true;
         }
 
         function renderConstModalBase(title, infoText, addAction, saveAction) {
-            const rows = window._constRows || [];
+            const rows = _constRows || [];
             let tbody = "";
             rows.forEach((r, i) => {
                 const oi_n = "constUpdate(" + i + ",'name',this.value)";
@@ -3693,39 +3662,39 @@ if (runBtn)  runBtn.disabled = true;
         // DOM から現在の入力値を _constRows に同期する
         function syncConstFromDOM() {
             const tbody = document.querySelector("#const-modal .const-table tbody");
-            if (!tbody || !window._constRows) return;
+            if (!tbody || !_constRows) return;
             const rows = tbody.querySelectorAll("tr");
             rows.forEach((tr, i) => {
                 const inputs = tr.querySelectorAll("input");
-                if (inputs.length >= 2 && window._constRows[i]) {
-                    window._constRows[i].name = inputs[0].value;
-                    window._constRows[i].value = inputs[1].value;
+                if (inputs.length >= 2 && _constRows[i]) {
+                    _constRows[i].name = inputs[0].value;
+                    _constRows[i].value = inputs[1].value;
                 }
             });
         }
 
         function constUpdate(idx, key, val) {
-            if (window._constRows) window._constRows[idx][key] = val;
+            if (_constRows) _constRows[idx][key] = val;
         }
 
         function constAddRow() {
-            if (!window._constRows) return;
+            if (!_constRows) return;
             syncConstFromDOM(); // 現在の入力値を先に保存
-            window._constRows.push({name: "", value: ""});
+            _constRows.push({name: "", value: ""});
             renderConstModal();
         }
 
         function constDelRow(idx) {
-            if (!window._constRows) return;
+            if (!_constRows) return;
             syncConstFromDOM(); // 現在の入力値を先に保存
-            window._constRows.splice(idx, 1);
-            if (window._constRows.length === 0) window._constRows.push({name: "", value: ""});
+            _constRows.splice(idx, 1);
+            if (_constRows.length === 0) _constRows.push({name: "", value: ""});
             renderConstModal();
         }
 
         function constSave() {
             syncConstFromDOM(); // 保存前に DOM から最新値を取得
-            const valid = (window._constRows || []).filter(r => r.name.trim());
+            const valid = (_constRows || []).filter(r => r.name.trim());
             // 重複チェック
             const names = valid.map(r => r.name.trim());
             const dup = names.find((n, i) => names.indexOf(n) !== i);
@@ -3843,8 +3812,8 @@ if (runBtn)  runBtn.disabled = true;
                 ? {name: "", description: "", columns: [defaultColumn()]}
                 : JSON.parse(JSON.stringify(tables[idx])); // ディープコピー
             if (!tbl.columns || tbl.columns.length === 0) tbl.columns = [defaultColumn()];
-            window._tblEditIdx = idx;
-            window._tblEdit = tbl;
+            _tblEditIdx = idx;
+            _tblEdit = tbl;
             renderTableEditModal();
         }
 
@@ -3853,8 +3822,8 @@ if (runBtn)  runBtn.disabled = true;
         }
 
         function renderTableEditModal() {
-            const tbl = window._tblEdit;
-            const isNew = window._tblEditIdx < 0;
+            const tbl = _tblEdit;
+            const isNew = _tblEditIdx < 0;
             const cols = tbl.columns || [];
 
             let tbody = cols.map((c, i) => {
@@ -3894,10 +3863,10 @@ if (runBtn)  runBtn.disabled = true;
                 // テーブル名
                 "<div class='tbl-name-row'><label>テーブル名</label>" +
                 "<input id='tbl-name-in' value='" + esc(tbl.name) + "' placeholder='例: users' " +
-                "oninput='window._tblEdit.name=this.value'></div>" +
+                "oninput='_tblEdit.name=this.value'></div>" +
                 // 説明
                 "<div class='tbl-desc-row'><label>説明（任意）</label>" +
-                "<textarea id='tbl-desc-in' oninput='window._tblEdit.description=this.value'>" + esc(tbl.description || "") + "</textarea></div>" +
+                "<textarea id='tbl-desc-in' oninput='_tblEdit.description=this.value'>" + esc(tbl.description || "") + "</textarea></div>" +
                 // カラム一覧
                 "<div style='display:flex;justify-content:space-between;align-items:center'>" +
                 "<span style='font-size:12px;color:var(--text2)'>カラム定義（" + cols.length + "列）</span>" +
@@ -3973,43 +3942,43 @@ if (runBtn)  runBtn.disabled = true;
         }
 
         function tblColUpdate(idx, key, val) {
-            if (!window._tblEdit || !window._tblEdit.columns[idx]) return;
-            window._tblEdit.columns[idx][key] = val;
+            if (!_tblEdit || !_tblEdit.columns[idx]) return;
+            _tblEdit.columns[idx][key] = val;
             if (key === "pk" && val) {
                 // PKの場合はNOT NULLも自動ON
-                window._tblEdit.columns[idx].notNull = true;
+                _tblEdit.columns[idx].notNull = true;
             }
         }
 
         // PK設定（1つのみ許可）
         function tblColUpdatePk(idx, val) {
-            if (!window._tblEdit) return;
-            window._tblEdit.columns.forEach((c, i) => {c.pk = (i === idx && val);});
+            if (!_tblEdit) return;
+            _tblEdit.columns.forEach((c, i) => {c.pk = (i === idx && val);});
             // 再描画
             renderTableEditModal();
         }
 
         // カラム追加
         function tblColAdd() {
-            if (!window._tblEdit) return;
+            if (!_tblEdit) return;
             // 現在のDOMから値を同期
             tblSyncFromDOM();
-            window._tblEdit.columns.push(defaultColumn());
+            _tblEdit.columns.push(defaultColumn());
             renderTableEditModal();
         }
 
         // カラム削除
         function tblColDelete(idx) {
-            if (!window._tblEdit) return;
+            if (!_tblEdit) return;
             tblSyncFromDOM();
-            window._tblEdit.columns.splice(idx, 1);
-            if (window._tblEdit.columns.length === 0) window._tblEdit.columns.push(defaultColumn());
+            _tblEdit.columns.splice(idx, 1);
+            if (_tblEdit.columns.length === 0) _tblEdit.columns.push(defaultColumn());
             renderTableEditModal();
         }
 
         // DOMから現在の入力値を同期
         function tblSyncFromDOM() {
-            const tbl = window._tblEdit;
+            const tbl = _tblEdit;
             if (!tbl) return;
             const nameIn = $("tbl-name-in");
             const descIn = $("tbl-desc-in");
@@ -4037,7 +4006,7 @@ if (runBtn)  runBtn.disabled = true;
         // DDLプレビュー表示
         function tblShowDdl() {
             tblSyncFromDOM();
-            const tbl = window._tblEdit;
+            const tbl = _tblEdit;
             const pre = $("tbl-ddl-preview");
             if (!pre) return;
             pre.style.display = pre.style.display === "none" ? "block" : "none";
@@ -4076,8 +4045,8 @@ if (runBtn)  runBtn.disabled = true;
         function tblTypeOpen(idx, btn) {
             const float = $("col-type-float");
             if (!float) {return;}
-            if (!window._tblEdit || !window._tblEdit.columns[idx]) return;
-            const curType = window._tblEdit.columns[idx].type || "TEXT";
+            if (!_tblEdit || !_tblEdit.columns[idx]) return;
+            const curType = _tblEdit.columns[idx].type || "TEXT";
             // 既に開いていて同じインデックスならclose
             if (float.classList.contains("open") && float.dataset.colidx == idx) {
                 float.classList.remove("open");
@@ -4108,8 +4077,8 @@ if (runBtn)  runBtn.disabled = true;
         // カラム型の選択
         function tblTypeSelect(idx, type) {
             const t = type.trim();
-            if (!window._tblEdit || !window._tblEdit.columns[idx]) return;
-            window._tblEdit.columns[idx].type = t;
+            if (!_tblEdit || !_tblEdit.columns[idx]) return;
+            _tblEdit.columns[idx].type = t;
             // ボタンラベル更新
             const btn = document.querySelector(".col-type-btn[data-colidx='" + idx + "'] .col-type-lbl");
             if (btn) btn.textContent = t;
@@ -4121,10 +4090,10 @@ if (runBtn)  runBtn.disabled = true;
         // テーブル保存
         function tblSave() {
             tblSyncFromDOM();
-            const tbl = window._tblEdit;
+            const tbl = _tblEdit;
             if (!tbl.name.trim()) {alert("テーブル名を入力してください"); return;}
             // テーブル名重複チェック（自分自身は除外）
-            const dupIdx = tables.findIndex((t, i) => t.name === tbl.name.trim() && i !== window._tblEditIdx);
+            const dupIdx = tables.findIndex((t, i) => t.name === tbl.name.trim() && i !== _tblEditIdx);
             if (dupIdx >= 0) {alert("テーブル名「" + tbl.name + "」は既に存在します"); return;}
             // 空カラムを除去
             tbl.columns = (tbl.columns || []).filter(c => c.name.trim());
@@ -4150,10 +4119,10 @@ if (runBtn)  runBtn.disabled = true;
             }
             tbl.name = tbl.name.trim();
             tbl.updatedAt = new Date().toISOString(); // テーブル更新時刻を記録
-            if (window._tblEditIdx < 0) {
+            if (_tblEditIdx < 0) {
                 tables.push(tbl);
             } else {
-                tables[window._tblEditIdx] = tbl;
+                tables[_tblEditIdx] = tbl;
             }
             pushUndo();
             showToast("テーブル「" + tbl.name + "」を保存しました");
@@ -4165,8 +4134,8 @@ if (runBtn)  runBtn.disabled = true;
             const f = forms[curFormIdx];
             if (!f) return;
             if (!f.constants) f.constants = [];
-            window._constRows = f.constants.map(c => ({name: c.name || "", value: c.value || ""}));
-            if (window._constRows.length === 0) window._constRows.push({name: "", value: ""});
+            _constRows = f.constants.map(c => ({name: c.name || "", value: c.value || ""}));
+            if (_constRows.length === 0) _constRows.push({name: "", value: ""});
             renderFormConstModal();
         }
 
@@ -4182,14 +4151,14 @@ if (runBtn)  runBtn.disabled = true;
         }
 
         function formConstAddRow() {
-            if (!window._constRows) return;
-            window._constRows.push({name: "", value: ""});
+            if (!_constRows) return;
+            _constRows.push({name: "", value: ""});
             renderFormConstModal();
         }
 
         function saveFormConst() {
             syncConstFromDOM();
-            const valid = (window._constRows || []).filter(r => r.name.trim());
+            const valid = (_constRows || []).filter(r => r.name.trim());
             const names = valid.map(r => r.name.trim());
             const dup = names.find((n, i) => names.indexOf(n) !== i);
             if (dup) {alert("定数名「" + dup + "」が重複しています"); return;}
@@ -4202,7 +4171,6 @@ if (runBtn)  runBtn.disabled = true;
         }
 
 
-        /* ── プロジェクト情報 ── */
         /* ── アプリイベント（OnStart / OnExit） ── */
         const APP_EV_TYPES = [
             { key: "onStart", label: "🚀 起動時（OnStart）" },
@@ -4423,12 +4391,12 @@ if (runBtn)  runBtn.disabled = true;
                 return {label: parts[0] || "", width: parts[1] || "80"};
             });
             if (rows.length === 0) rows.push({label: "", width: "80"});
-            window._coldefWid = wid;
-            window._coldefRows = rows;
+            _coldefWid = wid;
+            _coldefRows = rows;
             renderColDefModal();
         }
         function renderColDefModal() {
-            const rows = window._coldefRows || [];
+            const rows = _coldefRows || [];
             let tbody = "";
             rows.forEach((r, i) => {
                 tbody += "<tr>"
@@ -4457,24 +4425,24 @@ if (runBtn)  runBtn.disabled = true;
                 + "</div>");
         }
         function coldefUpdate(idx, key, val) {
-            if (window._coldefRows) window._coldefRows[idx][key] = val;
+            if (_coldefRows) _coldefRows[idx][key] = val;
         }
         function coldefAddRow() {
-            if (!window._coldefRows || window._coldefRows.length >= 100) return;
-            window._coldefRows.push({label: "", width: "80"});
+            if (!_coldefRows || _coldefRows.length >= 100) return;
+            _coldefRows.push({label: "", width: "80"});
             renderColDefModal();
         }
         function coldefDelRow(idx) {
-            if (!window._coldefRows) return;
-            window._coldefRows.splice(idx, 1);
-            if (window._coldefRows.length === 0) window._coldefRows.push({label: "", width: "80"});
+            if (!_coldefRows) return;
+            _coldefRows.splice(idx, 1);
+            if (_coldefRows.length === 0) _coldefRows.push({label: "", width: "80"});
             renderColDefModal();
         }
         function coldefSave() {
-            const wid = window._coldefWid;
+            const wid = _coldefWid;
             const w = getWidget(wid);
             if (!w) return;
-            const valid = (window._coldefRows || []).filter(r => r.label.trim());
+            const valid = (_coldefRows || []).filter(r => r.label.trim());
             if (valid.length === 0) {alert("カラム名を1つ以上入力してください"); return;}
             w.props.columns = valid.map(r => r.label.trim() + ":" + (parseInt(r.width) || 80)).join("\n");
             closeModal();
@@ -4688,104 +4656,58 @@ if (runBtn)  runBtn.disabled = true;
             drawRulerV(vCtx, vH, fTop);
         }
 
+        // ── ルーラー描画共通定数 ───────────────────────
+        const _RULER = { STEP: 50, TICK_LG: 8, TICK_SM: 4,
+            TICK_COL: "rgba(160,160,192,0.35)", LABEL_COL: "rgba(160,160,192,0.55)",
+            FORM_HL: "rgba(122,158,248,0.10)",  FORM_BD:  "rgba(122,158,248,0.4)" };
+
         function drawRulerH(ctx, totalW, fLeft) {
-            const STEP = 50,
-                TICK_LG = 8,
-                TICK_SM = 4;
-            ctx.strokeStyle = "rgba(160,160,192,0.35)";
-            ctx.fillStyle = "rgba(160,160,192,0.55)";
-            ctx.font = "8px monospace";
-            ctx.textAlign = "left";
-            // フォーム原点から左右に目盛りを描く
+            const { STEP, TICK_LG, TICK_SM, TICK_COL, LABEL_COL, FORM_HL, FORM_BD } = _RULER;
+            ctx.font = "8px monospace"; ctx.textAlign = "left";
             for (let px = (fLeft % STEP) - STEP; px < totalW; px += STEP) {
-                const coord = Math.round(px - fLeft); // フォーム座標
-                // 大目盛り
-                ctx.beginPath();
-                ctx.moveTo(px, 16 - TICK_LG);
-                ctx.lineTo(px, 16);
-                ctx.stroke();
-                if (px >= 0 && px < totalW && coord >= 0) {
-                    ctx.fillText(coord, px + 2, 9);
-                }
-                // 中目盛り（25px）
+                const coord = Math.round(px - fLeft);
+                ctx.strokeStyle = TICK_COL; ctx.fillStyle = LABEL_COL;
+                ctx.beginPath(); ctx.moveTo(px, 16 - TICK_LG); ctx.lineTo(px, 16); ctx.stroke();
+                if (px >= 0 && px < totalW && coord >= 0) ctx.fillText(coord, px + 2, 9);
                 const px2 = px + STEP / 2;
                 if (px2 >= 0 && px2 < totalW) {
-                    ctx.beginPath();
-                    ctx.moveTo(px2, 16 - TICK_SM);
-                    ctx.lineTo(px2, 16);
-                    ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(px2, 16 - TICK_SM); ctx.lineTo(px2, 16); ctx.stroke();
                 }
             }
-            // フォーム範囲ハイライト
             const fw = formCfg.w;
-            ctx.fillStyle = "rgba(122,158,248,0.10)";
-            ctx.fillRect(fLeft, 0, fw, 16);
-            // フォーム境界線
-            ctx.strokeStyle = "rgba(122,158,248,0.4)";
-            ctx.beginPath();
-            ctx.moveTo(fLeft, 0);
-            ctx.lineTo(fLeft, 16);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(fLeft + fw, 0);
-            ctx.lineTo(fLeft + fw, 16);
-            ctx.stroke();
+            ctx.fillStyle = FORM_HL; ctx.fillRect(fLeft, 0, fw, 16);
+            ctx.strokeStyle = FORM_BD;
+            ctx.beginPath(); ctx.moveTo(fLeft,      0); ctx.lineTo(fLeft,      16); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(fLeft + fw, 0); ctx.lineTo(fLeft + fw, 16); ctx.stroke();
         }
 
         function drawRulerV(ctx, totalH, fTop) {
-            const STEP = 50,
-                TICK_LG = 8,
-                TICK_SM = 4;
-            ctx.strokeStyle = "rgba(160,160,192,0.35)";
-            ctx.fillStyle = "rgba(160,160,192,0.55)";
+            const { STEP, TICK_LG, TICK_SM, TICK_COL, LABEL_COL, FORM_HL, FORM_BD } = _RULER;
             ctx.font = "8px monospace";
-            ctx.save();
-            ctx.translate(14, 0);
-            ctx.rotate(Math.PI / 2); // 縦書きラベル用
+            ctx.save(); ctx.translate(14, 0); ctx.rotate(Math.PI / 2);
             for (let py = (fTop % STEP) - STEP; py < totalH; py += STEP) {
                 const coord = Math.round(py - fTop);
-                ctx.save();
-                ctx.setTransform(1, 0, 0, 1, 0, 0);
-                // 大目盛り
-                ctx.strokeStyle = "rgba(160,160,192,0.35)";
-                ctx.beginPath();
-                ctx.moveTo(16 - TICK_LG, py);
-                ctx.lineTo(16, py);
-                ctx.stroke();
+                ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.strokeStyle = TICK_COL;
+                ctx.beginPath(); ctx.moveTo(16 - TICK_LG, py); ctx.lineTo(16, py); ctx.stroke();
                 if (py >= 0 && py < totalH && coord >= 0) {
-                    ctx.fillStyle = "rgba(160,160,192,0.55)";
-                    ctx.font = "8px monospace";
-                    ctx.save();
-                    ctx.translate(12, py - 2);
-                    ctx.rotate(-Math.PI / 2);
-                    ctx.fillText(coord, -28, 0);
-                    ctx.restore();
+                    ctx.fillStyle = LABEL_COL; ctx.font = "8px monospace";
+                    ctx.save(); ctx.translate(12, py - 2); ctx.rotate(-Math.PI / 2);
+                    ctx.fillText(coord, -28, 0); ctx.restore();
                 }
-                // 中目盛り
                 const py2 = py + STEP / 2;
                 if (py2 >= 0 && py2 < totalH) {
-                    ctx.strokeStyle = "rgba(160,160,192,0.35)";
-                    ctx.beginPath();
-                    ctx.moveTo(16 - TICK_SM, py2);
-                    ctx.lineTo(16, py2);
-                    ctx.stroke();
+                    ctx.strokeStyle = TICK_COL;
+                    ctx.beginPath(); ctx.moveTo(16 - TICK_SM, py2); ctx.lineTo(16, py2); ctx.stroke();
                 }
                 ctx.restore();
             }
             ctx.restore();
-            // フォーム範囲ハイライト
             const fh = formCfg.h;
-            ctx.fillStyle = "rgba(122,158,248,0.10)";
-            ctx.fillRect(0, fTop, 16, fh);
-            ctx.strokeStyle = "rgba(122,158,248,0.4)";
-            ctx.beginPath();
-            ctx.moveTo(0, fTop);
-            ctx.lineTo(16, fTop);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(0, fTop + fh);
-            ctx.lineTo(16, fTop + fh);
-            ctx.stroke();
+            ctx.fillStyle = FORM_HL; ctx.fillRect(0, fTop, 16, fh);
+            ctx.strokeStyle = FORM_BD;
+            ctx.beginPath(); ctx.moveTo(0, fTop);      ctx.lineTo(16, fTop);      ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, fTop + fh); ctx.lineTo(16, fTop + fh); ctx.stroke();
         }
 
         /* ═══════════════════════════════════════════
