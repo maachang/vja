@@ -922,6 +922,52 @@ const openProjectWindow = async (htmlPath: string, w: number, h: number): Promis
                         }
                     } catch { _projectWindow?.webview.rpc.send.appDialogResult({ ok: false }); }
                 },
+                // ── DB操作（プロジェクトウィンドウ → Bun → _projectWindow へ返す） ──
+                dbQueryRequest: async ({ sql, params }) => {
+                    try {
+                        const db = _currentProjectDbDir
+                            ? getProjectDb(_currentProjectDbDir)
+                            : getDb();
+                        const rows = db.query(sql).all(...(params || []));
+                        _projectWindow?.webview.rpc.send.dbQueryResult({ ok: true, rows: rows as any });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.dbQueryResult({ ok: false, rows: [], error: e.message });
+                    }
+                },
+                dbExecuteRequest: async ({ sql, params }) => {
+                    try {
+                        const db = _currentProjectDbDir
+                            ? getProjectDb(_currentProjectDbDir)
+                            : getDb();
+                        const r = db.run(sql, ...(params || []));
+                        _projectWindow?.webview.rpc.send.dbExecuteResult({
+                            ok: true,
+                            result: { changes: r.changes, lastInsertRowid: Number(r.lastInsertRowid) },
+                        });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.dbExecuteResult({
+                            ok: false,
+                            result: { changes: 0, lastInsertRowid: 0 },
+                            error: e.message,
+                        });
+                    }
+                },
+                dbTransactionRequest: async ({ statements }) => {
+                    try {
+                        const db = _currentProjectDbDir
+                            ? getProjectDb(_currentProjectDbDir)
+                            : getDb();
+                        const tx = db.transaction(() => {
+                            for (const { sql, params } of statements) {
+                                db.run(sql, ...(params || []));
+                            }
+                        });
+                        tx();
+                        _projectWindow?.webview.rpc.send.dbTransactionResult({ ok: true });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.dbTransactionResult({ ok: false, error: e.message });
+                    }
+                },
             },
         },
     });
