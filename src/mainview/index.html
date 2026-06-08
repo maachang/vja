@@ -2271,6 +2271,18 @@
                 addPrompt ? "\n追加指示: " + addPrompt : "",
             ].join("");
 
+            // JSタブに実質的なコードがある場合は上書き確認
+            const jsTaCur = $("js-ta")?.value || "";
+            const jsTaHasCode = jsTaCur.split("\n")
+                .some(l => l.trim() && !l.trim().startsWith("//"));
+            if (jsTaHasCode) {
+                if (!(await vja.app.showConfirm("JavaScriptタブに既存のコードがあります。\nAI生成で上書きしますか？"))?.confirmed) {
+                    if (btn) btn.disabled = false;
+                    if (status) status.textContent = "";
+                    return;
+                }
+            }
+
             try {
                 const hasApiKey = !!aiConfig.apiKey;
                 const isRouterOn = !!aiConfig.routerMode;
@@ -2467,10 +2479,23 @@
                         editorHlUpdate(ta.id); return;
                     }
                 } else {
-                    // YAML: key: の後 +2sp、- の後 +2sp
+                    // YAML Enter の動作
                     const t = curLine.trimStart();
-                    if (/:\s*$/.test(t) && !t.startsWith("-")) extra = "  ";
-                    else if (/^-\s/.test(t)) extra = "  ";
+                    if (/^(-\s+)(.+)$/.test(t)) {
+                        // "- 内容あり" → 次行も "- " を継続
+                        const bullet = t.match(/^(-\s+)/)[1];
+                        const insert = "\n" + baseIndent + bullet;
+                        ta.value = v.slice(0, s) + insert + v.slice(en);
+                        ta.selectionStart = ta.selectionEnd = s + insert.length;
+                        editorHlUpdate(ta.id); return;
+                    } else if (/^-\s*$/.test(t)) {
+                        // "- " だけの空行 → リスト終了（行を削除して通常改行）
+                        ta.value = v.slice(0, ls) + "\n" + v.slice(en);
+                        ta.selectionStart = ta.selectionEnd = ls + 1;
+                        editorHlUpdate(ta.id); return;
+                    } else if (/:\s*$/.test(t) && !t.startsWith("-")) {
+                        extra = "  ";
+                    }
                 }
                 const insert = "\n" + baseIndent + extra;
                 ta.value = v.slice(0, s) + insert + v.slice(en);
