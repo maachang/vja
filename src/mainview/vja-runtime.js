@@ -47,7 +47,12 @@
             }
             if (tag === "select") return el.value;
             if (tag === "textarea") return el.value;
-            if (tag === "span" || tag === "div" || tag === "label") return el.textContent;
+            if (tag === "span" || tag === "label") return el.textContent;
+            if (tag === "div") {
+                // progressbar: data-val 属性から値を返す
+                if (el.dataset.val !== undefined) return Number(el.dataset.val);
+                return el.textContent;
+            }
             return el.value ?? el.textContent ?? null;
         },
 
@@ -64,8 +69,20 @@
                 }
             } else if (tag === "select" || tag === "textarea") {
                 el.value = value ?? "";
-            } else if (tag === "span" || tag === "div" || tag === "label") {
+            } else if (tag === "span" || tag === "label") {
                 el.textContent = value ?? "";
+            } else if (tag === "div") {
+                // progressbar: data-val/data-min/data-max から幅を計算
+                if (el.dataset.val !== undefined) {
+                    const min = Number(el.dataset.min ?? 0);
+                    const max = Number(el.dataset.max ?? 100);
+                    const val = Math.min(max, Math.max(min, Number(value ?? 0)));
+                    el.dataset.val = val;
+                    const bar = el.firstElementChild;
+                    if (bar) bar.style.width = ((val - min) / (max - min) * 100) + "%";
+                } else {
+                    el.textContent = value ?? "";
+                }
             }
             el.dispatchEvent(new Event("change", { bubbles: true }));
         },
@@ -170,6 +187,28 @@
                 this.setValue(name, value);
             });
         },
+
+        // treeView ノード操作
+        getSelectedNode(name) {
+            const el = _getEl(name);
+            return el ? el.dataset.lastSelected ?? null : null;
+        },
+        expandAll(name) {
+            const el = _getEl(name);
+            if (!el) return;
+            el.querySelectorAll("[data-children]").forEach(c => { c.style.display = "block"; });
+            el.querySelectorAll(".tv-arrow").forEach(a => { a.textContent = "▼"; });
+        },
+        collapseAll(name) {
+            const el = _getEl(name);
+            if (!el) return;
+            el.querySelectorAll("[data-children]").forEach(c => { c.style.display = "none"; });
+            el.querySelectorAll(".tv-arrow").forEach(a => { a.textContent = "▶"; });
+        },
+
+        // progressBar 操作
+        setProgress(name, value) { this.setValue(name, value); },
+        getProgress(name) { return this.getValue(name); },
     };
 
     // ════════════════════════════════════════════════

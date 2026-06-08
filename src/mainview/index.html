@@ -352,25 +352,19 @@
                     ═══════════════════════════════════════════ */
         const TOOLS = [
             {id: "pointer", label: "ポインタ", icon: "🖱️"},
+            // ── よく使う順 ──────────────────────────────────
             {
                 id: "button",
                 label: "button",
                 icon: "⬜",
                 tag: "button",
                 def: {
-                    w: 96,
-                    h: 28,
+                    w: 96, h: 28,
                     text: "Button1",
-                    bg: "#e0e0e0",
-                    fg: "#000",
-                    fontSize: 12,
-                    fontFamily: "",
-                    fontBold: false,
-                    borderSize: 1, borderColor: "#cccccc",
-                    borderRadius: 2,
-                    disabled: false,
-                    visible: true,
-                    description: "",
+                    bg: "#e0e0e0", fg: "#000",
+                    fontSize: 12, fontFamily: "", fontBold: false,
+                    borderSize: 1, borderColor: "#cccccc", borderRadius: 2,
+                    disabled: false, visible: true, description: "",
                 },
             },
             {
@@ -379,66 +373,42 @@
                 icon: "🏷️",
                 tag: "label",
                 def: {
-                    w: 100,
-                    h: 24,
+                    w: 100, h: 24,
                     text: "Label1",
-                    bg: "transparent",
-                    fg: "#000",
-                    fontSize: 12,
-                    fontFamily: "",
-                    fontBold: false,
+                    bg: "transparent", fg: "#000",
+                    fontSize: 12, fontFamily: "", fontBold: false,
                     align: "left",
-                    visible: true,
-                    description: "",
-                },
-            },
-            {
-                id: "textbox",
-                label: "text",
-                icon: "📝",
-                tag: "input",
-                def: {
-                    w: 120,
-                    h: 24,
-                    text: "",
-                    placeholder: "",
-                    maxLength: 0,
-                    bg: "#fff",
-                    fg: "#000",
-                    fontSize: 12,
-                    fontFamily: "",
-                    fontBold: false,
-                    borderSize: 1, borderColor: "#cccccc",
-                    multiline: false,
-                    disabled: false,
-                    readonly: false,
-                    visible: true,
-                    description: "",
+                    visible: true, description: "",
                 },
             },
             {
                 id: "inputtype",
-                label: "inputType",
-                icon: "🔡",
+                label: "text",
+                icon: "📝",
                 tag: "inputtype",
                 def: {
-                    w: 140,
-                    h: 28,
-                    inputType: "text",
-                    text: "",
-                    placeholder: "",
-                    bg: "#fff",
-                    fg: "#000",
-                    fontSize: 12,
-                    fontFamily: "",
-                    fontBold: false,
+                    w: 140, h: 28,
+                    inputType: "text", text: "", placeholder: "",
+                    bg: "#fff", fg: "#000",
+                    fontSize: 12, fontFamily: "", fontBold: false,
                     borderSize: 1, borderColor: "#cccccc",
-                    maxLength: 0,
-                    required: false,
-                    readonly: false,
-                    disabled: false,
-                    visible: true,
-                    description: "",
+                    maxLength: 0, required: false, readonly: false, disabled: false,
+                    visible: true, description: "",
+                },
+            },
+            {
+                id: "textarea",
+                label: "textarea",
+                icon: "📄",
+                tag: "textarea",
+                def: {
+                    w: 200, h: 80,
+                    text: "", placeholder: "",
+                    bg: "#fff", fg: "#000",
+                    fontSize: 12, fontFamily: "", fontBold: false,
+                    borderSize: 1, borderColor: "#cccccc",
+                    disabled: false, readonly: false,
+                    visible: true, description: "",
                 },
             },
             {
@@ -447,16 +417,11 @@
                 icon: "☑️",
                 tag: "checkbox",
                 def: {
-                    w: 100,
-                    h: 22,
-                    text: "CheckBox1",
-                    checked: false,
+                    w: 100, h: 22,
+                    text: "CheckBox1", checked: false,
                     fg: "#000",
-                    fontSize: 12,
-                    fontFamily: "",
-                    fontBold: false,
-                    visible: true,
-                    description: "",
+                    fontSize: 12, fontFamily: "", fontBold: false,
+                    visible: true, description: "",
                 },
             },
             {
@@ -465,36 +430,11 @@
                 icon: "🔘",
                 tag: "radio",
                 def: {
-                    w: 100,
-                    h: 22,
-                    text: "RadioButton1",
-                    checked: false,
-                    group: "Group1",
+                    w: 100, h: 22,
+                    text: "RadioButton1", checked: false, group: "Group1",
                     fg: "#000",
-                    fontSize: 12,
-                    fontFamily: "",
-                    fontBold: false,
-                    visible: true,
-                    description: "",
-                },
-            },
-            {
-                id: "listbox",
-                label: "listBox",
-                icon: "📋",
-                tag: "listbox",
-                def: {
-                    w: 120,
-                    h: 80,
-                    items: "項目1\n項目2\n項目3",
-                    bg: "#fff",
-                    fg: "#000",
-                    fontSize: 12,
-                    fontFamily: "",
-                    fontBold: false,
-                    borderSize: 1, borderColor: "#cccccc",
-                    visible: true,
-                    description: "",
+                    fontSize: 12, fontFamily: "", fontBold: false,
+                    visible: true, description: "",
                 },
             },
             {
@@ -503,17 +443,71 @@
                 icon: "🔽",
                 tag: "selectBox",
                 def: {
-                    w: 120,
-                    h: 24,
+                    w: 120, h: 24,
                     items: "項目1\n項目2\n項目3",
-                    bg: "#fff",
-                    fg: "#000",
-                    fontSize: 12,
-                    fontFamily: "",
-                    fontBold: false,
+                    bg: "#fff", fg: "#000",
+                    fontSize: 12, fontFamily: "", fontBold: false,
                     borderSize: 1, borderColor: "#cccccc",
-                    visible: true,
-                    description: "",
+                    visible: true, description: "",
+                },
+            },
+            {
+                id: "listbox",
+                label: "listBox",
+                icon: "📋",
+                tag: "listbox",
+                def: {
+                    w: 120, h: 80,
+                    items: "項目1\n項目2\n項目3",
+                    bg: "#fff", fg: "#000",
+                    fontSize: 12, fontFamily: "", fontBold: false,
+                    borderSize: 1, borderColor: "#cccccc",
+                    visible: true, description: "",
+                },
+            },
+            {
+                id: "datagrid",
+                label: "テーブル",
+                icon: "🗃️",
+                tag: "datagrid",
+                def: {
+                    w: 320, h: 160,
+                    columns: "ID:60\n名前:120\n値:100",
+                    bg: "#ffffff", fg: "#000000",
+                    maxRows: 10,
+                    headerBg: "#4a4a6a", headerFg: "#ffffff",
+                    rowBg: "#ffffff", rowAltBg: "#f5f5f5", rowFg: "#000000",
+                    borderSize: 1, borderColor: "#cccccc",
+                    fontSize: 12, fontFamily: "", fontBold: false,
+                    rowHeight: 24, headerHeight: 28,
+                    visible: true, description: "",
+                },
+            },
+            {
+                id: "treeview",
+                label: "treeView",
+                icon: "🌲",
+                tag: "treeview",
+                def: {
+                    w: 200, h: 160,
+                    items: "親1\n  子1-1\n  子1-2\n親2\n  子2-1",
+                    bg: "#fff", fg: "#000",
+                    fontSize: 12, fontFamily: "", fontBold: false,
+                    borderSize: 1, borderColor: "#cccccc",
+                    visible: true, description: "",
+                },
+            },
+            {
+                id: "progressbar",
+                label: "progress",
+                icon: "📊",
+                tag: "progressbar",
+                def: {
+                    w: 200, h: 20,
+                    value: 50, min: 0, max: 100,
+                    bg: "#e0e0e0", fg: "#5b7bfa",
+                    borderSize: 1, borderColor: "#cccccc",
+                    visible: true, description: "",
                 },
             },
             {
@@ -522,17 +516,12 @@
                 icon: "🗂️",
                 tag: "groupbox",
                 def: {
-                    w: 160,
-                    h: 100,
+                    w: 160, h: 100,
                     text: "GroupBox1",
-                    bg: "transparent",
-                    fg: "#000",
-                    fontSize: 12,
-                    fontFamily: "",
-                    fontBold: false,
+                    bg: "transparent", fg: "#000",
+                    fontSize: 12, fontFamily: "", fontBold: false,
                     borderSize: 1, borderColor: "#cccccc",
-                    visible: true,
-                    description: "",
+                    visible: true, description: "",
                 },
             },
             {
@@ -541,38 +530,10 @@
                 icon: "🖼️",
                 tag: "picture",
                 def: {
-                    w: 100,
-                    h: 80,
-                    src: "",
-                    bg: "#ddd",
-                    objectFit: "contain",
+                    w: 100, h: 80,
+                    src: "", bg: "#ddd", objectFit: "contain",
                     borderSize: 1, borderColor: "#cccccc",
-                    visible: true,
-                    description: "",
-                },
-            },
-            {
-                id: "hscroll",
-                label: "水平scroll",
-                icon: "↔️",
-                tag: "hscroll",
-                def: {
-                    w: 120, h: 18,
-                    min: 0, max: 100, val: 0,
-                    visible: true,
-                    description: "",
-                },
-            },
-            {
-                id: "vscroll",
-                label: "垂直scroll",
-                icon: "↕️",
-                tag: "vscroll",
-                def: {
-                    w: 18, h: 80,
-                    min: 0, max: 100, val: 0,
-                    visible: true,
-                    description: "",
+                    visible: true, description: "",
                 },
             },
             {
@@ -582,14 +543,11 @@
                 tag: "datepicker",
                 def: {
                     w: 160, h: 28,
-                    inputType: "date",
-                    value: "",
-                    min: "", max: "",
+                    inputType: "date", value: "", min: "", max: "",
                     bg: "#fff", fg: "#000",
                     fontSize: 12, fontFamily: "", fontBold: false,
                     borderSize: 1, borderColor: "#cccccc",
-                    disabled: false, readonly: false, visible: true,
-                    description: "",
+                    disabled: false, readonly: false, visible: true, description: "",
                 },
             },
             {
@@ -600,38 +558,30 @@
                 def: {
                     w: 160, h: 28,
                     min: 0, max: 100, value: 0, step: 1,
-                    orient: "horizontal",
-                    bg: "transparent",
-                    disabled: false, visible: true,
-                    description: "",
+                    orient: "horizontal", bg: "transparent",
+                    disabled: false, visible: true, description: "",
                 },
             },
             {
-                id: "datagrid",
-                label: "テーブル",
-                icon: "🗃️",
-                tag: "datagrid",
+                id: "hscroll",
+                label: "水平scroll",
+                icon: "↔️",
+                tag: "hscroll",
                 def: {
-                    w: 320,
-                    h: 160,
-                    columns: "ID:60\n名前:120\n値:100",
-                    bg: "#ffffff",
-                    fg: "#000000",
-                    maxRows: 10,
-                    headerBg: "#4a4a6a",
-                    headerFg: "#ffffff",
-                    rowBg: "#ffffff",
-                    rowAltBg: "#f5f5f5",
-                    rowFg: "#000000",
-                    borderSize: 1,
-                    borderColor: "#cccccc",
-                    fontSize: 12,
-                    fontFamily: "",
-                    fontBold: false,
-                    rowHeight: 24,
-                    headerHeight: 28,
-                    visible: true,
-                    description: "",
+                    w: 120, h: 18,
+                    min: 0, max: 100, val: 0,
+                    visible: true, description: "",
+                },
+            },
+            {
+                id: "vscroll",
+                label: "垂直scroll",
+                icon: "↕️",
+                tag: "vscroll",
+                def: {
+                    w: 18, h: 80,
+                    min: 0, max: 100, val: 0,
+                    visible: true, description: "",
                 },
             },
         ];
@@ -647,14 +597,7 @@
                 "LostFocus",
             ],
             label: ["Click", "MouseEnter", "MouseLeave"],
-            input: [
-                "TextChanged",
-                "KeyDown",
-                "KeyUp",
-                "GotFocus",
-                "LostFocus",
-                "Click",
-            ],
+
             inputtype: [
                 "TextChanged",
                 "KeyDown",
@@ -667,6 +610,9 @@
             radio: ["Click", "CheckedChanged"],
             listbox: ["SelectedIndexChanged", "Click", "MouseDown"],
             selectBox: ["SelectedIndexChanged", "TextChanged", "DropDown"],
+            textarea: ["TextChanged", "KeyDown", "KeyUp", "GotFocus", "LostFocus", "Click"],
+            treeview: ["NodeClick", "NodeExpand", "NodeCollapse", "Click"],
+            progressbar: ["Click"],
             groupbox: ["Click"],
             picture: ["Click", "MouseDown", "MouseUp"],
             hscroll: ["Scroll", "ValueChanged"],
@@ -977,6 +923,28 @@
                     return `<div style="${base}background:${p.bg||"#ddd"};border:1px solid #999;border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;${vis}"><span style="font-size:9px">▲</span><div style="width:50%;flex:1;background:#999;margin:3px 0;border-radius:1px"></div><span style="font-size:9px">▼</span></div>`;
                 case "datepicker": { const _itype = p.inputType||"date";
                     return `<input type="${_itype}" value="${esc(p.value||"")}" ${p.min?`min="${esc(p.min)}"`:""}  ${p.max?`max="${esc(p.max)}"`:""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily||""};font-weight:${p.fontBold?"bold":"normal"};border:${(p.borderSize||0)+"px solid "+(p.borderColor||"#cccccc")};padding:0 4px;pointer-events:none;${vis}">`; }
+                case "textarea":
+                    return `<textarea style="${base}background:${p.bg||"#fff"};color:${p.fg||"#000"};font-size:${p.fontSize||12}px;font-family:${p.fontFamily||""};font-weight:${p.fontBold?"bold":"normal"};border:${(p.borderSize||1)+"px solid "+(p.borderColor||"#cccccc")};resize:none;padding:4px;box-sizing:border-box;pointer-events:none;${vis}" placeholder="${esc(p.placeholder||"")}">${esc(p.text||"")}</textarea>`;
+                case "progressbar": {
+                    const pval = Math.min(100, Math.max(0, ((p.value||0) - (p.min||0)) / ((p.max||100) - (p.min||0)) * 100));
+                    return `<div style="${base}background:${p.bg||"#e0e0e0"};border:${(p.borderSize||1)+"px solid "+(p.borderColor||"#cccccc")};border-radius:3px;overflow:hidden;${vis}"><div style="width:${pval}%;height:100%;background:${p.fg||"#5b7bfa"};transition:width 0.2s;border-radius:3px"></div></div>`;
+                }
+                case "treeview": {
+                    const buildTree = (lines) => {
+                        let html = "<ul style='list-style:none;padding-left:14px;margin:0'>";
+                        lines.forEach(l => {
+                            const indent = l.match(/^(\s*)/)[1].length;
+                            const text = l.trim();
+                            if (!text) return;
+                            const hasChildren = indent === 0;
+                            html += `<li style="line-height:20px;white-space:nowrap">${hasChildren ? "▶ " : "• "}${esc(text)}</li>`;
+                        });
+                        html += "</ul>";
+                        return html;
+                    };
+                    const treeLines = (p.items||"").split("\n");
+                    return `<div style="${base}background:${p.bg||"#fff"};color:${p.fg||"#000"};font-size:${p.fontSize||12}px;border:${(p.borderSize||1)+"px solid "+(p.borderColor||"#cccccc")};overflow:auto;padding:4px;box-sizing:border-box;${vis}">${buildTree(treeLines)}</div>`;
+                }
                 case "slider":
                     return `<div style="${base}display:flex;align-items:center;${vis}"><input type="range" min="${p.min||0}" max="${p.max||100}" value="${p.value||0}" step="${p.step||1}" style="width:100%;pointer-events:none;accent-color:#5b7bfa"></div>`;
                 case "datepicker": { const _itype2 = p.inputType||"date";
@@ -1045,7 +1013,7 @@
             selId = id;
             updateSelVisual();
             const w = getWidget(id);
-            $("prop-obj").textContent = w ? w.name : formCfg.title;
+            $("prop-obj").textContent = w ? (TOOLS.find(t => t.tag === w.tag)?.label ?? w.tag) : formCfg.title;
             updateStatusSel(w);
             renderProps();
         }
@@ -1384,22 +1352,7 @@
                 {k: "required", lb: "Required", t: "bool"},
                 ...PP_TAIL,
             ],
-            input: [
-                ...PP_POS,
-                {sep: "外観"},
-                {k: "text", lb: "Text", t: "text"},
-                {k: "placeholder", lb: "Placeholder", t: "text"},
-                {k: "maxLength", lb: "MaxLength", t: "num"},
-                {k: "bg", lb: "BackColor", t: "color"},
-                {k: "fg", lb: "ForeColor", t: "color"},
-                ...PP_FONT,
-                ...PP_BORDER,
-                {sep: "動作"},
-                {k: "multiline", lb: "Multiline", t: "bool"},
-                {k: "disabled", lb: "Disabled", t: "bool"},
-                {k: "readonly", lb: "ReadOnly", t: "bool"},
-                ...PP_TAIL,
-            ],
+
             checkbox: [
                 ...PP_POS,
                 {sep: "外観"},
@@ -1476,6 +1429,42 @@
                 {k: "maxRows", lb: "MaxRows", t: "num"},
                 {k: "rowHeight", lb: "RowHeight", t: "num"},
                 {k: "headerHeight", lb: "HeaderHeight", t: "num"},
+                ...PP_TAIL,
+            ],
+            textarea: [
+                ...PP_POS,
+                {sep: "外観"},
+                {k: "text", lb: "Text", t: "area"},
+                {k: "placeholder", lb: "Placeholder", t: "text"},
+                {k: "bg", lb: "BackColor", t: "color"},
+                {k: "fg", lb: "ForeColor", t: "color"},
+                ...PP_FONT,
+                ...PP_BORDER,
+                {sep: "動作"},
+                {k: "disabled", lb: "Disabled", t: "bool"},
+                {k: "readonly", lb: "ReadOnly", t: "bool"},
+                ...PP_TAIL,
+            ],
+            progressbar: [
+                ...PP_POS,
+                {sep: "値"},
+                {k: "value", lb: "Value", t: "num"},
+                {k: "min",   lb: "Min",   t: "num"},
+                {k: "max",   lb: "Max",   t: "num"},
+                {sep: "外観"},
+                {k: "bg", lb: "BackColor", t: "color"},
+                {k: "fg", lb: "BarColor",  t: "color"},
+                ...PP_BORDER,
+                ...PP_TAIL,
+            ],
+            treeview: [
+                ...PP_POS,
+                {sep: "外観"},
+                {k: "items", lb: "Items", t: "area"},
+                {k: "bg", lb: "BackColor", t: "color"},
+                {k: "fg", lb: "ForeColor", t: "color"},
+                ...PP_FONT,
+                ...PP_BORDER,
                 ...PP_TAIL,
             ],
             hscroll: [
@@ -1680,7 +1669,7 @@
         function commitWidget(w, opts = {}) {
             renderWidget(w, false);
             applyWPos($("w" + w.id), w);
-            if (opts.name) $("prop-obj").textContent = w.name;
+            if (opts.name) $("prop-obj").textContent = TOOLS.find(t => t.tag === w.tag)?.label ?? w.tag;
             if (opts.props !== false) renderProps();
             pushUndo();
         }
@@ -2104,7 +2093,7 @@
             if (status) status.textContent = "⏳ コンテキスト収集中…";
 
             // ── ① 入力系ウィジェット一覧（フォームの入力パラメータ） ──
-            const INPUT_TAGS = ["inputtype", "text", "checkbox", "radiobutton", "listbox", "selectbox"];
+            const INPUT_TAGS = ["inputtype", "checkbox", "radiobutton", "listbox", "selectbox"];
             const inputWidgets = widgets.filter(ww => INPUT_TAGS.includes(ww.tag.toLowerCase()));
             const inputParamsCtx = inputWidgets.length > 0
                 ? inputWidgets.map(ww => {

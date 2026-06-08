@@ -621,10 +621,7 @@ const buildWidgetHtml = (w: any): string => {
             return `<button ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border};border-radius:${p.borderRadius||2}px;cursor:pointer">${esc2(p.text)}</button>`;
         case "label":
             return `<label ${id} style="${base}background:${p.bg};color:${p.fg};${font};text-align:${p.align||"left"};display:flex;align-items:center">${esc2(p.text)}</label>`;
-        case "input":
-            if (p.multiline)
-                return `<textarea ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:2px 4px;resize:none">${esc2(p.text)}</textarea>`;
-            return `<input type="text" ${id} value="${esc2(p.text)}" placeholder="${esc2(p.placeholder||"")}" style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
+
         case "inputtype": {
             const itype = p.inputType || "text";
             const maxl = p.maxLength ? ` maxlength="${p.maxLength}"` : "";
@@ -648,6 +645,44 @@ const buildWidgetHtml = (w: any): string => {
         case "datepicker": {
             const _itype = p.inputType || "date";
             return `<input type="${_itype}" ${id} value="${esc2(p.value||"")}" ${p.min?`min="${esc2(p.min)}"`:""} ${p.max?`max="${esc2(p.max)}"`:""} ${p.disabled?"disabled":""} ${p.readonly?"readonly":""} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
+        }
+        case "textarea":
+            return `<textarea ${id} ${p.disabled?"disabled":""} ${p.readonly?"readonly":""} placeholder="${(p.placeholder||"").replace(/"/g,"&quot;")}" style="${base}background:${p.bg||"#fff"};color:${p.fg||"#000"};font-size:${p.fontSize||12}px;font-family:${p.fontFamily||""};font-weight:${p.fontBold?"bold":"normal"};border:${(p.borderSize||1)+"px solid "+(p.borderColor||"#cccccc")};resize:none;padding:4px;box-sizing:border-box">${(p.text||"").replace(/</g,"&lt;")}</textarea>`;
+        case "progressbar": {
+            const pbval = Math.min(100, Math.max(0, ((p.value||0)-(p.min||0))/((p.max||100)-(p.min||0))*100));
+            return `<div ${id} data-min="${p.min||0}" data-max="${p.max||100}" data-val="${p.value||0}" style="${base}background:${p.bg||"#e0e0e0"};border:${(p.borderSize||1)+"px solid "+(p.borderColor||"#cccccc")};border-radius:3px;overflow:hidden"><div style="width:${pbval}%;height:100%;background:${p.fg||"#5b7bfa"};transition:width 0.2s;border-radius:3px"></div></div>`;
+        }
+        case "treeview": {
+            const buildTreeHtml = (items: string): string => {
+                const lines = items.split("\n");
+                const esc2 = (s: string) => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+                let html = "";
+                const stack: {indent: number, id: string}[] = [];
+                lines.forEach((line, i) => {
+                    if (!line.trim()) return;
+                    const indent = line.match(/^(\s*)/)?.[1].length ?? 0;
+                    const text = line.trim();
+                    const nodeId = `_tvn${i}`;
+                    while (stack.length && stack[stack.length-1].indent >= indent) stack.pop();
+                    const hasParent = stack.length > 0;
+                    const isExpandable = lines.some((l, j) => j > i && l.match(/^(\s*)/)?.[1].length > indent && l.trim());
+                    html += `<div style="padding-left:${indent*14}px;line-height:22px;cursor:pointer;white-space:nowrap" id="${nodeId}"
+                        onclick="(function(el){
+                            const ch=el.nextElementSibling;
+                            if(ch&&ch.dataset.children){
+                                const open=ch.style.display!=='none';
+                                ch.style.display=open?'none':'block';
+                                el.querySelector('.tv-arrow').textContent=open?'▶':'▼';
+                                el.dispatchEvent(new CustomEvent(open?'tvcollapse':'tvexpand',{detail:{text:el.dataset.text},bubbles:true}));
+                            }
+                            el.dispatchEvent(new CustomEvent('tvclick',{detail:{text:el.dataset.text},bubbles:true}));
+                        })(this)" data-text="${esc2(text)}">
+                        <span class="tv-arrow" style="font-size:9px;margin-right:4px">${isExpandable ? "▶" : "•"}</span>${esc2(text)}</div>`;
+                    stack.push({indent, id: nodeId});
+                });
+                return html;
+            };
+            return `<div ${id} style="${base}background:${p.bg||"#fff"};color:${p.fg||"#000"};font-size:${p.fontSize||12}px;font-family:${p.fontFamily||""};border:${(p.borderSize||1)+"px solid "+(p.borderColor||"#cccccc")};overflow:auto;padding:4px;box-sizing:border-box">${buildTreeHtml(p.items||"")}</div>`;
         }
         case "slider":
             return `<input type="range" ${id} min="${p.min||0}" max="${p.max||100}" value="${p.value||0}" step="${p.step||1}" ${p.disabled?"disabled":""} style="${base}accent-color:#5b7bfa">`;
@@ -888,6 +923,7 @@ const evNameToDom = (evName: string): string => {
         SelectedIndexChanged: "change", DropDown: "focus",
         Scroll: "scroll", ValueChanged: "change",
         RowClick: "click", HeaderClick: "click",
+        NodeClick: "tvclick", NodeExpand: "tvexpand", NodeCollapse: "tvcollapse",
         Load: "DOMContentLoaded", Resize: "resize",
         Closing: "beforeunload",
     };
