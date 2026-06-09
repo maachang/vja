@@ -607,13 +607,13 @@ let _currentProjectTables: TableDef[] = [];
 const _updateProjectData = (jsonStr: string, filePath?: string): boolean => {
     try {
         const proj = JSON.parse(jsonStr);
-        _currentProjectForms  = proj.forms || [];
+        _currentProjectForms = proj.forms || [];
         _currentProjectTables = proj.tables || [];
-        _currentProjectName   = proj.projectInfo?.name
+        _currentProjectName = proj.projectInfo?.name
             || filePath?.split("/").pop()?.replace(/\.vjaproj$/, "")
             || "project";
         _onStartCode = proj.projectInfo?.appEvents?.onStart || "";
-        _onExitCode  = proj.projectInfo?.appEvents?.onExit  || "";
+        _onExitCode = proj.projectInfo?.appEvents?.onExit || "";
         _currentProjectDbDir = join(_projectWorkDir, _currentProjectName, "db");
         _cloudInfras = proj.cloudInfras || [];
         // vjaPass を非同期で読み込み（await不可なので then で）
@@ -683,7 +683,7 @@ const buildFormHtml = (form: any, allForms: any[]): string => {
 <title>${esc2(cfg.title)}</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-#vja-custom-titlebar { display:flex; align-items:center; justify-content:space-between; height:28px; padding:0 10px; background:#2a2a3e; -webkit-app-region:drag; user-select:none; }
+#vja-custom-titlebar { display:flex; align-items:center; justify-content:space-between; height:28px; padding:0 10px; background:#2a2a3e; user-select:none; }
 #vja-titlebar-title { font-size:12px; color:#aaa; }
 #vja-titlebar-close { -webkit-app-region:no-drag; background:none; border:none; color:#aaa; font-size:13px; cursor:pointer; padding:2px 8px; border-radius:4px; }
 #vja-titlebar-close:hover { background:#ff4444; color:#fff; }
@@ -698,9 +698,9 @@ body { overflow: hidden; background: ${esc2(cfg.bg || "#ececec")}; }
 </style>
 </head>
 <body>
-<div id="vja-custom-titlebar">
+<div id="vja-custom-titlebar" class="electrobun-webkit-app-region-drag">
   <span id="vja-titlebar-title">${cfg.title || _currentProjectName || "Project"}</span>
-  <button id="vja-titlebar-close" onclick="window._vjaClose()" title="閉じる">✕</button>
+  <button id="vja-titlebar-close" class="electrobun-webkit-app-region-no-drag" onclick="window._vjaClose()" title="閉じる">✕</button>
 </div>
 <div id="vja-form">
 ${widgetsHtml}
@@ -726,14 +726,14 @@ const buildWidgetHtml = (w: any): string => {
     const p = w.props;
     const vis = p.visible === false ? "visibility:hidden;" : "";
     const base = `position:absolute;left:${w.x}px;top:${w.y}px;width:${w.w}px;height:${w.h}px;box-sizing:border-box;${vis}`;
-    const font = `font-size:${p.fontSize||12}px;font-family:${p.fontFamily||""};font-weight:${p.fontBold?"bold":"normal"}`;
-    const border = `border:${(p.borderSize||0)}px solid ${p.borderColor||"#cccccc"}`;
+    const font = `font-size:${p.fontSize || 12}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"}`;
+    const border = `border:${(p.borderSize || 0)}px solid ${p.borderColor || "#cccccc"}`;
     const id = `id="${w.name}" data-vja-name="${w.name}"`;
     switch (w.tag) {
         case "button":
-            return `<button ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border};border-radius:${p.borderRadius||2}px;cursor:pointer">${esc2(p.text)}</button>`;
+            return `<button ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border};border-radius:${p.borderRadius || 2}px;cursor:pointer">${esc2(p.text)}</button>`;
         case "label":
-            return `<label ${id} style="${base}background:${p.bg};color:${p.fg};${font};text-align:${p.align||"left"};display:flex;align-items:center">${esc2(p.text)}</label>`;
+            return `<label ${id} style="${base}background:${p.bg};color:${p.fg};${font};text-align:${p.align || "left"};display:flex;align-items:center">${esc2(p.text)}</label>`;
 
         case "inputtype": {
             const itype = p.inputType || "text";
@@ -741,45 +741,45 @@ const buildWidgetHtml = (w: any): string => {
             const req = p.required ? " required" : "";
             const ro = p.readonly ? " readonly" : "";
             const dis = p.disabled ? " disabled" : "";
-            return `<input type="${itype}" ${id} value="${esc2(p.text)}" placeholder="${esc2(p.placeholder||"")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
+            return `<input type="${itype}" ${id} value="${esc2(p.text)}" placeholder="${esc2(p.placeholder || "")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
         }
         case "checkbox":
-            return `<label ${id} style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};${font};cursor:pointer"><input type="checkbox" ${p.checked?"checked":""}>${esc2(p.text)}</label>`;
+            return `<label ${id} style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};${font};cursor:pointer"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc2(p.text)}</label>`;
         case "radio":
-            return `<label ${id} style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};${font};cursor:pointer"><input type="radio" name="${esc2(p.group||"g")}" ${p.checked?"checked":""}>${esc2(p.text)}</label>`;
+            return `<label ${id} style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};${font};cursor:pointer"><input type="radio" name="${esc2(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc2(p.text)}</label>`;
         case "listbox":
-            return `<select ${id} multiple style="${base}background:${p.bg};color:${p.fg};${font};${border}">${(p.items||"").split("\n").map((i:string)=>`<option>${esc2(i)}</option>`).join("")}</select>`;
+            return `<select ${id} multiple style="${base}background:${p.bg};color:${p.fg};${font};${border}">${(p.items || "").split("\n").map((i: string) => `<option>${esc2(i)}</option>`).join("")}</select>`;
         case "selectBox":
-            return `<select ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border}">${(p.items||"").split("\n").map((i:string)=>`<option>${esc2(i)}</option>`).join("")}</select>`;
+            return `<select ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border}">${(p.items || "").split("\n").map((i: string) => `<option>${esc2(i)}</option>`).join("")}</select>`;
         case "groupbox":
             return `<fieldset ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border}"><legend>${esc2(p.text)}</legend></fieldset>`;
         case "picture":
-            return `<div ${id} style="${base}background:${p.bg};${border};display:flex;align-items:center;justify-content:center">${p.src?`<img src="${esc2(p.src)}" style="max-width:100%;max-height:100%;object-fit:${p.objectFit||"contain"}">`:""}</div>`;
+            return `<div ${id} style="${base}background:${p.bg};${border};display:flex;align-items:center;justify-content:center">${p.src ? `<img src="${esc2(p.src)}" style="max-width:100%;max-height:100%;object-fit:${p.objectFit || "contain"}">` : ""}</div>`;
         case "datepicker": {
             const _itype = p.inputType || "date";
-            return `<input type="${_itype}" ${id} value="${esc2(p.value||"")}" ${p.min?`min="${esc2(p.min)}"`:""} ${p.max?`max="${esc2(p.max)}"`:""} ${p.disabled?"disabled":""} ${p.readonly?"readonly":""} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
+            return `<input type="${_itype}" ${id} value="${esc2(p.value || "")}" ${p.min ? `min="${esc2(p.min)}"` : ""} ${p.max ? `max="${esc2(p.max)}"` : ""} ${p.disabled ? "disabled" : ""} ${p.readonly ? "readonly" : ""} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
         }
         case "textarea":
-            return `<textarea ${id} ${p.disabled?"disabled":""} ${p.readonly?"readonly":""} placeholder="${(p.placeholder||"").replace(/"/g,"&quot;")}" style="${base}background:${p.bg||"#fff"};color:${p.fg||"#000"};font-size:${p.fontSize||12}px;font-family:${p.fontFamily||""};font-weight:${p.fontBold?"bold":"normal"};border:${(p.borderSize||1)+"px solid "+(p.borderColor||"#cccccc")};resize:none;padding:4px;box-sizing:border-box">${(p.text||"").replace(/</g,"&lt;")}</textarea>`;
+            return `<textarea ${id} ${p.disabled ? "disabled" : ""} ${p.readonly ? "readonly" : ""} placeholder="${(p.placeholder || "").replace(/"/g, "&quot;")}" style="${base}background:${p.bg || "#fff"};color:${p.fg || "#000"};font-size:${p.fontSize || 12}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};resize:none;padding:4px;box-sizing:border-box">${(p.text || "").replace(/</g, "&lt;")}</textarea>`;
         case "progressbar": {
-            const pbval = Math.min(100, Math.max(0, ((p.value||0)-(p.min||0))/((p.max||100)-(p.min||0))*100));
-            return `<div ${id} data-min="${p.min||0}" data-max="${p.max||100}" data-val="${p.value||0}" style="${base}background:${p.bg||"#e0e0e0"};border:${(p.borderSize||1)+"px solid "+(p.borderColor||"#cccccc")};border-radius:3px;overflow:hidden"><div style="width:${pbval}%;height:100%;background:${p.fg||"#5b7bfa"};transition:width 0.2s;border-radius:3px"></div></div>`;
+            const pbval = Math.min(100, Math.max(0, ((p.value || 0) - (p.min || 0)) / ((p.max || 100) - (p.min || 0)) * 100));
+            return `<div ${id} data-min="${p.min || 0}" data-max="${p.max || 100}" data-val="${p.value || 0}" style="${base}background:${p.bg || "#e0e0e0"};border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};border-radius:3px;overflow:hidden"><div style="width:${pbval}%;height:100%;background:${p.fg || "#5b7bfa"};transition:width 0.2s;border-radius:3px"></div></div>`;
         }
         case "treeview": {
             const buildTreeHtml = (items: string): string => {
                 const lines = items.split("\n");
-                const esc2 = (s: string) => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+                const esc2 = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
                 let html = "";
-                const stack: {indent: number, id: string}[] = [];
+                const stack: { indent: number, id: string }[] = [];
                 lines.forEach((line, i) => {
                     if (!line.trim()) return;
                     const indent = line.match(/^(\s*)/)?.[1].length ?? 0;
                     const text = line.trim();
                     const nodeId = `_tvn${i}`;
-                    while (stack.length && stack[stack.length-1].indent >= indent) stack.pop();
+                    while (stack.length && stack[stack.length - 1].indent >= indent) stack.pop();
                     const hasParent = stack.length > 0;
                     const isExpandable = lines.some((l, j) => j > i && l.match(/^(\s*)/)?.[1].length > indent && l.trim());
-                    html += `<div style="padding-left:${indent*14}px;line-height:22px;cursor:pointer;white-space:nowrap" id="${nodeId}"
+                    html += `<div style="padding-left:${indent * 14}px;line-height:22px;cursor:pointer;white-space:nowrap" id="${nodeId}"
                         onclick="(function(el){
                             const ch=el.nextElementSibling;
                             if(ch&&ch.dataset.children){
@@ -791,17 +791,17 @@ const buildWidgetHtml = (w: any): string => {
                             el.dispatchEvent(new CustomEvent('tvclick',{detail:{text:el.dataset.text},bubbles:true}));
                         })(this)" data-text="${esc2(text)}">
                         <span class="tv-arrow" style="font-size:9px;margin-right:4px">${isExpandable ? "▶" : "•"}</span>${esc2(text)}</div>`;
-                    stack.push({indent, id: nodeId});
+                    stack.push({ indent, id: nodeId });
                 });
                 return html;
             };
-            return `<div ${id} style="${base}background:${p.bg||"#fff"};color:${p.fg||"#000"};font-size:${p.fontSize||12}px;font-family:${p.fontFamily||""};border:${(p.borderSize||1)+"px solid "+(p.borderColor||"#cccccc")};overflow:auto;padding:4px;box-sizing:border-box">${buildTreeHtml(p.items||"")}</div>`;
+            return `<div ${id} style="${base}background:${p.bg || "#fff"};color:${p.fg || "#000"};font-size:${p.fontSize || 12}px;font-family:${p.fontFamily || ""};border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};overflow:auto;padding:4px;box-sizing:border-box">${buildTreeHtml(p.items || "")}</div>`;
         }
         case "slider":
-            return `<input type="range" ${id} min="${p.min||0}" max="${p.max||100}" value="${p.value||0}" step="${p.step||1}" ${p.disabled?"disabled":""} style="${base}accent-color:#5b7bfa">`;
+            return `<input type="range" ${id} min="${p.min || 0}" max="${p.max || 100}" value="${p.value || 0}" step="${p.step || 1}" ${p.disabled ? "disabled" : ""} style="${base}accent-color:#5b7bfa">`;
         case "hscroll": {
-            const hmin = p.min||0, hmax = p.max||100, hval = p.value||0, hstep = p.step||1;
-            const hbg = p.bg||"#ddd";
+            const hmin = p.min || 0, hmax = p.max || 100, hval = p.value || 0, hstep = p.step || 1;
+            const hbg = p.bg || "#ddd";
             return `<div ${id} data-min="${hmin}" data-max="${hmax}" data-val="${hval}" data-step="${hstep}"
                 style="${base}background:${hbg};border:1px solid #999;border-radius:2px;display:flex;align-items:center;justify-content:space-between;padding:0 2px;box-sizing:border-box;user-select:none"
                 onclick="(function(el){
@@ -818,14 +818,14 @@ const buildWidgetHtml = (w: any): string => {
                 })(this)">
                 <span style="font-size:9px;flex-shrink:0">◀</span>
                 <div style="flex:1;height:6px;background:#bbb;margin:0 3px;border-radius:3px;position:relative">
-                    <div class="hs-thumb" style="position:absolute;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;background:#666;border-radius:50%;left:${Math.round((hval-hmin)/(hmax-hmin)*100)}%"></div>
+                    <div class="hs-thumb" style="position:absolute;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;background:#666;border-radius:50%;left:${Math.round((hval - hmin) / (hmax - hmin) * 100)}%"></div>
                 </div>
                 <span style="font-size:9px;flex-shrink:0">▶</span>
             </div>`;
         }
         case "vscroll": {
-            const vmin = p.min||0, vmax = p.max||100, vval = p.value||0, vstep = p.step||1;
-            const vbg = p.bg||"#ddd";
+            const vmin = p.min || 0, vmax = p.max || 100, vval = p.value || 0, vstep = p.step || 1;
+            const vbg = p.bg || "#ddd";
             return `<div ${id} data-min="${vmin}" data-max="${vmax}" data-val="${vval}" data-step="${vstep}"
                 style="${base}background:${vbg};border:1px solid #999;border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;box-sizing:border-box;user-select:none"
                 onclick="(function(el){
@@ -842,7 +842,7 @@ const buildWidgetHtml = (w: any): string => {
                 })(this)">
                 <span style="font-size:9px;flex-shrink:0">▲</span>
                 <div style="width:6px;flex:1;background:#bbb;margin:3px 0;border-radius:3px;position:relative">
-                    <div class="vs-thumb" style="position:absolute;left:50%;transform:translate(-50%,-50%);width:12px;height:12px;background:#666;border-radius:50%;top:${Math.round((vval-vmin)/(vmax-vmin)*100)}%"></div>
+                    <div class="vs-thumb" style="position:absolute;left:50%;transform:translate(-50%,-50%);width:12px;height:12px;background:#666;border-radius:50%;top:${Math.round((vval - vmin) / (vmax - vmin) * 100)}%"></div>
                 </div>
                 <span style="font-size:9px;flex-shrink:0">▼</span>
             </div>`;
@@ -895,7 +895,7 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
 
 // 現在のプロジェクトのAppEventsコードを保持
 let _onStartCode = "";
-let _onExitCode  = "";
+let _onExitCode = "";
 
 // OnStart を Bun側で実行（TS文字列を一時ファイル経由でimport）
 const runOnStart = async (): Promise<void> => {
@@ -964,8 +964,8 @@ ${code}
 };
 
 // AppEvents用のセッションヘルパー
-const _getSession   = (key: string): string | null => _session.get(key) ?? null;
-const _setSession   = (key: string, val: string): void => { _session.set(key, val); };
+const _getSession = (key: string): string | null => _session.get(key) ?? null;
+const _setSession = (key: string, val: string): void => { _session.set(key, val); };
 const _deleteSession = (key: string): void => { _session.delete(key); };
 const _dbQuery = (sql: string, params?: any[]): any[] => {
     try {
@@ -995,7 +995,7 @@ const _dbImportCsv = async (tableName: string, filePath: string): Promise<void> 
         for (let i = 0; i < line.length; i++) {
             const c = line[i];
             if (inQ) {
-                if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
+                if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
                 else if (c === '"') inQ = false;
                 else cur += c;
             } else {
@@ -1219,7 +1219,7 @@ const closeProjectWindow = (): void => {
 
 // プロジェクトウィンドウが閉じられた時の処理
 const _onProjectWindowClosed = (): void => {
-// 非同期でOnExitを実行してから終了フラグをON
+    // 非同期でOnExitを実行してから終了フラグをON
     (async () => {
         try {
             await runOnExit();
@@ -1232,7 +1232,7 @@ const _onProjectWindowClosed = (): void => {
                 _session.clear();
                 // vjaデザイナー側にボタンリセットを通知
                 setTimeout(() => {
-try {
+                    try {
                         browserWindow.webview.rpc.send.stopProjectResult({ ok: true });
                     } catch (e) {
                         console.warn("[project] stopProjectResult送信エラー:", e);
@@ -1294,5 +1294,3 @@ const browserWindow = new BrowserWindow({
 
 // フルスクリーン
 browserWindow.maximize();
-
-
