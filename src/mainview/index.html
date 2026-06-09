@@ -1437,7 +1437,7 @@
             picture: [
                 ...PP_POS,
                 {sep: "画像"},
-                {k: "src", lb: "ImagePath", t: "text"},
+                {k: "src", lb: "Image", t: "img"},
                 {k: "objectFit", lb: "ObjectFit", t: "sel", opts: ["contain", "cover", "fill", "none"]},
                 {k: "bg", lb: "BackColor", t: "color"},
                 ...PP_BORDER,
@@ -1645,6 +1645,21 @@
                 }
                 case "area":
                     return `<textarea class="pv-textarea" style="height:56px" oninput="setProp('${d.k}','${d.sp || ""}',this.value,${w2})" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">${esc(val || "")}</textarea>`;
+                case "img": {
+                    const hasImg = val && val.startsWith("data:");
+                    const iid = "pvimg_" + w2;
+                    return `<div style="display:flex;flex-direction:column;gap:4px;width:100%">` +
+                        `<div id="${iid}_preview" style="width:100%;height:60px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;display:flex;align-items:center;justify-content:center;overflow:hidden">` +
+                        (hasImg
+                            ? `<img src="${val}" style="max-width:100%;max-height:100%;object-fit:contain">`
+                            : `<span style="color:var(--text3);font-size:11px">画像なし</span>`) +
+                        `</div>` +
+                        `<div style="display:flex;gap:4px">` +
+                        `<button class="pv-input" style="flex:1;cursor:pointer;color:var(--accent)" onmousedown="openImgUpload(${w2})">📁 選択…</button>` +
+                        (hasImg ? `<button class="pv-input" style="cursor:pointer;color:#ff6b6b" onmousedown="clearImg(${w2})">✕</button>` : "") +
+                        `</div>` +
+                        `</div>`;
+                }
                 case "coldef":
                     return `<button onmousedown="openColDefEditor(${w2})" class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ カラム編集…</button>`;
                 case "fontsel": {
@@ -1696,6 +1711,44 @@
         }
 
         // ④ ウィジェット変更確定の共通関数
+        // ── 画像アップロード ─────────────────────────────
+        function openImgUpload(wid) {
+            const inp = document.createElement("input");
+            inp.type = "file";
+            inp.accept = "image/jpeg,image/png,image/gif";
+            inp.onchange = () => {
+                const file = inp.files?.[0];
+                if (!file) return;
+                const MAX = 300 * 1024; // 300KB
+                if (file.size > MAX) {
+                    alert(`画像サイズが上限(300KB)を超えています。\n現在: ${(file.size/1024).toFixed(1)}KB`);
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const b64 = e.target.result;
+                    const w = getWidget(wid);
+                    if (!w) return;
+                    editorUndoPush(_yu, JSON.stringify(w));
+                    setProp("src", "", b64, wid);
+                    renderProps();
+                    fullRedraw();
+                    pushUndo();
+                };
+                reader.readAsDataURL(file);
+            };
+            inp.click();
+        }
+
+        function clearImg(wid) {
+            const w = getWidget(wid);
+            if (!w) return;
+            setProp("src", "", "", wid);
+            renderProps();
+            fullRedraw();
+            pushUndo();
+        }
+
         function commitWidget(w, opts = {}) {
             renderWidget(w, false);
             applyWPos($("w" + w.id), w);
