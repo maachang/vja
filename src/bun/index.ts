@@ -1264,23 +1264,18 @@ const isWin = process.platform === "win32";
 let initW = 1280, initH = 800;
 if (isWin) {
     // ─────────────────────────────────────────────────────
-    // 【暫定対応】Windows フルスクリーン問題
-    // Electrobun の maximize() が Windows では WebView のリサイズに
-    // 追従しないため、起動時のフレームサイズを作業領域に合わせて設定する。
-    // 2環境で動作確認済みだが、DPI設定やマルチモニター環境では
-    // 異なる結果になる可能性があるため、暫定対応とする。
+    // Windows フルスクリーン問題
+    // 一旦タイトルバーは自前で描画対応
+    // これにより、ディスプレイの有効領域を元にwindowを作成
+    // して、browserWindow.maximize()を呼ばない事で、擬似的な
+    // フルスクリーンが実現できるようになる.
     // ─────────────────────────────────────────────────────
     try {
-        // OSで設定されている全体サイズを取得
-        const ps = `Add-Type -AssemblyName System.Windows.Forms;[System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width.ToString()+','+[System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height.ToString()`;
-        const { stdout } = await execFileAsync("powershell", ["-Command", ps]);
-        const [w, h] = stdout.trim().split(",").map(Number);
-
         // ディスプレイの有効領域（タスクバーを除いたサイズ）を取得
         const primaryDisplay = Screen.getPrimaryDisplay();
         const { width, height } = primaryDisplay.workArea;
         initW = width;
-        initH = height - (((h - height) >> 1) - 1);
+        initH = height;
     } catch (e) { console.debug("[vja] screen size detection failed:", e); }
 }
 
@@ -1292,5 +1287,7 @@ const browserWindow = new BrowserWindow({
     rpc: vjaRPC,
 });
 
-// フルスクリーン
-browserWindow.maximize();
+// windows以外はフルスクリーン.
+if (!isWin) {
+    browserWindow.maximize();
+}
