@@ -10,9 +10,10 @@
 
 <body>
     <!-- カスタムタイトルバー -->
-    <div id="custom-titlebar" class="electrobun-webkit-app-region-drag">
+    <div id="custom-titlebar">
         <span id="titlebar-title">VJA Form Designer</span>
-        <button id="titlebar-close" class="electrobun-webkit-app-region-no-drag" onmousedown="window.bunCloseApp()" title="閉じる">✕</button>
+        <button id="titlebar-close" class="electrobun-webkit-app-region-no-drag" onmousedown="window.bunCloseApp()"
+            title="閉じる">✕</button>
     </div>
     <!-- ■ TOOLBAR -->
     <div id="toolbar">
@@ -388,7 +389,7 @@
         function initCloudInfra() {
             let CLOUD_PRESETS = [];
             try {
-                CLOUD_PRESETS = (window._INIT_PARAMS.CLOUD_INFRA_RAW || []).map(def => ({
+                CLOUD_PRESETS = (window._INIT_PARAMS?.CLOUD_INFRA_RAW || []).map(def => ({
                     name: def.infra,
                     services: Object.entries(Object.assign({}, ...def.service)).map(([label, v]) => ({
                         label,
@@ -406,7 +407,6 @@
             } finally {
                 // グローバル化.
                 window.CLOUD_PRESETS = CLOUD_PRESETS;
-                console.log("CLOUD_PRESETS: " + JSON.stringify(CLOUD_PRESETS))
             }
         }
 
