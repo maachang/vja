@@ -43,7 +43,7 @@
                             { "name": "eu-north-1", "selected": false },
                             { "name": "eu-south-1", "selected": false },
                             { "name": "eu-south-2", "selected": false },
-                            { "name": "ap-northeast-1", "selected": true },
+                            { "name": "ap-northeast-1", "selected": true }, // 一旦日本向けに作るので.
                             { "name": "ap-northeast-2", "selected": false },
                             { "name": "ap-northeast-3", "selected": false },
                             { "name": "ap-southeast-1", "selected": false },

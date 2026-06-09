@@ -2152,6 +2152,8 @@
         function yamlInitRpanelEvents() {
             const rp = $("yaml-rpanel");
             if (!rp) return;
+            // 既存ハンドラを削除してから再登録（多重登録防止）
+            if (rp._rpHandler) rp.removeEventListener("click", rp._rpHandler);
 
             const handler = function (e) {
                 // ① アコーディオンヘッダー（最優先）
@@ -2177,7 +2179,7 @@
                     return;
                 }
             };
-            rp.addEventListener("mousedown", handler);
+            rp._rpHandler = handler;
             rp.addEventListener("click", handler);
         }
 
