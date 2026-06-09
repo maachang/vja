@@ -206,6 +206,12 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 browserWindow.webview.toggleDevTools();
             },
 
+            // ── プロジェクト停止（デザイナーウィンドウから） ──
+            stopProjectRequest: async () => {
+                closeProjectWindow();
+                browserWindow.webview.rpc.send.stopProjectResult({ ok: true });
+            },
+
             // ── クラウドインフラ設定 ──────────────────────
             saveCloudInfrasRequest: async ({ infras }: { infras: any[] }) => {
                 try {
