@@ -398,7 +398,7 @@
                     })),
                     creds: def.credential.map(c => {
                         const [name, meta] = Object.entries(c)[0];
-                        return {name, key: meta.key, secret: meta.secret};
+                        return {name, key: meta.key, secret: meta.secret, select: meta.select || null};
                     }),
                 }));
             } catch (e) {
@@ -4529,18 +4529,38 @@
                         oninput="updateCloudCredsJson(${i},this.value)">${esc(jsonVal)}</textarea>
                 </div>`;
             } else {
-                credFields = credDefs.map(cd => {
-                    const k = typeof cd === "string" ? cd : cd.name;
+                credFields = credDefs.map((cd, ci) => {
+                    const k        = typeof cd === "string" ? cd : cd.name;
                     const isSecret = typeof cd === "object" && cd.secret;
                     const appInput = !!(inf.appInput?.[k]);
-                    return `<div style="display:flex;align-items:center;gap:6px;margin-top:4px">
-                        <span style="width:110px;font-size:11px;color:var(--text3);flex-shrink:0">${esc(k)}${isSecret ? " 🔒" : ""}</span>
-                        <input type="${isSecret ? "password" : "text"}" class="pv-input"
+                    const selOpts  = typeof cd === "object" && Array.isArray(cd.select) ? cd.select : null;
+                    const curVal   = inf.credentials?.[k] || "";
+                    let inputHtml;
+                    if (selOpts) {
+                        const selId  = "cloud-cred-sel-" + i + "-" + ci;
+                        const selDef = selOpts.find(o => o.selected) || selOpts[0];
+                        const selCur = curVal || selDef?.name || "";
+                        const opts   = selOpts.map(o =>
+                            `<div class="pv-sel-opt ${selCur === o.name ? "active" : ""}"
+                                onmousedown="pvSelPick('${selId}','${esc(o.name)}',event);updateCloudCred(${i},'${esc(k)}','${esc(o.name)}')">${esc(o.name)}</div>`
+                        ).join("");
+                        inputHtml = `<div class="pv-sel" id="${selId}" style="flex:1">
+                            <div class="pv-sel-btn" onmousedown="pvSelOpen('${selId}',event)">
+                                <span>${esc(selCur)}</span><span class="arr">▼</span>
+                            </div>
+                            <div class="pv-sel-list">${opts}</div>
+                        </div>`;
+                    } else {
+                        inputHtml = `<input type="${isSecret ? "password" : "text"}" class="pv-input"
                             style="flex:1;${appInput ? "opacity:0.5" : ""}"
                             placeholder="${appInput ? "（アプリ側で入力）" : esc(k)}"
-                            value="${esc(inf.credentials?.[k] || "")}"
+                            value="${esc(curVal)}"
                             ${appInput ? "disabled" : ""}
-                            oninput="updateCloudCred(${i},'${esc(k)}',this.value)">
+                            oninput="updateCloudCred(${i},'${esc(k)}',this.value)">`;
+                    }
+                    return `<div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                        <span style="width:110px;font-size:11px;color:var(--text3);flex-shrink:0">${esc(k)}${isSecret ? " 🔒" : ""}</span>
+                        ${inputHtml}
                         <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--text3);white-space:nowrap;cursor:pointer"
                             title="チェックON: アプリ実行時にウィジェットから入力&#10;チェックOFF: ここで設定した値を使用">
                             <input type="checkbox" ${appInput ? "checked" : ""}
