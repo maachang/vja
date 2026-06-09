@@ -70,12 +70,13 @@ w.vja.log = {
     log:   (msg: string) => mkPromise("log", () => s.logRequest({ level: "log",   message: msg })),
 };
 
-// ダイアログ
+// ダイアログ・ウィンドウ操作
 w.vja.app = {
     showDialog:  (message: string) =>
         mkPromise("appDialog", () => s.appDialogRequest({ type: "alert",   message })),
     showConfirm: (message: string) =>
         mkPromise("appDialog", () => s.appDialogRequest({ type: "confirm", message })),
+    closeWindow: () => s.stopProjectRequest({}),
 };
 // ショートハンド
 w.vja.dialog  = (message: string) => w.vja.app.showDialog(message);

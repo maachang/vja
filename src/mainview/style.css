@@ -30,6 +30,39 @@ html {
     --font: "Segoe UI", system-ui, sans-serif;
 }
 
+/* ── カスタムタイトルバー ── */
+#custom-titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 32px;
+    padding: 0 12px;
+    background: var(--bg1);
+    border-bottom: 1px solid var(--border);
+    -webkit-app-region: drag;
+    user-select: none;
+    flex-shrink: 0;
+}
+#titlebar-title {
+    font-size: 13px;
+    color: var(--text2);
+}
+#titlebar-close {
+    -webkit-app-region: no-drag;
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 8px;
+    border-radius: 4px;
+    line-height: 1;
+}
+#titlebar-close:hover {
+    background: #ff4444;
+    color: #fff;
+}
+
 body {
     font-family: var(--font);
     font-size: 12px;
