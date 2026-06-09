@@ -2230,11 +2230,28 @@ input[type=number] {
     padding: 0 4px;
     outline: none;
     box-sizing: border-box;
-    width: 100%
+    width: 100%;
+    font-family: var(--font);
 }
 
 .pv-input:focus {
-    border-color: var(--accent)
+    border-color: var(--accent);
+}
+
+select.pv-input {
+    appearance: auto;
+    -webkit-appearance: auto;
+    cursor: pointer;
+}
+
+select.pv-input option {
+    background: var(--bg2);
+    color: var(--text);
+}
+
+select.pv-input:focus {
+    background: var(--bg3);
+    border-color: var(--accent);
 }
 
 .pv-textarea {

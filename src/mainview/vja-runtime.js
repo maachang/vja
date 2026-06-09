@@ -315,7 +315,7 @@
             try {
                 const r = await vja.file.read(_SESSION_PATH);
                 this._cache = r.ok && r.content ? JSON.parse(r.content) : {};
-            } catch { this._cache = {}; }
+            } catch (e) { console.debug("[vja] session cache parse failed:", e); this._cache = {}; }
             return this._cache;
         },
 
@@ -438,11 +438,11 @@
             try {
                 await navigator.clipboard.writeText(String(text));
                 return true;
-            } catch { return false; }
+            } catch (e) { console.debug("[vja] validation error:", e); return false; }
         },
         async readClipboard() {
             try { return await navigator.clipboard.readText(); }
-            catch { return null; }
+            catch (e) { console.debug("[vja] error:", e); return null; }
         },
 
         // 数値フォーマット
@@ -699,6 +699,63 @@
         async _importKey(keyStr) {
             const raw = new TextEncoder().encode(keyStr.padEnd(32, "0").slice(0, 32));
             return crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+        },
+    };
+
+    // ════════════════════════════════════════════════
+    // vja.cloud.* — クラウドインフラ連携
+    // ════════════════════════════════════════════════
+    vja.cloud = {
+
+        // 有効なインフラのSDKを読み込む（onStartで呼ぶ）
+        async loadAll() {
+            const infras = await this.list();
+            for (const inf of infras.filter(i => i.enabled && i.sdkUrl)) {
+                await vja.app.loadScript(inf.sdkUrl).catch(e =>
+                    console.warn("[vja.cloud] SDK load failed:", inf.name, e)
+                );
+            }
+        },
+
+        // 登録済みインフラ一覧を取得（クレデンシャルはマスク済み）
+        async list() {
+            return new Promise(resolve => {
+                const handler = ({ infras }) => { resolve(infras); };
+                vja._rpc?.on?.("getCloudInfrasResult", handler);
+                vja._rpc?.send?.getCloudInfrasRequest?.({});
+                setTimeout(() => resolve([]), 3000);
+            });
+        },
+
+        // 指定インフラのクレデンシャル値を取得（Bun側で復号）
+        async getCredential(infraId, key) {
+            return new Promise((resolve, reject) => {
+                const handler = ({ ok, value }) => {
+                    ok ? resolve(value) : reject(new Error("credential not found"));
+                };
+                vja._rpc?.on?.("getDecryptedCredentialResult", handler);
+                vja._rpc?.send?.getDecryptedCredentialRequest?.({ infraId, key });
+                setTimeout(() => reject(new Error("timeout")), 5000);
+            });
+        },
+    };
+
+    // ════════════════════════════════════════════════
+    // vja.app.loadScript — CDNスクリプト動的読み込み
+    // ════════════════════════════════════════════════
+    if (!vja.app) vja.app = {};
+    const _origApp = vja.app;
+    vja.app = {
+        ..._origApp,
+        loadScript(url) {
+            return new Promise((resolve, reject) => {
+                if (document.querySelector(`script[src="${url}"]`)) { resolve(); return; }
+                const s = document.createElement("script");
+                s.src = url;
+                s.onload = () => resolve();
+                s.onerror = () => reject(new Error("Script load failed: " + url));
+                document.head.appendChild(s);
+            });
         },
     };
 

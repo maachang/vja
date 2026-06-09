@@ -30,7 +30,8 @@ const execCmd = async (cmd: string[]): Promise<string> => {
         const [bin, ...args] = cmd;
         const { stdout } = await execFileAsync(bin, args);
         return (stdout ?? "").trim();
-    } catch {
+    } catch (e) {
+        console.debug("[vja] loadLastDir failed:", e);
         return "";
     }
 };
@@ -49,13 +50,91 @@ initLogger({ dir: _logDir, level: "info" });
 const _configDir = join(homedir(), ".vja-designer");
 const _lastDirFile = join(_configDir, "last-dir.txt");
 
+// ── 暗号化基盤 ────────────────────────────────────────
+// vja共通パスフレーズ（ソースに埋め込み・難読化レベル）
+const _VJA_PASSPHRASE = "vja-form-designer-2024-xK9mPqR7nL2wT5vY";
+
+const _strToKey = async (passphrase: string): Promise<CryptoKey> => {
+    const enc = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+        "raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]
+    );
+    return crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt: enc.encode("vja-salt-2024"), iterations: 100000, hash: "SHA-256" },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+    );
+};
+
+const _encrypt = async (plain: string, passphrase: string): Promise<string> => {
+    const key = await _strToKey(passphrase);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const enc = new TextEncoder();
+    const cipherBuf = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, enc.encode(plain));
+    const combined = new Uint8Array(12 + cipherBuf.byteLength);
+    combined.set(iv, 0);
+    combined.set(new Uint8Array(cipherBuf), 12);
+    return Buffer.from(combined).toString("base64");
+};
+
+const _decrypt = async (b64: string, passphrase: string): Promise<string> => {
+    const key = await _strToKey(passphrase);
+    const combined = Buffer.from(b64, "base64");
+    const iv = combined.slice(0, 12);
+    const cipher = combined.slice(12);
+    const plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
+    return new TextDecoder().decode(plainBuf);
+};
+
+// vjaPass: プロジェクトごとのパスフレーズ（共通パスフレーズで暗号化して保存）
+let _vjaPass: string = "";
+
+const _generateVjaPass = (): string => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    const arr = crypto.getRandomValues(new Uint8Array(32));
+    return Array.from(arr).map(b => chars[b % chars.length]).join("");
+};
+
+// プロジェクトJSONからvjaPassを取得（なければ生成）
+const _loadVjaPass = async (proj: any): Promise<string> => {
+    if (proj._vjaPass) {
+        try {
+            return await _decrypt(proj._vjaPass, _VJA_PASSPHRASE);
+        } catch (e) { console.debug("[vja] decrypt failed, generating new pass:", e); }
+    }
+    return _generateVjaPass();
+};
+
+// vjaPassをプロジェクトJSONに埋め込む（保存前に呼ぶ）
+const _injectVjaPass = async (jsonStr: string): Promise<string> => {
+    const proj = JSON.parse(jsonStr);
+    if (!_vjaPass) _vjaPass = _generateVjaPass();
+    proj._vjaPass = await _encrypt(_vjaPass, _VJA_PASSPHRASE);
+    return JSON.stringify(proj);
+};
+
+// クレデンシャルの暗号化・復号
+const encryptCredential = async (plain: string): Promise<string> => {
+    if (!_vjaPass) _vjaPass = _generateVjaPass();
+    return _encrypt(plain, _vjaPass);
+};
+const decryptCredential = async (b64: string): Promise<string> => {
+    if (!_vjaPass) return "";
+    try { return await _decrypt(b64, _vjaPass); } catch (e) { console.debug("[vja] decryptCredential failed:", e); return ""; }
+};
+
+// 現在のクラウドインフラ設定
+let _cloudInfras: any[] = [];
+
 const loadLastDir = (): string => {
     try {
         if (existsSync(_lastDirFile)) {
             const saved = readFileSync(_lastDirFile, "utf-8").trim();
             if (saved && existsSync(saved)) return saved;
         }
-    } catch {}
+    } catch (e) { console.debug("[vja] loadLastDir failed:", e); }
     return homedir();
 };
 const saveLastDir = async (filePath: string): Promise<void> => {
@@ -63,7 +142,7 @@ const saveLastDir = async (filePath: string): Promise<void> => {
         const dir = dirname(filePath);
         if (!existsSync(_configDir)) mkdirSync(_configDir, { recursive: true });
         await Bun.write(_lastDirFile, dir);
-    } catch {}
+    } catch (e) { console.debug("[vja] saveLastDir failed:", e); }
 };
 let _lastDir: string = loadLastDir();
 
@@ -122,6 +201,33 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
         messages: {
             // ══ プロジェクトファイル操作 ══════════════
 
+            // ── DevTools 開閉 ─────────────────────────
+            toggleDevToolsRequest: async () => {
+                browserWindow.webview.toggleDevTools();
+            },
+
+            // ── クラウドインフラ設定 ──────────────────────
+            saveCloudInfrasRequest: async ({ infras }: { infras: any[] }) => {
+                try {
+                    const merged = await Promise.all(infras.map(async (inf) => {
+                        const existing = _cloudInfras.find((c: any) => c.id === inf.id);
+                        const encCreds: Record<string, string> = {};
+                        for (const [k, v] of Object.entries(inf.credentials || {})) {
+                            if (v === "****" && existing?.credentials?.[k]) {
+                                encCreds[k] = existing.credentials[k];
+                            } else if (typeof v === "string" && v !== "****") {
+                                encCreds[k] = await encryptCredential(v);
+                            }
+                        }
+                        return { ...inf, credentials: encCreds };
+                    }));
+                    _cloudInfras = merged;
+                    browserWindow.webview.rpc.send.saveCloudInfrasResult({ ok: true });
+                } catch (e: any) {
+                    browserWindow.webview.rpc.send.saveCloudInfrasResult({ ok: false, error: e.message });
+                }
+            },
+
             openFileRequest: async ({ filter, lastPath }) => {
                 const ext = filter === "html" ? "html" : "vjaproj";
                 const startingFolder = lastPath ? dirname(lastPath) : _lastDir;
@@ -162,11 +268,12 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                     return;
                 }
                 try {
-                    await Bun.write(savePath, content);
+                    const contentWithPass = await _injectVjaPass(content);
+                    await Bun.write(savePath, contentWithPass);
                     _lastDir = dirname(savePath);
                     await saveLastDir(savePath);
                     console.log("[saved]", savePath);
-                    _updateProjectData(content, savePath);
+                    _updateProjectData(contentWithPass, savePath);
                     browserWindow.webview.rpc.send.saveFileResult({ ok: true, path: savePath, cancelled: false });
                 } catch (e: any) {
                     console.error("[save error]", e.message);
@@ -512,10 +619,13 @@ const _updateProjectData = (jsonStr: string, filePath?: string): boolean => {
             || "project";
         _onStartCode = proj.projectInfo?.appEvents?.onStart || "";
         _onExitCode  = proj.projectInfo?.appEvents?.onExit  || "";
-        // プロジェクトのDB管理ディレクトリを更新
         _currentProjectDbDir = join(_projectWorkDir, _currentProjectName, "db");
+        _cloudInfras = proj.cloudInfras || [];
+        // vjaPass を非同期で読み込み（await不可なので then で）
+        _loadVjaPass(proj).then(pass => { _vjaPass = pass; });
         return true;
-    } catch {
+    } catch (e) {
+        console.error("[vja] _updateProjectData failed:", e);
         return false;
     }
 };
@@ -844,7 +954,7 @@ ${code}
     } catch (e: any) {
         console.error(`[app] ${name} 実行エラー:`, e.message);
     } finally {
-        try { rmSync(tmpFile); } catch {}
+        try { rmSync(tmpFile); } catch (e) { console.debug('[vja] rmSync failed:', e); }
     }
 };
 
@@ -858,7 +968,7 @@ const _dbQuery = (sql: string, params?: any[]): any[] => {
             ? getProjectDb(_currentProjectDbDir)
             : getDb();
         return db.query(sql).all(...(params || [])) as any[];
-    } catch { return []; }
+    } catch (e) { console.debug('[vja] catch:', e); return []; }
 };
 const _dbExecute = (sql: string, params?: any[]): any => {
     try {
@@ -1091,7 +1201,7 @@ const closeProjectWindow = (): void => {
         } catch (e) {
             console.error("[project] closeProjectWindow エラー:", e);
         } finally {
-            try { _session.clear(); } catch {}
+            try { _session.clear(); } catch (e) { console.debug("[vja] session.clear failed:", e); }
         }
     }
 };
@@ -1160,7 +1270,7 @@ if (isWin) {
         const { width, height } = primaryDisplay.workArea;
         initW = width;
         initH = height - (((h - height) >> 1) - 1);
-    } catch {}
+    } catch (e) { console.debug("[vja] screen size detection failed:", e); }
 }
 
 const browserWindow = new BrowserWindow({
@@ -1172,3 +1282,5 @@ const browserWindow = new BrowserWindow({
 
 // フルスクリーン
 browserWindow.maximize();
+
+

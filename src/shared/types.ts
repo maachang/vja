@@ -130,6 +130,15 @@ export type VjaRPCType = {
             navigateFormRequest: { formName: string };
             pageLoadedRequest: { _?: never };
 
+            // ── DevTools ─────────────────────────────────
+            toggleDevToolsRequest: { _?: never };
+
+            // ── クラウドインフラ設定 ──────────────────────
+            getCloudInfrasRequest: { _?: never };
+            saveCloudInfrasRequest: { infras: any[] };
+            getDecryptedCredentialRequest: { infraId: string; key: string };
+            loadScriptRequest: { url: string };
+
             // ── セッション取得 ────────────────────────────
             sessionGetRequest: { key: string };
 
@@ -197,6 +206,12 @@ export type VjaRPCType = {
 
             // ── フォーム切り替え結果 ──────────────────────
             navigateFormResult: { ok: boolean; error?: string };
+
+            // ── クラウドインフラ設定結果 ──────────────────
+            getCloudInfrasResult: { infras: any[] };
+            saveCloudInfrasResult: { ok: boolean; error?: string };
+            getDecryptedCredentialResult: { ok: boolean; value: string };
+            loadScriptResult: { url: string };
 
             // ── セッション取得結果 ────────────────────────
             sessionGetResult: { ok: boolean; value: string | null };

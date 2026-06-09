@@ -73,6 +73,10 @@
                         スナップ切替
                     </div>
                     <div class="dd-sep"></div>
+                    <div class="dd-item" onmousedown="openDebugTools()">
+                        デバッグ表示
+                    </div>
+                    <div class="dd-sep"></div>
                     <div class="dd-item" onmousedown="openConstEditor()">
                         定数の編集…
                     </div>
@@ -81,6 +85,9 @@
                     </div>
                     <div class="dd-item" onmousedown="openAiConfig()">
                         AI接続設定…
+                    </div>
+                    <div class="dd-item" onmousedown="openCloudInfraConfig()">
+                        クラウドインフラ設定…
                     </div>
                     <div class="dd-item" onmousedown="openTableManager()">
                         テーブル管理…
@@ -166,6 +173,11 @@
                 <path
                     d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" />
             </svg>AI設定
+        </button>
+        <button class="tb-btn" onmousedown="openCloudInfraConfig()" title="クラウドインフラ設定">
+            <svg viewBox="0 0 24 24">
+                <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+            </svg>クラウド
         </button>
         <button class="tb-btn" onmousedown="openTableManager()" title="テーブル管理">
             <svg viewBox="0 0 24 24">
@@ -352,10 +364,58 @@
     <!-- カラム型フローティングドロップダウン -->
     <div id="col-type-float"></div>
 
+    <!-- VJA 諸記事実行用のパラメータ -->
+    <script type="module" src="./init-params.js"></script>
+    <!-- vja用のランタイム -->
+    <script type="module" src="./vja-runtime.js"></script>
+    <!-- Electrobun RPC ブリッジ（Electrobun が bridge.ts をバンドルして読み込む） -->
+    <script type="module" src="./bridge.ts"></script>
+
+    <!-- 外部 js 呼び出しで同期が必要な処理系はこちらに追加する. -->
+    <script type="module">
+
+        /* ── クラウドインフラ設定 ── */
+        // [#init]処理系.
+        // cloud-infra.json から inject-cloud-presets.ts によって埋め込まれる
+        // { infra, service:[{name:{url,input}}], credential:[{name:{key,secret}}] }[] 形式
+        // cloud-infra-data.js で window._INIT_PARAMS.CLOUD_INFRA_RAW  がセットされる
+        // 内部形式に変換（未ロード時はフォールバック）
+        function initCloudInfra() {
+            let CLOUD_PRESETS = [];
+            try {
+                CLOUD_PRESETS = (window._INIT_PARAMS.CLOUD_INFRA_RAW || []).map(def => ({
+                    name: def.infra,
+                    services: Object.entries(Object.assign({}, ...def.service)).map(([label, v]) => ({
+                        label,
+                        url: v.url,
+                        input: v.input,
+                    })),
+                    creds: def.credential.map(c => {
+                        const [name, meta] = Object.entries(c)[0];
+                        return {name, key: meta.key, secret: meta.secret};
+                    }),
+                }));
+            } catch (e) {
+                console.error("[vja] CLOUD_PRESETS init failed:", e);
+                CLOUD_PRESETS = [];
+            } finally {
+                // グローバル化.
+                window.CLOUD_PRESETS = CLOUD_PRESETS;
+                console.log("CLOUD_PRESETS: " + JSON.stringify(CLOUD_PRESETS))
+            }
+        }
+
+        /* ═══════════════════════════════════════════
+            init 実行.
+        ═══════════════════════════════════════════ */
+        initCloudInfra(); // クラウドインフラ設定.
+
+    </script>
+
     <script>
         /* ═══════════════════════════════════════════
-                      TOOLS 定義
-                    ═══════════════════════════════════════════ */
+            TOOLS 定義
+        ═══════════════════════════════════════════ */
         const TOOLS = [
             {id: "pointer", label: "ポインタ", icon: "🖱️"},
             // ── よく使う順 ──────────────────────────────────
@@ -667,7 +727,7 @@
             version: "1.0.0",
             author: "",
             company: "",
-            appEvents: { onStart: "", onExit: "", onStart_yaml: "", onExit_yaml: "" },
+            appEvents: {onStart: "", onExit: "", onStart_yaml: "", onExit_yaml: ""},
         };
 
         // エディタフォント設定
@@ -677,6 +737,10 @@
             leftPanelW: 110,
             rightPanelW: 420,
         };
+
+        // ── クラウドインフラ設定 ──────────────────────────
+        let cloudInfras = []; // { id, name, url, enabled, sdkUrl, credentials: {key: "暗号化済み"} }
+        let _cloudDraft = [];
 
         let aiConfig = {
             endpoint: "http://localhost:8080",
@@ -926,16 +990,18 @@
                     return html;
                 }
                 case "hscroll":
-                    return `<div style="${base}background:${p.bg||"#ddd"};border:1px solid #999;border-radius:2px;display:flex;align-items:center;justify-content:space-between;padding:0 2px;${vis}"><span style="font-size:9px">◀</span><div style="flex:1;height:50%;background:#999;margin:0 3px;border-radius:1px"></div><span style="font-size:9px">▶</span></div>`;
+                    return `<div style="${base}background:${p.bg || "#ddd"};border:1px solid #999;border-radius:2px;display:flex;align-items:center;justify-content:space-between;padding:0 2px;${vis}"><span style="font-size:9px">◀</span><div style="flex:1;height:50%;background:#999;margin:0 3px;border-radius:1px"></div><span style="font-size:9px">▶</span></div>`;
                 case "vscroll":
-                    return `<div style="${base}background:${p.bg||"#ddd"};border:1px solid #999;border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;${vis}"><span style="font-size:9px">▲</span><div style="width:50%;flex:1;background:#999;margin:3px 0;border-radius:1px"></div><span style="font-size:9px">▼</span></div>`;
-                case "datepicker": { const _itype = p.inputType||"date";
-                    return `<input type="${_itype}" value="${esc(p.value||"")}" ${p.min?`min="${esc(p.min)}"`:""}  ${p.max?`max="${esc(p.max)}"`:""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily||""};font-weight:${p.fontBold?"bold":"normal"};border:${(p.borderSize||0)+"px solid "+(p.borderColor||"#cccccc")};padding:0 4px;pointer-events:none;${vis}">`; }
+                    return `<div style="${base}background:${p.bg || "#ddd"};border:1px solid #999;border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;${vis}"><span style="font-size:9px">▲</span><div style="width:50%;flex:1;background:#999;margin:3px 0;border-radius:1px"></div><span style="font-size:9px">▼</span></div>`;
+                case "datepicker": {
+                    const _itype = p.inputType || "date";
+                    return `<input type="${_itype}" value="${esc(p.value || "")}" ${p.min ? `min="${esc(p.min)}"` : ""}  ${p.max ? `max="${esc(p.max)}"` : ""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px;pointer-events:none;${vis}">`;
+                }
                 case "textarea":
-                    return `<textarea style="${base}background:${p.bg||"#fff"};color:${p.fg||"#000"};font-size:${p.fontSize||12}px;font-family:${p.fontFamily||""};font-weight:${p.fontBold?"bold":"normal"};border:${(p.borderSize||1)+"px solid "+(p.borderColor||"#cccccc")};resize:none;padding:4px;box-sizing:border-box;pointer-events:none;${vis}" placeholder="${esc(p.placeholder||"")}">${esc(p.text||"")}</textarea>`;
+                    return `<textarea style="${base}background:${p.bg || "#fff"};color:${p.fg || "#000"};font-size:${p.fontSize || 12}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};resize:none;padding:4px;box-sizing:border-box;pointer-events:none;${vis}" placeholder="${esc(p.placeholder || "")}">${esc(p.text || "")}</textarea>`;
                 case "progressbar": {
-                    const pval = Math.min(100, Math.max(0, ((p.value||0) - (p.min||0)) / ((p.max||100) - (p.min||0)) * 100));
-                    return `<div style="${base}background:${p.bg||"#e0e0e0"};border:${(p.borderSize||1)+"px solid "+(p.borderColor||"#cccccc")};border-radius:3px;overflow:hidden;${vis}"><div style="width:${pval}%;height:100%;background:${p.fg||"#5b7bfa"};transition:width 0.2s;border-radius:3px"></div></div>`;
+                    const pval = Math.min(100, Math.max(0, ((p.value || 0) - (p.min || 0)) / ((p.max || 100) - (p.min || 0)) * 100));
+                    return `<div style="${base}background:${p.bg || "#e0e0e0"};border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};border-radius:3px;overflow:hidden;${vis}"><div style="width:${pval}%;height:100%;background:${p.fg || "#5b7bfa"};transition:width 0.2s;border-radius:3px"></div></div>`;
                 }
                 case "treeview": {
                     const buildTree = (lines) => {
@@ -950,15 +1016,17 @@
                         html += "</ul>";
                         return html;
                     };
-                    const treeLines = (p.items||"").split("\n");
-                    return `<div style="${base}background:${p.bg||"#fff"};color:${p.fg||"#000"};font-size:${p.fontSize||12}px;border:${(p.borderSize||1)+"px solid "+(p.borderColor||"#cccccc")};overflow:auto;padding:4px;box-sizing:border-box;${vis}">${buildTree(treeLines)}</div>`;
+                    const treeLines = (p.items || "").split("\n");
+                    return `<div style="${base}background:${p.bg || "#fff"};color:${p.fg || "#000"};font-size:${p.fontSize || 12}px;border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};overflow:auto;padding:4px;box-sizing:border-box;${vis}">${buildTree(treeLines)}</div>`;
                 }
                 case "slider":
-                    return `<div style="${base}display:flex;align-items:center;${vis}"><input type="range" min="${p.min||0}" max="${p.max||100}" value="${p.value||0}" step="${p.step||1}" style="width:100%;pointer-events:none;accent-color:#5b7bfa"></div>`;
-                case "datepicker": { const _itype2 = p.inputType||"date";
-                    return `<input type="${_itype2}" ${id} value="${esc(p.value||"")}" ${p.min?`min="${esc(p.min)}"`:""}  ${p.max?`max="${esc(p.max)}"`:""}  ${p.disabled?"disabled":""} ${p.readonly?"readonly":""} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`; }
+                    return `<div style="${base}display:flex;align-items:center;${vis}"><input type="range" min="${p.min || 0}" max="${p.max || 100}" value="${p.value || 0}" step="${p.step || 1}" style="width:100%;pointer-events:none;accent-color:#5b7bfa"></div>`;
+                case "datepicker": {
+                    const _itype2 = p.inputType || "date";
+                    return `<input type="${_itype2}" ${id} value="${esc(p.value || "")}" ${p.min ? `min="${esc(p.min)}"` : ""}  ${p.max ? `max="${esc(p.max)}"` : ""}  ${p.disabled ? "disabled" : ""} ${p.readonly ? "readonly" : ""} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
+                }
                 case "slider":
-                    return `<input type="range" ${id} min="${p.min||0}" max="${p.max||100}" value="${p.value||0}" step="${p.step||1}" ${p.disabled?"disabled":""} style="${base}accent-color:#5b7bfa">`;
+                    return `<input type="range" ${id} min="${p.min || 0}" max="${p.max || 100}" value="${p.value || 0}" step="${p.step || 1}" ${p.disabled ? "disabled" : ""} style="${base}accent-color:#5b7bfa">`;
                 default:
                     return "";
             }
@@ -1049,14 +1117,7 @@
             const body = fb();
 
             // Ctrl+A でフォーム内テキスト選択を無効化
-            document.addEventListener("keydown", (e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key === "a") {
-                    if (!document.activeElement || document.activeElement === document.body ||
-                        document.activeElement === fb()) {
-                        e.preventDefault();
-                    }
-                }
-            });
+            // Ctrl+A は統合keydownハンドラで処理
 
             body.addEventListener("mousedown", (e) => {
                 // ウィジェット・ハンドルは対象外
@@ -1479,11 +1540,11 @@
                 ...PP_POS,
                 {sep: "値"},
                 {k: "value", lb: "Value", t: "num"},
-                {k: "min",   lb: "Min",   t: "num"},
-                {k: "max",   lb: "Max",   t: "num"},
+                {k: "min", lb: "Min", t: "num"},
+                {k: "max", lb: "Max", t: "num"},
                 {sep: "外観"},
                 {k: "bg", lb: "BackColor", t: "color"},
-                {k: "fg", lb: "BarColor",  t: "color"},
+                {k: "fg", lb: "BarColor", t: "color"},
                 ...PP_BORDER,
                 ...PP_TAIL,
             ],
@@ -1524,23 +1585,23 @@
                 {k: "inputType", lb: "InputType", t: "select", opts: ["date", "time", "datetime-local", "month"]},
                 {sep: "値"},
                 {k: "value", lb: "Value", t: "text"},
-                {k: "min",   lb: "Min",   t: "text"},
-                {k: "max",   lb: "Max",   t: "text"},
+                {k: "min", lb: "Min", t: "text"},
+                {k: "max", lb: "Max", t: "text"},
                 {sep: "動作"},
                 {k: "disabled", lb: "Disabled", t: "bool"},
-                {k: "readonly", lb: "ReadOnly",  t: "bool"},
+                {k: "readonly", lb: "ReadOnly", t: "bool"},
                 ...PP_TAIL,
             ],
             slider: [
                 ...PP_POS,
                 {sep: "値"},
-                {k: "min",   lb: "Min",   t: "num"},
-                {k: "max",   lb: "Max",   t: "num"},
+                {k: "min", lb: "Min", t: "num"},
+                {k: "max", lb: "Max", t: "num"},
                 {k: "value", lb: "Value", t: "num"},
-                {k: "step",  lb: "Step",  t: "num"},
+                {k: "step", lb: "Step", t: "num"},
                 {sep: "外観"},
                 {k: "orient", lb: "Orient", t: "select", opts: ["horizontal", "vertical"]},
-                {k: "bg",     lb: "BackColor", t: "color"},
+                {k: "bg", lb: "BackColor", t: "color"},
                 {sep: "動作"},
                 {k: "disabled", lb: "Disabled", t: "bool"},
                 ...PP_TAIL,
@@ -1721,7 +1782,7 @@
                 if (!file) return;
                 const MAX = 300 * 1024; // 300KB
                 if (file.size > MAX) {
-                    alert(`画像サイズが上限(300KB)を超えています。\n現在: ${(file.size/1024).toFixed(1)}KB`);
+                    alert(`画像サイズが上限(300KB)を超えています。\n現在: ${(file.size / 1024).toFixed(1)}KB`);
                     return;
                 }
                 const reader = new FileReader();
@@ -1797,8 +1858,8 @@
                 inp.value = map[lbl];
             });
         }
-        function syncPropXY(w) { _syncPropValues({"Left": w.x, "Top":    w.y}); }
-        function syncPropWH(w) { _syncPropValues({"Width": w.w, "Height": w.h}); }
+        function syncPropXY(w) {_syncPropValues({"Left": w.x, "Top": w.y});}
+        function syncPropWH(w) {_syncPropValues({"Width": w.w, "Height": w.h});}
 
         function renderFormProps() {
             const pl = $("plist");
@@ -1926,8 +1987,8 @@
                 "  " + w.name + "の" + evName + "が発生した時の処理を生成してください。\n" +
                 "  入力値を検証してForm2に遷移します。\n";
             const curJs = (w.jsCode && w.jsCode[evName]) || "";
-            pvRegister("yamlSave",   () => saveYaml(wid, evName));
-            pvRegister("yamlAiGen",  () => yamlAiGenerate(wid, evName));
+            pvRegister("yamlSave", () => saveYaml(wid, evName));
+            pvRegister("yamlAiGen", () => yamlAiGenerate(wid, evName));
             showModal(buildYamlEditorHTML(cur, curJs, true, mhdrHTML("📋 " + esc(w.name) + " — " + esc(evName))));
             initYamlEditorModal(cur, curJs);
         }
@@ -1935,7 +1996,7 @@
         /* ── YAMLエディタ 右パネル ── */
 
         // 右パネルHTML生成
-        function yamlBuildRightPanel(showWidgets=true) {
+        function yamlBuildRightPanel(showWidgets = true) {
             const curForm = forms[curFormIdx];
             const _formConsts = curForm?.constants || [];
             const _allConsts = [...constants, ..._formConsts];
@@ -2226,9 +2287,9 @@
                         if (c.pk) def += " PK";
                         if (c.notNull) def += " NOT NULL";
                         if (c.useDefault) {
-                    const dv = (c.default && c.default.trim() !== "") ? c.default.trim() : defaultValueForType(c.type);
-                    def += " DEFAULT " + dv;
-                }
+                            const dv = (c.default && c.default.trim() !== "") ? c.default.trim() : defaultValueForType(c.type);
+                            def += " DEFAULT " + dv;
+                        }
                         if (c.index) def += " INDEX";
                         return def;
                     }).join("\n");
@@ -2436,7 +2497,7 @@
                 const s = ta.selectionStart, en = ta.selectionEnd, v = ta.value;
                 const ls = v.lastIndexOf("\n", s - 1) + 1;
                 const le = v.indexOf("\n", en);
-                return { s, en, v, ls, le };
+                return {s, en, v, ls, le};
             };
             const applyBlock = (ls, le, v, nb) => {
                 ta.value = v.slice(0, ls) + nb + (le === -1 ? "" : v.slice(le));
@@ -2448,7 +2509,7 @@
             if (e.key === "Tab" && !e.shiftKey) {
                 e.preventDefault();
                 editorUndoPush(state, ta.value);
-                const { s, en, v, ls, le } = getBlock();
+                const {s, en, v, ls, le} = getBlock();
                 if (s === en) {
                     ta.value = v.slice(0, s) + "    " + v.slice(s);
                     ta.selectionStart = ta.selectionEnd = s + 4;
@@ -2463,7 +2524,7 @@
             if (e.key === "[" && ctrl) {
                 e.preventDefault();
                 editorUndoPush(state, ta.value);
-                const { v, ls, le } = getBlock();
+                const {v, ls, le} = getBlock();
                 const blk = v.slice(ls, le === -1 ? v.length : le);
                 applyBlock(ls, le, v, blk.split("\n").map(l => l.replace(/^ {1,4}/, "")).join("\n"));
                 editorHlUpdate(ta.id); return;
@@ -2473,7 +2534,7 @@
             if (e.key === "]" && ctrl) {
                 e.preventDefault();
                 editorUndoPush(state, ta.value);
-                const { v, ls, le } = getBlock();
+                const {v, ls, le} = getBlock();
                 const blk = v.slice(ls, le === -1 ? v.length : le);
                 applyBlock(ls, le, v, blk.split("\n").map(l => "    " + l).join("\n"));
                 editorHlUpdate(ta.id); return;
@@ -2483,7 +2544,7 @@
             if (e.key === "/" && ctrl) {
                 e.preventDefault();
                 editorUndoPush(state, ta.value);
-                const { v, ls, le } = getBlock();
+                const {v, ls, le} = getBlock();
                 const blk = v.slice(ls, le === -1 ? v.length : le);
                 const COM = isJs ? "// " : "# ";
                 applyBlock(ls, le, v, blk.split("\n").map(l => {
@@ -2500,7 +2561,7 @@
             if (e.key === "d" && ctrl) {
                 e.preventDefault();
                 editorUndoPush(state, ta.value);
-                const { v, ls, le } = getBlock();
+                const {v, ls, le} = getBlock();
                 const line = v.slice(ls, le === -1 ? v.length : le);
                 const ins = "\n" + line;
                 ta.value = v.slice(0, le === -1 ? v.length : le) + ins + (le === -1 ? "" : v.slice(le));
@@ -2512,7 +2573,7 @@
             if (e.key === "k" && ctrl) {
                 e.preventDefault();
                 editorUndoPush(state, ta.value);
-                const { v, ls, le } = getBlock();
+                const {v, ls, le} = getBlock();
                 ta.value = v.slice(0, ls) + v.slice(le === -1 ? v.length : le + 1);
                 ta.selectionStart = ta.selectionEnd = ls;
                 editorHlUpdate(ta.id); return;
@@ -2520,7 +2581,7 @@
 
             // ── }: JS の自動 dedent ───────────────────────────
             if (e.key === "}" && isJs) {
-                const { s, en, v, ls } = getBlock();
+                const {s, en, v, ls} = getBlock();
                 const curLine = v.slice(ls, s);
                 if (/^\s+$/.test(curLine) && curLine.length >= 4) {
                     e.preventDefault();
@@ -2536,7 +2597,7 @@
             if (e.key === "Enter") {
                 e.preventDefault();
                 editorUndoPush(state, ta.value);
-                const { s, en, v, ls } = getBlock();
+                const {s, en, v, ls} = getBlock();
                 const curLine = v.slice(ls, s);
                 const baseIndent = curLine.match(/^(\s*)/)[1];
                 let extra = "";
@@ -2619,13 +2680,13 @@
         }
 
         function editorHlUpdate(taId) {
-            if (taId === "yaml-ta") { yamlHlUpdate(); editorUpdateGutter("yaml-ta","yaml-gutter"); }
-            else                    { jsHlUpdate();   editorUpdateGutter("js-ta","js-gutter"); }
+            if (taId === "yaml-ta") {yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter");}
+            else {jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter");}
         }
 
 
         /* ── YAMLエディタ共通HTML生成 ── */
-        function buildYamlEditorHTML(cur, curJs, showWidgets=true, headerHTML="", extraTabsHTML="") {
+        function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", extraTabsHTML = "") {
             const aiEnabled = aiConfig.enabled;
             return (
                 "<div class='modal-yaml'>" +
@@ -2674,7 +2735,7 @@
                 "</div>" +
                 "</div>" +
                 "<div class='mfoot'>" +
-                mfootHTML([{label:"キャンセル", action:"closeModal()"}]) +
+                mfootHTML([{label: "キャンセル", action: "closeModal()"}]) +
                 "<button class='pri' onmousedown='pvCall(\"yamlSave\")'>保存</button>" +
                 "</div>" +
                 "</div>"
@@ -2698,11 +2759,11 @@
                 if (yta) yta.addEventListener("dblclick", editorDblClickHandler);
                 if (jta) jta.addEventListener("dblclick", editorDblClickHandler);
                 editorUndoInit("yaml-ta", _yu, cur);
-                editorUndoInit("js-ta",   _ju, curJs);
+                editorUndoInit("js-ta", _ju, curJs);
                 yamlInitResize();
                 yamlInitRpanelEvents();
                 rAfBind("#tab-yaml", "click", () => yamlTabSwitch("yaml"));
-                rAfBind("#tab-js",   "click", () => { yamlTabSwitch("js"); jsHlUpdate(); });
+                rAfBind("#tab-js", "click", () => {yamlTabSwitch("js"); jsHlUpdate();});
                 jsHlUpdate();
                 if (onAfterInit) onAfterInit();
             });
@@ -2850,8 +2911,8 @@
         /* ── YAML シンタックスハイライト ── */
 
         /* ── JavaScript シンタックスハイライト ── */
-        function jsHlUpdate() { _hlUpdate("js-ta", "js-hl", jsTokenize); }
-        function jsHlSync()   { _hlSync("js-ta",  "js-hl"); }
+        function jsHlUpdate() {_hlUpdate("js-ta", "js-hl", jsTokenize);}
+        function jsHlSync() {_hlSync("js-ta", "js-hl");}
         function jsTokenize(code) {
             const KW = /^(function|return|if|else|for|while|do|switch|case|break|continue|const|let|var|new|this|typeof|instanceof|try|catch|finally|throw|await|async|of|in|class|extends|import|export|default|void|delete|yield)$/;
             const BOOL = /^(true|false|null|undefined|NaN|Infinity)$/;
@@ -2945,9 +3006,9 @@
         /* ── JavaScript エディタ Undo（ネイティブに委譲） ── */
         /* ── エディタ Undo/Redo（YAML・JS共通カスタム実装） ── */
         // YAML用
-        let _yu = { stack: [], idx: -1, busy: false };
+        let _yu = {stack: [], idx: -1, busy: false};
         // JS用
-        let _ju = { stack: [], idx: -1, busy: false };
+        let _ju = {stack: [], idx: -1, busy: false};
 
         // 区切り文字（これを打った直後にスナップショット保存）
         const UNDO_DELIMITERS = new Set([
@@ -2968,8 +3029,8 @@
 
         function editorUndoInit(taId, state, initVal) {
             state.stack = [initVal];
-            state.idx   = 0;
-            state.busy  = false;
+            state.idx = 0;
+            state.busy = false;
             state.lastKey = "";
             const ta = $(taId);
             if (!ta) return;
@@ -2995,7 +3056,7 @@
             state.idx--;
             ta.value = state.stack[state.idx];
             editorHlUpdate(taId);
-            setTimeout(() => { state.busy = false; }, 50);
+            setTimeout(() => {state.busy = false;}, 50);
         }
 
         function editorRedo(taId, state) {
@@ -3006,7 +3067,7 @@
             state.idx++;
             ta.value = state.stack[state.idx];
             editorHlUpdate(taId);
-            setTimeout(() => { state.busy = false; }, 50);
+            setTimeout(() => {state.busy = false;}, 50);
         }
 
 
@@ -3014,7 +3075,7 @@
         function _hlSync(taId, hlId) {
             const ta = $(taId), hl = $(hlId);
             if (!ta || !hl) return;
-            hl.scrollTop  = ta.scrollTop;
+            hl.scrollTop = ta.scrollTop;
             hl.scrollLeft = ta.scrollLeft;
             hl.style.height = ta.offsetHeight + "px";
         }
@@ -3023,11 +3084,11 @@
             if (!ta || !hl) return;
             hl.innerHTML = tokenizeFn(ta.value);
             hl.style.height = ta.offsetHeight + "px";
-            hl.style.width  = ta.offsetWidth  + "px";
+            hl.style.width = ta.offsetWidth + "px";
             _hlSync(taId, hlId);
         }
-        function yamlHlUpdate() { _hlUpdate("yaml-ta", "yaml-hl", yamlTokenize); }
-        function yamlHlSync()   { _hlSync("yaml-ta",  "yaml-hl"); }
+        function yamlHlUpdate() {_hlUpdate("yaml-ta", "yaml-hl", yamlTokenize);}
+        function yamlHlSync() {_hlSync("yaml-ta", "yaml-hl");}
         function yamlTokenize(text) {
             return text.split("\n").map(line => {
                 // コメント行
@@ -3087,7 +3148,7 @@
                 "# フォームイベント: " + evName + "\n" +
                 "# YAML形式でAIへの指示を記述します\n";
             const curJs = f.events["_js_" + evName] || "";
-            pvRegister("yamlSave",  () => saveFormYaml(evName));
+            pvRegister("yamlSave", () => saveFormYaml(evName));
             pvRegister("yamlAiGen", () => yamlAiGenerate("form", evName));
             showModal(buildYamlEditorHTML(cur, curJs, false, mhdrHTML("📋 フォーム — " + esc(evName))));
             initYamlEditorModal(cur, curJs);
@@ -3110,7 +3171,7 @@
             if (!hasY) return;
             const dlg = await vja.app.showConfirm("「" + evName + "」のイベント定義を削除してよろしいですか？");
             if (!dlg?.confirmed) return;
-            if (f.events) { delete f.events[evName]; delete f.events["_js_" + evName]; }
+            if (f.events) {delete f.events[evName]; delete f.events["_js_" + evName];}
             renderEvents();
             pushUndo();
         }
@@ -3176,7 +3237,7 @@
         ═══════════════════════════════════════════ */
         // プロジェクト全体スナップショット
         function snapshot() {
-            return JSON.stringify({forms, curFormIdx, constants, startFormId, aiConfig, tables, snapOn, showGrid, editorConfig, projectInfo});
+            return JSON.stringify({forms, curFormIdx, constants, startFormId, aiConfig, cloudInfras, tables, snapOn, showGrid, editorConfig, projectInfo});
         }
         function pushUndo() {
             // 編集前に現フォームのidCntを書き戻す
@@ -3187,27 +3248,28 @@
         }
         // ── プロジェクトデータ復元共通処理 ──────────────
         function applyProjectData(d) {
-            constants   = d.constants  || [];
+            cloudInfras = d.cloudInfras || [];
+            constants = d.constants || [];
             startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
-            tables      = d.tables     || [];
-            snapOn      = d.snapOn   !== undefined ? d.snapOn   : true;
-            showGrid    = d.showGrid !== undefined ? d.showGrid : false;
+            tables = d.tables || [];
+            snapOn = d.snapOn !== undefined ? d.snapOn : true;
+            showGrid = d.showGrid !== undefined ? d.showGrid : false;
             if (d.editorConfig) editorConfig = {...editorConfig, ...d.editorConfig};
-            if (d.projectInfo)  projectInfo  = {...projectInfo,  ...d.projectInfo};
+            if (d.projectInfo) projectInfo = {...projectInfo, ...d.projectInfo};
             const _ac = d.aiConfig || {};
             aiConfig = {
-                endpoint:    _ac.endpoint    || "http://localhost:8080",
-                apiKey:      _ac.apiKey      || "",
-                model:       _ac.model       || "",
-                models:      _ac.models      || [],
-                enabled:     !!_ac.enabled,
-                routerMode:  !!_ac.routerMode,
+                endpoint: _ac.endpoint || "http://localhost:8080",
+                apiKey: _ac.apiKey || "",
+                model: _ac.model || "",
+                models: _ac.models || [],
+                enabled: !!_ac.enabled,
+                routerMode: !!_ac.routerMode,
             };
         }
 
         function restoreSnap(s) {
             const d = JSON.parse(s);
-            forms      = d.forms;
+            forms = d.forms;
             curFormIdx = d.curFormIdx;
             applyProjectData(d);
             selId = null;
@@ -3389,7 +3451,7 @@
 
         /* ── プロジェクト実行 ── */
         // Bun側に渡す現在のプロジェクトデータを返す
-        window._getProjectData = function() {
+        window._getProjectData = function () {
             return {
                 projectInfo,
                 forms,
@@ -3399,15 +3461,15 @@
         };
 
         async function actRunProject() {
-            if (!bunSaveProject) { alert("bridge が読み込まれていません"); return; }
-            const runBtn  = $("btn-run-project");
+            if (!bunSaveProject) {alert("bridge が読み込まれていません"); return;}
+            const runBtn = $("btn-run-project");
             const stopBtn = $("btn-stop-project");
-if (runBtn)  runBtn.disabled = true;
+            if (runBtn) runBtn.disabled = true;
             showToast("プロジェクトをビルド中…");
             try {
                 const result = await vja.project.run();
                 if (result.ok) {
-                    if (runBtn)  runBtn.style.display  = "none";
+                    if (runBtn) runBtn.style.display = "none";
                     if (stopBtn) stopBtn.style.display = "";
                     showToast("プロジェクトを起動しました");
                 } else {
@@ -3417,7 +3479,7 @@ if (runBtn)  runBtn.disabled = true;
                         alert("実行エラー: " + (result.error || "不明なエラー"));
                     }
                 }
-            } catch(e) {
+            } catch (e) {
                 alert("実行に失敗しました: " + e.message);
             } finally {
                 // 実行ボタンが非表示でない場合は必ずdisabledを解除
@@ -3440,18 +3502,18 @@ if (runBtn)  runBtn.disabled = true;
                 } else {
                     alert("DBクリアに失敗しました: " + (result.error || "不明なエラー"));
                 }
-            } catch(e) {
+            } catch (e) {
                 alert("DBクリアに失敗しました: " + e.message);
             }
         }
 
         async function actStopProject() {
-            const runBtn  = $("btn-run-project");
+            const runBtn = $("btn-run-project");
             const stopBtn = $("btn-stop-project");
             try {
                 await vja.project.stop();
-            } catch(e) {}
-            if (runBtn)  { runBtn.style.display = ""; runBtn.disabled = false; }
+            } catch (e) {console.error("[vja] saveProject error:", e);}
+            if (runBtn) {runBtn.style.display = ""; runBtn.disabled = false;}
             if (stopBtn) stopBtn.style.display = "none";
             showToast("プロジェクトを停止しました");
         }
@@ -3924,11 +3986,11 @@ if (runBtn)  runBtn.disabled = true;
             const cols = tbl.columns || [];
 
             let tbody = cols.map((c, i) => {
-                const oi_name    = "tblColUpdate(" + i + ",'name',this.value)";
-                const oi_notNull  = "tblColUpdate(" + i + ",'notNull',this.checked)";
-                const oi_pk      = "tblColUpdatePk(" + i + ",this.checked)";
-                const oi_index   = "tblColUpdate(" + i + ",'index',this.checked)";
-                const oi_default    = "tblColUpdate(" + i + ",'default',this.value)";
+                const oi_name = "tblColUpdate(" + i + ",'name',this.value)";
+                const oi_notNull = "tblColUpdate(" + i + ",'notNull',this.checked)";
+                const oi_pk = "tblColUpdatePk(" + i + ",this.checked)";
+                const oi_index = "tblColUpdate(" + i + ",'index',this.checked)";
+                const oi_default = "tblColUpdate(" + i + ",'default',this.value)";
                 const oi_useDefault = "tblColUpdate(" + i + ",'useDefault',this.checked)";
                 const defCell =
                     "<input class='col-check' type='checkbox' " + (c.useDefault ? "checked" : "") + " onchange=\"" + oi_useDefault + "\" style='margin-right:6px'>" +
@@ -4015,10 +4077,10 @@ if (runBtn)  runBtn.disabled = true;
         function defaultValueForType(type) {
             switch ((type || "TEXT").toUpperCase()) {
                 case "INTEGER": return "0";
-                case "REAL":    return "0.0";
+                case "REAL": return "0.0";
                 case "NUMERIC": return "0";
-                case "BLOB":    return "''";
-                default:        return "''";  // TEXT等
+                case "BLOB": return "''";
+                default: return "''";  // TEXT等
             }
         }
 
@@ -4031,7 +4093,7 @@ if (runBtn)  runBtn.disabled = true;
             if (t === "INTEGER") return /^-?[0-9]+$/.test(v);
             if (t === "REAL" || t === "NUMERIC") return /^-?[0-9]+([.][0-9]+)?$/.test(v);
             if (t === "TEXT" || t === "BLOB") {
-                return (v.charAt(0) === "'" && v.charAt(v.length-1) === "'")
+                return (v.charAt(0) === "'" && v.charAt(v.length - 1) === "'")
                     || /^-?[0-9]+$/.test(v)
                     || v === "''";
             }
@@ -4204,10 +4266,10 @@ if (runBtn)  runBtn.disabled = true;
                 } else if (!validateDefaultValue(c.type, c.default.trim())) {
                     const hints = {
                         "INTEGER": "整数値（例: 0, -1）またはNULL",
-                        "REAL":    "実数値（例: 0.0, 3.14）またはNULL",
+                        "REAL": "実数値（例: 0.0, 3.14）またはNULL",
                         "NUMERIC": "数値（例: 0, 1.5）またはNULL",
-                        "TEXT":    "シングルクォート囲み（例: '' 、'default'）または数値、NULL",
-                        "BLOB":    "シングルクォート囲み（例: ''）またはNULL",
+                        "TEXT": "シングルクォート囲み（例: '' 、'default'）または数値、NULL",
+                        "BLOB": "シングルクォート囲み（例: ''）またはNULL",
                     };
                     const hint = hints[(c.type || "TEXT").toUpperCase()] || "型に合った値";
                     alert("カラム「" + c.name + "」のDEFAULT値が不正です。\n型: " + c.type + "\n期待する形式: " + hint);
@@ -4270,8 +4332,8 @@ if (runBtn)  runBtn.disabled = true;
 
         /* ── アプリイベント（OnStart / OnExit） ── */
         const APP_EV_TYPES = [
-            { key: "onStart", label: "🚀 起動時（OnStart）" },
-            { key: "onExit",  label: "🔚 終了時（OnExit）"  },
+            {key: "onStart", label: "🚀 起動時（OnStart）"},
+            {key: "onExit", label: "🔚 終了時（OnExit）"},
         ];
         let _curAppEvKey = "onStart";
 
@@ -4279,7 +4341,7 @@ if (runBtn)  runBtn.disabled = true;
             evKey = evKey || "onStart";
             _curAppEvKey = evKey;
             const ae = projectInfo.appEvents || {};
-            const cur   = ae[evKey + "_yaml"] || "# アプリイベント: " + evKey + "\n# YAML形式でAIへの指示を記述します\n";
+            const cur = ae[evKey + "_yaml"] || "# アプリイベント: " + evKey + "\n# YAML形式でAIへの指示を記述します\n";
             // OnStart/OnExitはBun側でTypeScriptとして実行される
             const _tsHint = evKey === "onStart"
                 ? "// ⚠️ このコードはBun側でTypeScriptとして実行されます\n// vja.db.query() / vja.session.get() 等が使用できます\n\n"
@@ -4289,7 +4351,7 @@ if (runBtn)  runBtn.disabled = true;
                 "<div class='yaml-tab " + (t.key === evKey ? "active" : "") + "' " +
                 "id='appev-tab-" + t.key + "'>" + t.label + "</div>"
             ).join("");
-            pvRegister("yamlSave",  saveAppEvent);
+            pvRegister("yamlSave", saveAppEvent);
             pvRegister("yamlAiGen", () => yamlAiGenerate("appev", evKey));
             const appEvHeader =
                 "<div class='mhdr' style='flex-shrink:0'>" +
@@ -4311,7 +4373,7 @@ if (runBtn)  runBtn.disabled = true;
         function saveAppEvent() {
             if (!projectInfo.appEvents) projectInfo.appEvents = {};
             projectInfo.appEvents[_curAppEvKey + "_yaml"] = $("yaml-ta")?.value || "";
-            projectInfo.appEvents[_curAppEvKey]           = $("js-ta")?.value   || "";
+            projectInfo.appEvents[_curAppEvKey] = $("js-ta")?.value || "";
             closeModal();
             pushUndo();
             showToast("アプリイベントを保存しました");
@@ -4374,17 +4436,240 @@ if (runBtn)  runBtn.disabled = true;
             showToast("プロジェクト情報を保存しました");
         }
 
+        function openDebugTools() {
+            closeAllMenus();
+            window.bunToggleDevTools?.();
+        }
+
+        function openCloudInfraConfig() {
+            closeAllMenus();
+            _cloudDraft = cloudInfras.map(c => JSON.parse(JSON.stringify(c)));
+            _renderCloudModal();
+        }
+
+        function _renderCloudModal() {
+            const rows = _cloudDraft.map((inf, i) => _cloudInfraRow(inf, i)).join("") ||
+                "<div style='color:var(--text3);font-size:12px;padding:8px'>登録なし</div>";
+            showModal(
+                mhdrHTML("☁️ クラウドインフラ設定") +
+                "<div class='mbody' style='gap:10px'>" +
+                "<div class='infobox'>同一クラウドを複数登録した場合、先頭のCredentialが優先されます。</div>" +
+                "<div id='cloud-list' style='display:flex;flex-direction:column;gap:8px'>" + rows + "</div>" +
+                "<button class='modal-btn' style='margin-top:4px' onmousedown='addCloudInfra()'>＋ 追加</button>" +
+                "</div>" +
+                mfootHTML([
+                    {label: "保存", cls: "primary", action: "saveCloudInfraConfig()"},
+                    {label: "キャンセル", action: "closeModal()"},
+                ])
+            );
+        }
+
+        function _cloudSelId(prefix, i) {return prefix + "_" + i;}
+
+        function _cloudInfraRow(inf, i) {
+            const preset = CLOUD_PRESETS.find(p => p.name === inf.name) || CLOUD_PRESETS[CLOUD_PRESETS.length - 1];
+            // creds は {name, key, secret} の配列
+            const credDefs = inf.credDefs && inf.credDefs.length ? inf.credDefs
+                : (preset.creds || []);
+            const credKeys = credDefs.map(c => typeof c === "string" ? c : c.name);
+            const curSvc = inf.service || (preset.services[0]?.label || "");
+            const isCustomCloud = inf.name === "カスタム";
+            const isCustomSvc = curSvc === "カスタム";
+
+            // クラウド種別セレクト
+            const csid = _cloudSelId("cs", i);
+            const cloudOpts = CLOUD_PRESETS.map(p =>
+                `<div class="pv-sel-opt ${inf.name === p.name ? "active" : ""}"
+                    onmousedown="pvSelPick('${csid}','${esc(p.name)}',event);selectCloudPreset(${i},'${esc(p.name)}')">${esc(p.name)}</div>`
+            ).join("");
+
+            // サービスセレクト
+            const ssid = _cloudSelId("ss", i);
+            const svcOpts = preset.services.map(s =>
+                `<div class="pv-sel-opt ${curSvc === s.label ? "active" : ""}"
+                    onmousedown="pvSelPick('${ssid}','${esc(s.label)}',event);selectCloudService(${i},'${esc(s.label)}')">${esc(s.label)}</div>`
+            ).join("");
+
+            // SDK URL 入力欄: service の input:true の場合のみ編集可（カスタム等）
+            const curSvcDef = preset.services.find(s => s.label === curSvc);
+            const urlEditable = curSvcDef ? curSvcDef.input : isCustomSvc;
+            // カスタムでinput:trueの場合はbaseUrlをprefixとして表示
+            const baseUrl = curSvcDef?.url || "";
+            const editVal = urlEditable && baseUrl && inf.sdkUrl?.startsWith(baseUrl)
+                ? inf.sdkUrl.slice(baseUrl.length)
+                : (urlEditable ? inf.sdkUrl || "" : inf.sdkUrl || "");
+            const urlField = urlEditable
+                ? (baseUrl
+                    ? `<div style="display:flex;align-items:center;flex:1;min-width:160px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;overflow:hidden">
+                        <span style="padding:0 4px;font-size:11px;color:var(--text3);white-space:nowrap;border-right:1px solid var(--border)">${esc(baseUrl)}</span>
+                        <input class="pv-input" style="border:none;flex:1;min-width:80px" placeholder="続きを入力"
+                            value="${esc(editVal)}"
+                            oninput="updateCloudField(${i},'sdkUrl','${esc(baseUrl)}'+this.value)">
+                       </div>`
+                    : `<input class="pv-input" style="flex:1;min-width:160px" placeholder="SDK URL を入力"
+                        value="${esc(inf.sdkUrl || "")}"
+                        oninput="updateCloudField(${i},'sdkUrl',this.value)">`)
+                : `<input class="pv-input" style="flex:1;min-width:160px;color:var(--text3)" readonly
+                    value="${esc(inf.sdkUrl || "")}" title="サービス選択で自動入力されます">`;
+
+            // クレデンシャル欄
+            // カスタム×カスタムの場合はJSONで一括入力
+            let credFields = "";
+            if (isCustomCloud) {
+                const jsonVal = inf.credentialsJson || JSON.stringify(inf.credentials || {});
+                credFields = `<div style="margin-top:6px">
+                    <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Credentials (JSON形式: {"key":"value",...})</div>
+                    <textarea class="pv-input pv-textarea" style="height:60px;resize:vertical"
+                        placeholder='{"accessKeyId":"xxx","secretAccessKey":"yyy"}'
+                        oninput="updateCloudCredsJson(${i},this.value)">${esc(jsonVal)}</textarea>
+                </div>`;
+            } else {
+                credFields = credDefs.map(cd => {
+                    const k = typeof cd === "string" ? cd : cd.name;
+                    const isSecret = typeof cd === "object" && cd.secret;
+                    const appInput = !!(inf.appInput?.[k]);
+                    return `<div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                        <span style="width:110px;font-size:11px;color:var(--text3);flex-shrink:0">${esc(k)}${isSecret ? " 🔒" : ""}</span>
+                        <input type="${isSecret ? "password" : "text"}" class="pv-input"
+                            style="flex:1;${appInput ? "opacity:0.5" : ""}"
+                            placeholder="${appInput ? "（アプリ側で入力）" : esc(k)}"
+                            value="${esc(inf.credentials?.[k] || "")}"
+                            ${appInput ? "disabled" : ""}
+                            oninput="updateCloudCred(${i},'${esc(k)}',this.value)">
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--text3);white-space:nowrap;cursor:pointer"
+                            title="チェックON: アプリ実行時にウィジェットから入力&#10;チェックOFF: ここで設定した値を使用">
+                            <input type="checkbox" ${appInput ? "checked" : ""}
+                                onchange="updateCloudAppInput(${i},'${esc(k)}',this.checked)">アプリ側入力
+                        </label>
+                    </div>`;
+                }).join("");
+            }
+
+            // 有効チェックボックスのラベル
+            const enabledLabel = inf.enabled
+                ? `<span style="font-size:11px;color:var(--accent)">有効</span>`
+                : `<span style="font-size:11px;color:var(--text3)">無効</span>`;
+
+            return `<div style="padding:10px;border:1px solid var(--border);border-radius:4px">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                    <label style="display:flex;align-items:center;gap:3px;cursor:pointer"
+                        title="ONにすると対象項目が有効になります">
+                        <input type="checkbox" ${inf.enabled ? "checked" : ""}
+                            onchange="updateCloudField(${i},'enabled',this.checked);_refreshCloudList()">
+                        ${enabledLabel}
+                    </label>
+                    <div class="pv-sel" id="${csid}" style="width:100px;flex-shrink:0">
+                        <div class="pv-sel-btn" onmousedown="pvSelOpen('${csid}',event)">
+                            <span>${esc(inf.name || "カスタム")}</span><span class="arr">▼</span>
+                        </div>
+                        <div class="pv-sel-list">${cloudOpts}</div>
+                    </div>
+                    <div class="pv-sel" id="${ssid}" style="width:110px;flex-shrink:0">
+                        <div class="pv-sel-btn" onmousedown="pvSelOpen('${ssid}',event)">
+                            <span>${esc(curSvc)}</span><span class="arr">▼</span>
+                        </div>
+                        <div class="pv-sel-list">${svcOpts}</div>
+                    </div>
+                    ${urlField}
+                    <button style="color:#ff6b6b;background:none;border:none;cursor:pointer;font-size:16px;flex-shrink:0"
+                        onmousedown="removeCloudInfra(${i})">✕</button>
+                </div>
+                ${credFields ? `<div style="margin-top:6px">${credFields}</div>` : ""}
+            </div>`;
+        }
+
+        function addCloudInfra() {
+            const preset = CLOUD_PRESETS[0] || {name: "カスタム", services: [{label: "カスタム", url: "", input: true}], creds: []};
+            _cloudDraft.push({
+                id: "ci_" + Date.now(), name: preset.name,
+                service: preset.services[0].label, sdkUrl: preset.services[0].url,
+                enabled: true, credDefs: preset.creds, credentials: {}, appInput: {},
+            });
+            _refreshCloudList();
+        }
+        function removeCloudInfra(i) {
+            _cloudDraft.splice(i, 1);
+            _refreshCloudList();
+        }
+        function updateCloudField(i, key, val) {
+            if (_cloudDraft[i]) _cloudDraft[i][key] = val;
+        }
+        function updateCloudCred(i, key, val) {
+            if (!_cloudDraft[i]) return;
+            if (!_cloudDraft[i].credentials) _cloudDraft[i].credentials = {};
+            _cloudDraft[i].credentials[key] = val;
+        }
+        function updateCloudCredsJson(i, jsonStr) {
+            if (!_cloudDraft[i]) return;
+            _cloudDraft[i].credentialsJson = jsonStr;
+            try {
+                _cloudDraft[i].credentials = JSON.parse(jsonStr);
+            } catch (e) {
+                console.debug("[vja] credentialsJson parse pending:", e.message);
+            }
+        }
+        function updateCloudAppInput(i, key, checked) {
+            if (!_cloudDraft[i]) return;
+            if (!_cloudDraft[i].appInput) _cloudDraft[i].appInput = {};
+            _cloudDraft[i].appInput[key] = checked;
+            _refreshCloudList();
+        }
+        function selectCloudPreset(i, name) {
+            if (!_cloudDraft[i]) return;
+            const preset = CLOUD_PRESETS.find(p => p.name === name);
+            if (!preset) return;
+            _cloudDraft[i].name = name;
+            _cloudDraft[i].service = preset.services[0].label;
+            _cloudDraft[i].sdkUrl = preset.services[0].url;
+            _cloudDraft[i].credDefs = preset.creds;
+            _cloudDraft[i].credentials = {};
+            _cloudDraft[i].appInput = {};
+            _refreshCloudList();
+        }
+        function selectCloudService(i, label) {
+            if (!_cloudDraft[i]) return;
+            const preset = CLOUD_PRESETS.find(p => p.name === _cloudDraft[i].name);
+            if (!preset) return;
+            const svc = preset.services.find(s => s.label === label);
+            if (!svc) return;
+            _cloudDraft[i].service = label;
+            if (svc.url) _cloudDraft[i].sdkUrl = svc.url;
+            _refreshCloudList();
+        }
+        function _refreshCloudList() {
+            const el = $("cloud-list");
+            if (!el) return;
+            el.innerHTML = _cloudDraft.map((inf, i) => _cloudInfraRow(inf, i)).join("") ||
+                "<div style='color:var(--text3);font-size:12px;padding:8px'>登録なし</div>";
+        }
+        async function saveCloudInfraConfig() {
+            console.log("[cloud] saveCloudInfraConfig called, bunSaveCloudInfras=", typeof window.bunSaveCloudInfras);
+            try {
+                // Bun側で暗号化して保存
+                const result = await window.bunSaveCloudInfras(_cloudDraft);
+                console.log("[cloud] saveCloudInfras result=", result);
+                if (!result?.ok) throw new Error(result?.error || "保存失敗");
+                // フロント側にも反映（次回モーダルオープン時のベースになる）
+                cloudInfras = _cloudDraft.map(c => JSON.parse(JSON.stringify(c)));
+                closeModal();
+                showToast("クラウドインフラ設定を保存しました");
+                pushUndo();
+            } catch (e) {
+                showToast("保存エラー: " + e.message);
+            }
+        }
+
         /* ── フォント設定 ── */
 
         const FONT_LIST = [
-            {label: "Courier New",     value: "'Courier New', Courier, monospace"},
-            {label: "Consolas",        value: "'Consolas', 'Courier New', monospace"},
-            {label: "Fira Code",       value: "'Fira Code', 'Courier New', monospace"},
+            {label: "Courier New", value: "'Courier New', Courier, monospace"},
+            {label: "Consolas", value: "'Consolas', 'Courier New', monospace"},
+            {label: "Fira Code", value: "'Fira Code', 'Courier New', monospace"},
             {label: "Source Code Pro", value: "'Source Code Pro', monospace"},
-            {label: "Menlo",           value: "'Menlo', 'DejaVu Sans Mono', monospace"},
-            {label: "monospace",       value: "monospace"},
-            {label: "sans-serif",      value: "sans-serif"},
-            {label: "serif",           value: "serif"},
+            {label: "Menlo", value: "'Menlo', 'DejaVu Sans Mono', monospace"},
+            {label: "monospace", value: "monospace"},
+            {label: "sans-serif", value: "sans-serif"},
+            {label: "serif", value: "serif"},
         ];
         // ウィジェット用（先頭に「デフォルト」を追加）
         const WIDGET_FONTS = [
@@ -4633,77 +4918,50 @@ if (runBtn)  runBtn.disabled = true;
         /* ═══════════════════════════════════════════
           KEYBOARD
         ═══════════════════════════════════════════ */
+        // ── グローバルキーボードショートカット（統合） ──────
         document.addEventListener("keydown", (e) => {
             const tag = e.target.tagName;
-            if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT")
+            const inInput = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+
+
+
+            // Ctrl+A: フォームボディにフォーカスがある時のみ選択を抑制
+            if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+                if (!document.activeElement || document.activeElement === document.body ||
+                    document.activeElement === fb()) {
+                    e.preventDefault();
+                }
                 return;
-            if (e.ctrlKey && e.key === "z") {
-                e.preventDefault();
-                actUndo();
             }
-            if (e.ctrlKey && e.key === "y") {
-                e.preventDefault();
-                actRedo();
-            }
-            if (e.ctrlKey && e.key === "s") {
-                e.preventDefault();
-                actSave();
-            }
-            if (e.ctrlKey && e.key === "w") {
-                e.preventDefault();
-                showCloseConfirm();
-            }
-            if (e.key === "F4" && e.altKey) {
-                e.preventDefault();
-                showCloseConfirm();
-            }
-            if (e.ctrlKey && e.key === "n") {
-                e.preventDefault();
-                actNew();
-            }
-            if (e.ctrlKey && e.key === "d") {
-                e.preventDefault();
-                actDuplicate();
-            }
-            if ((e.key === "Delete" || e.key === "Backspace") && selId) {
-                e.preventDefault();
-                actDelete();
-            }
+
+            // 以下は入力フィールド内では無効
+            if (inInput) return;
+
+            if (e.ctrlKey && e.key === "z") {e.preventDefault(); actUndo();}
+            if (e.ctrlKey && e.key === "y") {e.preventDefault(); actRedo();}
+            if (e.ctrlKey && e.key === "s") {e.preventDefault(); actSave();}
+            if (e.ctrlKey && e.key === "w") {e.preventDefault(); showCloseConfirm();}
+            if (e.ctrlKey && e.key === "n") {e.preventDefault(); actNew();}
+            if (e.ctrlKey && e.key === "d") {e.preventDefault(); actDuplicate();}
+            if (e.key === "F4" && e.altKey) {e.preventDefault(); showCloseConfirm();}
+            if ((e.key === "Delete" || e.key === "Backspace") && selId) {e.preventDefault(); actDelete();}
             if (e.key === "Escape") {
-                if (
-                    document
-                        .getElementById("close-confirm")
-                        .classList.contains("show")
-                ) {
-                    hideCloseConfirm();
-                    return;
+                if (document.getElementById("close-confirm").classList.contains("show")) {
+                    hideCloseConfirm(); return;
                 }
                 selId ? deselect() : setTool("pointer");
             }
-            if (
-                selId &&
-                [
-                    "ArrowLeft",
-                    "ArrowRight",
-                    "ArrowUp",
-                    "ArrowDown",
-                ].includes(e.key)
-            ) {
+            if (selId && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
                 e.preventDefault();
                 const w = getWidget(selId);
                 if (!w) return;
                 const d = e.shiftKey ? SNAP : 1;
                 if (e.key === "ArrowLeft") w.x = Math.max(0, w.x - d);
-                if (e.key === "ArrowRight")
-                    w.x = Math.min(formCfg.w - w.w, w.x + d);
+                if (e.key === "ArrowRight") w.x = Math.min(formCfg.w - w.w, w.x + d);
                 if (e.key === "ArrowUp") w.y = Math.max(0, w.y - d);
-                if (e.key === "ArrowDown")
-                    w.y = Math.min(formCfg.h - w.h, w.y + d);
+                if (e.key === "ArrowDown") w.y = Math.min(formCfg.h - w.h, w.y + d);
                 const el = $("w" + w.id);
-                if (el) {
-                    el.style.left = w.x + "px";
-                    el.style.top = w.y + "px";
-                }
+                if (el) {el.style.left = w.x + "px"; el.style.top = w.y + "px";}
                 updateStatusSel(w);
                 syncPropXY(w);
             }
@@ -4798,12 +5056,14 @@ if (runBtn)  runBtn.disabled = true;
         }
 
         // ── ルーラー描画共通定数 ───────────────────────
-        const _RULER = { STEP: 50, TICK_LG: 8, TICK_SM: 4,
+        const _RULER = {
+            STEP: 50, TICK_LG: 8, TICK_SM: 4,
             TICK_COL: "rgba(160,160,192,0.35)", LABEL_COL: "rgba(160,160,192,0.55)",
-            FORM_HL: "rgba(122,158,248,0.10)",  FORM_BD:  "rgba(122,158,248,0.4)" };
+            FORM_HL: "rgba(122,158,248,0.10)", FORM_BD: "rgba(122,158,248,0.4)"
+        };
 
         function drawRulerH(ctx, totalW, fLeft) {
-            const { STEP, TICK_LG, TICK_SM, TICK_COL, LABEL_COL, FORM_HL, FORM_BD } = _RULER;
+            const {STEP, TICK_LG, TICK_SM, TICK_COL, LABEL_COL, FORM_HL, FORM_BD} = _RULER;
             ctx.font = "8px monospace"; ctx.textAlign = "left";
             for (let px = (fLeft % STEP) - STEP; px < totalW; px += STEP) {
                 const coord = Math.round(px - fLeft);
@@ -4818,12 +5078,12 @@ if (runBtn)  runBtn.disabled = true;
             const fw = formCfg.w;
             ctx.fillStyle = FORM_HL; ctx.fillRect(fLeft, 0, fw, 16);
             ctx.strokeStyle = FORM_BD;
-            ctx.beginPath(); ctx.moveTo(fLeft,      0); ctx.lineTo(fLeft,      16); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(fLeft, 0); ctx.lineTo(fLeft, 16); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(fLeft + fw, 0); ctx.lineTo(fLeft + fw, 16); ctx.stroke();
         }
 
         function drawRulerV(ctx, totalH, fTop) {
-            const { STEP, TICK_LG, TICK_SM, TICK_COL, LABEL_COL, FORM_HL, FORM_BD } = _RULER;
+            const {STEP, TICK_LG, TICK_SM, TICK_COL, LABEL_COL, FORM_HL, FORM_BD} = _RULER;
             ctx.font = "8px monospace";
             ctx.save(); ctx.translate(14, 0); ctx.rotate(Math.PI / 2);
             for (let py = (fTop % STEP) - STEP; py < totalH; py += STEP) {
@@ -4847,7 +5107,7 @@ if (runBtn)  runBtn.disabled = true;
             const fh = formCfg.h;
             ctx.fillStyle = FORM_HL; ctx.fillRect(0, fTop, 16, fh);
             ctx.strokeStyle = FORM_BD;
-            ctx.beginPath(); ctx.moveTo(0, fTop);      ctx.lineTo(16, fTop);      ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, fTop); ctx.lineTo(16, fTop); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(0, fTop + fh); ctx.lineTo(16, fTop + fh); ctx.stroke();
         }
 
@@ -4928,12 +5188,9 @@ if (runBtn)  runBtn.disabled = true;
         pushUndo();
         renderProps();
 
-    </script>
+        //initCloudInfra();
 
-    <!-- VJA ランタイムライブラリ -->
-    <script src="./vja-runtime.js"></script>
-    <!-- Electrobun RPC ブリッジ（Electrobun が bridge.ts をバンドルして読み込む） -->
-    <script src="./bridge.ts"></script>
+    </script>
 </body>
 
 </html>

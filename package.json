@@ -5,9 +5,9 @@
     "scripts": {
         "dev": "bun x electrobun dev",
         "build": "bun x electrobun build",
-        "start": "bun src/bun/index.ts",
+        "start": "bun src/bun/index.ts"
     },
     "dependencies": {
-        "electrobun": "latest",
-    },
+        "electrobun": "latest"
+    }
 }
