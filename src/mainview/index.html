@@ -141,12 +141,12 @@
             </svg>
         </button>
         <div class="tb-sep"></div>
-        <button class="tb-btn" onmousedown="actDelete()">
+        <button class="tb-btn" onmousedown="openProjectInfo()" title="プロジェクト情報">
             <svg viewBox="0 0 24 24">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6l-1 14H6L5 6" />
-                <path d="M9 6V4h6v2" />
-            </svg>削除
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="8" stroke-width="2" stroke-linecap="round" />
+                <line x1="12" y1="12" x2="12" y2="16" stroke-width="2" stroke-linecap="round" />
+            </svg>情報
         </button>
         <button id="btn-run-project" class="tb-btn" onmousedown="actRunProject()" title="プロジェクトを実行">
             <svg viewBox="0 0 24 24">
@@ -5193,13 +5193,19 @@
         }
 
         function applyProjectInfo() {
-            // Electrobun側のウィンドウタイトルは変更できないため
             // ステータスバーにプロジェクト名を表示
             const nameEl = $("st-project-name");
             if (nameEl) {
                 nameEl.textContent = projectInfo.name
                     ? "📁 " + projectInfo.name + (projectInfo.version ? " v" + projectInfo.version : "")
                     : "";
+            }
+            // タイトルバーにプロジェクト名を反映
+            const titleEl = $("titlebar-title");
+            if (titleEl) {
+                titleEl.textContent = projectInfo.name
+                    ? "VJA Form Designer (" + projectInfo.name + ")"
+                    : "VJA Form Designer";
             }
         }
 
