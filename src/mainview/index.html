@@ -390,11 +390,9 @@
     <script type="module">
 
         /* ── クラウドインフラ設定 ── */
-        // [#init]処理系.
-        // cloud-infra.json から inject-cloud-presets.ts によって埋め込まれる
-        // { infra, service:[{name:{url,input}}], credential:[{name:{key,secret}}] }[] 形式
-        // cloud-infra-data.js で window._INIT_PARAMS.CLOUD_INFRA_RAW  がセットされる
-        // 内部形式に変換（未ロード時はフォールバック）
+        // init-params.js で window._INIT_PARAMS.CLOUD_INFRA_RAW にセットされる
+        // { infra, service:[{name:{url,input}}], credential:[{name:{key,secret,select?}}] }[] 形式
+        // initCloudInfra() で内部形式（CLOUD_PRESETS）に変換して window.CLOUD_PRESETS に展開する
         function initCloudInfra() {
             let CLOUD_PRESETS = [];
             try {
