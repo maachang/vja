@@ -2238,6 +2238,9 @@
         }
 
         // AI生成（llama-server 経由）
+        // YAML仕様からイベントの JavaScript コードを AI 生成する。
+        // プロジェクト情報・ウィジェット・テーブル定義をコンテキストとして渡す。
+        // 生成完了後に openYaml を再表示し、JS タブにコードをセットする。
         async function yamlAiGenerate(wid, evName) {
             const isAppEvent = (wid === "appev");
             const w = getWidget(wid);
@@ -2674,6 +2677,8 @@
             _editorClickPos = -1;
         }
 
+        // taId に対応するハイライト更新を行う共通ディスパッチャ。
+        // _hlUpdate + editorUpdateGutter の組み合わせを ID で振り分ける。
         function editorHlUpdate(taId) {
             if      (taId === "yaml-ta")      { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
             else if (taId === "js-ta")        { jsHlUpdate();   editorUpdateGutter("js-ta",   "js-gutter"); }
@@ -3073,6 +3078,7 @@
             "Backspace",
         ]);
 
+        // エディタの Undo 履歴にテキスト値を積む。最大100件保持。
         function editorUndoPush(state, val) {
             state.stack = state.stack.slice(0, state.idx + 1);
             if (state.stack[state.idx] === val) return;
@@ -3081,6 +3087,7 @@
             else state.idx++;
         }
 
+        // エディタの Undo 状態を初期化する。モーダルオープン時に呼ぶ。
         function editorUndoInit(taId, state, initVal) {
             state.stack = [initVal];
             state.idx = 0;
@@ -3101,6 +3108,7 @@
             });
         }
 
+        // エディタの Undo を実行し、ハイライトを更新する。
         function editorUndo(taId, state) {
             const ta = $(taId);
             if (!ta) return;
@@ -3113,6 +3121,7 @@
             setTimeout(() => {state.busy = false;}, 50);
         }
 
+        // エディタの Redo を実行し、ハイライトを更新する。
         function editorRedo(taId, state) {
             if (state.idx >= state.stack.length - 1) return;
             const ta = $(taId);
@@ -3126,6 +3135,10 @@
 
 
         // ── ハイライト共通処理 ───────────────────────────
+        // textarea の上に重ねた hl（ハイライトレイヤー）を
+        // スクロール位置・サイズ同期して疑似シンタックスハイライトを実現する。
+
+        // textarea と hl のスクロール位置・高さを同期する。
         function _hlSync(taId, hlId) {
             const ta = $(taId), hl = $(hlId);
             if (!ta || !hl) return;
@@ -3133,6 +3146,8 @@
             hl.scrollLeft = ta.scrollLeft;
             hl.style.height = ta.offsetHeight + "px";
         }
+        // hl の innerHTML をトークナイズ結果で更新し、サイズを同期する。
+        // tokenizeFn には yamlTokenize / jsTokenize を渡す。
         function _hlUpdate(taId, hlId, tokenizeFn) {
             const ta = $(taId), hl = $(hlId);
             if (!ta || !hl) return;
@@ -3233,7 +3248,11 @@
 
         /* ═══════════════════════════════════════════
           MODAL
+          モーダルダイアログの表示・非表示を管理する。
+          modal-root に innerHTML を差し込む方式で、
+          showModal / closeModal / showLoadingModal の3種を使い分ける。
         ═══════════════════════════════════════════ */
+        // 汎用モーダルを表示する。yaml系モーダルは外クリックで閉じない制御も兼ねる。
         function showModal(html) {
             const isYaml = /^\s*<div class=["']modal-yaml["']>/.test(html);
             const extraClass = isYaml ? " modal-yaml" : "";
@@ -3244,10 +3263,13 @@
             $("modal-root").innerHTML =
                 `<div class="ov" onclick="ovClick(event)"><div class="modal${extraClass}">${inner}</div></div>`;
         }
+        // モーダルを閉じる。AIローディングタイマーが残っていれば合わせてクリアする。
         function closeModal() {
             if (_aiLoadingTimer) { clearInterval(_aiLoadingTimer); _aiLoadingTimer = null; }
             $("modal-root").innerHTML = "";
         }
+        // AI生成中のローディングモーダルを表示する。
+        // 経過秒数タイマーとキャンセルボタンを持つ。_aiLoadingTimer で管理。
         function showLoadingModal(msg) {
             $("modal-root").innerHTML =
                 `<div class="ov"><div class="modal modal-loading" style="padding:32px 40px;display:flex;flex-direction:column;align-items:center;gap:16px;min-width:260px">` +
@@ -3263,12 +3285,17 @@
                 if (el) el.textContent = (++sec) + "秒";
             }, 1000);
         }
+        // AI生成をキャンセルする。AbortController を abort() してリクエストを中断する。
         function cancelAiGenerate() {
             if (_aiAbortCtrl) { _aiAbortCtrl.abort(); _aiAbortCtrl = null; }
         }
 
-        // AI生成共通実行関数
+        // AI生成共通実行関数。
+        // OpenAI互換API（ローカルLLM / OpenAI API）への fetch を共通化する。
         // options: { systemPrompt, userPrompt, onSuccess(result), onCancel?, onError?, loadingMsg? }
+        // - onSuccess: 生成完了時に呼ばれる。引数に生成テキスト（コードブロック除去済み）が渡る。
+        // - onCancel: キャンセル時のコールバック（省略可）
+        // - onError: エラー時のコールバック（省略可）
         async function runAiGenerate(options) {
             const { systemPrompt, userPrompt, onSuccess, onCancel, onError, loadingMsg } = options;
             const hasApiKey = !!aiConfig.apiKey;
@@ -3324,9 +3351,10 @@
                 _aiAbortCtrl = null;
             }
         }
+        // オーバーレイクリック時の処理。
+        // yaml/loading 系モーダルは誤操作防止のため外クリックでは閉じない。
         function ovClick(e) {
             if (!e.target.classList.contains("ov")) return;
-            // YAMLエディタモーダルは外クリックで閉じない
             const modal = document.querySelector(".modal");
             if (modal && modal.classList.contains("modal-yaml")) return;
             if (modal && modal.classList.contains("modal-loading")) return;
@@ -3366,19 +3394,24 @@
 
         /* ═══════════════════════════════════════════
           UNDO / REDO
+          プロジェクト全体を JSON 文字列としてスナップショットし、
+          undoStack / redoStack で管理する。
+          最大60件保持。編集確定時に pushUndo() を呼ぶ。
         ═══════════════════════════════════════════ */
-        // プロジェクト全体スナップショット
+        // プロジェクト全体を JSON 文字列にシリアライズして返す。
         function snapshot() {
             return JSON.stringify({forms, curFormIdx, constants, startFormId, aiConfig, cloudInfras, tables, snapOn, showGrid, editorConfig, projectInfo, extRuntime});
         }
+        // 現在の状態を undoStack に積む。redoStack はクリアする。
         function pushUndo() {
-            // 編集前に現フォームのidCntを書き戻す
             commitIdCnt();
             undoStack.push(snapshot());
             if (undoStack.length > 60) undoStack.shift();
             redoStack = [];
         }
         // ── プロジェクトデータ復元共通処理 ──────────────
+        // スナップショットや保存データから状態を復元する共通処理。
+        // forms/curFormIdx 以外の全フィールドをここで復元する。
         function applyProjectData(d) {
             cloudInfras = d.cloudInfras || [];
             extRuntime  = d.extRuntime  || { js: "", doc: "" };
@@ -3400,6 +3433,7 @@
             };
         }
 
+        // JSON 文字列からプロジェクト全体を復元し、画面を再描画する。
         function restoreSnap(s) {
             const d = JSON.parse(s);
             forms = d.forms;
@@ -3408,11 +3442,13 @@
             selId = null;
             refreshAll();
         }
+        // Undo 実行。現在の状態を redoStack に退避してから直前のスナップに戻す。
         function actUndo() {
             if (!undoStack.length) return;
             redoStack.push(snapshot());
             restoreSnap(undoStack.pop());
         }
+        // Redo 実行。現在の状態を undoStack に退避してから Redo スタックのスナップに進む。
         function actRedo() {
             if (!redoStack.length) return;
             undoStack.push(snapshot());
@@ -4571,9 +4607,14 @@
         }
 
         /* ── 拡張ランタイム ── */
+        // vja ランタイムに追加する JavaScript コードと AI向け説明（YAML）を管理する。
+        // extRuntime.js  : 実行時に注入されるカスタム JS コード
+        // extRuntime.doc : AI向けの関数説明（YAML形式）。runAiGenerate で自動生成可能。
         let _extRtYuState = { stack: [], idx: -1, busy: false };
         let _extRtJuState = { stack: [], idx: -1, busy: false };
 
+        // 拡張ランタイムダイアログを開く。
+        // JavaScript タブと AI向け説明タブの2タブ構成。
         function openExtRuntime() {
             const tabConfig = {
                 tabs: [
@@ -4618,6 +4659,7 @@
             });
         }
 
+        // 拡張ランタイムの内容を extRuntime 変数に保存して Undo に積む。
         function saveExtRuntime() {
             extRuntime.js  = $("ta-extrt-js")?.value  || "";
             extRuntime.doc = $("ta-extrt-doc")?.value || "";
@@ -4626,6 +4668,8 @@
             pushUndo();
         }
 
+        // 拡張ランタイムの JavaScript コードを元に AI向け説明（YAML）を生成する。
+        // runAiGenerate を使用し、生成結果を extRuntime.doc にセットして再表示する。
         async function extRtGenDoc() {
             if (!aiConfig.enabled) {
                 showToast("AI接続設定が有効になっていません");
@@ -4673,6 +4717,8 @@
             _renderCloudModal();
         }
 
+        // クラウドインフラ設定モーダルの内容を再描画する。
+        // _cloudDraft（編集中の一時データ）を元に表示を構築する。
         function _renderCloudModal() {
             const rows = _cloudDraft.map((inf, i) => _cloudInfraRow(inf, i)).join("") ||
                 "<div style='color:var(--text3);font-size:12px;padding:8px'>登録なし</div>";
@@ -4860,6 +4906,7 @@
             _cloudDraft[i].appInput[key] = checked;
             _refreshCloudList();
         }
+        // インフラプリセット（AWS/GCP等）を選択し、サービス・クレデンシャル欄を更新する。
         function selectCloudPreset(i, name) {
             if (!_cloudDraft[i]) return;
             const preset = CLOUD_PRESETS.find(p => p.name === name);
@@ -4888,6 +4935,8 @@
             el.innerHTML = _cloudDraft.map((inf, i) => _cloudInfraRow(inf, i)).join("") ||
                 "<div style='color:var(--text3);font-size:12px;padding:8px'>登録なし</div>";
         }
+        // クラウドインフラ設定を Bun 側に送信して暗号化保存する。
+        // AES-GCM 暗号化は Bun プロセス側（bunSaveCloudInfras）で行う。
         async function saveCloudInfraConfig() {
             try {
                 // Bun側で暗号化して保存
