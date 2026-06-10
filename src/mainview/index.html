@@ -2253,9 +2253,6 @@
             const addPrompt = $("ai-prompt-in")?.value || "";
             const btn = $("ai-gen-btn");
             const status = $("ai-status");
-            if (btn) btn.disabled = true;
-            if (status) status.textContent = "⏳ コンテキスト収集中…";
-            showLoadingModal("AI生成中…");
 
             // ── ① 入力系ウィジェット一覧（フォームの入力パラメータ） ──
             const INPUT_TAGS = ["inputtype", "checkbox", "radiobutton", "listbox", "selectbox"];
@@ -2425,27 +2422,38 @@
                 addPrompt ? "\n追加指示: " + addPrompt : "",
             ].join("");
 
-            // JSタブに実質的なコードがある場合は上書き確認
+            // 確認ダイアログ
             const jsTaCur = $("js-ta")?.value || "";
             const jsTaHasCode = jsTaCur.split("\n")
                 .some(l => l.trim() && !l.trim().startsWith("//"));
-            if (jsTaHasCode) {
-                if (!(await vja.app.showConfirm("JavaScriptタブに既存のコードがあります。\nAI生成で上書きしますか？"))?.confirmed) {
-                    if (btn) btn.disabled = false;
-                    if (status) status.textContent = "";
-                    return;
-                }
+            const confirmMsg = jsTaHasCode
+                ? "JavaScriptタブに既存のコードがあります。\nAI生成で上書きしますか？\n（保存はされません）"
+                : "JavaScriptコードを生成しますか？\n（保存はされません）";
+            if (!(await vja.app.showConfirm(confirmMsg))?.confirmed) {
+                if (btn) btn.disabled = false;
+                if (status) status.textContent = "";
+                return;
             }
+            if (btn) btn.disabled = true;
+            if (status) status.textContent = "⏳ コンテキスト収集中…";
+            showLoadingModal("AI生成中…");
 
             await runAiGenerate({
                 systemPrompt: sysPrompt,
                 userPrompt,
                 onSuccess: async (clean) => {
-                    const jsTa = $("js-ta");
-                    if (jsTa) jsTa.value = clean;
-                    yamlTabSwitch("js");
-                    jsHlUpdate();
-                    if (status) status.textContent = "✅ 生成完了 (JavaScriptタブを確認)";
+                    // モーダルを再表示してJSタブに切り替え
+                    const w2 = getWidget(wid);
+                    if (!w2) return;
+                    const curYaml = (w2.events && w2.events[evName]) || "";
+                    openYaml(wid, evName);
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
+                        const jsTa = $("js-ta");
+                        if (jsTa) jsTa.value = clean;
+                        yamlTabSwitch("js");
+                        jsHlUpdate();
+                        if (status) status.textContent = "✅ 生成完了 (JavaScriptタブを確認)";
+                    }));
                 },
                 onCancel: async () => {
                     if (status) status.textContent = "";
