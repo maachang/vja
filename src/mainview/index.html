@@ -763,6 +763,7 @@
             models: [],
             enabled: false,
             routerMode: false,
+            maxTokens: "",
         };
 
         // 現在フォームへのショートカット（参照）
@@ -2433,69 +2434,24 @@
                 }
             }
 
-            try {
-                const hasApiKey = !!aiConfig.apiKey;
-                const isRouterOn = !!aiConfig.routerMode;
-                const endpoint = hasApiKey ? "https://api.openai.com" : aiConfig.endpoint;
-                const modelName = hasApiKey
-                    ? (aiConfig.model || "gpt-4o-mini")
-                    : (isRouterOn ? aiConfig.model : undefined);
-
-                const headers = {"Content-Type": "application/json"};
-                if (hasApiKey) headers["Authorization"] = "Bearer " + aiConfig.apiKey;
-
-                const body = {
-                    messages: [
-                        {role: "system", content: sysPrompt},
-                        {role: "user", content: userPrompt}
-                    ],
-                    temperature: 0.3,
-                    max_tokens: 1024,
-                    stream: false
-                };
-                if (modelName) body.model = modelName;
-
-
-
-                _aiAbortCtrl = new AbortController();
-                const res = await fetch(endpoint + "/v1/chat/completions", {
-                    method: "POST",
-                    headers,
-                    body: JSON.stringify(body),
-                    signal: _aiAbortCtrl.signal
-                });
-                if (!res.ok) {
-                    const errText = await res.text().catch(() => "");
-                    throw new Error("HTTP " + res.status + (errText ? " — " + errText.slice(0, 120) : ""));
-                }
-                const data = await res.json();
-                const generated = data.choices?.[0]?.message?.content || "";
-                // コードブロック・think タグを除去
-                const clean = generated
-                    .replace(/<think>[\s\S]*?<\/think>/gi, "")
-                    .replace(/^```(?:javascript|js)?\n?/i, "")
-                    .replace(/```$/, "")
-                    .trim();
-                // JS生成結果をJSタブにセット
-                const jsTa = $("js-ta");
-                if (jsTa) {jsTa.value = clean;}
-                // YAMLも保持しつつJSタブに切り替え
-                yamlTabSwitch("js");
-                closeModal();
-                if (status) status.textContent = "✅ 生成完了 (JavaScriptタブを確認)";
-            } catch (e) {
-                closeModal();
-                if (e.name === "AbortError") {
+            await runAiGenerate({
+                systemPrompt: sysPrompt,
+                userPrompt,
+                onSuccess: async (clean) => {
+                    const jsTa = $("js-ta");
+                    if (jsTa) jsTa.value = clean;
+                    yamlTabSwitch("js");
+                    jsHlUpdate();
+                    if (status) status.textContent = "✅ 生成完了 (JavaScriptタブを確認)";
+                },
+                onCancel: async () => {
                     if (status) status.textContent = "";
-                    showToast("AI生成をキャンセルしました");
-                } else {
-                    if (status) status.textContent = "❌ " + e.message;
-                    await window.vja?.log?.error?.("AI生成エラー: " + e.message).catch(() => { });
-                }
-            } finally {
-                _aiAbortCtrl = null;
-                if (btn) btn.disabled = false;
-            }
+                },
+                onError: async () => {
+                    if (status) status.textContent = "❌ 生成エラー";
+                },
+            });
+            if (btn) btn.disabled = false;
         }
 
 
@@ -2908,6 +2864,10 @@
                 "<button onclick='aiCfgFetchModels()' style='height:28px;padding:0 10px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;flex-shrink:0'>🔄 更新</button>" +
                 "</div></div>" +
 
+                // max tokens
+                "<div class='ai-cfg-row'><label>Max Tokens</label>" +
+                "<input id='ai-max-tokens' value='" + esc(String(aiConfig.maxTokens || "")) + "' placeholder='空の場合はサーバー側に依存' style='width:160px'></div>" +
+
                 "</div>" +
                 "<div class='mfoot'>" +
                 mfootHTML([{label: "キャンセル", action: "closeModal()"}]) + "" +
@@ -2976,6 +2936,8 @@
             const enabled = enaSel?.textContent === "ON";
             const routerMode = rtrSel?.textContent === "ON";
             const model = modSel?.textContent || aiConfig.model || "";
+            const maxTokensRaw = $("ai-max-tokens")?.value?.trim() || "";
+            const maxTokens = maxTokensRaw !== "" ? parseInt(maxTokensRaw, 10) || "" : "";
             aiConfig = {
                 endpoint: ep,
                 apiKey,
@@ -2983,6 +2945,7 @@
                 routerMode,
                 model: routerMode ? model : "",
                 models: aiConfig.models || [],
+                maxTokens,
             };
             closeModal();
             pushUndo();
@@ -3291,6 +3254,64 @@
         }
         function cancelAiGenerate() {
             if (_aiAbortCtrl) { _aiAbortCtrl.abort(); _aiAbortCtrl = null; }
+        }
+
+        // AI生成共通実行関数
+        // options: { systemPrompt, userPrompt, onSuccess(result), onCancel?, onError?, loadingMsg? }
+        async function runAiGenerate(options) {
+            const { systemPrompt, userPrompt, onSuccess, onCancel, onError, loadingMsg } = options;
+            const hasApiKey = !!aiConfig.apiKey;
+            const isRouterOn = !!aiConfig.routerMode;
+            const endpoint = hasApiKey ? "https://api.openai.com" : aiConfig.endpoint;
+            const modelName = hasApiKey
+                ? (aiConfig.model || "gpt-4o-mini")
+                : (isRouterOn ? aiConfig.model : undefined);
+            const headers = {"Content-Type": "application/json"};
+            if (hasApiKey) headers["Authorization"] = "Bearer " + aiConfig.apiKey;
+            const body = {
+                messages: [
+                    {role: "system", content: systemPrompt},
+                    {role: "user",   content: userPrompt}
+                ],
+                temperature: 0.3,
+                stream: false
+            };
+            if (aiConfig.maxTokens) body.max_tokens = aiConfig.maxTokens;
+            if (modelName) body.model = modelName;
+            _aiAbortCtrl = new AbortController();
+            showLoadingModal(loadingMsg || "AI生成中…");
+            try {
+                const res = await fetch(endpoint + "/v1/chat/completions", {
+                    method: "POST", headers, body: JSON.stringify(body),
+                    signal: _aiAbortCtrl.signal
+                });
+                if (!res.ok) {
+                    const errText = await res.text().catch(() => "");
+                    throw new Error("HTTP " + res.status + (errText ? " — " + errText.slice(0, 120) : ""));
+                }
+                const data = await res.json();
+                const msg = data.choices?.[0]?.message || {};
+                const raw = (msg.content || msg.reasoning_content || "");
+                const generated = raw
+                    .replace(/<think>[\s\S]*?<\/think>/gi, "")
+                    .replace(/^```(?:javascript|js|yaml)?\n?/i, "")
+                    .replace(/```$/, "")
+                    .trim();
+                closeModal();
+                if (onSuccess) await onSuccess(generated);
+            } catch (e) {
+                closeModal();
+                if (e.name === "AbortError") {
+                    showToast("AI生成をキャンセルしました");
+                    if (onCancel) await onCancel();
+                } else {
+                    showToast("AI生成エラー: " + e.message);
+                    await window.vja?.log?.error?.("AI生成エラー: " + e.message).catch(() => {});
+                    if (onError) await onError(e);
+                }
+            } finally {
+                _aiAbortCtrl = null;
+            }
         }
         function ovClick(e) {
             if (!e.target.classList.contains("ov")) return;
@@ -4605,58 +4626,34 @@
             if (!js.trim()) { showToast("JavaScriptコードを入力してください"); return; }
             const docTa = $("ta-extrt-doc");
             if (!docTa) return;
-            try {
-                const hasApiKey = !!aiConfig.apiKey;
-                const endpoint = hasApiKey ? "https://api.openai.com" : aiConfig.endpoint;
-                const modelName = hasApiKey ? (aiConfig.model || "gpt-4o-mini") : (aiConfig.routerMode ? aiConfig.model : undefined);
-                const headers = {"Content-Type": "application/json"};
-                if (hasApiKey) headers["Authorization"] = "Bearer " + aiConfig.apiKey;
-                const body = {
-                    messages: [
-                        {role: "system", content: "あなたはJavaScriptコードのドキュメント生成アシスタントです。"},
-                        {role: "user", content:
-                            "以下のJavaScriptコード（vja拡張ランタイム）の使い方をYAML形式で説明してください。\n" +
-                            "関数名・引数・戻り値・使用例を含めてください。\n\n" +
-                            "```javascript\n" + js + "\n```"
-                        }
-                    ],
-                    temperature: 0.3,
-                    max_tokens: 1024,
-                    stream: false
-                };
-                if (modelName) body.model = modelName;
-                _aiAbortCtrl = new AbortController();
-                showLoadingModal("AI生成中…");
-                const res = await fetch(endpoint + "/v1/chat/completions", {
-                    method: "POST", headers, body: JSON.stringify(body),
-                    signal: _aiAbortCtrl.signal
-                });
-                if (!res.ok) {
-                    const errText = await res.text().catch(() => "");
-                    throw new Error("HTTP " + res.status + (errText ? " — " + errText.slice(0, 120) : ""));
-                }
-                const data = await res.json();
-                const generated = (data.choices?.[0]?.message?.content || "")
-                    .replace(/<think>[\s\S]*?<\/think>/gi, "")
-                    .replace(/^```(?:yaml)?\n?/i, "")
-                    .replace(/```$/, "")
-                    .trim();
-                docTa.value = generated;
-                _hlUpdate("ta-extrt-doc", "hl-extrt-doc", yamlTokenize);
-                editorUpdateGutter("ta-extrt-doc", "gutter-extrt-doc");
-                closeModal();
-                showToast("AI生成完了");
-            } catch(e) {
-                closeModal();
-                if (e.name === "AbortError") {
-                    showToast("AI生成をキャンセルしました");
-                } else {
-                    console.error("[extRt] AI gen error:", e);
-                    showToast("AI生成エラー: " + e.message);
-                }
-            } finally {
-                _aiAbortCtrl = null;
-            }
+            const existsDoc = (extRuntime.doc || $("ta-extrt-doc")?.value || "").trim();
+            const confirmMsg = existsDoc
+                ? "既に内容が登録されています。\n上書きしますか？\n（保存はされません）"
+                : "AI向け説明を生成しますか？\n（保存はされません）";
+            if (!(await vja.app.showConfirm(confirmMsg))?.confirmed) return;
+            await runAiGenerate({
+                systemPrompt: "あなたはJavaScriptコードのドキュメント生成アシスタントです。",
+                userPrompt:
+                    "以下のJavaScriptコード（vja拡張ランタイム）の使い方をYAML形式で説明してください。\n" +
+                    "関数名・引数・戻り値・使用例を含めてください。\n\n" +
+                    "```javascript\n" + js + "\n```",
+                onSuccess: async (result) => {
+                    extRuntime.doc = result;
+                    openExtRuntime();
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
+                        const taDock = $("ta-extrt-doc");
+                        ["extrt-js","extrt-doc"].forEach(t => {
+                            $("tab-" + t)?.classList.toggle("active", t === "extrt-doc");
+                            $("pane-" + t)?.classList.toggle("active", t === "extrt-doc");
+                        });
+                        const hlDoc = $("hl-extrt-doc");
+                        if (hlDoc) hlDoc.style.height = "";
+                        _hlUpdate("ta-extrt-doc", "hl-extrt-doc", yamlTokenize);
+                        editorUpdateGutter("ta-extrt-doc", "gutter-extrt-doc");
+                    }));
+                    showToast("AI生成完了");
+                },
+            });
         }
 
         function openDebugTools() {
