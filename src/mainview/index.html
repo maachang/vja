@@ -3246,6 +3246,7 @@
                 `<div id="loading-timer" style="color:var(--accent,#7eb8f7);font-size:20px;font-weight:bold">0秒</div>` +
                 `<button class="modal-btn" onmousedown="cancelAiGenerate()" style="margin-top:12px;padding:8px 28px">キャンセル</button>` +
                 `</div></div>`;
+            if (_aiLoadingTimer) { clearInterval(_aiLoadingTimer); _aiLoadingTimer = null; }
             let sec = 0;
             _aiLoadingTimer = setInterval(() => {
                 const el = $("loading-timer");
