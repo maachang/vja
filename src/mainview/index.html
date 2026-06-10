@@ -193,6 +193,12 @@
                 <line x1="9" y1="3" x2="9" y2="21" />
             </svg>テーブル
         </button>
+        <button class="tb-btn" onmousedown="openExtRuntime()" title="拡張ランタイム">
+            <svg viewBox="0 0 24 24">
+                <polyline points="16 18 22 12 16 6" />
+                <polyline points="8 6 2 12 8 18" />
+            </svg>拡張
+        </button>
         <div class="tb-sep"></div>
         <div id="form-selector-area">
             <span id="form-label">📋 画面:</span>
@@ -746,6 +752,7 @@
         // ── クラウドインフラ設定 ──────────────────────────
         let cloudInfras = []; // { id, name, url, enabled, sdkUrl, credentials: {key: "暗号化済み"} }
         let _cloudDraft = [];
+        let extRuntime = { js: "", doc: "" };
 
         let aiConfig = {
             endpoint: "http://localhost:8080",
@@ -2485,8 +2492,11 @@
             const ta = e.target;
             if (!ta) return;
             const ctrl = e.ctrlKey || e.metaKey;
-            const isJs = ta.id === "js-ta";
-            const state = isJs ? _ju : _yu;
+            const isJs = ta.id === "js-ta" || ta.id === "ta-extrt-js";
+            const state = ta.id === "js-ta" ? _ju
+                : ta.id === "ta-extrt-js"  ? _extRtJuState
+                : ta.id === "ta-extrt-doc" ? _extRtYuState
+                : _yu;
 
             // ── Undo / Redo ───────────────────────────────────
             if (ctrl && e.key.toLowerCase() === "z" && !e.shiftKey) {
@@ -2687,14 +2697,66 @@
         }
 
         function editorHlUpdate(taId) {
-            if (taId === "yaml-ta") {yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter");}
-            else {jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter");}
+            if      (taId === "yaml-ta")      { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
+            else if (taId === "js-ta")        { jsHlUpdate();   editorUpdateGutter("js-ta",   "js-gutter"); }
+            else if (taId === "ta-extrt-js")  { _hlUpdate("ta-extrt-js",  "hl-extrt-js",  jsTokenize);   editorUpdateGutter("ta-extrt-js",  "gutter-extrt-js"); }
+            else if (taId === "ta-extrt-doc") { _hlUpdate("ta-extrt-doc", "hl-extrt-doc", yamlTokenize); editorUpdateGutter("ta-extrt-doc", "gutter-extrt-doc"); }
         }
 
 
         /* ── YAMLエディタ共通HTML生成 ── */
-        function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", extraTabsHTML = "") {
+        // tabConfig: null=通常(YAML+JS), {tabs:[{id,label,type:'yaml'|'js',val,ph}], aiBar, saveAction}
+        function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", extraTabsHTML = "", tabConfig = null) {
             const aiEnabled = aiConfig.enabled;
+
+            // カスタムタブ構成
+            if (tabConfig) {
+                const tabs = tabConfig.tabs || [];
+                const tabBar = tabs.map((t, idx) =>
+                    `<div class='yaml-tab ${idx === 0 ? "active" : ""}' id='tab-${t.id}'>${t.label}</div>`
+                ).join("");
+                const panes = tabs.map((t, idx) => {
+                    const isJs = t.type === "js";
+                    const hlWrap = isJs ? "js-hl-wrap" : "yaml-hl-wrap";
+                    const hlBg  = isJs ? "js-hl-bg"   : "yaml-hl-bg";
+                    return `<div class='yaml-pane ${idx === 0 ? "active" : ""}' id='pane-${t.id}'>` +
+                        `<div class='editor-wrap'>` +
+                        `<div class='editor-gutter' id='gutter-${t.id}'></div>` +
+                        `<div class='editor-main'>` +
+                        `<div class='${hlWrap}'>` +
+                        `<div class='${hlBg}' id='hl-${t.id}'></div>` +
+                        `<textarea class='yaml' id='ta-${t.id}' spellcheck='false'` +
+                        (t.ph ? ` placeholder='${esc(t.ph)}'` : "") + `>` + esc(t.val || "") + `</textarea>` +
+                        `</div></div></div></div>`;
+                }).join("");
+                const aiBar = tabConfig.aiBar
+                    ? `<div class='yaml-ai-bar'>${tabConfig.aiBar}</div>`
+                    : "";
+                const saveBtn = tabConfig.saveAction
+                    ? `<button class='pri' onmousedown='${tabConfig.saveAction}'>保存</button>`
+                    : "";
+                return (
+                    "<div class='modal-yaml'>" +
+                    headerHTML +
+                    "<div class='mbody' style='padding:0;gap:0;overflow:hidden;display:flex;flex-direction:column'>" +
+                    "<div class='yaml-editor-layout' id='yaml-layout'>" +
+                    "<div class='yaml-editor-left'>" +
+                    "<div class='yaml-tab-bar'>" + tabBar + "</div>" +
+                    panes +
+                    (aiBar ? aiBar : "<div class='yaml-ai-bar'></div>") +
+                    "</div>" +
+                    "<div class='yaml-editor-right' style='display:none'></div>" +
+                    "</div>" +
+                    "</div>" +
+                    "<div class='mfoot'>" +
+                    mfootHTML([{label: "キャンセル", action: "closeModal()"}]) +
+                    saveBtn +
+                    "</div>" +
+                    "</div>"
+                );
+            }
+
+            // 通常構成（YAML + JS）
             return (
                 "<div class='modal-yaml'>" +
                 headerHTML +
@@ -3244,7 +3306,7 @@
         ═══════════════════════════════════════════ */
         // プロジェクト全体スナップショット
         function snapshot() {
-            return JSON.stringify({forms, curFormIdx, constants, startFormId, aiConfig, cloudInfras, tables, snapOn, showGrid, editorConfig, projectInfo});
+            return JSON.stringify({forms, curFormIdx, constants, startFormId, aiConfig, cloudInfras, tables, snapOn, showGrid, editorConfig, projectInfo, extRuntime});
         }
         function pushUndo() {
             // 編集前に現フォームのidCntを書き戻す
@@ -3256,6 +3318,7 @@
         // ── プロジェクトデータ復元共通処理 ──────────────
         function applyProjectData(d) {
             cloudInfras = d.cloudInfras || [];
+            extRuntime  = d.extRuntime  || { js: "", doc: "" };
             constants = d.constants || [];
             startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
             tables = d.tables || [];
@@ -3464,6 +3527,7 @@
                 forms,
                 constants,
                 tables,
+                extRuntime,
             };
         };
 
@@ -4441,6 +4505,90 @@
             closeModal();
             pushUndo();
             showToast("プロジェクト情報を保存しました");
+        }
+
+        /* ── 拡張ランタイム ── */
+        let _extRtYuState = { stack: [], idx: -1, busy: false };
+        let _extRtJuState = { stack: [], idx: -1, busy: false };
+
+        function openExtRuntime() {
+            const tabConfig = {
+                tabs: [
+                    { id: "extrt-js",  label: "📜 JavaScript", type: "js",   val: extRuntime.js  || "" },
+                    { id: "extrt-doc", label: "📋 AI向け説明",  type: "yaml", val: extRuntime.doc || "" },
+                ],
+                aiBar: "<button class='yaml-ai-btn' onmousedown='extRtGenDoc()'>🤖 AI向け説明を生成</button>",
+                saveAction: "saveExtRuntime()",
+            };
+            showModal(buildYamlEditorHTML("", "", false, mhdrHTML("⚡ 拡張ランタイム"), "", tabConfig));
+            requestAnimationFrame(() => {
+                applyEditorConfig();
+                [
+                    { id: "ta-extrt-js",  hlId: "hl-extrt-js",  gutId: "gutter-extrt-js",  tokenFn: jsTokenize,   state: _extRtJuState },
+                    { id: "ta-extrt-doc", hlId: "hl-extrt-doc", gutId: "gutter-extrt-doc", tokenFn: yamlTokenize, state: _extRtYuState },
+                ].forEach(({ id, hlId, gutId, tokenFn, state }) => {
+                    const ta = $(id);
+                    if (!ta) return;
+                    _hlUpdate(id, hlId, tokenFn);
+                    editorUpdateGutter(id, gutId);
+                    ta.addEventListener("keydown", editorKeyHandler);
+                    ta.addEventListener("mousedown", editorMouseDownHandler2);
+                    ta.addEventListener("dblclick", editorDblClickHandler);
+                    ta.addEventListener("input", () => { _hlUpdate(id, hlId, tokenFn); editorUpdateGutter(id, gutId); });
+                    ta.addEventListener("scroll", () => _hlSync(id, hlId));
+                    editorUndoInit(id, state, ta.value);
+                });
+                rAfBind("#tab-extrt-js",  "click", () => {
+                    ["extrt-js","extrt-doc"].forEach(t => {
+                        $("tab-" + t)?.classList.toggle("active", t === "extrt-js");
+                        $("pane-" + t)?.classList.toggle("active", t === "extrt-js");
+                    });
+                    _hlUpdate("ta-extrt-js", "hl-extrt-js", jsTokenize);
+                    editorUpdateGutter("ta-extrt-js", "gutter-extrt-js");
+                });
+                rAfBind("#tab-extrt-doc", "click", () => {
+                    ["extrt-js","extrt-doc"].forEach(t => {
+                        $("tab-" + t)?.classList.toggle("active", t === "extrt-doc");
+                        $("pane-" + t)?.classList.toggle("active", t === "extrt-doc");
+                    });
+                    _hlUpdate("ta-extrt-doc", "hl-extrt-doc", yamlTokenize);
+                    editorUpdateGutter("ta-extrt-doc", "gutter-extrt-doc");
+                });
+            });
+        }
+
+        function saveExtRuntime() {
+            extRuntime.js  = $("ta-extrt-js")?.value  || "";
+            extRuntime.doc = $("ta-extrt-doc")?.value || "";
+            closeModal();
+            showToast("拡張ランタイムを保存しました");
+            pushUndo();
+        }
+
+        async function extRtGenDoc() {
+            if (!aiConfig.enabled) {
+                showToast("AI接続設定が有効になっていません");
+                return;
+            }
+            const js = $("extrt-js-ta")?.value || "";
+            if (!js.trim()) { showToast("JavaScriptコードを入力してください"); return; }
+            const docTa = $("extrt-doc-ta");
+            if (!docTa) return;
+            showToast("AI生成中...");
+            try {
+                const result = await vja.ai.generate(
+                    "以下のJavaScriptコード（vja拡張ランタイム）の使い方をYAML形式で説明してください。\n" +
+                    "関数名・引数・戻り値・使用例を含めてください。\n\n" +
+                    "```javascript\n" + js + "\n```",
+                    ""
+                );
+                docTa.value = result;
+                _hlUpdate("extrt-doc-ta", "extrt-doc-hl", yamlTokenize);
+                editorUpdateGutter("extrt-doc-ta", "extrt-doc-gutter");
+            } catch(e) {
+                console.error("[extRt] AI gen error:", e);
+                showToast("AI生成エラー: " + e.message);
+            }
         }
 
         function openDebugTools() {

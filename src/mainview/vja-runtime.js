@@ -825,4 +825,6 @@
 
     console.log("[vja-runtime] loaded ✓");
 
+    //{{ext_runtime}}
+
 })(window);

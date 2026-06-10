@@ -127,6 +127,7 @@ const decryptCredential = async (b64: string): Promise<string> => {
 
 // 現在のクラウドインフラ設定
 let _cloudInfras: any[] = [];
+let _currentProjectExtRuntime: string = "";
 
 const loadLastDir = (): string => {
     try {
@@ -622,6 +623,7 @@ const _updateProjectData = (jsonStr: string, filePath?: string): boolean => {
         _onExitCode = proj.projectInfo?.appEvents?.onExit || "";
         _currentProjectDbDir = join(_projectWorkDir, _currentProjectName, "db");
         _cloudInfras = proj.cloudInfras || [];
+        _currentProjectExtRuntime = proj.extRuntime?.js || "";
         // vjaPass を非同期で読み込み（await不可なので then で）
         _loadVjaPass(proj).then(pass => { _vjaPass = pass; });
         return true;
@@ -653,8 +655,9 @@ const buildProjectFiles = async (): Promise<{
         }
 
         // 各フォームのHTMLを生成
+        const extRuntimeJs = (_currentProjectExtRuntime || "").trim();
         for (const form of _currentProjectForms) {
-            const html = buildFormHtml(form, _currentProjectForms);
+            const html = buildFormHtml(form, _currentProjectForms, extRuntimeJs);
             await Bun.write(join(outDir, `${form.cfg.title}.html`), html);
         }
 
@@ -671,7 +674,7 @@ const buildProjectFiles = async (): Promise<{
 };
 
 // フォームのHTMLを生成
-const buildFormHtml = (form: any, allForms: any[]): string => {
+const buildFormHtml = (form: any, allForms: any[], extRuntimeJs: string = ""): string => {
     const cfg = form.cfg;
     const widgets = form.widgets || [];
     const events = form.events || {};
@@ -712,6 +715,7 @@ body { overflow: hidden; background: ${esc2(cfg.bg || "#ececec")}; }
 ${widgetsHtml}
 </div>
 <script src="./project-bridge.js"></script>
+${extRuntimeJs ? `<script>\n${extRuntimeJs}\n</script>` : ""}
 <script>
 ${eventsJs}
 </script>
