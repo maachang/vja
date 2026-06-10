@@ -2445,7 +2445,6 @@
                     // モーダルを再表示してJSタブに切り替え
                     const w2 = getWidget(wid);
                     if (!w2) return;
-                    const curYaml = (w2.events && w2.events[evName]) || "";
                     openYaml(wid, evName);
                     requestAnimationFrame(() => requestAnimationFrame(() => {
                         const jsTa = $("js-ta");
@@ -4607,16 +4606,14 @@
                         $("tab-" + t)?.classList.toggle("active", t === "extrt-js");
                         $("pane-" + t)?.classList.toggle("active", t === "extrt-js");
                     });
-                    _hlUpdate("ta-extrt-js", "hl-extrt-js", jsTokenize);
-                    editorUpdateGutter("ta-extrt-js", "gutter-extrt-js");
+                    editorHlUpdate("ta-extrt-js");
                 });
                 rAfBind("#tab-extrt-doc", "click", () => {
                     ["extrt-js","extrt-doc"].forEach(t => {
                         $("tab-" + t)?.classList.toggle("active", t === "extrt-doc");
                         $("pane-" + t)?.classList.toggle("active", t === "extrt-doc");
                     });
-                    _hlUpdate("ta-extrt-doc", "hl-extrt-doc", yamlTokenize);
-                    editorUpdateGutter("ta-extrt-doc", "gutter-extrt-doc");
+                    editorHlUpdate("ta-extrt-doc");
                 });
             });
         }
@@ -4636,8 +4633,6 @@
             }
             const js = $("ta-extrt-js")?.value || "";
             if (!js.trim()) { showToast("JavaScriptコードを入力してください"); return; }
-            const docTa = $("ta-extrt-doc");
-            if (!docTa) return;
             const existsDoc = (extRuntime.doc || $("ta-extrt-doc")?.value || "").trim();
             const confirmMsg = existsDoc
                 ? "既に内容が登録されています。\n上書きしますか？\n（保存はされません）"
@@ -4660,8 +4655,7 @@
                         });
                         const hlDoc = $("hl-extrt-doc");
                         if (hlDoc) hlDoc.style.height = "";
-                        _hlUpdate("ta-extrt-doc", "hl-extrt-doc", yamlTokenize);
-                        editorUpdateGutter("ta-extrt-doc", "gutter-extrt-doc");
+                        editorHlUpdate("ta-extrt-doc");
                     }));
                     showToast("AI生成完了");
                 },
@@ -4895,11 +4889,9 @@
                 "<div style='color:var(--text3);font-size:12px;padding:8px'>登録なし</div>";
         }
         async function saveCloudInfraConfig() {
-            console.log("[cloud] saveCloudInfraConfig called, bunSaveCloudInfras=", typeof window.bunSaveCloudInfras);
             try {
                 // Bun側で暗号化して保存
                 const result = await window.bunSaveCloudInfras(_cloudDraft);
-                console.log("[cloud] saveCloudInfras result=", result);
                 if (!result?.ok) throw new Error(result?.error || "保存失敗");
                 // フロント側にも反映（次回モーダルオープン時のベースになる）
                 cloudInfras = _cloudDraft.map(c => JSON.parse(JSON.stringify(c)));
