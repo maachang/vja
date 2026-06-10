@@ -12,7 +12,7 @@
     <!-- カスタムタイトルバー -->
     <div id="custom-titlebar">
         <span id="titlebar-title">VJA Form Designer</span>
-        <button id="titlebar-close" class="electrobun-webkit-app-region-no-drag" onmousedown="window.bunCloseApp()"
+        <button id="titlebar-close" class="electrobun-webkit-app-region-no-drag" onmousedown="confirmClose()"
             title="閉じる">✕</button>
     </div>
     <!-- ■ TOOLBAR -->
@@ -3494,12 +3494,11 @@
           SAVE / OPEN / EXPORT
         ═══════════════════════════════════════════ */
         async function actNew() {
-            if (
-                !(await vja.app.showConfirm(
-                    "新規プロジェクトを作成しますか？（現在の内容は失われます）"
-                ))?.confirmed
-            )
-                return;
+            if (isDirty()) {
+                if (!(await vja.app.showConfirm("未保存の変更があります。\n新規プロジェクトを作成すると現在の内容は失われます。\n続けますか？"))?.confirmed) return;
+            } else {
+                if (!(await vja.app.showConfirm("新規プロジェクトを作成しますか？"))?.confirmed) return;
+            }
             forms = [makeFormData("Form1")];
             curFormIdx = 0;
             selId = null;
@@ -3507,6 +3506,7 @@
             redoStack = [];
             refreshAll();
             pushUndo();
+            _savedSnapshot = snapshot();
         }
 
         // ── ファイル保存・オープン（Bunネイティブ経由）──
@@ -3542,6 +3542,9 @@
 
         // プロジェクトを開く → Bun側でファイル選択ダイアログ
         async function actOpen() {
+            if (isDirty()) {
+                if (!(await vja.app.showConfirm("未保存の変更があります。\nプロジェクトを開くと現在の内容は失われます。\n続けますか？"))?.confirmed) return;
+            }
             try {
                 const result = await window.bunOpenFile({
                     filter: "vjaproj",
@@ -3922,6 +3925,18 @@
         ═══════════════════════════════════════════ */
 
         /* ── ウィンドウを閉じる確認 ── */
+        // 未保存の変更があるか判定する。_savedSnapshot と現在の状態を比較する。
+        function isDirty() {
+            return _savedSnapshot !== null && snapshot() !== _savedSnapshot;
+        }
+        // クローズボタン押下時の処理。未保存の変更がある場合は確認ダイアログを表示する。
+        function confirmClose() {
+            if (isDirty()) {
+                showCloseConfirm();
+            } else {
+                doClose();
+            }
+        }
         function showCloseConfirm() {
             document.getElementById("close-confirm").classList.add("show");
         }
@@ -5493,6 +5508,7 @@
             requestAnimationFrame(drawRulers),
         );
         pushUndo();
+        _savedSnapshot = snapshot();
         renderProps();
 
         //initCloudInfra();
