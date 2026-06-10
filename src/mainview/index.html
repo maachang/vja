@@ -2725,7 +2725,7 @@
                         `<div class='editor-main'>` +
                         `<div class='${hlWrap}'>` +
                         `<div class='${hlBg}' id='hl-${t.id}'></div>` +
-                        `<textarea class='yaml' id='ta-${t.id}' spellcheck='false'` +
+                        `<textarea class='yaml' id='ta-${t.id}' spellcheck='false' style='height:100%;min-height:300px'` +
                         (t.ph ? ` placeholder='${esc(t.ph)}'` : "") + `>` + esc(t.val || "") + `</textarea>` +
                         `</div></div></div></div>`;
                 }).join("");
