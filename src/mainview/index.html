@@ -3253,15 +3253,16 @@
           showModal / closeModal / showLoadingModal の3種を使い分ける。
         ═══════════════════════════════════════════ */
         // 汎用モーダルを表示する。yaml系モーダルは外クリックで閉じない制御も兼ねる。
-        function showModal(html) {
+        // extraClass: 追加CSSクラス（例: "modal-yaml", "modal-cloud"）
+        function showModal(html, extraClass = "") {
             const isYaml = /^\s*<div class=["']modal-yaml["']>/.test(html);
-            const extraClass = isYaml ? " modal-yaml" : "";
+            const cls = isYaml ? " modal-yaml" : (extraClass ? " " + extraClass : "");
             // modal-yaml ラッパーは不要なので中身を取り出す
             const inner = isYaml
                 ? html.replace(/^\s*<div class=["']modal-yaml["']>/, "").replace(/<\/div>\s*$/, "")
                 : html;
             $("modal-root").innerHTML =
-                `<div class="ov" onclick="ovClick(event)"><div class="modal${extraClass}">${inner}</div></div>`;
+                `<div class="ov" onclick="ovClick(event)"><div class="modal${cls}">${inner}</div></div>`;
         }
         // モーダルを閉じる。AIローディングタイマーが残っていれば合わせてクリアする。
         function closeModal() {
@@ -3358,6 +3359,7 @@
             const modal = document.querySelector(".modal");
             if (modal && modal.classList.contains("modal-yaml")) return;
             if (modal && modal.classList.contains("modal-loading")) return;
+            if (modal && modal.classList.contains("modal-cloud")) return;
             closeModal();
         }
 
@@ -4051,13 +4053,18 @@
                 list.style.minWidth = r.width + "px";
             }
         }
-        function pvSelPick(id, val, e) {
-            if (e) e.stopPropagation();
+        // val: 保存値、disp: 表示名（省略時は val をそのまま表示）
+        // 後方互換のため dispOrEvent が Event の場合は旧来通り val を表示名に使う
+        function pvSelPick(id, val, dispOrEvent, e) {
+            const isOldStyle = !e && (dispOrEvent instanceof Event || (dispOrEvent && typeof dispOrEvent === "object" && dispOrEvent.stopPropagation));
+            const ev   = isOldStyle ? dispOrEvent : e;
+            const disp = isOldStyle ? String(val) : (dispOrEvent !== undefined ? String(dispOrEvent) : String(val));
+            if (ev) ev.stopPropagation();
             const wrap = document.getElementById(id);
             if (!wrap) return;
             const list = wrap.querySelector(".pv-sel-list");
             const btn = wrap.querySelector(".pv-sel-btn span:first-child");
-            if (btn) btn.textContent = String(val);
+            if (btn) btn.textContent = disp;
             list?.classList.remove("open");
             wrap.querySelectorAll(".pv-sel-opt").forEach(el => {
                 el.classList.toggle("active",
@@ -4724,7 +4731,7 @@
                 "<div style='color:var(--text3);font-size:12px;padding:8px'>登録なし</div>";
             showModal(
                 mhdrHTML("☁️ クラウドインフラ設定") +
-                "<div class='mbody' style='gap:10px'>" +
+                "<div class='mbody' style='gap:10px;overflow-y:auto;max-height:60vh'>" +
                 "<div class='infobox'>同一クラウドを複数登録した場合、先頭のCredentialが優先されます。</div>" +
                 "<div id='cloud-list' style='display:flex;flex-direction:column;gap:8px'>" + rows + "</div>" +
                 "<button class='modal-btn' style='margin-top:4px' onmousedown='addCloudInfra()'>＋ 追加</button>" +
@@ -4732,7 +4739,8 @@
                 mfootHTML([
                     {label: "保存", cls: "primary", action: "saveCloudInfraConfig()"},
                     {label: "キャンセル", action: "closeModal()"},
-                ])
+                ]),
+                "modal-cloud"
             );
         }
 
@@ -4801,19 +4809,26 @@
                     const isSecret = typeof cd === "object" && cd.secret;
                     const appInput = !!(inf.appInput?.[k]);
                     const selOpts  = typeof cd === "object" && Array.isArray(cd.select) ? cd.select : null;
-                    const curVal   = inf.credentials?.[k] || "";
+                    const curVal   = (inf.credentials && k in inf.credentials) ? inf.credentials[k] : null;
                     let inputHtml;
                     if (selOpts) {
                         const selId  = "cloud-cred-sel-" + i + "-" + ci;
                         const selDef = selOpts.find(o => o.selected) || selOpts[0];
-                        const selCur = curVal || selDef?.name || "";
-                        const opts   = selOpts.map(o =>
-                            `<div class="pv-sel-opt ${selCur === o.name ? "active" : ""}"
-                                onmousedown="pvSelPick('${selId}','${esc(o.name)}',event);updateCloudCred(${i},'${esc(k)}','${esc(o.name)}')">${esc(o.name)}</div>`
-                        ).join("");
+                        // o.value が存在する場合は保存値として使い、o.name は表示名として使う
+                        const selDefVal = selDef ? (selDef.value ?? selDef.name ?? "") : "";
+                        // curVal が null（未設定）の場合のみデフォルト値を使う
+                        const selCur = curVal !== null ? curVal : selDefVal;
+                        const opts   = selOpts.map(o => {
+                            const optVal  = o.value ?? o.name ?? "";
+                            const optDisp = (o.name !== undefined && o.name !== "") ? o.name : "&nbsp;";
+                            return `<div class="pv-sel-opt ${(selCur === optVal || selCur === o.name) ? "active" : ""}"
+                                onmousedown="pvSelPick('${selId}','${esc(optVal)}','${optDisp === "&nbsp;" ? "" : esc(optDisp)}',event);updateCloudCred(${i},'${esc(k)}','${esc(optVal)}')">${optDisp === "&nbsp;" ? "&nbsp;" : esc(optDisp)}</div>`;
+                        }).join("");
+                        // ボタン表示は現在の保存値に対応する表示名を探す
+                        const selDispName = (selOpts.find(o => (o.value ?? o.name) === selCur || o.name === selCur) || {}).name ?? selCur;
                         inputHtml = `<div class="pv-sel" id="${selId}" style="flex:1">
                             <div class="pv-sel-btn" onmousedown="pvSelOpen('${selId}',event)">
-                                <span>${esc(selCur)}</span><span class="arr">▼</span>
+                                <span>${esc(selDispName)}</span><span class="arr">▼</span>
                             </div>
                             <div class="pv-sel-list">${opts}</div>
                         </div>`;
@@ -4821,7 +4836,7 @@
                         inputHtml = `<input type="${isSecret ? "password" : "text"}" class="pv-input"
                             style="flex:1;${appInput ? "opacity:0.5" : ""}"
                             placeholder="${appInput ? "（アプリ側で入力）" : esc(k)}"
-                            value="${esc(curVal)}"
+                            value="${esc(curVal ?? "")}"
                             ${appInput ? "disabled" : ""}
                             oninput="updateCloudCred(${i},'${esc(k)}',this.value)">`;
                     }

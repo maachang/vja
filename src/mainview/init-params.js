@@ -31,13 +31,13 @@
                         "secret": false,
                         "select": [
                             // 日本で利用想定で、利用対象リージョンを対象とする.
-                            { "name": "", "selected": false },
-                            { "name": "ap-northeast-1", "selected": true }, // 東京がデフォルト値.
-                            { "name": "ap-northeast-3", "selected": false }, // 大阪.
-                            { "name": "ap-northeast-2", "selected": false }, // ソウル.
-                            { "name": "ap-southeast-1", "selected": false }, // シンガポール.
-                            { "name": "us-east-1", "selected": false }, // バージニア北部
-                            { "name": "us-west-2", "selected": false } // オレゴン
+                            { "name": "",               "value": "",               "selected": false },
+                            { "name": "東京",           "value": "ap-northeast-1", "selected": true  },
+                            { "name": "大阪",           "value": "ap-northeast-3", "selected": false },
+                            { "name": "ソウル",         "value": "ap-northeast-2", "selected": false },
+                            { "name": "シンガポール",   "value": "ap-southeast-1", "selected": false },
+                            { "name": "バージニア北部", "value": "us-east-1",      "selected": false },
+                            { "name": "オレゴン",       "value": "us-west-2",      "selected": false }
                         ]
                     }
                 }
