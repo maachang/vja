@@ -27,39 +27,17 @@
                 { "secretAccessKey": { "key": "AWS_SECRET_ACCESS_KEY", "secret": true } },
                 {
                     "region": {
-                        "key": "AWS_REGION", "secret": false, "select": [
+                        "key": "AWS_REGION",
+                        "secret": false,
+                        "select": [
+                            // 日本で利用想定で、利用対象リージョンを対象とする.
                             { "name": "", "selected": false },
-                            { "name": "us-east-1", "selected": false },
-                            { "name": "us-east-2", "selected": false },
-                            { "name": "us-west-1", "selected": false },
-                            { "name": "us-west-2", "selected": false },
-                            { "name": "ca-central-1", "selected": false },
-                            { "name": "ca-west-1", "selected": false },
-                            { "name": "eu-west-1", "selected": false },
-                            { "name": "eu-west-2", "selected": false },
-                            { "name": "eu-west-3", "selected": false },
-                            { "name": "eu-central-1", "selected": false },
-                            { "name": "eu-central-2", "selected": false },
-                            { "name": "eu-north-1", "selected": false },
-                            { "name": "eu-south-1", "selected": false },
-                            { "name": "eu-south-2", "selected": false },
-                            { "name": "ap-northeast-1", "selected": true }, // 一旦日本向けに作るので.
-                            { "name": "ap-northeast-2", "selected": false },
-                            { "name": "ap-northeast-3", "selected": false },
-                            { "name": "ap-southeast-1", "selected": false },
-                            { "name": "ap-southeast-2", "selected": false },
-                            { "name": "ap-southeast-3", "selected": false },
-                            { "name": "ap-southeast-4", "selected": false },
-                            { "name": "ap-southeast-5", "selected": false },
-                            { "name": "ap-south-1", "selected": false },
-                            { "name": "ap-south-2", "selected": false },
-                            { "name": "ap-east-1", "selected": false },
-                            { "name": "sa-east-1", "selected": false },
-                            { "name": "me-south-1", "selected": false },
-                            { "name": "me-central-1", "selected": false },
-                            { "name": "af-south-1", "selected": false },
-                            { "name": "il-central-1", "selected": false },
-                            { "name": "mx-central-1", "selected": false }
+                            { "name": "ap-northeast-1", "selected": true }, // 東京がデフォルト値.
+                            { "name": "ap-northeast-3", "selected": false }, // 大阪.
+                            { "name": "ap-northeast-2", "selected": false }, // ソウル.
+                            { "name": "ap-southeast-1", "selected": false }, // シンガポール.
+                            { "name": "us-east-1", "selected": false }, // バージニア北部
+                            { "name": "us-west-2", "selected": false } // オレゴン
                         ]
                     }
                 }
