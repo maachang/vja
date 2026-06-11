@@ -162,10 +162,17 @@ w.vja = {
     app: {
         getInfo: () =>
             mkPromise("appInfo", () => s.appInfoRequest({})),
+        // showDialog / showConfirm はフロント側 #dialog-root ダイアログで処理
         showDialog: (message: string) =>
-            mkPromise("appDialog", () => s.appDialogRequest({ type: "alert", message })),
+            new Promise<{ ok: boolean }>((resolve) => {
+                (w as any).showVjaAlert?.(message, () => resolve({ ok: true }));
+            }),
         showConfirm: (message: string) =>
-            mkPromise("appDialog", () => s.appDialogRequest({ type: "confirm", message })),
+            new Promise<{ ok: boolean; confirmed: boolean }>((resolve) => {
+                (w as any).showVjaDialog?.(message, (confirmed: boolean) =>
+                    resolve({ ok: true, confirmed })
+                );
+            }),
     },
     // ── プロジェクト実行 ──────────────────────────────
     project: {

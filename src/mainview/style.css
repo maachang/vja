@@ -1340,6 +1340,103 @@ textarea.yaml:focus {
     stroke-linejoin: round;
 }
 
+/* ── z-index レイヤー管理 ──────────────────────────────
+   #modal-root    : 1000  汎用モーダル
+   #close-confirm : 2000  閉じる確認ダイアログ
+   #dialog-root   : 8000  vja.app.showConfirm / showDialog 専用
+   #toast-root    : 9000  トースト通知
+──────────────────────────────────────────────────── */
+
+/* ── vja.app ダイアログ ── */
+#dialog-root {
+    position: fixed;
+    inset: 0;
+    background: #00000088;
+    z-index: 8000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+#dialog-root.show {
+    display: flex;
+}
+#dialog-root .box {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 28px 32px 20px;
+    min-width: 300px;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 8px 32px #0006;
+}
+#dialog-root .box .icon {
+    font-size: 32px;
+    line-height: 1;
+}
+#dialog-root .box p {
+    margin: 0;
+    color: var(--text1);
+    font-size: 14px;
+    text-align: center;
+    white-space: pre-wrap;
+}
+#dialog-root .box .btns {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+}
+#dialog-root .box .btns button {
+    padding: 6px 20px;
+    border-radius: 5px;
+    border: 1px solid var(--border2);
+    background: var(--bg3);
+    color: var(--text1);
+    cursor: pointer;
+    font-size: 13px;
+}
+#dialog-root .box .btns button:hover {
+    background: var(--bg4);
+}
+#dialog-root .box .btns .btn-ok {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+#dialog-root .box .btns .btn-ok:hover {
+    opacity: 0.85;
+}
+
+/* ── トースト通知 ── */
+#toast-root {
+    position: fixed;
+    bottom: 36px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9000;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+#toast-root .toast-msg {
+    background: #2d2d45;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    color: #e0e0f0;
+    font-size: 12px;
+    padding: 6px 16px;
+    opacity: 0;
+    transition: opacity .2s;
+}
+#toast-root .toast-msg.show {
+    opacity: 1;
+}
+
 /* ── 閉じる確認ダイアログ ── */
 #close-confirm {
     position: fixed;

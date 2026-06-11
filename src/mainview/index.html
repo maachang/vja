@@ -374,10 +374,14 @@
         </div>
     </div>
 
-    <!-- modal -->
+    <!-- modal (z-index: 1000) -->
     <div id="modal-root"></div>
     <!-- カラム型フローティングドロップダウン -->
     <div id="col-type-float"></div>
+    <!-- vja.app.showConfirm/showDialog 専用ダイアログ (z-index: 8000) -->
+    <div id="dialog-root"></div>
+    <!-- トースト通知 (z-index: 9000) -->
+    <div id="toast-root"></div>
 
     <!-- VJA 諸記事実行用のパラメータ -->
     <script type="module" src="./init-params.js"></script>
@@ -3262,6 +3266,57 @@
             $("modal-root").innerHTML =
                 `<div class="ov" onclick="ovClick(event)"><div class="modal${cls}">${inner}</div></div>`;
         }
+        // ── vja.app ダイアログ（#dialog-root, z-index:8000）────────────────
+        // vja.app.showConfirm / showDialog 用コールバック
+        let _dialogOkCallback = null;
+
+        // confirm ダイアログを表示する。onOk: OK時のコールバック
+        function showVjaDialog(msg, onOk) {
+            const root = $("dialog-root");
+            if (!root) return;
+            _dialogOkCallback = onOk || null;
+            root.innerHTML =
+                "<div class='box'>" +
+                "<div class='icon'>❓</div>" +
+                "<p>" + esc(msg) + "</p>" +
+                "<div class='btns'>" +
+                "<button class='btn-ok' onmousedown='_onVjaDialogOk()'>OK</button>" +
+                "<button onmousedown='_onVjaDialogCancel()'>キャンセル</button>" +
+                "</div></div>";
+            root.classList.add("show");
+        }
+
+        // alert ダイアログを表示する。onOk: OK時のコールバック（省略可）
+        function showVjaAlert(msg, onOk) {
+            const root = $("dialog-root");
+            if (!root) return;
+            _dialogOkCallback = onOk || null;
+            root.innerHTML =
+                "<div class='box'>" +
+                "<div class='icon'>ℹ️</div>" +
+                "<p>" + esc(msg) + "</p>" +
+                "<div class='btns'>" +
+                "<button class='btn-ok' onmousedown='_onVjaDialogOk()'>OK</button>" +
+                "</div></div>";
+            root.classList.add("show");
+        }
+
+        function _onVjaDialogOk() {
+            const root = $("dialog-root");
+            if (root) { root.classList.remove("show"); root.innerHTML = ""; }
+            const cb = _dialogOkCallback;
+            _dialogOkCallback = null;
+            if (cb) cb(true);
+        }
+
+        function _onVjaDialogCancel() {
+            const root = $("dialog-root");
+            if (root) { root.classList.remove("show"); root.innerHTML = ""; }
+            const cb = _dialogOkCallback;
+            _dialogOkCallback = null;
+            if (cb) cb(false);
+        }
+
         // モーダルを閉じる。AIローディングタイマーが残っていれば合わせてクリアする。
         function closeModal() {
             if (_aiLoadingTimer) { clearInterval(_aiLoadingTimer); _aiLoadingTimer = null; }
@@ -3617,24 +3672,18 @@
             if (!_lastSavePath) _lastSavePath = prevPath;
         }
 
-        // トースト通知（一時的なメッセージ表示）
+        // トースト通知（#toast-root で管理、z-index:9000）
         function showToast(msg) {
-            let t = $("toast-msg");
-            if (!t) {
-                t = document.createElement("div");
-                t.id = "toast-msg";
-                t.style.cssText =
-                    "position:fixed;bottom:36px;left:50%;transform:translateX(-50%);" +
-                    "background:#2d2d45;border:1px solid var(--accent);border-radius:4px;" +
-                    "color:#e0e0f0;font-size:12px;padding:6px 16px;z-index:2000;pointer-events:none;" +
-                    "opacity:0;transition:opacity .2s";
-                document.body.appendChild(t);
-            }
+            const root = $("toast-root");
+            if (!root) return;
+            const t = document.createElement("div");
+            t.className = "toast-msg";
             t.textContent = msg;
-            t.style.opacity = "1";
-            clearTimeout(t._tid);
-            t._tid = setTimeout(() => {
-                t.style.opacity = "0";
+            root.appendChild(t);
+            requestAnimationFrame(() => t.classList.add("show"));
+            setTimeout(() => {
+                t.classList.remove("show");
+                setTimeout(() => t.remove(), 200);
             }, 2500);
         }
 
