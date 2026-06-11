@@ -17,6 +17,7 @@ import {
 import { Database } from "bun:sqlite";
 import { type VjaRPCType, type DbRow, type DbResult } from "../shared/types";
 import { initLogger, writeLog } from "./logger";
+import { copyCompileAssets } from "./copy-compile-assets";
 import { initProjectDb, clearProjectDb, getProjectDb, closeProjectDb } from "./db-manager";
 import type { TableDef } from "./db-manager";
 
@@ -44,6 +45,9 @@ const _logDir = join(process.cwd(), "logs");
 
 // ── ロガー初期化（console上書き・ファイル出力開始） ──
 initLogger({ dir: _logDir, level: "info" });
+
+// ── コンパイルアセットを最新化 ──────────────────────
+copyCompileAssets();
 
 
 // ── 前回フォルダ永続化 ────────────────────────────────
