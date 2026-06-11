@@ -688,13 +688,13 @@ body { overflow: hidden; background: ${esc2(cfg.bg || "#ececec")}; }
 #dialog-root .box {
     background: #2a2a3e; border: 1px solid #444466;
     border-radius: 10px; padding: 28px 32px 20px;
-    min-width: 300px; max-width: 480px;
+    min-width: 300px; max-width: 480px; max-height: 70vh;
     display: flex; flex-direction: column;
     align-items: center; gap: 12px;
     box-shadow: 0 8px 32px #0006;
 }
 #dialog-root .box .icon { font-size: 32px; line-height: 1; }
-#dialog-root .box p { margin: 0; color: #e0e0f0; font-size: 14px; text-align: center; white-space: pre-wrap; }
+#dialog-root .box p { margin: 0; color: #e0e0f0; font-size: 14px; text-align: center; white-space: pre-wrap; word-break: break-word; overflow-y: auto; max-height: 50vh; }
 #dialog-root .box .btns { display: flex; gap: 10px; margin-top: 4px; }
 #dialog-root .box .btns button {
     padding: 6px 20px; border-radius: 5px;
