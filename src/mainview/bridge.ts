@@ -30,7 +30,6 @@ const pending = {
     dirExists    : null as Pending<{ ok:boolean; value:boolean; error?:string }>  | null,
     log          : null as Pending<{ ok:boolean }>                                | null,
     appInfo      : null as Pending<{ ok:boolean; info:any }>                      | null,
-    appDialog    : null as Pending<{ ok:boolean; confirmed?:boolean }>            | null,
     runProject   : null as Pending<{ ok:boolean; error?:string }>                 | null,
     stopProject  : null as Pending<{ ok:boolean }>                                | null,
     navigateForm : null as Pending<{ ok:boolean; error?:string }>                 | null,
@@ -79,7 +78,6 @@ const rpc = Electroview.defineRPC({
             dirExistsResult : (v: any) => resolve("dirExists",     v),
             logResult       : (v: any) => resolve("log",           v),
             appInfoResult   : (v: any) => resolve("appInfo",       v),
-            appDialogResult : (v: any) => resolve("appDialog",     v),
             runProjectResult   : (v: any) => resolve("runProject",    v),
             saveCloudInfrasResult: (v: any) => resolve("saveCloudInfras", v),
             stopProjectResult  : (v: any) => {

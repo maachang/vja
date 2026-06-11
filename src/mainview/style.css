@@ -1350,7 +1350,6 @@ textarea.yaml:focus {
 /* ── vja.app ダイアログ ── */
 #dialog-root {
     position: fixed;
-    inset: 0;
     background: #00000088;
     z-index: 8000;
     display: none;
@@ -1408,6 +1407,20 @@ textarea.yaml:focus {
 }
 #dialog-root .box .btns .btn-ok:hover {
     opacity: 0.85;
+}
+#dialog-root .box input {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text1);
+    padding: 6px 10px;
+    font-size: 13px;
+    outline: none;
+}
+#dialog-root .box input:focus {
+    border-color: var(--accent);
 }
 
 /* ── トースト通知 ── */

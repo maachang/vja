@@ -1802,7 +1802,7 @@
                 if (!file) return;
                 const MAX = 300 * 1024; // 300KB
                 if (file.size > MAX) {
-                    alert(`画像サイズが上限(300KB)を超えています。\n現在: ${(file.size / 1024).toFixed(1)}KB`);
+                    showVjaAlert(`画像サイズが上限(300KB)を超えています。\n現在: ${(file.size / 1024).toFixed(1)}KB`);
                     return;
                 }
                 const reader = new FileReader();
@@ -3267,55 +3267,8 @@
                 `<div class="ov" onclick="ovClick(event)"><div class="modal${cls}">${inner}</div></div>`;
         }
         // ── vja.app ダイアログ（#dialog-root, z-index:8000）────────────────
-        // vja.app.showConfirm / showDialog 用コールバック
-        let _dialogOkCallback = null;
-
-        // confirm ダイアログを表示する。onOk: OK時のコールバック
-        function showVjaDialog(msg, onOk) {
-            const root = $("dialog-root");
-            if (!root) return;
-            _dialogOkCallback = onOk || null;
-            root.innerHTML =
-                "<div class='box'>" +
-                "<div class='icon'>❓</div>" +
-                "<p>" + esc(msg) + "</p>" +
-                "<div class='btns'>" +
-                "<button class='btn-ok' onmousedown='_onVjaDialogOk()'>OK</button>" +
-                "<button onmousedown='_onVjaDialogCancel()'>キャンセル</button>" +
-                "</div></div>";
-            root.classList.add("show");
-        }
-
-        // alert ダイアログを表示する。onOk: OK時のコールバック（省略可）
-        function showVjaAlert(msg, onOk) {
-            const root = $("dialog-root");
-            if (!root) return;
-            _dialogOkCallback = onOk || null;
-            root.innerHTML =
-                "<div class='box'>" +
-                "<div class='icon'>ℹ️</div>" +
-                "<p>" + esc(msg) + "</p>" +
-                "<div class='btns'>" +
-                "<button class='btn-ok' onmousedown='_onVjaDialogOk()'>OK</button>" +
-                "</div></div>";
-            root.classList.add("show");
-        }
-
-        function _onVjaDialogOk() {
-            const root = $("dialog-root");
-            if (root) { root.classList.remove("show"); root.innerHTML = ""; }
-            const cb = _dialogOkCallback;
-            _dialogOkCallback = null;
-            if (cb) cb(true);
-        }
-
-        function _onVjaDialogCancel() {
-            const root = $("dialog-root");
-            if (root) { root.classList.remove("show"); root.innerHTML = ""; }
-            const cb = _dialogOkCallback;
-            _dialogOkCallback = null;
-            if (cb) cb(false);
-        }
+        // showVjaDialog / showVjaAlert / showVjaPrompt / _onVjaDialog* は
+        // vja-runtime.js に共通実装済み（デザイナー・プロジェクト実行ウィンドウ共通）
 
         // モーダルを閉じる。AIローディングタイマーが残っていれば合わせてクリアする。
         function closeModal() {
@@ -3598,7 +3551,7 @@
                 _savedSnapshot = snapshot();
                 applyViewSettings();
             } catch (err) {
-                alert("読み込み失敗: " + err.message);
+                showVjaAlert("読み込み失敗: " + err.message);
             }
         }
 
@@ -3629,7 +3582,7 @@
                     }
                 }
             } catch (e) {
-                alert("ファイルを開けませんでした: " + e.message);
+                showVjaAlert("ファイルを開けませんでした: " + e.message);
             }
         }
 
@@ -3641,7 +3594,7 @@
             const projName = forms[0]?.cfg?.title || "project";
             // bridge.ts がロードされているか確認
             if (typeof window.bunSaveProject !== "function") {
-                alert("エラー: bunSaveProject が未定義です。bridge.ts が正しくロードされていません。");
+                showVjaAlert("エラー: bunSaveProject が未定義です。bridge.ts が正しくロードされていません。");
                 console.error("[actSave] window.bunSaveProject is", typeof window.bunSaveProject);
                 return;
             }
@@ -3659,7 +3612,7 @@
                 }
                 // result.cancelled === true の場合は何もしない（エラーなし）
             } catch (e) {
-                alert("保存に失敗しました: " + e.message);
+                showVjaAlert("保存に失敗しました: " + e.message);
             }
         }
 
@@ -3700,7 +3653,7 @@
         };
 
         async function actRunProject() {
-            if (!bunSaveProject) {alert("bridge が読み込まれていません"); return;}
+            if (!bunSaveProject) {showVjaAlert("bridge が読み込まれていません"); return;}
             const runBtn = $("btn-run-project");
             const stopBtn = $("btn-stop-project");
             if (runBtn) runBtn.disabled = true;
@@ -3713,13 +3666,13 @@
                     showToast("プロジェクトを起動しました");
                 } else {
                     if (result.error === "already running") {
-                        alert("プロジェクトは既に実行中です");
+                        showVjaAlert("プロジェクトは既に実行中です");
                     } else {
-                        alert("実行エラー: " + (result.error || "不明なエラー"));
+                        showVjaAlert("実行エラー: " + (result.error || "不明なエラー"));
                     }
                 }
             } catch (e) {
-                alert("実行に失敗しました: " + e.message);
+                showVjaAlert("実行に失敗しました: " + e.message);
             } finally {
                 // 実行ボタンが非表示でない場合は必ずdisabledを解除
                 if (runBtn && runBtn.style.display !== "none") {
@@ -3739,10 +3692,10 @@
                 if (result.ok) {
                     showToast("DBデータをクリアしました");
                 } else {
-                    alert("DBクリアに失敗しました: " + (result.error || "不明なエラー"));
+                    showVjaAlert("DBクリアに失敗しました: " + (result.error || "不明なエラー"));
                 }
             } catch (e) {
-                alert("DBクリアに失敗しました: " + e.message);
+                showVjaAlert("DBクリアに失敗しました: " + e.message);
             }
         }
 
@@ -3866,7 +3819,7 @@
                     showToast("エクスポートしました: " + result.path);
                 }
             } catch (e) {
-                alert("エクスポートに失敗しました: " + e.message);
+                showVjaAlert("エクスポートに失敗しました: " + e.message);
             }
         }
 
@@ -3942,24 +3895,22 @@
 
         // 新しい画面を追加
         function formNew() {
-            const title = prompt(
-                "新しい画面の名前を入力してください",
-                "Form" + (forms.length + 1),
-            );
-            if (!title) return;
-            commitIdCnt();
-            pushUndo();
-            const f = makeFormData(title);
-            forms.push(f);
-            curFormIdx = forms.length - 1;
-            selId = null;
-            refreshAll();
+            showVjaPrompt("新しい画面の名前を入力してください", "Form" + (forms.length + 1), (title) => {
+                if (!title) return;
+                commitIdCnt();
+                pushUndo();
+                const f = makeFormData(title);
+                forms.push(f);
+                curFormIdx = forms.length - 1;
+                selId = null;
+                refreshAll();
+            });
         }
 
         // 現在の画面を削除
         async function formDelete() {
             if (forms.length <= 1) {
-                alert("最後の画面は削除できません");
+                showVjaAlert("最後の画面は削除できません");
                 return;
             }
             if (!(await vja.app.showConfirm(`"${formCfg.title}" を削除しますか？`))?.confirmed) return;
@@ -3973,16 +3924,14 @@
 
         // 現在の画面名を変更
         function formRename() {
-            const newTitle = prompt(
-                "画面名を変更してください",
-                formCfg.title,
-            );
-            if (!newTitle || newTitle === formCfg.title) return;
-            pushUndo();
-            formCfg.title = newTitle;
-            forms[curFormIdx].cfg.title = newTitle;
-            applyForm();
-            buildFormSelect();
+            showVjaPrompt("画面名を変更してください", formCfg.title, (newTitle) => {
+                if (!newTitle || newTitle === formCfg.title) return;
+                pushUndo();
+                formCfg.title = newTitle;
+                forms[curFormIdx].cfg.title = newTitle;
+                applyForm();
+                buildFormSelect();
+            });
         }
 
         /* ═══════════════════════════════════════════
@@ -4128,7 +4077,7 @@
             // 重複チェック
             const names = valid.map(r => r.name.trim());
             const dup = names.find((n, i) => names.indexOf(n) !== i);
-            if (dup) {alert("定数名「" + dup + "」が重複しています"); return;}
+            if (dup) {showVjaAlert("定数名「" + dup + "」が重複しています"); return;}
             constants = valid.map(r => ({name: r.name.trim(), value: r.value}));
             closeModal();
             pushUndo();
@@ -4526,13 +4475,13 @@
         function tblSave() {
             tblSyncFromDOM();
             const tbl = _tblEdit;
-            if (!tbl.name.trim()) {alert("テーブル名を入力してください"); return;}
+            if (!tbl.name.trim()) {showVjaAlert("テーブル名を入力してください"); return;}
             // テーブル名重複チェック（自分自身は除外）
             const dupIdx = tables.findIndex((t, i) => t.name === tbl.name.trim() && i !== _tblEditIdx);
-            if (dupIdx >= 0) {alert("テーブル名「" + tbl.name + "」は既に存在します"); return;}
+            if (dupIdx >= 0) {showVjaAlert("テーブル名「" + tbl.name + "」は既に存在します"); return;}
             // 空カラムを除去
             tbl.columns = (tbl.columns || []).filter(c => c.name.trim());
-            if (tbl.columns.length === 0) {alert("カラムを1つ以上定義してください"); return;}
+            if (tbl.columns.length === 0) {showVjaAlert("カラムを1つ以上定義してください"); return;}
             // DEFAULTバリデーション
             for (const c of tbl.columns) {
                 if (!c.useDefault) continue;
@@ -4548,7 +4497,7 @@
                         "BLOB": "シングルクォート囲み（例: ''）またはNULL",
                     };
                     const hint = hints[(c.type || "TEXT").toUpperCase()] || "型に合った値";
-                    alert("カラム「" + c.name + "」のDEFAULT値が不正です。\n型: " + c.type + "\n期待する形式: " + hint);
+                    showVjaAlert("カラム「" + c.name + "」のDEFAULT値が不正です。\n型: " + c.type + "\n期待する形式: " + hint);
                     return;
                 }
             }
@@ -4596,7 +4545,7 @@
             const valid = (_constRows || []).filter(r => r.name.trim());
             const names = valid.map(r => r.name.trim());
             const dup = names.find((n, i) => names.indexOf(n) !== i);
-            if (dup) {alert("定数名「" + dup + "」が重複しています"); return;}
+            if (dup) {showVjaAlert("定数名「" + dup + "」が重複しています"); return;}
             const f = forms[curFormIdx];
             if (!f) return;
             f.constants = valid.map(r => ({name: r.name.trim(), value: r.value}));
@@ -5232,7 +5181,7 @@
             const w = getWidget(wid);
             if (!w) return;
             const valid = (_coldefRows || []).filter(r => r.label.trim());
-            if (valid.length === 0) {alert("カラム名を1つ以上入力してください"); return;}
+            if (valid.length === 0) {showVjaAlert("カラム名を1つ以上入力してください"); return;}
             w.props.columns = valid.map(r => r.label.trim() + ":" + (parseInt(r.width) || 80)).join("\n");
             closeModal();
             pushUndo();

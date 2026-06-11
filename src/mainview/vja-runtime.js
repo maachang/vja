@@ -823,6 +823,94 @@
         }
     };
 
+    // ════════════════════════════════════════════════
+    // vja ダイアログ共通実装
+    // window.innerWidth/Height でビューポート中央に表示する
+    // ════════════════════════════════════════════════
+
+    let _dialogOkCallback = null;
+
+    const _escHtml = (s) => String(s)
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
+        .replace(/'/g,"&#39;");
+
+    const _showDialogRoot = (html) => {
+        let root = document.getElementById("dialog-root");
+        if (!root) return;
+        root.style.left   = "0";
+        root.style.top    = "0";
+        root.style.width  = window.innerWidth  + "px";
+        root.style.height = window.innerHeight + "px";
+        root.innerHTML = html;
+        root.classList.add("show");
+    };
+
+    const _hideDialogRoot = () => {
+        const root = document.getElementById("dialog-root");
+        if (root) { root.classList.remove("show"); root.innerHTML = ""; }
+    };
+
+    global.showVjaDialog = (msg, onOk) => {
+        _dialogOkCallback = onOk || null;
+        _showDialogRoot(
+            "<div class='box'>" +
+            "<div class='icon'>❓</div>" +
+            "<p>" + _escHtml(msg) + "</p>" +
+            "<div class='btns'>" +
+            "<button class='btn-ok' onmousedown='window._onVjaDialogOk()'>OK</button>" +
+            "<button onmousedown='window._onVjaDialogCancel()'>キャンセル</button>" +
+            "</div></div>"
+        );
+    };
+
+    global.showVjaAlert = (msg, onOk) => {
+        _dialogOkCallback = onOk || null;
+        _showDialogRoot(
+            "<div class='box'>" +
+            "<div class='icon'>ℹ️</div>" +
+            "<p>" + _escHtml(msg) + "</p>" +
+            "<div class='btns'>" +
+            "<button class='btn-ok' onmousedown='window._onVjaDialogOk()'>OK</button>" +
+            "</div></div>"
+        );
+    };
+
+    global.showVjaPrompt = (msg, defaultVal, onDone) => {
+        _dialogOkCallback = onDone || null;
+        _showDialogRoot(
+            "<div class='box'>" +
+            "<div class='icon'>✏️</div>" +
+            "<p>" + _escHtml(msg) + "</p>" +
+            "<input id='vja-prompt-input' style='width:100%;box-sizing:border-box;background:#3a3a5a;border:1px solid #444466;border-radius:4px;color:#e0e0f0;padding:6px 10px;font-size:13px;outline:none' value='" + _escHtml(defaultVal || "") + "'>" +
+            "<div class='btns'>" +
+            "<button class='btn-ok' onmousedown='window._onVjaPromptOk()'>OK</button>" +
+            "<button onmousedown='window._onVjaDialogCancel()'>キャンセル</button>" +
+            "</div></div>"
+        );
+        requestAnimationFrame(() => {
+            const inp = document.getElementById("vja-prompt-input");
+            if (inp) { inp.focus(); inp.select(); }
+        });
+    };
+
+    global._onVjaDialogOk = () => {
+        _hideDialogRoot();
+        const cb = _dialogOkCallback; _dialogOkCallback = null;
+        if (cb) cb(true);
+    };
+    global._onVjaDialogCancel = () => {
+        _hideDialogRoot();
+        const cb = _dialogOkCallback; _dialogOkCallback = null;
+        if (cb) cb(false);
+    };
+    global._onVjaPromptOk = () => {
+        const val = document.getElementById("vja-prompt-input")?.value ?? null;
+        _hideDialogRoot();
+        const cb = _dialogOkCallback; _dialogOkCallback = null;
+        if (cb) cb(val);
+    };
+
     console.log("[vja-runtime] loaded ✓");
 
     //{{ext_runtime}}

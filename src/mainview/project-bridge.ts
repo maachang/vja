@@ -12,7 +12,6 @@ interface Pending<T> { resolve: Resolver<T>; reject: Rejecter; }
 
 const pending = {
     log:          null as Pending<{ ok: boolean }> | null,
-    appDialog:    null as Pending<{ ok: boolean; confirmed?: boolean }> | null,
     navigateForm: null as Pending<{ ok: boolean; error?: string }> | null,
     sessionGet:   null as Pending<{ ok: boolean; value: string | null }> | null,
     sessionSet:   null as Pending<{ ok: boolean }> | null,
@@ -42,7 +41,6 @@ const rpc = Electroview.defineRPC<VjaRPCType>({
         requests: {},
         messages: {
             logResult:          (v: any) => resolve("log",          v),
-            appDialogResult:    (v: any) => resolve("appDialog",    v),
             navigateFormResult: (v: any) => resolve("navigateForm", v),
             sessionGetResult:   (v: any) => resolve("sessionGet",   v),
             sessionSetResult:   (v: any) => resolve("sessionSet",   v),
@@ -72,10 +70,17 @@ w.vja.log = {
 
 // ダイアログ・ウィンドウ操作
 w.vja.app = {
-    showDialog:  (message: string) =>
-        mkPromise("appDialog", () => s.appDialogRequest({ type: "alert",   message })),
+    // showDialog / showConfirm はフロント側 #dialog-root ダイアログで処理
+    showDialog: (message: string) =>
+        new Promise<{ ok: boolean }>((resolve) => {
+            (w as any).showVjaAlert?.(message, () => resolve({ ok: true }));
+        }),
     showConfirm: (message: string) =>
-        mkPromise("appDialog", () => s.appDialogRequest({ type: "confirm", message })),
+        new Promise<{ ok: boolean; confirmed: boolean }>((resolve) => {
+            (w as any).showVjaDialog?.(message, (confirmed: boolean) =>
+                resolve({ ok: true, confirmed })
+            );
+        }),
     closeWindow: () => s.stopProjectRequest({}),
 };
 // ショートハンド

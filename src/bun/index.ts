@@ -483,34 +483,7 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
 
             // ══ ダイアログ ════════════════════════════
 
-            appDialogRequest: async ({ type, message }) => {
-                try {
-                    if (type === "confirm") {
-                        const res = await Utils.showMessageBox({
-                            type: "question",
-                            title: _TITLE,
-                            message,
-                            buttons: ["キャンセル", "OK"],
-                            defaultId: 1,
-                            cancelId: 0,
-                        });
-                        browserWindow.webview.rpc.send.appDialogResult({
-                            ok: true,
-                            confirmed: res.response === 1,
-                        });
-                    } else {
-                        await Utils.showMessageBox({
-                            type: "info",
-                            title: _TITLE,
-                            message,
-                            buttons: ["OK"],
-                        });
-                        browserWindow.webview.rpc.send.appDialogResult({ ok: true });
-                    }
-                } catch (e: any) {
-                    browserWindow.webview.rpc.send.appDialogResult({ ok: false });
-                }
-            },
+
 
             // ══ プロジェクト実行 ══════════════════════
 
@@ -704,6 +677,54 @@ body { overflow: hidden; background: ${esc2(cfg.bg || "#ececec")}; }
     background: ${esc2(cfg.bg || "#ececec")};
     overflow: hidden;
 }
+/* ── z-index レイヤー管理 ── */
+#dialog-root {
+    position: fixed;
+    z-index: 8000; display: none;
+    align-items: center; justify-content: center;
+    background: #00000088;
+}
+#dialog-root.show { display: flex; }
+#dialog-root .box {
+    background: #2a2a3e; border: 1px solid #444466;
+    border-radius: 10px; padding: 28px 32px 20px;
+    min-width: 300px; max-width: 480px;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+    box-shadow: 0 8px 32px #0006;
+}
+#dialog-root .box .icon { font-size: 32px; line-height: 1; }
+#dialog-root .box p { margin: 0; color: #e0e0f0; font-size: 14px; text-align: center; white-space: pre-wrap; }
+#dialog-root .box .btns { display: flex; gap: 10px; margin-top: 4px; }
+#dialog-root .box .btns button {
+    padding: 6px 20px; border-radius: 5px;
+    border: 1px solid #444466; background: #3a3a5a;
+    color: #e0e0f0; cursor: pointer; font-size: 13px;
+}
+#dialog-root .box .btns button:hover { background: #4a4a6a; }
+#dialog-root .box .btns .btn-ok { background: #5577ff; color: #fff; border-color: #5577ff; }
+#dialog-root .box .btns .btn-ok:hover { opacity: 0.85; }
+#dialog-root .box input {
+    width: 100%; box-sizing: border-box;
+    background: #3a3a5a; border: 1px solid #444466;
+    border-radius: 4px; color: #e0e0f0;
+    padding: 6px 10px; font-size: 13px; outline: none;
+}
+#dialog-root .box input:focus { border-color: #5577ff; }
+#toast-root {
+    position: fixed; bottom: 36px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 9000; pointer-events: none;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 6px;
+}
+#toast-root .toast-msg {
+    background: #2d2d45; border: 1px solid #5577ff;
+    border-radius: 4px; color: #e0e0f0;
+    font-size: 12px; padding: 6px 16px;
+    opacity: 0; transition: opacity .2s;
+}
+#toast-root .toast-msg.show { opacity: 1; }
 </style>
 </head>
 <body>
@@ -714,6 +735,9 @@ body { overflow: hidden; background: ${esc2(cfg.bg || "#ececec")}; }
 <div id="vja-form">
 ${widgetsHtml}
 </div>
+<!-- vja dialog/toast roots -->
+<div id="dialog-root"></div>
+<div id="toast-root"></div>
 <script src="./project-bridge.js"></script>
 ${extRuntimeJs ? `<script>\n${extRuntimeJs}\n</script>` : ""}
 <script>
@@ -1119,23 +1143,7 @@ const openProjectWindow = async (htmlPath: string, w: number, h: number): Promis
                     browserWindow.webview.rpc.send.stopProjectResult({ ok: true });
                 },
 
-                appDialogRequest: async ({ type, message }) => {
-                    try {
-                        if (type === "confirm") {
-                            const res = await Utils.showMessageBox({
-                                type: "question", title: _currentProjectName || "VJA Project",
-                                message, buttons: ["キャンセル", "OK"], defaultId: 1, cancelId: 0,
-                            });
-                            _projectWindow?.webview.rpc.send.appDialogResult({ ok: true, confirmed: res.response === 1 });
-                        } else {
-                            await Utils.showMessageBox({
-                                type: "info", title: _currentProjectName || "VJA Project",
-                                message, buttons: ["OK"],
-                            });
-                            _projectWindow?.webview.rpc.send.appDialogResult({ ok: true });
-                        }
-                    } catch { _projectWindow?.webview.rpc.send.appDialogResult({ ok: false }); }
-                },
+
                 // ── DB操作（プロジェクトウィンドウ → Bun → _projectWindow へ返す） ──
                 dbQueryRequest: async ({ sql, params }) => {
                     try {
