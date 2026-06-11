@@ -8,13 +8,17 @@ export default {
         version: "0.1.0",
     },
     build: {
+        // vjaのbun.jsメイン.
         bun: {
             entrypoint: "src/bun/index.ts",
         },
+        // webview.
         views: {
+            // vjaのview(index.html).
             mainview: {
                 entrypoint: "src/mainview/index.html",
             },
+            // vjaのプロジェクトのview.
             projectview: {
                 entrypoint: "src/mainview/project-bridge.ts",
             },

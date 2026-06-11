@@ -3,7 +3,7 @@
 // vjaデザイナー機能は含まない。起動時に .vjaproj を読み込み直接実行する。
 
 import { BrowserWindow, BrowserView } from "electrobun/bun";
-import { existsSync, mkdirSync, copyFileSync, rmSync, readFileSync } from "fs";
+import { existsSync, mkdirSync, copyFileSync, rmSync, readFileSync, readdirSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { initLogger, writeLog } from "./logger";
@@ -232,6 +232,102 @@ const openProjectWindow = async (htmlPath: string, w: number, h: number): Promis
                     } catch (e: any) {
                         _projectWindow?.webview.rpc.send.dbTransactionResult({ ok: false, error: e.message });
                     }
+                },
+
+                // ── DBクリア ──────────────────────────────────
+                clearProjectDbRequest: async () => {
+                    try {
+                        closeProjectDb();
+                        clearProjectDb(_currentProjectDbDir);
+                        _projectWindow?.webview.rpc.send.clearProjectDbResult({ ok: true });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.clearProjectDbResult({ ok: false, error: e.message });
+                    }
+                },
+
+                // ── ファイル操作 ──────────────────────────────
+                fileReadRequest: async ({ path }) => {
+                    try {
+                        const content = await Bun.file(path).text();
+                        _projectWindow?.webview.rpc.send.fileReadResult({ ok: true, content });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.fileReadResult({ ok: false, content: null, error: e.message });
+                    }
+                },
+                fileWriteRequest: async ({ path, content }) => {
+                    try {
+                        await Bun.write(path, content);
+                        _projectWindow?.webview.rpc.send.fileWriteResult({ ok: true });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.fileWriteResult({ ok: false, error: e.message });
+                    }
+                },
+                fileReadBytesRequest: async ({ path }) => {
+                    try {
+                        const buf = await Bun.file(path).arrayBuffer();
+                        const data = Array.from(new Uint8Array(buf));
+                        _projectWindow?.webview.rpc.send.fileReadBytesResult({ ok: true, data });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.fileReadBytesResult({ ok: false, data: null, error: e.message });
+                    }
+                },
+                fileWriteBytesRequest: async ({ path, data }) => {
+                    try {
+                        await Bun.write(path, new Uint8Array(data));
+                        _projectWindow?.webview.rpc.send.fileWriteBytesResult({ ok: true });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.fileWriteBytesResult({ ok: false, error: e.message });
+                    }
+                },
+                fileExistsRequest: async ({ path }) => {
+                    const value = existsSync(path);
+                    _projectWindow?.webview.rpc.send.fileExistsResult({ ok: true, value });
+                },
+                fileDeleteRequest: async ({ path }) => {
+                    try {
+                        rmSync(path);
+                        _projectWindow?.webview.rpc.send.fileDeleteResult({ ok: true });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.fileDeleteResult({ ok: false, error: e.message });
+                    }
+                },
+                fileCopyRequest: async ({ src, dest }) => {
+                    try {
+                        copyFileSync(src, dest);
+                        _projectWindow?.webview.rpc.send.fileCopyResult({ ok: true });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.fileCopyResult({ ok: false, error: e.message });
+                    }
+                },
+
+                // ── ディレクトリ操作 ──────────────────────────
+                dirCreateRequest: async ({ path }) => {
+                    try {
+                        mkdirSync(path, { recursive: true });
+                        _projectWindow?.webview.rpc.send.dirCreateResult({ ok: true });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.dirCreateResult({ ok: false, error: e.message });
+                    }
+                },
+                dirDeleteRequest: async ({ path }) => {
+                    try {
+                        rmSync(path, { recursive: true, force: true });
+                        _projectWindow?.webview.rpc.send.dirDeleteResult({ ok: true });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.dirDeleteResult({ ok: false, error: e.message });
+                    }
+                },
+                dirListRequest: async ({ path }) => {
+                    try {
+                        const entries = readdirSync(path).map(String);
+                        _projectWindow?.webview.rpc.send.dirListResult({ ok: true, entries });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.dirListResult({ ok: false, entries: [], error: e.message });
+                    }
+                },
+                dirExistsRequest: async ({ path }) => {
+                    const value = existsSync(path);
+                    _projectWindow?.webview.rpc.send.dirExistsResult({ ok: true, value });
                 },
             },
         },
