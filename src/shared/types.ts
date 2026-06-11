@@ -147,6 +147,9 @@ export type VjaRPCType = {
 
             // ── プロジェクトコンパイル ────────────────────
             compileProjectRequest: { _?: never };
+
+            // ── フォルダを開く ────────────────────────────
+            openFolderRequest: { path: string };
         };
     }>;
 

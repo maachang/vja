@@ -113,6 +113,7 @@ w.bunCloseApp        = ()       => s.closeAppRequest({});
 w.bunToggleDevTools  = ()       => s.toggleDevToolsRequest({});
 w.bunSaveCloudInfras  = (infras: any[]) => mkPromise("saveCloudInfras",  () => s.saveCloudInfrasRequest({ infras }));
 w.bunCompileProject   = ()            => mkPromise("compileProject",   () => s.compileProjectRequest({}));
+w.bunOpenFolder       = (path: string) => s.openFolderRequest({ path });
 
 // vja.db
 w.vja = {

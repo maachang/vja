@@ -515,6 +515,12 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 }
             },
 
+            // ══ フォルダを開く ════════════════════════════
+
+            openFolderRequest: ({ path }) => {
+                Utils.showItemInFolder(path);
+            },
+
             // ══ コンパイル ════════════════════════════════
 
             compileProjectRequest: async () => {
@@ -602,9 +608,7 @@ const _updateProjectData = (jsonStr: string, filePath?: string): boolean => {
         const proj = JSON.parse(jsonStr);
         _currentProjectForms = proj.forms || [];
         _currentProjectTables = proj.tables || [];
-        _currentProjectName = proj.projectInfo?.name
-            || filePath?.split("/").pop()?.replace(/\.vjaproj$/, "")
-            || "project";
+        _currentProjectName = proj.projectInfo?.name || "";
         _currentProjectVersion = proj.projectInfo?.version || "1.0.0";
         if (filePath) _currentProjectFilePath = filePath;
         _onStartCode = proj.projectInfo?.appEvents?.onStart || "";
@@ -670,7 +674,11 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
         if (_currentProjectForms.length === 0) {
             return { ok: false, error: "プロジェクトが読み込まれていません" };
         }
-        const projName    = _currentProjectName || "project";
+        // プロジェクト名が未設定の場合はコンパイル不可
+        if (!_currentProjectName) {
+            return { ok: false, error: "プロジェクト名が設定されていません。\nプロジェクト情報からプロジェクト名を設定してください。" };
+        }
+        const projName    = _currentProjectName;
         const projVersion = _currentProjectVersion || "1.0.0";
         const projId      = projName.toLowerCase().replace(/[^a-z0-9]/g, "-");
         const distPath    = join(_distDir, projName);
@@ -709,6 +717,7 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
         const extRuntimeJs = (_currentProjectExtRuntime || "").trim();
         const copyEntries: Record<string, string> = {
             "src/mainview/vja-runtime.js": "views/mainview/vja-runtime.js",
+            "src/project.vjaproj": "project.vjaproj",
         };
         for (const form of _currentProjectForms) {
             const htmlFileName = `${form.cfg.title}.html`;
@@ -719,14 +728,15 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
 
         // ── .vjaproj を出力先にコピー ─────────────────
         if (_currentProjectFilePath && existsSync(_currentProjectFilePath)) {
-            copyFileSync(_currentProjectFilePath, join(distPath, "project.vjaproj"));
+            // src/ 直下にコピー → electrobun.config.ts の copy で Resources/app/ に配置される
+            copyFileSync(_currentProjectFilePath, join(distPath, "src", "project.vjaproj"));
         }
 
         // ── package.json を生成 ───────────────────────
         const packageJson = JSON.stringify({
             name: projName,
             version: projVersion,
-            scripts: { dev: "electrobun dev", build: "electrobun build" },
+            scripts: { dev: "electrobun dev", build: "electrobun build --env=stable" },
             dependencies: { electrobun: "latest" },
         }, null, 2);
         await Bun.write(join(distPath, "package.json"), packageJson);
@@ -758,8 +768,37 @@ export default {
 `;
         await Bun.write(join(distPath, "electrobun.config.ts"), configTs);
 
-        console.log(`[compile] 出力完了: ${distPath}`);
-        return { ok: true, distPath };
+        console.log(`[compile] ファイル生成完了: ${distPath}`);
+
+        // ── bun install ───────────────────────────────
+        console.log(`[compile] bun install 実行中...`);
+        const installProc = Bun.spawn(["bun", "install"], {
+            cwd: distPath,
+            stdout: "pipe",
+            stderr: "pipe",
+        });
+        await installProc.exited;
+        if (installProc.exitCode !== 0) {
+            const errText = await new Response(installProc.stderr).text();
+            return { ok: false, error: `bun install 失敗: ${errText}` };
+        }
+
+        // ── electrobun build --env=stable ────────────
+        console.log(`[compile] electrobun build --env=stable 実行中...`);
+        const buildProc = Bun.spawn(["bun", "x", "electrobun", "build", "--env=stable"], {
+            cwd: distPath,
+            stdout: "pipe",
+            stderr: "pipe",
+        });
+        await buildProc.exited;
+        if (buildProc.exitCode !== 0) {
+            const errText = await new Response(buildProc.stderr).text();
+            return { ok: false, error: `electrobun build 失敗: ${errText}` };
+        }
+
+        const artifactsPath = join(distPath, "artifacts");
+        console.log(`[compile] ビルド完了: ${artifactsPath}`);
+        return { ok: true, distPath: artifactsPath };
     } catch (e: any) {
         console.error("[compile] エラー:", e.message);
         return { ok: false, error: e.message };

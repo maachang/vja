@@ -2,9 +2,9 @@
 // vjaでコンパイルされたプロジェクトの実行エントリポイント。
 // vjaデザイナー機能は含まない。起動時に .vjaproj を読み込み直接実行する。
 
-import { Electrobun, BrowserWindow, BrowserView } from "electrobun/bun";
+import { BrowserWindow, BrowserView } from "electrobun/bun";
 import { existsSync, mkdirSync, copyFileSync, rmSync, readFileSync } from "fs";
-import { join, dirname } from "path";
+import { join } from "path";
 import { homedir } from "os";
 import { initLogger, writeLog } from "./logger";
 import { initProjectDb, clearProjectDb, getProjectDb, closeProjectDb } from "./db-manager";
@@ -153,10 +153,7 @@ const runOnExit = async (): Promise<void> => {
 // ── URL読み込み ───────────────────────────────────────
 const _loadProjectURL = async (htmlPath: string): Promise<void> => {
     if (!_projectWindow) throw new Error("プロジェクトウィンドウが開いていません");
-    const dir = dirname(htmlPath);
-    _projectWindow.webview.setNavigationRules([`file://${dir}/*`]);
     await _projectWindow.webview.loadURL(`file://${htmlPath}`);
-    _projectWindow.webview.setNavigationRules(["^*"]);
 };
 
 const navigateProjectWindow = async (htmlPath: string, w: number, h: number): Promise<void> => {
@@ -178,7 +175,7 @@ const openProjectWindow = async (htmlPath: string, w: number, h: number): Promis
                     writeLog(level, `[proj] ${message}`);
                 },
                 pageLoadedRequest: () => {
-                    _projectWindow?.webview.setNavigationRules(["^*"]);
+                    // スタンドアロン版では遷移制限不要
                 },
                 navigateFormRequest: async ({ formName }) => {
                     try {
@@ -247,7 +244,6 @@ const openProjectWindow = async (htmlPath: string, w: number, h: number): Promis
         rpc: _projectRPC,
     });
 
-    _projectWindow.webview.setNavigationRules(["^*"]);
     await _loadProjectURL(htmlPath);
 
     _projectWindow.on("close", () => {
@@ -293,8 +289,6 @@ const _onProjectWindowClosed = (): void => {
 };
 
 // ── エントリポイント ──────────────────────────────────
-Electrobun.initialize();
-
 if (!loadProject()) {
     console.error("[app] プロジェクトの読み込みに失敗しました。終了します。");
     process.exit(1);

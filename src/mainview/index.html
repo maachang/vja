@@ -3664,21 +3664,38 @@
                 showVjaAlert("bridge が読み込まれていません");
                 return;
             }
-            const btn = $("btn-compile");
-            if (btn) { btn.disabled = true; btn.textContent = "⏳ コンパイル中..."; }
+            // コンパイル前の確認
+            showVjaDialog(
+                "コンパイルを開始しますか？\nコンパイルには数分かかる場合があります。",
+                async (confirmed) => {
+                    if (!confirmed) return;
+                    const btn = $("btn-compile");
+                    if (btn) { btn.disabled = true; }
+                    showLoadingModal("コンパイル中...");
             try {
                 const result = await window.bunCompileProject();
+                closeModal();
                 if (result?.ok) {
-                    showVjaAlert(`コンパイル完了！
-出力先: ${result.distPath}`);
+                    showVjaDialog(
+                        `コンパイル完了！
+出力先: ${result.distPath}
+
+出力先フォルダを開きますか？`,
+                        (confirmed) => {
+                            if (confirmed) window.bunOpenFolder(result.distPath);
+                        }
+                    );
                 } else {
                     showVjaAlert(`コンパイル失敗: ${result?.error || "不明なエラー"}`);
                 }
             } catch (e) {
+                closeModal();
                 showVjaAlert("コンパイルに失敗しました: " + e.message);
             } finally {
-                if (btn) { btn.disabled = false; btn.textContent = "コンパイル"; }
+                if (btn) { btn.disabled = false; }
             }
+            }
+        );
         }
 
         async function actRunProject() {
