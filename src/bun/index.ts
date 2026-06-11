@@ -241,7 +241,7 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 console.log("[open] startingFolder:", startingFolder, "ext:", ext);
                 const paths = await Utils.openFileDialog({
                     startingFolder,
-                    allowedFileTypes: `*.${ext}`,
+                    allowedFileTypes: process.platform === "win32" ? ext : `*.${ext}`,
                     canChooseFiles: true,
                     canChooseDirectory: false,
                     allowsMultipleSelection: false,
