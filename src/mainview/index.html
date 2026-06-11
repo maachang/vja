@@ -3140,13 +3140,13 @@
         // textarea の上に重ねた hl（ハイライトレイヤー）を
         // スクロール位置・サイズ同期して疑似シンタックスハイライトを実現する。
 
-        // textarea と hl のスクロール位置・高さを同期する。
+        // textarea と hl のスクロール位置を transform で同期する。
+        // nowrap前提: hl は scrollWidth/scrollHeight サイズで固定し
+        // transform で textarea のスクロール量だけずらす。
         function _hlSync(taId, hlId) {
             const ta = $(taId), hl = $(hlId);
             if (!ta || !hl) return;
-            hl.scrollTop = ta.scrollTop;
-            hl.scrollLeft = ta.scrollLeft;
-            hl.style.height = ta.offsetHeight + "px";
+            hl.style.transform = `translate(${-ta.scrollLeft}px, ${-ta.scrollTop}px)`;
         }
         // hl の innerHTML をトークナイズ結果で更新し、サイズを同期する。
         // tokenizeFn には yamlTokenize / jsTokenize を渡す。
@@ -3154,8 +3154,9 @@
             const ta = $(taId), hl = $(hlId);
             if (!ta || !hl) return;
             hl.innerHTML = tokenizeFn(ta.value);
-            hl.style.height = ta.offsetHeight + "px";
-            hl.style.width = ta.offsetWidth + "px";
+            // nowrap前提: scrollWidth/scrollHeight でhlサイズを設定
+            hl.style.width  = ta.scrollWidth  + "px";
+            hl.style.height = ta.scrollHeight + "px";
             _hlSync(taId, hlId);
         }
         function yamlHlUpdate() {_hlUpdate("yaml-ta", "yaml-hl", yamlTokenize);}
