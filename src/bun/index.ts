@@ -515,6 +515,17 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 }
             },
 
+            // ══ コンパイル ════════════════════════════════
+
+            compileProjectRequest: async () => {
+                try {
+                    const result = await compileProject();
+                    browserWindow.webview.rpc.send.compileProjectResult(result);
+                } catch (e: any) {
+                    browserWindow.webview.rpc.send.compileProjectResult({ ok: false, error: e.message });
+                }
+            },
+
             // ══ DBデータクリア ════════════════════════════
 
             clearProjectDbRequest: async () => {
@@ -581,6 +592,8 @@ let _projectWindow: BrowserWindow | null = null;
 // 現在読み込まれているプロジェクトのフォームデータ（navigateで参照）
 let _currentProjectForms: any[] = [];
 let _currentProjectName: string = "";
+let _currentProjectVersion: string = "1.0.0";
+let _currentProjectFilePath: string = "";
 let _currentProjectTables: TableDef[] = [];
 
 // プロジェクトデータをメモリに反映する共通関数
@@ -592,6 +605,8 @@ const _updateProjectData = (jsonStr: string, filePath?: string): boolean => {
         _currentProjectName = proj.projectInfo?.name
             || filePath?.split("/").pop()?.replace(/\.vjaproj$/, "")
             || "project";
+        _currentProjectVersion = proj.projectInfo?.version || "1.0.0";
+        if (filePath) _currentProjectFilePath = filePath;
         _onStartCode = proj.projectInfo?.appEvents?.onStart || "";
         _onExitCode = proj.projectInfo?.appEvents?.onExit || "";
         _currentProjectDbDir = join(_projectWorkDir, _currentProjectName, "db");
@@ -642,6 +657,111 @@ const buildProjectFiles = async (): Promise<{
             startFormH: startForm.cfg.h,
         };
     } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+
+// ── プロジェクトコンパイル ────────────────────────────
+// コンパイル出力先: ~/.vja-apps/VJAFormDesigner/dist/{project名}/
+const _distDir = join(_dataDir, "dist");
+
+const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath?: string }> => {
+    try {
+        if (_currentProjectForms.length === 0) {
+            return { ok: false, error: "プロジェクトが読み込まれていません" };
+        }
+        const projName    = _currentProjectName || "project";
+        const projVersion = _currentProjectVersion || "1.0.0";
+        const projId      = projName.toLowerCase().replace(/[^a-z0-9]/g, "-");
+        const distPath    = join(_distDir, projName);
+
+        // ── ディレクトリ構成を作成 ─────────────────────
+        const srcBunDir      = join(distPath, "src", "bun");
+        const srcSharedDir   = join(distPath, "src", "shared");
+        const srcMainviewDir = join(distPath, "src", "mainview");
+        for (const d of [srcBunDir, srcSharedDir, srcMainviewDir]) {
+            if (!existsSync(d)) mkdirSync(d, { recursive: true });
+        }
+
+        // ── 既存ファイルをコピー ───────────────────────
+        // scripts/copy-compile-assets.ts で app/src/ 以下にコピー済みのファイルを使う
+        // ビルド後は import.meta.dir/../../../app/src/ 以下に配置される
+        // compile-assets は起動時に copy-compile-assets.ts で最新化される
+        const _appSrcDir = join(_dataDir, "compile-assets", "src");
+
+        // Bun側
+        copyFileSync(join(_appSrcDir, "bun", "logger.ts"),     join(srcBunDir, "logger.ts"));
+        copyFileSync(join(_appSrcDir, "bun", "db-manager.ts"), join(srcBunDir, "db-manager.ts"));
+        // shared
+        copyFileSync(join(_appSrcDir, "shared", "types.ts"), join(srcSharedDir, "types.ts"));
+        // mainview
+        const bridgeJsSrc = join(import.meta.dir, "..", "views", "projectview", "project-bridge.js");
+        if (existsSync(bridgeJsSrc)) {
+            copyFileSync(bridgeJsSrc, join(srcMainviewDir, "project-bridge.js"));
+        }
+        copyFileSync(join(_appSrcDir, "mainview", "project-bridge.ts"), join(srcMainviewDir, "project-bridge.ts"));
+        copyFileSync(join(_appSrcDir, "mainview", "vja-runtime.js"),    join(srcMainviewDir, "vja-runtime.js"));
+
+        // ── スタンドアロン版 index.ts をコピー ────────
+        copyFileSync(join(_appSrcDir, "bun", "standalone-index.ts"), join(srcBunDir, "index.ts"));
+
+        // ── フォームHTMLを生成 ────────────────────────
+        const extRuntimeJs = (_currentProjectExtRuntime || "").trim();
+        const copyEntries: Record<string, string> = {
+            "src/mainview/vja-runtime.js": "views/mainview/vja-runtime.js",
+        };
+        for (const form of _currentProjectForms) {
+            const htmlFileName = `${form.cfg.title}.html`;
+            const html = buildFormHtml(form, _currentProjectForms, extRuntimeJs);
+            await Bun.write(join(srcMainviewDir, htmlFileName), html);
+            copyEntries[`src/mainview/${htmlFileName}`] = `views/mainview/${htmlFileName}`;
+        }
+
+        // ── .vjaproj を出力先にコピー ─────────────────
+        if (_currentProjectFilePath && existsSync(_currentProjectFilePath)) {
+            copyFileSync(_currentProjectFilePath, join(distPath, "project.vjaproj"));
+        }
+
+        // ── package.json を生成 ───────────────────────
+        const packageJson = JSON.stringify({
+            name: projName,
+            version: projVersion,
+            scripts: { dev: "electrobun dev", build: "electrobun build" },
+            dependencies: { electrobun: "latest" },
+        }, null, 2);
+        await Bun.write(join(distPath, "package.json"), packageJson);
+
+        // ── electrobun.config.ts を生成 ──────────────
+        const copyEntriesStr = JSON.stringify(copyEntries, null, 8)
+            .split("\n").map((l, i) => i === 0 ? l : "        " + l).join("\n");
+        const configTs = `// electrobun.config.ts
+import type { ElectrobunConfig } from "electrobun";
+
+export default {
+    app: {
+        name: ${JSON.stringify(projName)},
+        identifier: ${JSON.stringify("com.vja." + projId)},
+        version: ${JSON.stringify(projVersion)},
+    },
+    build: {
+        bun: {
+            entrypoint: "src/bun/index.ts",
+        },
+        views: {
+            mainview: {
+                entrypoint: "src/mainview/project-bridge.ts",
+            },
+        },
+        copy: ${copyEntriesStr},
+    },
+} satisfies ElectrobunConfig;
+`;
+        await Bun.write(join(distPath, "electrobun.config.ts"), configTs);
+
+        console.log(`[compile] 出力完了: ${distPath}`);
+        return { ok: true, distPath };
+    } catch (e: any) {
+        console.error("[compile] エラー:", e.message);
         return { ok: false, error: e.message };
     }
 };

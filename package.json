@@ -3,8 +3,8 @@
     "version": "0.1.0",
     "description": "VJA Form Designer - Electrobun版",
     "scripts": {
-        "dev": "bun x electrobun dev",
-        "build": "bun x electrobun build",
+        "dev": "bun run scripts/copy-compile-assets.ts && bun x electrobun dev",
+        "build": "bun run scripts/copy-compile-assets.ts && bun x electrobun build",
         "start": "bun src/bun/index.ts"
     },
     "dependencies": {

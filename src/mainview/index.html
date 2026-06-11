@@ -158,6 +158,13 @@
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
             </svg>停止
         </button>
+        <button id="btn-compile" class="tb-btn" onmousedown="actCompileProject()" title="プロジェクトをコンパイル">
+            <svg viewBox="0 0 24 24">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>コンパイル
+        </button>
         <div class="tb-sep"></div>
         <button class="tb-btn" onmousedown="openConstEditor()" title="グローバル定数の編集">
             <svg viewBox="0 0 24 24">
@@ -3650,6 +3657,29 @@
                 extRuntime,
             };
         };
+
+        // プロジェクトをコンパイルして配布可能なElectrobunアプリを生成する
+        async function actCompileProject() {
+            if (!window.bunCompileProject) {
+                showVjaAlert("bridge が読み込まれていません");
+                return;
+            }
+            const btn = $("btn-compile");
+            if (btn) { btn.disabled = true; btn.textContent = "⏳ コンパイル中..."; }
+            try {
+                const result = await window.bunCompileProject();
+                if (result?.ok) {
+                    showVjaAlert(`コンパイル完了！
+出力先: ${result.distPath}`);
+                } else {
+                    showVjaAlert(`コンパイル失敗: ${result?.error || "不明なエラー"}`);
+                }
+            } catch (e) {
+                showVjaAlert("コンパイルに失敗しました: " + e.message);
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = "コンパイル"; }
+            }
+        }
 
         async function actRunProject() {
             if (!bunSaveProject) {showVjaAlert("bridge が読み込まれていません"); return;}

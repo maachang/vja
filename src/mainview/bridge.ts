@@ -37,6 +37,7 @@ const pending = {
     sessionSet   : null as Pending<{ ok:boolean }>                                | null,
     clearProjectDb:    null as Pending<{ ok:boolean; error?:string }>               | null,
     saveCloudInfras:   null as Pending<{ ok:boolean; error?:string }>               | null,
+    compileProject:    null as Pending<{ ok:boolean; error?:string; distPath?:string }> | null,
 };
 
 const resolve = <K extends keyof typeof pending>(
@@ -79,7 +80,8 @@ const rpc = Electroview.defineRPC({
             logResult       : (v: any) => resolve("log",           v),
             appInfoResult   : (v: any) => resolve("appInfo",       v),
             runProjectResult   : (v: any) => resolve("runProject",    v),
-            saveCloudInfrasResult: (v: any) => resolve("saveCloudInfras", v),
+            saveCloudInfrasResult:  (v: any) => resolve("saveCloudInfras",  v),
+            compileProjectResult:   (v: any) => resolve("compileProject",   v),
             stopProjectResult  : (v: any) => {
                 if (pending.stopProject) {
                     resolve("stopProject", v);
@@ -109,7 +111,8 @@ w.bunOpenFile    = (a: any) => mkPromise("openFile",  () => s.openFileRequest(a)
 w.bunSaveProject = (a: any) => mkPromise("saveFile",  () => s.saveFileRequest(a));
 w.bunCloseApp        = ()       => s.closeAppRequest({});
 w.bunToggleDevTools  = ()       => s.toggleDevToolsRequest({});
-w.bunSaveCloudInfras = (infras: any[]) => mkPromise("saveCloudInfras", () => s.saveCloudInfrasRequest({ infras }));
+w.bunSaveCloudInfras  = (infras: any[]) => mkPromise("saveCloudInfras",  () => s.saveCloudInfrasRequest({ infras }));
+w.bunCompileProject   = ()            => mkPromise("compileProject",   () => s.compileProjectRequest({}));
 
 // vja.db
 w.vja = {

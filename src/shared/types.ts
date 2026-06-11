@@ -144,6 +144,9 @@ export type VjaRPCType = {
 
             // ── セッション設定 ────────────────────────────
             sessionSetRequest: { key: string; value: string | null };
+
+            // ── プロジェクトコンパイル ────────────────────
+            compileProjectRequest: { _?: never };
         };
     }>;
 
@@ -218,6 +221,9 @@ export type VjaRPCType = {
 
             // ── セッション設定結果 ────────────────────────
             sessionSetResult: { ok: boolean };
+
+            // ── プロジェクトコンパイル結果 ────────────────
+            compileProjectResult: { ok: boolean; error?: string; distPath?: string };
         };
     }>;
 };
