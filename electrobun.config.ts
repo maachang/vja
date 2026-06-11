@@ -4,7 +4,7 @@ import type { ElectrobunConfig } from "electrobun";
 export default {
     app: {
         name: "VJA Form Designer",
-        identifier: "dev.vja.formdesigner",
+        identifier: "vja",
         version: "0.1.0",
     },
     build: {
