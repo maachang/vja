@@ -665,6 +665,7 @@ const buildFormHtml = (form: any, allForms: any[], extRuntimeJs: string = ""): s
 <title>${esc2(cfg.title)}</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Yu Gothic UI", "Meiryo UI", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 #vja-custom-titlebar { display:flex; align-items:center; justify-content:space-between; height:28px; padding:0 10px; background:#2a2a3e; user-select:none; }
 #vja-titlebar-title { font-size:12px; color:#aaa; }
 #vja-titlebar-close { -webkit-app-region:no-drag; background:none; border:none; color:#aaa; font-size:13px; cursor:pointer; padding:2px 8px; border-radius:4px; }

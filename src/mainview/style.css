@@ -27,7 +27,7 @@ html {
     --prop: 420px;
     --sel-border: #0a84ff;
     --handle: 6px;
-    --font: "Segoe UI", system-ui, sans-serif;
+    --font: "Yu Gothic UI", "Meiryo UI", "Segoe UI", system-ui, sans-serif;
 }
 
 /* ── カスタムタイトルバー ── */
@@ -68,6 +68,8 @@ body {
     background: var(--bg);
     color: var(--text);
     height: 100%;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
     width: 100%;
     display: flex;
     flex-direction: column;

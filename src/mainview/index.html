@@ -908,7 +908,7 @@
         function makeInner(w) {
             const p = w.props;
             const vis = p.visible === false ? "visibility:hidden" : "";
-            const base = `width:100%;height:100%;box-sizing:border-box;font-family:'Segoe UI',sans-serif;`;
+            const base = `width:100%;height:100%;box-sizing:border-box;font-family:'Yu Gothic UI','Meiryo UI','Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased;`;
             switch (w.tag) {
                 case "button":
                     return `<button style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};border-radius:${p.borderRadius || 2}px;cursor:default;pointer-events:none;${vis}">${esc(p.text)}</button>`;
