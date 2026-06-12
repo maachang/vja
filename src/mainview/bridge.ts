@@ -37,6 +37,8 @@ const pending = {
     sessionSet   : null as Pending<{ ok:boolean }>                                | null,
     clearProjectDb:    null as Pending<{ ok:boolean; error?:string }>               | null,
     saveCloudInfras:   null as Pending<{ ok:boolean; error?:string }>               | null,
+    getCloudInfras:    null as Pending<{ infras:any[] }>                               | null,
+    getDecryptedCred:  null as Pending<{ ok:boolean; value:string }>                   | null,
     compileProject:    null as Pending<{ ok:boolean; error?:string; distPath?:string }> | null,
 };
 
@@ -80,7 +82,10 @@ const rpc = Electroview.defineRPC({
             logResult       : (v: any) => resolve("log",           v),
             appInfoResult   : (v: any) => resolve("appInfo",       v),
             runProjectResult   : (v: any) => resolve("runProject",    v),
-            saveCloudInfrasResult:  (v: any) => resolve("saveCloudInfras",  v),
+            saveCloudInfrasResult:       (v: any) => resolve("saveCloudInfras",  v),
+            getCloudInfrasResult:        (v: any) => resolve("getCloudInfras",   v),
+            getDecryptedCredentialResult:(v: any) => resolve("getDecryptedCred", v),
+            loadScriptResult:            (v: any) => { /* フロント側で処理 */ },
             compileProjectResult:   (v: any) => resolve("compileProject",   v),
             stopProjectResult  : (v: any) => {
                 if (pending.stopProject) {
@@ -112,7 +117,10 @@ w.bunSaveProject = (a: any) => mkPromise("saveFile",  () => s.saveFileRequest(a)
 w.bunCloseApp        = ()       => s.closeAppRequest({});
 w.bunToggleDevTools  = ()       => s.toggleDevToolsRequest({});
 w.bunSaveCloudInfras  = (infras: any[]) => mkPromise("saveCloudInfras",  () => s.saveCloudInfrasRequest({ infras }));
-w.bunCompileProject   = ()            => mkPromise("compileProject",   () => s.compileProjectRequest({}));
+w.bunCompileProject        = ()               => mkPromise("compileProject",   () => s.compileProjectRequest({}));
+w.bunGetCloudInfras        = ()               => mkPromise("getCloudInfras",   () => s.getCloudInfrasRequest({}));
+w.bunGetDecryptedCredential= (infraId: string, key: string) =>
+    mkPromise("getDecryptedCred", () => s.getDecryptedCredentialRequest({ infraId, key }));
 w.bunOpenFolder       = (path: string) => s.openFolderRequest({ path });
 
 // vja.db

@@ -762,7 +762,7 @@
         // ── クラウドインフラ設定 ──────────────────────────
         let cloudInfras = []; // { id, name, url, enabled, sdkUrl, credentials: {key: "暗号化済み"} }
         let _cloudDraft = [];
-        let extRuntime = {js: "", doc: ""};
+        let extRuntime = { js: "", doc: "" };
 
         let _aiAbortCtrl = null;
         let _aiLoadingTimer = null;
@@ -2002,7 +2002,6 @@
             const w = getWidget(wid);
             if (!w) return;
             if (!w.events) w.events = {};
-            // YAMLイベントデフォルト文字列.
             const cur = w.events[evName] ||
                 "# イベント: " + evName + " (" + w.name + ")\n" +
                 "# YAML形式でAIへの指示を記述します\n\n" +
@@ -2327,10 +2326,10 @@
                 }).join("\n")
                 : "  （テーブル未定義）";
 
-            // ── ⑥ [#prompt]システムプロンプト ──
+            // ── ⑥ システムプロンプト ──
             const sysPrompt = [
                 "あなたはVJAフォームデザイナーのイベント処理コード生成AIです。",
-                "ユーザーが書いたYAMLフォーマットの仕様をもとに、JavaScriptの実装コードを生成します。",
+                "ユーザーが書いたYAML仕様をもとに、JavaScriptの実装コードを生成します。",
                 "",
                 "## 実行環境",
                 "- デスクトップアプリ（Electrobun + Bun.js）",
@@ -2386,6 +2385,12 @@
                 "// 暗号化",
                 "await vja.crypto.encrypt(text, key)               // AES-GCM暗号化",
                 "await vja.crypto.decrypt(b64, key)                // 復号化",
+                "// クラウドインフラ",
+                "const cred = await vja.getCloudInfraCredential(infra, service?) // クレデンシャル取得",
+                "// infra: 'AWS'/'GCP (Firebase)'/'Azure (Standard)' 等（vjaで定義したインフラ名）",
+                "// service: 's3'/'dynamodb' 等（省略時はinfraの最初のクレデンシャルを使用）",
+                "// 戻り値: { AWS_ACCESS_KEY_ID: 'xxx', AWS_SECRET_ACCESS_KEY: 'yyy', AWS_REGION: 'zzz' } または null",
+                "// vja側クレデンシャルが優先、appInput=ONのキーはアプリ側入力ファイルから取得",
                 "// ログ・ダイアログ",
                 "await window.vja.log.info/warn/error(message)",
                 "await window.vja.app.showDialog(message)          // アラート",
@@ -2421,7 +2426,7 @@
                 tablesCtx,
             ].join("\n");
 
-            // ── ⑦ [#prompt]ユーザープロンプト ──
+            // ── ⑦ ユーザープロンプト ──
             const userPrompt = [
                 yamlCur.trim()
                     ? (isAppEvent
@@ -2483,9 +2488,9 @@
             const ctrl = e.ctrlKey || e.metaKey;
             const isJs = ta.id === "js-ta" || ta.id === "ta-extrt-js";
             const state = ta.id === "js-ta" ? _ju
-                : ta.id === "ta-extrt-js" ? _extRtJuState
-                    : ta.id === "ta-extrt-doc" ? _extRtYuState
-                        : _yu;
+                : ta.id === "ta-extrt-js"  ? _extRtJuState
+                : ta.id === "ta-extrt-doc" ? _extRtYuState
+                : _yu;
 
             // ── Undo / Redo ───────────────────────────────────
             if (ctrl && e.key.toLowerCase() === "z" && !e.shiftKey) {
@@ -2688,10 +2693,10 @@
         // taId に対応するハイライト更新を行う共通ディスパッチャ。
         // _hlUpdate + editorUpdateGutter の組み合わせを ID で振り分ける。
         function editorHlUpdate(taId) {
-            if (taId === "yaml-ta") {yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter");}
-            else if (taId === "js-ta") {jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter");}
-            else if (taId === "ta-extrt-js") {_hlUpdate("ta-extrt-js", "hl-extrt-js", jsTokenize); editorUpdateGutter("ta-extrt-js", "gutter-extrt-js");}
-            else if (taId === "ta-extrt-doc") {_hlUpdate("ta-extrt-doc", "hl-extrt-doc", yamlTokenize); editorUpdateGutter("ta-extrt-doc", "gutter-extrt-doc");}
+            if      (taId === "yaml-ta")      { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
+            else if (taId === "js-ta")        { jsHlUpdate();   editorUpdateGutter("js-ta",   "js-gutter"); }
+            else if (taId === "ta-extrt-js")  { _hlUpdate("ta-extrt-js",  "hl-extrt-js",  jsTokenize);   editorUpdateGutter("ta-extrt-js",  "gutter-extrt-js"); }
+            else if (taId === "ta-extrt-doc") { _hlUpdate("ta-extrt-doc", "hl-extrt-doc", yamlTokenize); editorUpdateGutter("ta-extrt-doc", "gutter-extrt-doc"); }
         }
 
 
@@ -2709,7 +2714,7 @@
                 const panes = tabs.map((t, idx) => {
                     const isJs = t.type === "js";
                     const hlWrap = isJs ? "js-hl-wrap" : "yaml-hl-wrap";
-                    const hlBg = isJs ? "js-hl-bg" : "yaml-hl-bg";
+                    const hlBg  = isJs ? "js-hl-bg"   : "yaml-hl-bg";
                     return `<div class='yaml-pane ${idx === 0 ? "active" : ""}' id='pane-${t.id}'>` +
                         `<div class='editor-wrap'>` +
                         `<div class='editor-gutter' id='gutter-${t.id}'></div>` +
@@ -3161,7 +3166,7 @@
             if (!ta || !hl) return;
             hl.innerHTML = tokenizeFn(ta.value);
             // nowrap前提: scrollWidth/scrollHeight でhlサイズを設定
-            hl.style.width = ta.scrollWidth + "px";
+            hl.style.width  = ta.scrollWidth  + "px";
             hl.style.height = ta.scrollHeight + "px";
             _hlSync(taId, hlId);
         }
@@ -3279,7 +3284,7 @@
 
         // モーダルを閉じる。AIローディングタイマーが残っていれば合わせてクリアする。
         function closeModal() {
-            if (_aiLoadingTimer) {clearInterval(_aiLoadingTimer); _aiLoadingTimer = null;}
+            if (_aiLoadingTimer) { clearInterval(_aiLoadingTimer); _aiLoadingTimer = null; }
             $("modal-root").innerHTML = "";
         }
         // AI生成中のローディングモーダルを表示する。
@@ -3292,7 +3297,7 @@
                 `<div id="loading-timer" style="color:var(--accent,#7eb8f7);font-size:20px;font-weight:bold">0秒</div>` +
                 `<button class="modal-btn" onmousedown="cancelAiGenerate()" style="margin-top:12px;padding:8px 28px">キャンセル</button>` +
                 `</div></div>`;
-            if (_aiLoadingTimer) {clearInterval(_aiLoadingTimer); _aiLoadingTimer = null;}
+            if (_aiLoadingTimer) { clearInterval(_aiLoadingTimer); _aiLoadingTimer = null; }
             let sec = 0;
             _aiLoadingTimer = setInterval(() => {
                 const el = $("loading-timer");
@@ -3301,7 +3306,7 @@
         }
         // AI生成をキャンセルする。AbortController を abort() してリクエストを中断する。
         function cancelAiGenerate() {
-            if (_aiAbortCtrl) {_aiAbortCtrl.abort(); _aiAbortCtrl = null;}
+            if (_aiAbortCtrl) { _aiAbortCtrl.abort(); _aiAbortCtrl = null; }
         }
 
         // AI生成共通実行関数。
@@ -3311,7 +3316,7 @@
         // - onCancel: キャンセル時のコールバック（省略可）
         // - onError: エラー時のコールバック（省略可）
         async function runAiGenerate(options) {
-            const {systemPrompt, userPrompt, onSuccess, onCancel, onError, loadingMsg} = options;
+            const { systemPrompt, userPrompt, onSuccess, onCancel, onError, loadingMsg } = options;
             const hasApiKey = !!aiConfig.apiKey;
             const isRouterOn = !!aiConfig.routerMode;
             const endpoint = hasApiKey ? "https://api.openai.com" : aiConfig.endpoint;
@@ -3323,7 +3328,7 @@
             const body = {
                 messages: [
                     {role: "system", content: systemPrompt},
-                    {role: "user", content: userPrompt}
+                    {role: "user",   content: userPrompt}
                 ],
                 temperature: 0.3,
                 stream: false
@@ -3358,7 +3363,7 @@
                     if (onCancel) await onCancel();
                 } else {
                     showToast("AI生成エラー: " + e.message);
-                    await window.vja?.log?.error?.("AI生成エラー: " + e.message).catch(() => { });
+                    await window.vja?.log?.error?.("AI生成エラー: " + e.message).catch(() => {});
                     if (onError) await onError(e);
                 }
             } finally {
@@ -3429,7 +3434,7 @@
         // forms/curFormIdx 以外の全フィールドをここで復元する。
         function applyProjectData(d) {
             cloudInfras = d.cloudInfras || [];
-            extRuntime = d.extRuntime || {js: "", doc: ""};
+            extRuntime  = d.extRuntime  || { js: "", doc: "" };
             constants = d.constants || [];
             startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
             tables = d.tables || [];
@@ -3671,31 +3676,32 @@
                 async (confirmed) => {
                     if (!confirmed) return;
                     const btn = $("btn-compile");
-                    if (btn) {btn.disabled = true;}
+                    if (btn) { btn.disabled = true; }
                     showLoadingModal("コンパイル中...");
-                    try {
-                        const result = await window.bunCompileProject();
-                        closeModal();
-                        if (result?.ok) {
-                            showVjaDialog(
-                                "コンパイル完了！\n" +
-                                "出力先: " + result.distPath + "\n\n" +
-                                "出力先フォルダを開きますか？",
-                                (confirmed) => {
-                                    if (confirmed) window.bunOpenFolder(result.distPath);
-                                }
-                            );
-                        } else {
-                            showVjaAlert(`コンパイル失敗: ${result?.error || "不明なエラー"}`);
+            try {
+                const result = await window.bunCompileProject();
+                closeModal();
+                if (result?.ok) {
+                    showVjaDialog(
+                        `コンパイル完了！
+出力先: ${result.distPath}
+
+出力先フォルダを開きますか？`,
+                        (confirmed) => {
+                            if (confirmed) window.bunOpenFolder(result.distPath);
                         }
-                    } catch (e) {
-                        closeModal();
-                        showVjaAlert("コンパイルに失敗しました: " + e.message);
-                    } finally {
-                        if (btn) {btn.disabled = false;}
-                    }
+                    );
+                } else {
+                    showVjaAlert(`コンパイル失敗: ${result?.error || "不明なエラー"}`);
                 }
-            );
+            } catch (e) {
+                closeModal();
+                showVjaAlert("コンパイルに失敗しました: " + e.message);
+            } finally {
+                if (btn) { btn.disabled = false; }
+            }
+            }
+        );
         }
 
         async function actRunProject() {
@@ -4151,7 +4157,7 @@
         // 後方互換のため dispOrEvent が Event の場合は旧来通り val を表示名に使う
         function pvSelPick(id, val, dispOrEvent, e) {
             const isOldStyle = !e && (dispOrEvent instanceof Event || (dispOrEvent && typeof dispOrEvent === "object" && dispOrEvent.stopPropagation));
-            const ev = isOldStyle ? dispOrEvent : e;
+            const ev   = isOldStyle ? dispOrEvent : e;
             const disp = isOldStyle ? String(val) : (dispOrEvent !== undefined ? String(dispOrEvent) : String(val));
             if (ev) ev.stopPropagation();
             const wrap = document.getElementById(id);
@@ -4711,16 +4717,16 @@
         // vja ランタイムに追加する JavaScript コードと AI向け説明（YAML）を管理する。
         // extRuntime.js  : 実行時に注入されるカスタム JS コード
         // extRuntime.doc : AI向けの関数説明（YAML形式）。runAiGenerate で自動生成可能。
-        let _extRtYuState = {stack: [], idx: -1, busy: false};
-        let _extRtJuState = {stack: [], idx: -1, busy: false};
+        let _extRtYuState = { stack: [], idx: -1, busy: false };
+        let _extRtJuState = { stack: [], idx: -1, busy: false };
 
         // 拡張ランタイムダイアログを開く。
         // JavaScript タブと AI向け説明タブの2タブ構成。
         function openExtRuntime() {
             const tabConfig = {
                 tabs: [
-                    {id: "extrt-js", label: "📜 JavaScript", type: "js", val: extRuntime.js || ""},
-                    {id: "extrt-doc", label: "📋 AI向け説明", type: "yaml", val: extRuntime.doc || ""},
+                    { id: "extrt-js",  label: "📜 JavaScript", type: "js",   val: extRuntime.js  || "" },
+                    { id: "extrt-doc", label: "📋 AI向け説明",  type: "yaml", val: extRuntime.doc || "" },
                 ],
                 aiBar: "<button class='yaml-ai-btn' onmousedown='extRtGenDoc()'>🤖 AI向け説明を生成</button>",
                 saveAction: "saveExtRuntime()",
@@ -4729,9 +4735,9 @@
             requestAnimationFrame(() => {
                 applyEditorConfig();
                 [
-                    {id: "ta-extrt-js", hlId: "hl-extrt-js", gutId: "gutter-extrt-js", tokenFn: jsTokenize, state: _extRtJuState},
-                    {id: "ta-extrt-doc", hlId: "hl-extrt-doc", gutId: "gutter-extrt-doc", tokenFn: yamlTokenize, state: _extRtYuState},
-                ].forEach(({id, hlId, gutId, tokenFn, state}) => {
+                    { id: "ta-extrt-js",  hlId: "hl-extrt-js",  gutId: "gutter-extrt-js",  tokenFn: jsTokenize,   state: _extRtJuState },
+                    { id: "ta-extrt-doc", hlId: "hl-extrt-doc", gutId: "gutter-extrt-doc", tokenFn: yamlTokenize, state: _extRtYuState },
+                ].forEach(({ id, hlId, gutId, tokenFn, state }) => {
                     const ta = $(id);
                     if (!ta) return;
                     _hlUpdate(id, hlId, tokenFn);
@@ -4739,19 +4745,19 @@
                     ta.addEventListener("keydown", editorKeyHandler);
                     ta.addEventListener("mousedown", editorMouseDownHandler2);
                     ta.addEventListener("dblclick", editorDblClickHandler);
-                    ta.addEventListener("input", () => {_hlUpdate(id, hlId, tokenFn); editorUpdateGutter(id, gutId);});
+                    ta.addEventListener("input", () => { _hlUpdate(id, hlId, tokenFn); editorUpdateGutter(id, gutId); });
                     ta.addEventListener("scroll", () => _hlSync(id, hlId));
                     editorUndoInit(id, state, ta.value);
                 });
-                rAfBind("#tab-extrt-js", "click", () => {
-                    ["extrt-js", "extrt-doc"].forEach(t => {
+                rAfBind("#tab-extrt-js",  "click", () => {
+                    ["extrt-js","extrt-doc"].forEach(t => {
                         $("tab-" + t)?.classList.toggle("active", t === "extrt-js");
                         $("pane-" + t)?.classList.toggle("active", t === "extrt-js");
                     });
                     editorHlUpdate("ta-extrt-js");
                 });
                 rAfBind("#tab-extrt-doc", "click", () => {
-                    ["extrt-js", "extrt-doc"].forEach(t => {
+                    ["extrt-js","extrt-doc"].forEach(t => {
                         $("tab-" + t)?.classList.toggle("active", t === "extrt-doc");
                         $("pane-" + t)?.classList.toggle("active", t === "extrt-doc");
                     });
@@ -4762,7 +4768,7 @@
 
         // 拡張ランタイムの内容を extRuntime 変数に保存して Undo に積む。
         function saveExtRuntime() {
-            extRuntime.js = $("ta-extrt-js")?.value || "";
+            extRuntime.js  = $("ta-extrt-js")?.value  || "";
             extRuntime.doc = $("ta-extrt-doc")?.value || "";
             closeModal();
             showToast("拡張ランタイムを保存しました");
@@ -4777,7 +4783,7 @@
                 return;
             }
             const js = $("ta-extrt-js")?.value || "";
-            if (!js.trim()) {showToast("JavaScriptコードを入力してください"); return;}
+            if (!js.trim()) { showToast("JavaScriptコードを入力してください"); return; }
             const existsDoc = (extRuntime.doc || $("ta-extrt-doc")?.value || "").trim();
             const confirmMsg = existsDoc
                 ? "既に内容が登録されています。\n上書きしますか？\n（保存はされません）"
@@ -4794,7 +4800,7 @@
                     openExtRuntime();
                     requestAnimationFrame(() => requestAnimationFrame(() => {
                         const taDock = $("ta-extrt-doc");
-                        ["extrt-js", "extrt-doc"].forEach(t => {
+                        ["extrt-js","extrt-doc"].forEach(t => {
                             $("tab-" + t)?.classList.toggle("active", t === "extrt-doc");
                             $("pane-" + t)?.classList.toggle("active", t === "extrt-doc");
                         });
@@ -4899,21 +4905,21 @@
                 </div>`;
             } else {
                 credFields = credDefs.map((cd, ci) => {
-                    const k = typeof cd === "string" ? cd : cd.name;
+                    const k        = typeof cd === "string" ? cd : cd.name;
                     const isSecret = typeof cd === "object" && cd.secret;
                     const appInput = !!(inf.appInput?.[k]);
-                    const selOpts = typeof cd === "object" && Array.isArray(cd.select) ? cd.select : null;
-                    const curVal = (inf.credentials && k in inf.credentials) ? inf.credentials[k] : null;
+                    const selOpts  = typeof cd === "object" && Array.isArray(cd.select) ? cd.select : null;
+                    const curVal   = (inf.credentials && k in inf.credentials) ? inf.credentials[k] : null;
                     let inputHtml;
                     if (selOpts) {
-                        const selId = "cloud-cred-sel-" + i + "-" + ci;
+                        const selId  = "cloud-cred-sel-" + i + "-" + ci;
                         const selDef = selOpts.find(o => o.selected) || selOpts[0];
                         // o.value が存在する場合は保存値として使い、o.name は表示名として使う
                         const selDefVal = selDef ? (selDef.value ?? selDef.name ?? "") : "";
                         // curVal が null（未設定）の場合のみデフォルト値を使う
                         const selCur = curVal !== null ? curVal : selDefVal;
-                        const opts = selOpts.map(o => {
-                            const optVal = o.value ?? o.name ?? "";
+                        const opts   = selOpts.map(o => {
+                            const optVal  = o.value ?? o.name ?? "";
                             const optDisp = (o.name !== undefined && o.name !== "") ? o.name : "&nbsp;";
                             return `<div class="pv-sel-opt ${(selCur === optVal || selCur === o.name) ? "active" : ""}"
                                 onmousedown="pvSelPick('${selId}','${esc(optVal)}','${optDisp === "&nbsp;" ? "" : esc(optDisp)}',event);updateCloudCred(${i},'${esc(k)}','${esc(optVal)}')">${optDisp === "&nbsp;" ? "&nbsp;" : esc(optDisp)}</div>`;

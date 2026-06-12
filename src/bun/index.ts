@@ -218,6 +218,42 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
             },
 
             // ── クラウドインフラ設定 ──────────────────────
+
+            getCloudInfrasRequest: async () => {
+                // 復号済みクレデンシャルを含むインフラ一覧を返す
+                try {
+                    const decrypted = await Promise.all(_cloudInfras.map(async (inf: any) => {
+                        const creds: Record<string, string> = {};
+                        for (const [k, v] of Object.entries(inf.credentials || {})) {
+                            creds[k] = v ? await decryptCredential(v as string) : "";
+                        }
+                        return { ...inf, credentials: creds };
+                    }));
+                    browserWindow.webview.rpc.send.getCloudInfrasResult({ infras: decrypted });
+                } catch (e: any) {
+                    browserWindow.webview.rpc.send.getCloudInfrasResult({ infras: [] });
+                }
+            },
+
+            getDecryptedCredentialRequest: async ({ infraId, key }: { infraId: string; key: string }) => {
+                try {
+                    const inf = _cloudInfras.find((c: any) => c.id === infraId);
+                    if (!inf) {
+                        browserWindow.webview.rpc.send.getDecryptedCredentialResult({ ok: false, value: "" });
+                        return;
+                    }
+                    const raw = inf.credentials?.[key] || "";
+                    const value = raw ? await decryptCredential(raw) : "";
+                    browserWindow.webview.rpc.send.getDecryptedCredentialResult({ ok: true, value });
+                } catch (e: any) {
+                    browserWindow.webview.rpc.send.getDecryptedCredentialResult({ ok: false, value: "" });
+                }
+            },
+
+            loadScriptRequest: async ({ url }: { url: string }) => {
+                browserWindow.webview.rpc.send.loadScriptResult({ url });
+            },
+
             saveCloudInfrasRequest: async ({ infras }: { infras: any[] }) => {
                 try {
                     const merged = await Promise.all(infras.map(async (inf) => {
@@ -902,6 +938,7 @@ ${widgetsHtml}
 <!-- vja dialog/toast roots -->
 <div id="dialog-root"></div>
 <div id="toast-root"></div>
+<script>window._INIT_PARAMS = window._INIT_PARAMS || {}; window._INIT_PARAMS.PROJECT_NAME = ${JSON.stringify(_currentProjectName || "")};</script>
 <script src="./project-bridge.js"></script>
 ${extRuntimeJs ? `<script>\n${extRuntimeJs}\n</script>` : ""}
 <script>

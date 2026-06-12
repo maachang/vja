@@ -741,6 +741,172 @@
     };
 
     // ════════════════════════════════════════════════
+    // getCloudInfraCredential(infra, service?)
+    // vja側クレデンシャル（最優先）+ アプリ側入力を統合して返す
+    // 戻り値: { KEY: "value", ... } または null
+    // ════════════════════════════════════════════════
+    vja.getCloudInfraCredential = async function(infra, service) {
+        // Bun側から復号済みインフラ一覧を取得
+        const infras = await vja.cloud.list().catch(() => []);
+
+        // infra名でフィルタ（大文字小文字無視）
+        const matched = infras.filter(i =>
+            i.enabled && i.infra?.toLowerCase() === infra?.toLowerCase()
+        );
+        if (matched.length === 0) return null;
+
+        // service指定がある場合はそのサービスを優先
+        let target = matched[0];
+        if (service) {
+            const svc = matched.find(i =>
+                i.service?.toLowerCase() === service?.toLowerCase()
+            );
+            if (svc) target = svc;
+        }
+
+        // vja側クレデンシャルを構築
+        // appInput=OFF かつ 値が空でないものを使用
+        const result = {};
+        const creds = target.credentials || {};
+        const appInput = target.appInput || {};
+
+        for (const [k, v] of Object.entries(creds)) {
+            if (!appInput[k]) {
+                // vja側定義が優先
+                if (v) result[k] = v;
+            }
+        }
+
+        // appInput=ON のキーはアプリ側入力ファイルから取得
+        const appInputKeys = Object.entries(appInput)
+            .filter(([k, v]) => v)
+            .map(([k]) => k);
+
+        if (appInputKeys.length > 0) {
+            const appCreds = await _loadAppCredentials(infra);
+            for (const k of appInputKeys) {
+                if (appCreds && appCreds[k]) result[k] = appCreds[k];
+            }
+        }
+
+        return Object.keys(result).length > 0 ? result : null;
+    };
+
+    // アプリ側入力ファイル（~/vja/credential.json or .yml/.yaml）を読み込む
+    const _loadAppCredentials = async function(infra) {
+        const home = await _getHomeDir();
+        if (!home) return null;
+
+        // json → yml → yaml の順で試みる
+        const paths = [
+            home + "/vja/credential.json",
+            home + "/vja/credential.yml",
+            home + "/vja/credential.yaml",
+        ];
+
+        let raw = null;
+        for (const p of paths) {
+            const exists = await vja.file.exists(p).catch(() => false);
+            if (exists) {
+                raw = await vja.file.read(p).catch(() => null);
+                if (raw) { raw = { path: p, content: raw }; break; }
+            }
+        }
+        if (!raw) return null;
+
+        try {
+            let data;
+            if (raw.path.endsWith(".json")) {
+                data = JSON.parse(raw.content);
+            } else {
+                // YAML: シンプルなパーサ（インデントベース）
+                data = _parseSimpleYaml(raw.content);
+            }
+            // プロジェクト名のセクションを探す
+            const projName = vja._projectName || "";
+            const section = data[projName] || data["*"] || data;
+            // infra名（小文字）のセクションを取得
+            const infraSection = section[infra.toLowerCase()] || section[infra] || null;
+            if (!infraSection) return null;
+            // [{KEY: val}, ...] または {KEY: val} 形式に対応
+            const result = {};
+            if (Array.isArray(infraSection)) {
+                for (const item of infraSection) {
+                    Object.assign(result, item);
+                }
+            } else {
+                Object.assign(result, infraSection);
+            }
+            return result;
+        } catch (e) {
+            console.error("[vja.cloud] credential file parse error:", e);
+            return null;
+        }
+    };
+
+    // ホームディレクトリを取得
+    const _getHomeDir = async function() {
+        try {
+            const isWin = navigator.platform?.toLowerCase().includes("win");
+            if (isWin) return await vja.session.get("__home__") || null;
+            const r = await vja.file.read("/proc/self/environ").catch(() => null);
+            if (r) {
+                const match = r.split(" ").find(e => e.startsWith("HOME="));
+                if (match) return match.slice(5);
+            }
+            return null;
+        } catch { return null; }
+    };
+
+    // シンプルYAMLパーサ（ネスト・リスト対応）
+    const _parseSimpleYaml = function(text) {
+        const lines = text.split("\n");
+        const root = {};
+        const stack = [{ obj: root, indent: -1 }];
+        let lastKey = null;
+        let lastObj = root;
+
+        for (const line of lines) {
+            if (!line.trim() || line.trim().startsWith("#")) continue;
+            const indent = line.search(/\S/);
+            const trimmed = line.trim();
+
+            // スタックを現在のインデントに合わせる
+            while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
+                stack.pop();
+            }
+            const parent = stack[stack.length - 1].obj;
+
+            if (trimmed.startsWith("- ")) {
+                // リスト要素
+                const val = trimmed.slice(2).trim();
+                const colonIdx = val.indexOf(":");
+                if (colonIdx > 0) {
+                    const k = val.slice(0, colonIdx).trim();
+                    const v = val.slice(colonIdx + 1).trim();
+                    if (!Array.isArray(parent[lastKey])) parent[lastKey] = [];
+                    const item = {}; item[k] = v;
+                    parent[lastKey].push(item);
+                }
+            } else {
+                const colonIdx = trimmed.indexOf(":");
+                if (colonIdx > 0) {
+                    const k = trimmed.slice(0, colonIdx).trim();
+                    const v = trimmed.slice(colonIdx + 1).trim();
+                    if (v) {
+                        parent[k] = v;
+                    } else {
+                        parent[k] = {};
+                        stack.push({ obj: parent[k], indent });
+                        lastKey = k;
+                    }
+                }
+            }
+        }
+        return root;
+    };
+
+    // ════════════════════════════════════════════════
     // vja.app.loadScript — CDNスクリプト動的読み込み
     // ════════════════════════════════════════════════
     if (!vja.app) vja.app = {};
@@ -910,6 +1076,9 @@
         const cb = _dialogOkCallback; _dialogOkCallback = null;
         if (cb) cb(val);
     };
+
+    // プロジェクト名をグローバルに保持（credential.jsonのセクション特定に使用）
+    vja._projectName = window._INIT_PARAMS?.PROJECT_NAME || "";
 
     console.log("[vja-runtime] loaded ✓");
 

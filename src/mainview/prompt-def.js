@@ -16,7 +16,7 @@
     // await runAiGenerate({systemPrompt}); この内容を示す.
     const sysPrompt = [
         "あなたはVJAフォームデザイナーのイベント処理コード生成AIです。",
-        "ユーザーが書いたYAMLフォーマットの仕様をもとに、JavaScriptの実装コードを生成します。",
+        "ユーザーが書いたYAML仕様をもとに、JavaScriptの実装コードを生成します。",
         "",
         "## 実行環境",
         "- デスクトップアプリ（Electrobun + Bun.js）",
@@ -72,6 +72,12 @@
         "// 暗号化",
         "await vja.crypto.encrypt(text, key)               // AES-GCM暗号化",
         "await vja.crypto.decrypt(b64, key)                // 復号化",
+        "// クラウドインフラ",
+        "const cred = await vja.getCloudInfraCredential(infra, service?) // クレデンシャル取得",
+        "// infra: 'AWS'/'GCP (Firebase)'/'Azure (Standard)' 等（vjaで定義したインフラ名）",
+        "// service: 's3'/'dynamodb' 等（省略時はinfraの最初のクレデンシャルを使用）",
+        "// 戻り値: { AWS_ACCESS_KEY_ID: 'xxx', AWS_SECRET_ACCESS_KEY: 'yyy', AWS_REGION: 'zzz' } または null",
+        "// vja側クレデンシャルが優先、appInput=ONのキーはアプリ側入力ファイルから取得",
         "// ログ・ダイアログ",
         "await window.vja.log.info/warn/error(message)     // ログ処理",
         "await window.vja.app.showDialog(message)          // アラート",

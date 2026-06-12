@@ -19,12 +19,42 @@ const _dbDir     = join(_appDir, "db");
 // ── ロガー初期化 ──────────────────────────────────────
 initLogger({ dir: _logDir, level: "info" });
 
+// ── 暗号化基盤 ───────────────────────────────────────────
+const _VJA_PASSPHRASE = "vja-form-designer-2024-xK9mPqR7nL2wT5vY";
+
+const _deriveKey = async (passphrase: string): Promise<CryptoKey> => {
+    const keyMaterial = await crypto.subtle.importKey(
+        "raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveKey"]
+    );
+    return crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt: new TextEncoder().encode("vja-salt"), iterations: 100000, hash: "SHA-256" },
+        keyMaterial, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
+    );
+};
+
+const _decrypt = async (b64: string, passphrase: string): Promise<string> => {
+    const buf = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const iv = buf.slice(0, 12);
+    const cipher = buf.slice(12);
+    const key = await _deriveKey(passphrase);
+    const plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
+    return new TextDecoder().decode(plainBuf);
+};
+
+let _vjaPass: string = "";
+
+const decryptCredential = async (b64: string): Promise<string> => {
+    if (!_vjaPass) return "";
+    try { return await _decrypt(b64, _vjaPass); } catch (e) { console.debug("[vja] decryptCredential failed:", e); return ""; }
+};
+
 // ── プロジェクトデータ ────────────────────────────────
 let _currentProjectForms:   any[]      = [];
 let _currentProjectTables:  TableDef[] = [];
 let _currentProjectName:    string     = "";
 let _currentProjectDbDir:   string     = _dbDir;
 let _currentProjectExtRuntime: string  = "";
+let _cloudInfras: any[] = [];
 let _onStartCode = "";
 let _onExitCode  = "";
 
@@ -53,6 +83,11 @@ const loadProject = (): boolean => {
         _onStartCode           = proj.projectInfo?.appEvents?.onStart || "";
         _onExitCode            = proj.projectInfo?.appEvents?.onExit  || "";
         _currentProjectExtRuntime = proj.extRuntime?.js || "";
+        _cloudInfras = proj.cloudInfras || [];
+        // _vjaPass 復号
+        if (proj._vjaPass) {
+            try { _vjaPass = await _decrypt(proj._vjaPass, _VJA_PASSPHRASE); } catch (e) { console.debug("[vja] vjaPass decrypt failed:", e); }
+        }
         return true;
     } catch (e: any) {
         console.error("[app] プロジェクト読み込み失敗:", e.message);
@@ -232,6 +267,41 @@ const openProjectWindow = async (htmlPath: string, w: number, h: number): Promis
                     } catch (e: any) {
                         _projectWindow?.webview.rpc.send.dbTransactionResult({ ok: false, error: e.message });
                     }
+                },
+
+                // ── クラウドインフラ ──────────────────────────
+                getCloudInfrasRequest: async () => {
+                    try {
+                        const decrypted = await Promise.all(_cloudInfras.map(async (inf: any) => {
+                            const creds: Record<string, string> = {};
+                            for (const [k, v] of Object.entries(inf.credentials || {})) {
+                                creds[k] = v ? await decryptCredential(v as string) : "";
+                            }
+                            return { ...inf, credentials: creds };
+                        }));
+                        _projectWindow?.webview.rpc.send.getCloudInfrasResult({ infras: decrypted });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.getCloudInfrasResult({ infras: [] });
+                    }
+                },
+
+                getDecryptedCredentialRequest: async ({ infraId, key }: { infraId: string; key: string }) => {
+                    try {
+                        const inf = _cloudInfras.find((c: any) => c.id === infraId);
+                        if (!inf) {
+                            _projectWindow?.webview.rpc.send.getDecryptedCredentialResult({ ok: false, value: "" });
+                            return;
+                        }
+                        const raw = inf.credentials?.[key] || "";
+                        const value = raw ? await decryptCredential(raw) : "";
+                        _projectWindow?.webview.rpc.send.getDecryptedCredentialResult({ ok: true, value });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.getDecryptedCredentialResult({ ok: false, value: "" });
+                    }
+                },
+
+                loadScriptRequest: async ({ url }: { url: string }) => {
+                    _projectWindow?.webview.rpc.send.loadScriptResult({ url });
                 },
 
                 // ── DBクリア ──────────────────────────────────
