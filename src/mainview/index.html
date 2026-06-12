@@ -4227,6 +4227,8 @@
                 // 説明
                 "<div class='tbl-desc-row'><label>説明（任意）</label>" +
                 "<textarea id='tbl-desc-in' oninput='_tblEdit.description=this.value'>" + esc(tbl.description || "") + "</textarea></div>" +
+                // マスターCSV
+                _renderMasterCsvArea(tbl) +
                 // カラム一覧
                 "<div style='display:flex;justify-content:space-between;align-items:center'>" +
                 "<span style='font-size:12px;color:var(--text2)'>カラム定義（" + cols.length + "列）</span>" +
@@ -4270,6 +4272,212 @@
                         tblTypeOpen(idx, btn);
                     }, {capture: false});
                 }
+            });
+        }
+
+        // ── マスターCSV管理 ──────────────────────────────────
+
+        // マスターCSVエリアのHTMLを生成する
+        function _renderMasterCsvArea(tbl) {
+            const csv = tbl.masterCsv;
+            if (csv && csv.data) {
+                const origKb = csv.originalSize ? (csv.originalSize / 1024).toFixed(1) + " KB" : "不明";
+                const compKb = csv.compressedSize ? (csv.compressedSize / 1024).toFixed(1) + " KB" : "不明";
+                return "<div class='tbl-csv-area'>" +
+                    "<label>マスターCSV</label>" +
+                    "<div class='tbl-csv-info'>" +
+                    "<span>📄 " + esc(csv.filename || "master.csv") + "</span>" +
+                    "<span style='color:var(--text2);font-size:11px'>" +
+                    csv.rows + " 行 / 元サイズ: " + origKb + " / 圧縮後: " + compKb +
+                    "</span>" +
+                    "<div style='display:flex;gap:6px;margin-top:4px'>" +
+                    "<button class='modal-btn' onmousedown='tblDownloadMasterCsv()'>⬇ ダウンロード</button>" +
+                    "<button class='modal-btn' onmousedown='tblReuploadMasterCsv()'>🔄 再アップロード</button>" +
+                    "<button class='modal-btn' style='color:#ff6b6b' onmousedown='tblDeleteMasterCsv()'>🗑 削除</button>" +
+                    "</div></div></div>";
+            } else {
+                return "<div class='tbl-csv-area'>" +
+                    "<label>マスターCSV <span style='font-size:11px;color:var(--text2)'>（テーブルが空の場合に自動INSERT）</span></label>" +
+                    "<button class='modal-btn' onmousedown='tblUploadMasterCsv()'>📂 CSVをアップロード</button>" +
+                    "<input type='file' id='tbl-csv-file' accept='.csv' style='display:none' onchange='tblOnCsvSelected(event)'>" +
+                    "</div>";
+            }
+        }
+
+        // CSVアップロードボタン押下
+        function tblUploadMasterCsv() {
+            const inp = $("tbl-csv-file");
+            if (inp) inp.click();
+        }
+
+        // 再アップロードボタン押下（既存削除して再アップロード）
+        function tblReuploadMasterCsv() {
+            // 一時的にfileInputを追加してクリック
+            let inp = $("tbl-csv-file-re");
+            if (!inp) {
+                inp = document.createElement("input");
+                inp.type = "file";
+                inp.id = "tbl-csv-file-re";
+                inp.accept = ".csv";
+                inp.style.display = "none";
+                inp.onchange = tblOnCsvSelected;
+                document.body.appendChild(inp);
+            }
+            inp.click();
+        }
+
+        // CSVファイル選択時の処理
+        async function tblOnCsvSelected(e) {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            e.target.value = "";
+
+            const MAX_SIZE = 20 * 1024 * 1024; // 20MB
+            if (file.size > MAX_SIZE) {
+                showVjaAlert("CSVファイルが20MBを超えています（" + (file.size / 1024 / 1024).toFixed(1) + " MB）\nアップロード可能なサイズは20MB以内です。");
+                return;
+            }
+
+            const text = await file.text();
+            const lines = text.split(/\r?\n/).filter(l => l.trim());
+            if (lines.length < 2) {
+                showVjaAlert("CSVにデータが含まれていません（ヘッダー行のみ、または空）。");
+                return;
+            }
+
+            // ヘッダー解析
+            const headers = _parseCsvLine(lines[0]);
+            const tbl = _tblEdit;
+            const cols = tbl.columns || [];
+
+            // 必須カラムチェック（NOT NULL + DEFAULTなし + PKでない）
+            const requiredCols = cols.filter(c => c.notNull && !c.pk && (!c.useDefault || !c.default));
+            const missingRequired = requiredCols.filter(c => !headers.includes(c.name));
+            if (missingRequired.length > 0) {
+                showVjaAlert("以下の必須カラムがCSVに存在しません：\n" + missingRequired.map(c => "・" + c.name).join("\n"));
+                return;
+            }
+
+            // 必須カラムの空欄チェック（全行）
+            const dataLines = lines.slice(1);
+            for (let i = 0; i < dataLines.length; i++) {
+                const vals = _parseCsvLine(dataLines[i]);
+                for (const rc of requiredCols) {
+                    const idx = headers.indexOf(rc.name);
+                    if (idx >= 0 && (!vals[idx] || vals[idx].trim() === "")) {
+                        showVjaAlert("必須カラム「" + rc.name + "」が " + (i + 2) + " 行目で空欄です。");
+                        return;
+                    }
+                }
+            }
+
+            // gzip圧縮 → Base64
+            try {
+                const compressed = await _compressCsv(text);
+                _tblEdit.masterCsv = {
+                    filename: file.name,
+                    data: compressed,
+                    rows: dataLines.length,
+                    originalSize: file.size,
+                    compressedSize: Math.round(compressed.length * 0.75), // Base64 → bytes概算
+                };
+                renderTableEditModal();
+                showToast("CSVをアップロードしました（" + dataLines.length + " 行）");
+            } catch (e) {
+                showVjaAlert("CSVの圧縮処理に失敗しました: " + e.message);
+            }
+        }
+
+        // CSVをgzip圧縮してBase64文字列で返す
+        async function _compressCsv(text) {
+            const enc = new TextEncoder();
+            const input = enc.encode(text);
+            const cs = new CompressionStream("gzip");
+            const writer = cs.writable.getWriter();
+            writer.write(input);
+            writer.close();
+            const chunks = [];
+            const reader = cs.readable.getReader();
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+            }
+            const total = chunks.reduce((s, c) => s + c.length, 0);
+            const result = new Uint8Array(total);
+            let offset = 0;
+            for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.length; }
+            return btoa(String.fromCharCode(...result));
+        }
+
+        // Base64+gzip → 元のCSVテキストに展開
+        async function _decompressCsv(b64) {
+            const binary = atob(b64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const ds = new DecompressionStream("gzip");
+            const writer = ds.writable.getWriter();
+            writer.write(bytes);
+            writer.close();
+            const chunks = [];
+            const reader = ds.readable.getReader();
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+            }
+            const total = chunks.reduce((s, c) => s + c.length, 0);
+            const result = new Uint8Array(total);
+            let offset = 0;
+            for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.length; }
+            return new TextDecoder().decode(result);
+        }
+
+        // CSV1行をパースする（ダブルクォート対応）
+        function _parseCsvLine(line) {
+            const result = [];
+            let cur = "", inQ = false;
+            for (let i = 0; i < line.length; i++) {
+                const c = line[i];
+                if (inQ) {
+                    if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
+                    else if (c === '"') inQ = false;
+                    else cur += c;
+                } else {
+                    if (c === '"') inQ = true;
+                    else if (c === ',') { result.push(cur); cur = ""; }
+                    else cur += c;
+                }
+            }
+            result.push(cur);
+            return result;
+        }
+
+        // マスターCSVをダウンロードする
+        async function tblDownloadMasterCsv() {
+            const csv = _tblEdit.masterCsv;
+            if (!csv?.data) return;
+            try {
+                const text = await _decompressCsv(csv.data);
+                const blob = new Blob([text], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = csv.filename || (_tblEdit.name + "_master.csv");
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                showVjaAlert("ダウンロードに失敗しました: " + e.message);
+            }
+        }
+
+        // マスターCSVを削除する
+        function tblDeleteMasterCsv() {
+            showVjaDialog("マスターCSVを削除しますか？", (confirmed) => {
+                if (!confirmed) return;
+                delete _tblEdit.masterCsv;
+                renderTableEditModal();
+                showToast("マスターCSVを削除しました");
             });
         }
 

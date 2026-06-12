@@ -921,6 +921,31 @@ body {
     white-space: nowrap;
 }
 
+/* ── マスターCSVエリア ── */
+.tbl-csv-area {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+}
+.tbl-csv-area > label {
+    font-size: 12px;
+    color: var(--text2);
+}
+.tbl-csv-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 12px;
+    color: var(--text1);
+}
+
 /* ── テーブル一覧 ── */
 .rp-tbl-row {
     border-bottom: 1px solid var(--border2);
