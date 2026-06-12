@@ -849,7 +849,7 @@ ${extRuntimeDoc}
     // グローバル展開.
     //////////////////
     const o = {};
-    _PROMPT_DEF = o;
+    window._PROMPT_DEF = o;
 
     // 利用可能関数一覧: js利用者向けのvjaランタイム説明等.
     o.VJA_USE_BACK_JS_INFO = VJA_USE_BACK_JS_INFO; // バックエンド.
