@@ -2004,8 +2004,8 @@
             const w = getWidget(wid);
             if (!w) return;
             if (!w.events) w.events = {};
-            // 空の場合 _PROMPT_DEF.DEFAULT_YAML_VALUE をセット.
             const cur = w.events[evName] ||
+                // 空の場合はデフォルトのYAMLセット.
                 _PROMPT_DEF.DEFAULT_YAML_VALUE(evName, w.name);
             const curJs = (w.jsCode && w.jsCode[evName]) || "";
             pvRegister("yamlSave", () => saveYaml(wid, evName));

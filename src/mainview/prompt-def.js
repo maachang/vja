@@ -14,47 +14,47 @@
 ## 関数説明.
 ~~~yaml
 # VJA Runtime API 関数一覧
-# window.vja.* / vja.* で利用可能なAPI定義
+# vja.* で利用可能なAPI定義
 # ※ await が必要な関数には必ず await を付けること
 
-## DB操作 (window.vja.db.*)
+## DB操作 (vja.db.*)
 
-- 関数名: await window.vja.db.query(sql, params?):
+- 関数名: await vja.db.query(sql, params?):
   - 説明: SQLのSELECT文を実行して結果行を返す
   - 引数:
     - sql: string - 実行するSQL文（プレースホルダー ? を使用）
     - params?: (string|number|boolean|null)[] - プレースホルダーに渡す値の配列（省略可）
   - 戻り値: "{ ok: boolean, rows: Record<string, any>[] } - ok=trueの場合rows に結果行の配列"
-  - 使用例: "const result = await window.vja.db.query('SELECT * FROM users WHERE id = ?', [1]);"
+  - 使用例: "const result = await vja.db.query('SELECT * FROM users WHERE id = ?', [1]);"
   - 使用例説明: usersテーブルからid=1のレコードを取得する
 
-- 関数名: await window.vja.db.execute(sql, params?):
+- 関数名: await vja.db.execute(sql, params?):
   - 説明: SQLのINSERT/UPDATE/DELETE文を実行する
   - 引数:
     - sql: string - 実行するSQL文（プレースホルダー ? を使用）
     - params?: (string|number|boolean|null)[] - プレースホルダーに渡す値の配列（省略可）
   - 戻り値: "{ ok: boolean, result: { changes: number, lastInsertRowid: number } }"
-  - 使用例: "await window.vja.db.execute('INSERT INTO users (name, age) VALUES (?, ?)', ['山田', 30]);"
+  - 使用例: "await vja.db.execute('INSERT INTO users (name, age) VALUES (?, ?)', ['山田', 30]);"
   - 使用例説明: usersテーブルに新しいレコードを挿入する
 
-- 関数名: await window.vja.db.transaction(statements[]):
+- 関数名: await vja.db.transaction(statements[]):
   - 説明: 複数のSQL文をトランザクションとして実行する
   - 引数:
     - statements: "{ sql: string, params?: any[] }[] - 実行するSQL文と引数のペアの配列"
   - 戻り値: "{ ok: boolean } - 全文実行成功でok=true、失敗時はロールバック"
   - 使用例: |
-      await window.vja.db.transaction([
+      await vja.db.transaction([
         { sql: 'INSERT INTO orders (item) VALUES (?)', params: ['商品A'] },
         { sql: 'UPDATE stock SET qty = qty - 1 WHERE item = ?', params: ['商品A'] }
       ]);
   - 使用例説明: 注文登録と在庫更新を1つのトランザクションで実行する
 
-- 関数名: await window.vja.db.init(ddlStatements[]):
+- 関数名: await vja.db.init(ddlStatements[]):
   - 説明: テーブル作成（CREATE TABLE IF NOT EXISTS）を実行する
   - 引数:
     - ddlStatements: string[] - DDL文の配列
   - 戻り値: "{ ok: boolean }"
-  - 使用例: "await window.vja.db.init(['CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)']);"
+  - 使用例: "await vja.db.init(['CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)']);"
   - 使用例説明: usersテーブルが存在しない場合に作成する
 
 ## ウィジェット操作 (vja.widget.*)
@@ -409,7 +409,7 @@
   - 戻り値: なし
   - 使用例: |
       vja.ui.loading(true, 'データを取得中...');
-      const rows = await window.vja.db.query('SELECT * FROM users');
+      const rows = await vja.db.query('SELECT * FROM users');
       vja.ui.loading(false);
   - 使用例説明: DB取得中にローディングを表示し、完了後に非表示にする
 
@@ -452,45 +452,45 @@
 
 ## ログ・ダイアログ
 
-- 関数名: await window.vja.log.info(message):
+- 関数名: await vja.log.info(message):
   - 説明: INFOレベルのログをBun側に記録する
   - 引数:
     - message: string - ログメッセージ
   - 戻り値: なし
-  - 使用例: "await window.vja.log.info('処理が完了しました');"
+  - 使用例: "await vja.log.info('処理が完了しました');"
   - 使用例説明: 処理完了をログに記録する
 
-- 関数名: await window.vja.log.warn(message):
+- 関数名: await vja.log.warn(message):
   - 説明: WARNレベルのログをBun側に記録する
   - 引数:
     - message: string - ログメッセージ
   - 戻り値: なし
-  - 使用例: "await window.vja.log.warn('データが空です');"
+  - 使用例: "await vja.log.warn('データが空です');"
   - 使用例説明: 警告をログに記録する
 
-- 関数名: await window.vja.log.error(message):
+- 関数名: await vja.log.error(message):
   - 説明: ERRORレベルのログをBun側に記録する
   - 引数:
     - message: string - ログメッセージ
   - 戻り値: なし
-  - 使用例: "await window.vja.log.error('DB接続エラー: ' + e.message);"
+  - 使用例: "await vja.log.error('DB接続エラー: ' + e.message);"
   - 使用例説明: エラーをログに記録する
 
-- 関数名: await window.vja.app.showDialog(message):
+- 関数名: await vja.app.showDialog(message):
   - 説明: アラートダイアログを表示する
   - 引数:
     - message: string - 表示するメッセージ
   - 戻り値: "{ ok: boolean }"
-  - 使用例: "await window.vja.app.showDialog('処理が完了しました');"
+  - 使用例: "await vja.app.showDialog('処理が完了しました');"
   - 使用例説明: 完了メッセージをアラートで表示する
 
-- 関数名: await window.vja.app.showConfirm(message):
+- 関数名: await vja.app.showConfirm(message):
   - 説明: 確認ダイアログを表示する
   - 引数:
     - message: string - 表示するメッセージ
   - 戻り値: "{ ok: boolean, confirmed: boolean } - OKを押した場合confirmed=true"
   - 使用例: |
-      const result = await window.vja.app.showConfirm('削除しますか？');
+      const result = await vja.app.showConfirm('削除しますか？');
       if (!result?.confirmed) return;
   - 使用例説明: 削除確認ダイアログを表示し、キャンセル時は処理を中断する
 ~~~
@@ -681,8 +681,8 @@ ${vjaUseJsInfo}
 - コメント等は日本語で
 - 必ず _vjaRun(async () => { ... }) でラップする（エラー自動処理）
 - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
-- 全ての window.vja.* / vja.* 呼び出しは await を付ける
-- 画面遷移は vja.form.navigate('画面名') を使う(※ window.location は絶対に使っては駄目)
+- 全ての vja.* / vja.* 呼び出しは await を付ける
+- 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
 - コードのみを返す（説明文・マークダウン不要）
 
 ## プロジェクト情報
@@ -842,9 +842,6 @@ ${extRuntimeDoc}
 イベント: ${eventName} (${wname})
 説明:
 利用テーブル:
-
-
-
 `.trim();
     }
 
@@ -852,7 +849,7 @@ ${extRuntimeDoc}
     // グローバル展開.
     //////////////////
     const o = {};
-    window._PROMPT_DEF = o;
+    _PROMPT_DEF = o;
 
     // 利用可能関数一覧: js利用者向けのvjaランタイム説明等.
     o.VJA_USE_BACK_JS_INFO = VJA_USE_BACK_JS_INFO; // バックエンド.
