@@ -2443,13 +2443,15 @@
             const jsTaHasCode = jsTaCur.split("\n")
                 .some(l => l.trim() && !l.trim().startsWith("//"));
             const confirmMsg = jsTaHasCode
-                ? "JavaScriptタブに既存のコードがあります。\nAI生成で上書きしますか？\n（保存はされません）"
-                : "JavaScriptコードを生成しますか？\n（保存はされません）";
+                ? "JavaScriptタブに既存のコードがあります。\nAI生成で上書きしますか？\n※実行前に現在の内容を保存します。"
+                : "JavaScriptコードを生成しますか？\n※実行前に現在の内容を保存します。";
             if (!(await vja.app.showConfirm(confirmMsg))?.confirmed) {
                 if (btn) btn.disabled = false;
                 if (status) status.textContent = "";
                 return;
             }
+            // AI生成前にデータを保存（モーダルは閉じない）
+            _saveYamlData(wid, evName);
             if (btn) btn.disabled = true;
             if (status) status.textContent = "⏳ コンテキスト収集中…";
             showLoadingModal("AI生成中…");
@@ -3211,16 +3213,20 @@
             return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
 
-        function saveYaml(wid, evName) {
+        // YAMLデータをウィジェットに保存する（モーダルは閉じない）
+        function _saveYamlData(wid, evName) {
             const w = getWidget(wid);
             if (!w) return;
             if (!w.events) w.events = {};
             if (!w.jsCode) w.jsCode = {};
             w.events[evName] = $("yaml-ta")?.value || "";
             w.jsCode[evName] = $("js-ta")?.value || "";
-            closeModal();
             renderEvents();
             pushUndo();
+        }
+        function saveYaml(wid, evName) {
+            _saveYamlData(wid, evName);
+            closeModal();
         }
 
         /* ── フォームイベント編集 ── */
@@ -4786,9 +4792,11 @@
             if (!js.trim()) { showToast("JavaScriptコードを入力してください"); return; }
             const existsDoc = (extRuntime.doc || $("ta-extrt-doc")?.value || "").trim();
             const confirmMsg = existsDoc
-                ? "既に内容が登録されています。\n上書きしますか？\n（保存はされません）"
-                : "AI向け説明を生成しますか？\n（保存はされません）";
+                ? "既に内容が登録されています。\n上書きしますか？\n※実行前に現在の内容を保存します。"
+                : "AI向け説明を生成しますか？\n※実行前に現在の内容を保存します。";
             if (!(await vja.app.showConfirm(confirmMsg))?.confirmed) return;
+            // AI生成前に保存
+            saveExtRuntime();
             await runAiGenerate({
                 systemPrompt: "あなたはJavaScriptコードのドキュメント生成アシスタントです。",
                 userPrompt:
