@@ -2324,6 +2324,7 @@
 
             // ── ⑥ システムプロンプト ──
             const sysPrompt = _PROMPT_DEF.YAML_TO_JS_SYS_PROMPT(
+                isAppEvent,
                 {
                     formName: curForm?.cfg?.title, eventName: evName,
                     wname: w.name, wtag: w.tag, wdescription: w.props?.description,
@@ -2366,7 +2367,7 @@
 
             await runAiGenerate({
                 systemPrompt: sysPrompt,
-                userPrompt,
+                userPrompt: userPrompt,
                 onSuccess: async (clean) => {
                     // モーダルを再表示してJSタブに切り替え
                     const w2 = getWidget(wid);
@@ -3144,8 +3145,8 @@
             const f = forms[curFormIdx];
             if (!f.events) f.events = {};
             const cur = f.events[evName] ||
-                "# フォームイベント: " + evName + "\n" +
-                "# YAML形式でAIへの指示を記述します\n";
+                // 空の場合はデフォルトのYAMLセット.
+                _PROMPT_DEF.DEFAULT_YAML_VALUE(evName, "form");
             const curJs = f.events["_js_" + evName] || "";
             pvRegister("yamlSave", () => saveFormYaml(evName));
             pvRegister("yamlAiGen", () => yamlAiGenerate("form", evName));
