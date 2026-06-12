@@ -106,10 +106,11 @@ await window.vja.app.showConfirm(message)         // 確認 → { ok, confirmed 
     // - globalConstCtx: [任意]グローバル定数を設定します.
     // - formConstCtx: [任意]対処ウィジットを設置してるフォーム定数を設定します.
     // - tablesCtx: [任意]テーブル定義内容を設定します.
+    // - extRuntimeDoc: [任意]拡張ランタイムのyaml定義を設定します.
     const YAML_TO_JS_SYS_PROMPT = function (
         { formName, eventName, wname, wtag, wdescription,
             inputParamsCtx, allWidgetsCtx, formsCtx, globalConstCtx,
-            formConstCtx, tablesCtx }) {
+            formConstCtx, tablesCtx, extRuntimeDoc }) {
 
         return `
 あなたは日本語を専門とするVJAフォームデザイナーのイベント処理コード生成AIです。
@@ -139,6 +140,11 @@ ${formConstCtx}
 
 ### テーブル定義
 ${tablesCtx}
+
+### 拡張ランタイムYAML
+~~~yaml
+${extRuntimeDoc}
+~~~
 `.trim() + "\n";
     }
 
@@ -157,11 +163,12 @@ ${tablesCtx}
     // - globalConstCtx: [任意]グローバル定数を設定します.
     // - formConstCtx: [任意]対処ウィジットを設置してるフォーム定数を設定します.
     // - tablesCtx: [任意]テーブル定義内容を設定します.
+    // - extRuntimeDoc: [任意]拡張ランタイムのyaml定義を設定します.
     // 戻り値: ユーザプロンプトが返却されます.
     const YAML_TO_JS_USER_PROMPT = function (isAppEvent, yamlTableDef, addPrompt,
         { formName, eventName, wname, wtag, wdescription,
             inputParamsCtx, allWidgetsCtx, formsCtx, globalConstCtx,
-            formConstCtx, tablesCtx }) {
+            formConstCtx, tablesCtx, extRuntimeDoc }) {
         let ret;
         // yaml定義に「利用テーブル」定義が存在する場合.
         if (yamlTableDef.trim()) {
@@ -179,9 +186,9 @@ ${tablesCtx}
             // [共通]テーブル定義.
             ret = ret +
                 "\n" +
-                "```yaml\n" +
+                "~~~yaml\n" +
                 yamlTableDef +
-                "\n```";
+                "\n~~~";
         }
         // 「利用テーブル」定義が存在しない場合.
         else {
@@ -217,7 +224,7 @@ ${tablesCtx}
 関数名・引数・戻り値・使用例を含めてください。
 `
         // 最後に対象とするJSファイル内容をセット.
-        return ret.trim() + "\n\n```javascript\n" + js + "```\n";
+        return ret.trim() + "\n\n~~~javascript\n" + js + "~~~\n";
     }
 
     // プログラム生成におけるYAMLが存在しない場合にセット
