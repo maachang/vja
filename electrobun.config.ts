@@ -23,17 +23,18 @@ export default {
                 entrypoint: "src/mainview/project-bridge.ts",
             },
         },
+        // 現状アイコンの設定はうまく動かないのでコメントにしておく.
         // [mac]アイコン(icns)
-        mac: {
-            icons: "icon/vja.icns"
-        },
+        //mac: {
+        //    icons: "icon/vja.icns"
+        //},
         // [windows]アイコン(ico)
-        win: {
-            icon: "icon/vja.ico"
-        },
+        //win: {
+        //    icon: "icon/vja.ico"
+        //},
         // [linux]アイコン(png)
-        linux: {
-            icon: "icon/vja.png"
-        }
+        //linux: {
+        //    icon: "icon/vja.png"
+        //},
     },
 } satisfies ElectrobunConfig;
