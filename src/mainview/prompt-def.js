@@ -83,14 +83,13 @@
   - 戻り値: なし
   - 使用例: "vja.widget.show('btnSubmit');"
   - 使用例説明: btnSubmitを表示する
-
-- 関数名: vja.widget.hide(name):
-  - 説明: 指定名のウィジェットを非表示にする
-  - 引数:
-    - name: string - ウィジェット名
-  - 戻り値: なし
-  - 使用例: "vja.widget.hide('btnSubmit');"
-  - 使用例説明: btnSubmitを非表示にする
+  - 類似関数:
+    - vja.widget.hide(name):
+      - 説明: 指定名のウィジェットを非表示にする
+    - vja.widget.enable(name):
+      - 説明: 指定名のウィジェットを有効にする
+    - vja.widget.disable(name):
+      - 説明: 指定名のウィジェットを無効にする
 
 - 関数名: vja.widget.setVisible(name, visible):
   - 説明: 指定名のウィジェットの表示/非表示を切り替える
@@ -100,22 +99,6 @@
   - 戻り値: なし
   - 使用例: "vja.widget.setVisible('btnDelete', isAdmin);"
   - 使用例説明: isAdminがtrueの場合のみ削除ボタンを表示する
-
-- 関数名: vja.widget.enable(name):
-  - 説明: 指定名のウィジェットを有効にする
-  - 引数:
-    - name: string - ウィジェット名
-  - 戻り値: なし
-  - 使用例: "vja.widget.enable('btnSubmit');"
-  - 使用例説明: 送信ボタンを有効にする
-
-- 関数名: vja.widget.disable(name):
-  - 説明: 指定名のウィジェットを無効にする
-  - 引数:
-    - name: string - ウィジェット名
-  - 戻り値: なし
-  - 使用例: "vja.widget.disable('btnSubmit');"
-  - 使用例説明: 送信ボタンを無効にする
 
 - 関数名: vja.widget.setItems(name, items[]):
   - 説明: selectBoxまたはlistBoxのアイテムをセットする
@@ -245,44 +228,35 @@
   - 戻り値: boolean - 空でなければtrue
   - 使用例: "if (!vja.validate.required(vja.widget.getValue('txtName'))) return;"
   - 使用例説明: 名前が未入力の場合は処理を中断する
-
-- 関数名: vja.validate.isNumber(value):
-  - 説明: 値が数値かチェックする
-  - 引数:
-    - value: any - チェックする値
-  - 戻り値: boolean - 数値であればtrue
-  - 使用例: "if (!vja.validate.isNumber(vja.widget.getValue('txtAge'))) return;"
-  - 使用例説明: 年齢が数値でない場合は処理を中断する
-
-- 関数名: vja.validate.isEmail(value):
-  - 説明: 値がメールアドレス形式かチェックする
-  - 引数:
-    - value: any - チェックする値
-  - 戻り値: boolean - メールアドレス形式であればtrue
-  - 使用例: "if (!vja.validate.isEmail(vja.widget.getValue('txtEmail'))) return;"
-  - 使用例説明: メールアドレスの形式チェックを行う
+  - 類似関数:
+    - vja.validate.isEmail(value):
+      - 説明: 値がメールアドレス形式かチェックする
+    - vja.validate.isNumber(value):
+      - 説明: 値が数値形式かチェックする
+    - vja.validate.isInteger(value):
+      - 説明: 値が整数形式かチェックする
 
 ## ユーティリティ (vja.util.*)
 
 - 関数名: vja.util.uuid():
   - 説明: UUID v4形式の一意な文字列を生成する
   - 引数: なし
-  - 戻り値: string - "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx" 形式のUUID
+  - 戻り値: string UUID形式の文字列が返却されます.
   - 使用例: "const id = vja.util.uuid();"
   - 使用例説明: 新しいレコードのIDとして使用するUUIDを生成する
 
 - 関数名: vja.util.today():
   - 説明: 今日の日付をYYYY-MM-DD形式で返す
   - 引数: なし
-  - 戻り値: string - "YYYY-MM-DD" 形式の日付文字列
+  - 戻り値: string - "YYYY-MM-DD" 形式の文字列
   - 使用例: "vja.widget.setValue('txtDate', vja.util.today());"
   - 使用例説明: 日付入力欄に今日の日付をセットする
 
 - 関数名: vja.util.formatDate(date, format?):
   - 説明: 日付をフォーマットして文字列で返す
   - 引数:
-    - date: Date|string - フォーマットする日付
-    - "format?: string - フォーマット文字列（デフォルト: 'YYYY-MM-DD'）。YYYY/MM/DD/HH/mm/ss が使用可"
+    - date: Date|string - 日付文字列及びDateオブジェクト.
+    - "format?: string - フォーマット文字列（デフォルト: 'YYYY-MM-DD'）
   - 戻り値: string - フォーマットされた日付文字列
   - 使用例: "const str = vja.util.formatDate(new Date(), 'YYYY年MM月DD日');"
   - 使用例説明: 今日の日付を「2026年06月11日」形式にフォーマットする
@@ -366,6 +340,9 @@
   - 例外: HTTPエラー時はエラーをスロー
   - 使用例: "const data = await vja.http.get('https://api.example.com/users');"
   - 使用例説明: ユーザー一覧をAPIから取得する
+  - 類似関数:
+    - await vja.http.delete(url, headers?):
+      - 説明: HTTP DELETEリクエストを送信する
 
 - 関数名: await vja.http.post(url, body, headers?):
   - 説明: HTTP POSTリクエストを送信する
@@ -377,27 +354,9 @@
   - 例外: HTTPエラー時はエラーをスロー
   - 使用例: "const res = await vja.http.post('https://api.example.com/users', { name: '山田', age: 30 });"
   - 使用例説明: 新しいユーザーをAPIに登録する
-
-- 関数名: await vja.http.put(url, body, headers?):
-  - 説明: HTTP PUTリクエストを送信する
-  - 引数:
-    - url: string - リクエスト先URL
-    - body: object|string - リクエストボディ
-    - headers?: Record<string, string> - リクエストヘッダー（省略可）
-  - 戻り値: any - レスポンスのJSONオブジェクトまたはテキスト
-  - 例外: HTTPエラー時はエラーをスロー
-  - 使用例: "await vja.http.put('https://api.example.com/users/1', { name: '山田太郎' });"
-  - 使用例説明: ユーザー情報を更新する
-
-- 関数名: await vja.http.delete(url, headers?):
-  - 説明: HTTP DELETEリクエストを送信する
-  - 引数:
-    - url: string - リクエスト先URL
-    - headers?: Record<string, string> - リクエストヘッダー（省略可）
-  - 戻り値: any - レスポンスのJSONオブジェクトまたはテキスト
-  - 例外: HTTPエラー時はエラーをスロー
-  - 使用例: "await vja.http.delete('https://api.example.com/users/1');"
-  - 使用例説明: ユーザーを削除する
+  - 類似関数:
+    - await vja.http.put(url, body, headers?):
+      - 説明: HTTP PUTリクエストを送信する
 
 ## UI (vja.ui.*)
 
@@ -450,7 +409,7 @@
       // cred = { AWS_ACCESS_KEY_ID: 'xxx', AWS_SECRET_ACCESS_KEY: 'yyy', AWS_REGION: 'ap-northeast-1' }
   - 使用例説明: AWSのS3サービス向けクレデンシャルを取得する
 
-## ログ・ダイアログ
+## ログ出力
 
 - 関数名: await vja.log.info(message):
   - 説明: INFOレベルのログをBun側に記録する
@@ -459,22 +418,13 @@
   - 戻り値: なし
   - 使用例: "await vja.log.info('処理が完了しました');"
   - 使用例説明: 処理完了をログに記録する
+  - 類似関数:
+    - await vja.log.warn(message):
+      - 説明: WARNレベルのログをBun側に記録する
+    - await vja.log.error(message):
+      - 説明: ERRORレベルのログをBun側に記録する
 
-- 関数名: await vja.log.warn(message):
-  - 説明: WARNレベルのログをBun側に記録する
-  - 引数:
-    - message: string - ログメッセージ
-  - 戻り値: なし
-  - 使用例: "await vja.log.warn('データが空です');"
-  - 使用例説明: 警告をログに記録する
-
-- 関数名: await vja.log.error(message):
-  - 説明: ERRORレベルのログをBun側に記録する
-  - 引数:
-    - message: string - ログメッセージ
-  - 戻り値: なし
-  - 使用例: "await vja.log.error('DB接続エラー: ' + e.message);"
-  - 使用例説明: エラーをログに記録する
+## ダイアログ
 
 - 関数名: await vja.app.showDialog(message):
   - 説明: アラートダイアログを表示する
@@ -488,7 +438,7 @@
   - 説明: 確認ダイアログを表示する
   - 引数:
     - message: string - 表示するメッセージ
-  - 戻り値: "{ ok: boolean, confirmed: boolean } - OKを押した場合confirmed=true"
+  - 戻り値: "{ confirmed: boolean } - OKを押した場合confirmed=true"
   - 使用例: |
       const result = await vja.app.showConfirm('削除しますか？');
       if (!result?.confirmed) return;
@@ -557,12 +507,13 @@
   - Arguments:
     - name: string - Widget name
   - Return value: None
-
-- Function name: vja.widget.hide(name):
-  - Description: Hides the widget with the specified name.
-  - Arguments:
-    - name: string - Widget name
-  - Return value: None
+  - Similar functions:
+    - vja.widget.hide(name):
+      - Description: Hides the widget with the specified name.
+    - vja.widget.enable(name):
+      - Description: Enables the widget with the specified name.
+    - vja.widget.disable(name):
+      - Description: Disables the widget with the specified name.
 
 - Function Name: vja.widget.setVisible(name, visible):
   - Description: Toggles the display/hide of the widget with the specified name
@@ -570,18 +521,6 @@
     - name: string - Widget name
   - visible: boolean - Show for true, hide for false
   - Return Value: None
-
-- Function Name: vja.widget.enable(name):
-  - Description: Enables the widget with the specified name
-  - Arguments:
-    - name: string - Widget name
-  - Return Value: None
-
-- Function name: vja.widget.disable(name):
-  - Description: Disables the widget with the specified name
-  - Arguments:
-    - name: string - Widget name
-  - Return value: None
 
 - Function name: vja.widget.setItems(name, items[]):
   - Description: Sets items in a selectBox or listBox
@@ -669,42 +608,37 @@
     - "rules: Record<string, { required?: boolean, maxLength?: number, ... }> - Validation rules"
   - Return Value: "{ valid: boolean, errors: Record<string, string> } - Error message in errors if valid is false"
 
-- Function name: vja.validate.required(value):
+- Function Name: vja.validate.required(value):
   - Description: Checks if the value is not empty.
   - Arguments:
-    - value: any - The value to check
-  - Return value: boolean - Returns true if not empty
-
-- Function name: vja.validate.isNumber(value):
-  - Description: Checks if the value is a number.
-  - Arguments:
-    - value: any - The value to check
-  - Return value: boolean - Returns true if it is a number
-
-- Function name: vja.validate.isEmail(value):
-  - Description: Checks if the value is in email address format.
-  - Arguments:
     - value: any - The value to check.
-  - Return value: boolean - Returns true if it is in email address format.
+  - Return Value: boolean - Returns true if not empty.
+  - Similar Functions:
+    - vja.validate.isEmail(value):
+      - Description: Checks if the value is in email address format.
+    - vja.validate.isNumber(value):
+      - Description: Checks if the value is a number.
+    - vja.validate.isInteger(value):
+      - Description: Checks if the value is in integer format.
 
 ## Utilities (vja.util.*)
 
 - Function name: vja.util.uuid():
   - Description: Generates a unique string in UUID v4 format.
   - Arguments: None
-  - Return value: string - UUID in the format "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
+  - Return value: Returns a string in UUID format.
 
-- Function name: vja.util.today():
+- Function Name: vja.util.today():
   - Description: Returns today's date in YYYY-MM-DD format.
   - Arguments: None
-  - Return Value: string - A date string in "YYYY-MM-DD" format.
+  - Return Value: string - A string in "YYYY-MM-DD" format.
 
 - Function Name: vja.util.formatDate(date, format?):
   - Description: Formats the date and returns it as a string.
   - Arguments:
-    - date: Date|string - The date to format.
-    - "format?: string - The format string (default: 'YYYY-MM-DD'). YYYY/MM/DD/HH/mm/ss are usable."
-  - Return Value: string - The formatted date string.
+    - date: Date|string - Date string and Date object.
+    - "format?: string - Format string (default: 'YYYY-MM-DD')
+  - Return Value: string - Formatted date string
 
 - Function name: vja.util.formatNumber(n, decimals?):
   - Description: Formats a number into a string with decimal separators.
@@ -759,38 +693,27 @@
 ## External APIs (vja.http.*)
 
 - Function Name: await vja.http.get(url, headers?):
-  - Description: Sends an HTTP GET request.
+  - Description: Sends an HTTP GET request
   - Arguments:
-    - url: string - The URL to request.
+    - url: string - Request URL
     - headers?: Record<string, string> - Request headers (optional)
-  - Return Value: any - JSON object or text of the response.
-  - Exceptions: Throws an error if an HTTP error occurs.
+  - Return Value: any - JSON object or text of the response
+  - Exception: Throws an error on HTTP errors
+  - Similar Functions:
+    - await vja.http.delete(url, headers?):
+      - Description: Sends an HTTP DELETE request
 
 - Function Name: await vja.http.post(url, body, headers?):
   - Description: Sends an HTTP POST request
   - Arguments:
     - url: string - Request URL
-    - body: object|string - Request body (objects are converted to JSON)
-    - headers?: Record<string, string> - Request headers (optional)
-  - Return Value: any - JSON object or text of the response
-  - Exception: Throws an error on HTTP errors
-
-- Function Name: await vja.http.put(url, body, headers?):
-  - Description: HTTP Sends a PUT request
-  - Arguments:
-    - url: string - Request URL
-    - body: object|string - Request body
+    - body: object|string - Request body (object is converted to JSON)
     - headers?: Record<string, string> - Request headers (optional)
   - Return value: any - JSON object or text of the response
-  - Exception: Throws an error on HTTP errors
-
-- Function name: await vja.http.delete(url, headers?):
-  - Description: Sends an HTTP DELETE request
-  - Arguments:
-    - url: string - Request URL
-    - headers?: Record<string, string> - Request headers (optional)
-  - Return value: any - JSON object or text of the response
-  - Exception: Throws an error on HTTP errors
+  - Exceptions: Throws an error on HTTP errors
+  - Similar functions:
+    - await vja.http.put(url, body, headers?):
+      - Description: Sends an HTTP PUT request
 
 ## UI (vja.ui.*)
 
@@ -829,25 +752,20 @@
     - service?: string - Service name (e.g., 's3', 'dynamodb'). If omitted, the first credential from infra is used.
   - Return value: "Record<string, string> | null - An object of credential keys and values. Returns null if the credential cannot be retrieved."
 
-## Log Dialog
+## Logging
 
 - Function Name: await vja.log.info(message):
-  - Description: Logs an INFO-level log to the Bund.
+  - Description: Logs an INFO-level message to the Bund.
   - Arguments:
     - message: string - Log message
   - Return Value: None
+  - Similar Functions:
+    - await vja.log.warn(message):
+      - Description: Logs a WARN-level message to the Bund.
+    - await vja.log.error(message):
+      - Description: Logs an ERROR-level message to the Bund.
 
-- Function Name: await vja.log.warn(message):
-  - Description: Logs a WARN-level log to the Bund.
-  - Arguments:
-    - message: string - Log message
-  - Return Value: None
-
-- Function name: await vja.log.error(message):
-  - Description: Logs an ERROR level message to Bun.
-  - Arguments:
-    - message: string - Log message
-  - Return value: None
+## Dialog
 
 - Function name: await vja.app.showDialog(message):
   - Description: Displays an alert dialog
@@ -859,7 +777,7 @@
   - Description: Displays a confirmation dialog
   - Arguments:
     - message: string - Message to display
-  - Return value: "{ ok: boolean, confirmed: boolean } - confirmed=true if OK is pressed"
+  - Return value: "{ confirmed: boolean } - confirmed=true if OK is pressed"
 ~~~
 `.trim();
 
@@ -928,6 +846,9 @@
   - 戻り値: "string | null - セッション値。存在しない場合はnull"
   - 使用例: "const lastLogin = vja.session.get('lastLogin');"
   - 使用例説明: 前回ログイン日時をセッションから取得する
+  - 類似関数:
+    - vja.session.delete(key):
+      - 説明: セッションから指定キーを削除する
 
 - 関数名: vja.session.set(key, value):
   - 説明: セッションにキーと値を保存する
@@ -938,14 +859,6 @@
   - 使用例: "vja.session.set('appStartTime', new Date().toISOString());"
   - 使用例説明: アプリ起動時刻をセッションに保存する
 
-- 関数名: vja.session.delete(key):
-  - 説明: セッションから指定キーを削除する
-  - 引数:
-    - key: string - 削除するセッションキー
-  - 戻り値: なし
-  - 使用例: "vja.session.delete('tempData');"
-  - 使用例説明: 終了時に一時データをセッションから削除する
-
 ## ログ (vja.log.*)
 
 - 関数名: vja.log.info(message):
@@ -955,22 +868,11 @@
   - 戻り値: なし
   - 使用例: "vja.log.info('アプリを起動しました');"
   - 使用例説明: アプリ起動をログに記録する
-
-- 関数名: vja.log.warn(message):
-  - 説明: WARNレベルのログをファイルとターミナルに出力する
-  - 引数:
-    - message: string - ログメッセージ
-  - 戻り値: なし
-  - 使用例: "vja.log.warn('設定ファイルが見つかりません');"
-  - 使用例説明: 警告をログに記録する
-
-- 関数名: vja.log.error(message):
-  - 説明: ERRORレベルのログをファイルとターミナルに出力する
-  - 引数:
-    - message: string - ログメッセージ
-  - 戻り値: なし
-  - 使用例: "vja.log.error('DB初期化エラー: ' + e.message);"
-  - 使用例説明: エラーをログに記録する
+  - 類似関数:
+    - vja.log.warn(message):
+      - 説明: WARNレベルのログをファイルとターミナルに出力する
+    - vja.log.error(message):
+      - 説明: ERRORレベルのログをファイルとターミナルに出力する
 
 - 使用例（onStart）: |
     // アプリ起動時の初期化処理例
@@ -1058,11 +960,14 @@
 
 ## Session (vja.session.*)
 
-- Function Name: vja.session.get(key):
-  - Description: Retrieves the value corresponding to the key from the session
+- Function name: vja.session.get(key):
+  - Description: Retrieves the value corresponding to the key from the session.
   - Arguments:
     - key: string - Session key
-  - Return Value: "string | null - Session value. null if it does not exist"
+  - Return value: "string | null - Session value. null if it does not exist."
+  - Similar functions:
+    - vja.session.delete(key):
+      - Description: Deletes the specified key from the session.
 
 - Function Name: vja.session.set(key, value):
   - Description: Saves a key and value to the session.
@@ -1071,31 +976,18 @@
     - value: string - Value to save
   - Return value: None
 
-- Function name: vja.session.delete(key):
-  - Description: Deletes the specified key from the session.
-  - Arguments:
-    - key: string - Session key to delete
-  - Return value: None
-
 ## Logs (vja.log.*)
 
-- Function name: vja.log.info(message):
-  - Description: Outputs INFO-level logs to a file and terminal.
+- Function Name: vja.log.info(message):
+- Description: Outputs INFO-level logs to a file and terminal.
   - Arguments:
     - message: string - Log message
   - Return Value: None
-
-- Function Name: vja.log.warn(message):
-  - Description: Outputs a WARN-level log to a file and terminal.
-  - Arguments:
-    - message: string - Log message
-  - Return Value: None
-
-- Function Name: vja.log.error(message):
-  - Description: Outputs an ERROR-level log to a file and terminal.
-  - Arguments:
-    - message: string - Log message
-  - Return Value: None
+  - Similar Functions:
+    - vja.log.warn(message):
+      - Description: Outputs a WARN-level log to a file and terminal.
+    - vja.log.error(message):
+      - Description: Outputs an ERROR-level log to a file and terminal.
 ~~~
 `.trim();
 
@@ -1132,26 +1024,45 @@
             VJA_USE_BACK_JS_INFO :
             VJA_USE_FRONT_JS_INFO;
 
+        // ルールをバックエンド、フロントエンドで記載.
+        const rule = isAppEvent ?
+            // バックエンド.
+            `
+  - コメント等は日本語で
+  - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
+  - 全ての vja.* 呼び出しは await を付ける
+  - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
+  - コードのみを返す（説明文・マークダウン不要）
+`.trim() :
+            // フロントエンド.
+            `
+  - コメント等は日本語で
+  - ロジックは必ずインラインで記述する。ヘルパー関数を定義してはいけない（例: handleXxx, doXxx 等の関数定義は禁止）
+    - 悪い例: async function handleButtonClick() { ... }
+    - 良い例: const result = await vja.app.showConfirm("...");
+  - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
+  - 全ての vja.* 呼び出しは await を付ける
+  - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
+  - window.confirm, window.alertは使わない(vja.app.showDialog, vja.app.showConfirmを利用)
+  - コードのみを返す（説明文・マークダウン不要）
+`.trim();
+
         return `
 あなたは日本語を専門とするVJAフォームデザイナーのイベント処理コード生成AIです。
 ユーザーが書いたYAML仕様をもとに、JavaScriptの実装コードを生成します。
 
----
-${vjaUseJsInfo}
----
-
 ## コード生成ルール(原則)
-- コメント等は日本語で
-- 必ず _vjaRun(async () => { ... }) でラップする（エラー自動処理）
-- SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
-- 全ての vja.* 呼び出しは await を付ける
-- 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
-- コードのみを返す（説明文・マークダウン不要）
+${rule}
 
 ## プロジェクト情報
 ### 現在のフォーム: ${formName}
 ### 対象ウィジェット: ${wname} ${wtag}) ${wdescription ? "//" + wdescription : ""}
 ### 対象イベント: ${eventName}
+
+## vjaランタイム.
+---
+${vjaUseJsInfo}
+---
 
 ### フォーム内の入力パラメータ
 ---
@@ -1211,7 +1122,6 @@ ${extRuntimeDoc}
         { formName, eventName, wname, wtag, wdescription,
             inputParamsCtx, allWidgetsCtx, formsCtx, globalConstCtx,
             formConstCtx, tablesCtx, extRuntimeDoc }) {
-
         // [英語]isAppEvent で、フロントとバックのランタイム説明の切替を行う.
         //   - true の場合、アプリイベント(bunネイティブ実行).
         //   - falseの場合、ウィジットイベント(js).
@@ -1219,26 +1129,46 @@ ${extRuntimeDoc}
             VJA_USE_BACK_JS_INFO_ENG :
             VJA_USE_FRONT_JS_INFO_ENG;
 
+        // ルールをバックエンド、フロントエンドで記載.
+        const rule = isAppEvent ?
+            // バックエンド.
+            `
+  - Comments and other information should be in Japanese.
+  - Always use placeholders (?) in SQL queries (to prevent SQL injection).
+  - Add "await" to all "vja.*" calls.
+  - Use "vja.form.navigate('screen name')" for screen transitions (never use "location").
+  - Return only code (no explanations or markdown required).
+`.trim() :
+            // フロントエンド.
+            `
+  - Comments and other information should be in Japanese.
+  - Write all logic inline. Never define helper functions (e.g. handleXxx, doXxx).
+    - Bad: async function handleButtonClick() { ... }
+    - Good: const result = await vja.app.showConfirm("...");
+  - Always use placeholders (?) in SQL (to prevent SQL injection).
+  - Add "await" to all "vja.*" calls.
+  - Use "vja.form.navigate('screen name')" for screen transitions (※ "location" should never be used).
+  - Do not use "window.confirm" or "window.alert" (use "vja.app.showDialog" or "vja.app.showConfirm" instead).
+  - Return only code (no explanations or markdown required).
+`.trim();
+
+
         return `
 You are a VJA form designer and event handling code generation AI specializing in Japanese.
 You generate JavaScript implementation code based on the YAML specification written by the user.
 
----
-${vjaUseJsInfo}
----
-
 ## Code Generation Rules (Principles)
-- Comments, etc., should be in Japanese.
-- Always wrap with _vjaRun(async () => { ... }) (Automatic error handling).
-- Always use placeholders (?) for SQL (SQL injection prevention).
-- Add await to all vja.* calls.
-- Use vja.form.navigate('screen name') for screen transitions (※ Never use location).
-- Return only code (No explanations or markdown required).
+${rule}
 
 ## Project Information
 ### Current Form: ${formName}
 ### Target Widget: ${wname} ${wtag}) ${wdescription ? "//" + wdescription : ""}
 ### Target Event: ${eventName}
+
+## vja Runtime.
+---
+${vjaUseJsInfo}
+---
 
 ### Input Parameters in the Form
 ---

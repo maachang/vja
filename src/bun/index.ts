@@ -1105,8 +1105,10 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
             lines.push(`  (function() {`);
             lines.push(`    var el = document.getElementById(${JSON.stringify(w.name)});`);
             lines.push(`    if (!el) return;`);
-            lines.push(`    el.addEventListener(${JSON.stringify(domEv)}, async function(event) {`);
-            lines.push(`      ${js.split("\n").join("\n      ")}`);
+            lines.push(`    el.addEventListener(${JSON.stringify(domEv)}, function(event) {`);
+            lines.push(`      _vjaRun(async function() {`);
+            lines.push(`        ${js.split("\n").join("\n        ")}`);
+            lines.push(`      });`);
             lines.push(`    });`);
             lines.push(`  })();`);
         }
@@ -1118,8 +1120,10 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
         const domEv = evNameToDom(evName);
         if (!domEv) continue;
         lines.push(`  // form.${evName}`);
-        lines.push(`  document.addEventListener(${JSON.stringify(domEv)}, async function(event) {`);
-        lines.push(`    ${(js as string).split("\n").join("\n    ")}`);
+        lines.push(`  document.addEventListener(${JSON.stringify(domEv)}, function(event) {`);
+        lines.push(`    _vjaRun(async function() {`);
+        lines.push(`      ${(js as string).split("\n").join("\n      ")}`);
+        lines.push(`    });`);
         lines.push(`  });`);
     }
     lines.push("});");
