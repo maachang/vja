@@ -558,10 +558,10 @@
 ## Screen Transitions (vja.form.*)
 
 - Function name: vja.form.navigate(formName, options?):
-  - Description: Navigates to the specified screen. Saves current input values ​​by default
+  - Description: Navigates to the specified screen. Saves current input values by default
   - Arguments:
     - formName: string - Name of the destination form
-    - "options?: { save?: boolean } - save=false to not save input values ​​(defaults to true)"
+    - "options?: { save?: boolean } - save=false to not save input values (defaults to true)"
   - Return value: None
   - Exception: Outputs a warning if showForm is undefined
 
@@ -926,14 +926,14 @@
   - Description: Executes an SQL SELECT statement and returns an array of result rows.
   - Arguments:
     - sql: string - The SQL statement to execute (use the placeholder ?)
-  - params?: (string|number|boolean|null)[] - An array of values ​​to pass to the placeholder (optional)
+  - params?: (string|number|boolean|null)[] - An array of values to pass to the placeholder (optional)
   - Return Value: "Record<string, any>[] - An array of result rows. An empty array on error."
 
 - Function Name: vja.db.execute(sql, params?):
   - Description: Executes an INSERT/UPDATE/DELETE statement in SQL
   - Arguments:
     - sql: string - The SQL statement to execute (use the placeholder ?)
-  - params?: (string|number|boolean|null)[] - An array of values ​​to pass to the placeholder (optional)
+  - params?: (string|number|boolean|null)[] - An array of values to pass to the placeholder (optional)
   - Return Value: "{ changes: number, lastInsertRowid: number } | null - The execution result. null on error"
 
 - Function Name: vja.db.clearTable(tableName):
