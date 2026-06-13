@@ -1209,6 +1209,19 @@ ${extRuntimeDoc}
 `.trim() + "\n\n" + ENG_TO_LAST_PHRASE_JP;
     }
 
+    // yamlのコメントを削除(AIによっては、コメントが逆に影響を及ぼす事になるため)
+    const _removeYamlShComments = function (sourceCode) {
+        // 行頭コメント行のみ削除する方針:
+        // - インラインコメントは残す（URLの#等の誤削除を防ぐ）
+        // - ブロックスカラー（|, >）内の#を誤って消さない
+        // - 空行の連続を圧縮してトークン削減
+        return sourceCode
+            .split('\n')
+            .filter(line => !/^\s*#/.test(line))  // 行頭コメント行のみ削除
+            .join('\n')
+            .replace(/\n{3,}/g, '\n\n')          // 空行の連続を最大2行に圧縮
+            .trim();
+    }
 
     // YAMLからjsに変換する場合のユーザプロンプトを生成.
     // - isAppEvent: [必須]定義されている場合はアプリイベント(bunネイティブ実行)で、存在しない場合はイベント系(js)で実行.
@@ -1247,10 +1260,10 @@ ${extRuntimeDoc}
             }
             // [共通]テーブル定義.
             ret = ret +
-                "\n" +
+                "\n---" +
                 "~~~yaml\n" +
-                yamlDef +
-                "\n~~~";
+                _removeYamlShComments(yamlDef) + // yamlのコメントを除去.
+                "\n~~~\n---";
         }
         // 「利用テーブル」定義が存在しない場合.
         else {
@@ -1309,10 +1322,10 @@ ${extRuntimeDoc}
             }
             // [共通]テーブル定義.
             ret = ret +
-                "\n" +
+                "\n---" +
                 "~~~yaml\n" +
-                yamlDef +
-                "\n~~~";
+                _removeYamlShComments(yamlDef) + // yamlのコメントを除去.
+                "\n~~~\n---";
         }
         // 「利用テーブル」定義が存在しない場合.
         else {
