@@ -1043,7 +1043,7 @@
   - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
   - 全ての vja.* 呼び出しは await を付ける
   - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
-  - window.confirm, window.alertは使わない(vja.app.showDialog, vja.app.showConfirmを利用)
+  - window.confirm, window.alertは原則禁止(vja.app.showDialog, vja.app.showConfirmを利用)
   - コードのみを返す（説明文・マークダウン不要）
 `.trim();
 
@@ -1148,7 +1148,7 @@ ${extRuntimeDoc}
   - Always use placeholders (?) in SQL (to prevent SQL injection).
   - Add "await" to all "vja.*" calls.
   - Use "vja.form.navigate('screen name')" for screen transitions (※ "location" should never be used).
-  - Do not use "window.confirm" or "window.alert" (use "vja.app.showDialog" or "vja.app.showConfirm" instead).
+  - Using window.confirm and window.alert is generally prohibited (use vja.app.showDialog and vja.app.showConfirm instead).
   - Return only code (no explanations or markdown required).
 `.trim();
 
@@ -1243,7 +1243,7 @@ ${extRuntimeDoc}
             } else {
                 // ウィジットイベント(js).
                 ret = "「" + wname + "」の「" + eventName +
-                    "」イベント処理に対して、以下のYAML仕様に基づいてJavaScriptコードを生成してください。";
+                    "」イベント処理に対するインライン実装を、以下のYAML仕様に基づいてJavaScriptコードを生成してください。";
             }
             // [共通]テーブル定義.
             ret = ret +
@@ -1264,7 +1264,7 @@ ${extRuntimeDoc}
             else {
                 // ウィジットイベント(js).
                 ret = "「" + wname + "」の「" + eventName +
-                    "」イベント処理のJavaScriptコードを生成してください。";
+                    "」イベント処理に対するインライン実装の、JavaScriptコードを生成してください。";
             }
         }
         // 追加指示がある場合はセット.
@@ -1304,8 +1304,8 @@ ${extRuntimeDoc}
                     "APIs such as vja.db.query() / vja.session.get() are available."
             } else {
                 // ウィジットイベント(js).
-                ret = "For the " + eventName + " event handling of " +
-                    wname + ", please generate JavaScript code based on the following YAML specification.";
+                ret = "Generate JavaScript code for the inline implementation of the " + wname + " " + eventName +
+                    " event handling based on the following YAML specification."
             }
             // [共通]テーブル定義.
             ret = ret +
@@ -1325,8 +1325,8 @@ ${extRuntimeDoc}
             }
             else {
                 // ウィジットイベント(js).
-                ret = "Please generate JavaScript code for handling the event " +
-                    eventName + " in " + wname + ".";
+                ret = "Please generate JavaScript code for the inline implementation of the " +
+                    wname + " + " + eventName + " event handling."
             }
         }
         // 追加指示がある場合はセット.
