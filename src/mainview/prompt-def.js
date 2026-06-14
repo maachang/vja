@@ -15,7 +15,7 @@
   - 引数:
     - sql: string - 実行するSQL文（プレースホルダー ? を使用）
     - params?: (string|number|boolean|null)[] - プレースホルダーに渡す値の配列（省略可）
-  - 戻り値: "{ ok: boolean, rows: Record<string, any>[] } - ok=trueの場合rows に結果行の配列"
+  - 戻り値: "Record<string, any>[] - 結果行の配列（エラー時は例外をスロー）"
   - 使用例: "const result = await vja.db.query('SELECT * FROM users WHERE id = ?', [1]);"
   - 使用例説明: usersテーブルからid=1のレコードを取得する
 
@@ -445,7 +445,7 @@
   - Description: Executes an SQL SELECT statement and returns the result rows
   - Arguments:
     - sql: string - The SQL statement to execute (use the placeholder ?)
-    - params?: (string|number|boolean|null)[] - Array of values to pass to the placeholder (optional)
+    - Return value: Record<string, any>[] - Array of result rows (throws an exception on error)
   - Return Value: "{ ok: boolean, rows: Record<string, any>[] } - If ok=true, rows will contain an array of result rows"
 
 - Function name: await vja.db.execute(sql, params?):
@@ -1409,16 +1409,16 @@ Include the function name, description, arguments, return value, and exceptions.
 
 # --- 定義サンプル説明 ---
 # 処理:
-#   - 「YES, NO」のダイアログを「テストです」の内容で表示する:
-#     - 「YES」が押された場合、ダイアログで「OKです」と表示して「トースト」にも同じ文字を出力.
-#     - 「NO」が押された場合、ダイアログで「NGです」と表示して「トースト」にも同じ文字を出力.
+# - 「YES, NO」のダイアログを「テストです」の内容で表示する:
+#   - 「YES」が押された場合、ダイアログで「OKです」と表示して「トースト」にも同じ文字を出力.
+#   - 「NO」が押された場合、ダイアログで「NGです」と表示して「トースト」にも同じ文字を出力.
 # 正常終了: 「正常に終了しました」とログを出す.
 #
 # --- 規定ワード ---
 # 利用テーブル:
-#   - table1,
-#   - table2,
-#   - table3,
+#   - table1
+#   - table2
+#   - table3
 #   今回の処理で利用するデータベーステーブル名を設定することで、AIがテーブル内容を理解してくれる。
 #   テーブルのI/Oを行う場合は必須。
 # 説明: 処理に対する概要説明
@@ -1427,12 +1427,11 @@ Include the function name, description, arguments, return value, and exceptions.
 #
 
 # ここから記載してください。
-# イベント: ${eventName} (${wname})
+イベント: ${eventName} (${wname})
 説明:
-
-# テーブルが存在する場合はコメントを外して、利用テーブルを指定します.
+# 利用テーブルを登録する場合は、コメントを外して下さい.
 #利用テーブル:
-
+アクション:
 `.trim() + "\n\n\n";
     }
 

@@ -18,6 +18,17 @@ const pending = {
     dbQuery:      null as Pending<{ ok: boolean; rows: any[]; error?: string }> | null,
     dbExecute:    null as Pending<{ ok: boolean; result: any; error?: string }> | null,
     dbTransaction:null as Pending<{ ok: boolean; error?: string }> | null,
+    fileRead:     null as Pending<{ ok: boolean; content: string | null; error?: string }> | null,
+    fileWrite:    null as Pending<{ ok: boolean; error?: string }> | null,
+    fileExists:   null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
+    fileDelete:   null as Pending<{ ok: boolean; error?: string }> | null,
+    fileCopy:     null as Pending<{ ok: boolean; error?: string }> | null,
+    dirCreate:    null as Pending<{ ok: boolean; error?: string }> | null,
+    dirDelete:    null as Pending<{ ok: boolean; error?: string }> | null,
+    dirList:      null as Pending<{ ok: boolean; entries: string[]; error?: string }> | null,
+    dirExists:    null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
+    getCloudInfras:    null as Pending<{ infras: any[] }> | null,
+    getDecryptedCred:  null as Pending<{ ok: boolean; value: string }> | null,
 };
 
 const resolve = <K extends keyof typeof pending>(
@@ -44,9 +55,21 @@ const rpc = Electroview.defineRPC<VjaRPCType>({
             navigateFormResult: (v: any) => resolve("navigateForm", v),
             sessionGetResult:   (v: any) => resolve("sessionGet",   v),
             sessionSetResult:   (v: any) => resolve("sessionSet",   v),
-            dbQueryResult:      (v: any) => resolve("dbQuery",      v),
-            dbExecuteResult:    (v: any) => resolve("dbExecute",    v),
-            dbTransactionResult:(v: any) => resolve("dbTransaction", v),
+            dbQueryResult:       (v: any) => resolve("dbQuery",       v),
+            dbExecuteResult:     (v: any) => resolve("dbExecute",     v),
+            dbTransactionResult: (v: any) => resolve("dbTransaction",  v),
+            fileReadResult:      (v: any) => resolve("fileRead",       v),
+            fileWriteResult:     (v: any) => resolve("fileWrite",      v),
+            fileExistsResult:    (v: any) => resolve("fileExists",     v),
+            fileDeleteResult:    (v: any) => resolve("fileDelete",     v),
+            fileCopyResult:      (v: any) => resolve("fileCopy",       v),
+            dirCreateResult:     (v: any) => resolve("dirCreate",      v),
+            dirDeleteResult:     (v: any) => resolve("dirDelete",      v),
+            dirListResult:       (v: any) => resolve("dirList",        v),
+            dirExistsResult:     (v: any) => resolve("dirExists",      v),
+            getCloudInfrasResult:        (v: any) => resolve("getCloudInfras",   v),
+            getDecryptedCredentialResult:(v: any) => resolve("getDecryptedCred", v),
+            loadScriptResult:            () => {},
         },
     },
 });
@@ -185,14 +208,52 @@ w.vja.project = {
 
 // セッション
 w.vja.session = {
-    get: (key: string) =>
+    get: (key: string, defaultVal: any = null) =>
         mkPromise("sessionGet", () => s.sessionGetRequest({ key }))
-            .then((r: any) => r.value),
+            .then((r: any) => r.value !== null ? r.value : defaultVal),
     set: (key: string, value: string | null) =>
         mkPromise("sessionSet", () => s.sessionSetRequest({ key, value })),
     delete: (key: string) =>
         mkPromise("sessionSet", () => s.sessionSetRequest({ key, value: null })),
 };
+
+// ファイル操作
+w.vja.file = {
+    read:   (path: string) =>
+        mkPromise("fileRead",   () => s.fileReadRequest({ path })),
+    write:  (path: string, content: string) =>
+        mkPromise("fileWrite",  () => s.fileWriteRequest({ path, content })),
+    exists: (path: string) =>
+        mkPromise("fileExists", () => s.fileExistsRequest({ path }))
+            .then((r: any) => r.value),
+    delete: (path: string) =>
+        mkPromise("fileDelete", () => s.fileDeleteRequest({ path })),
+    copy:   (src: string, dest: string) =>
+        mkPromise("fileCopy",   () => s.fileCopyRequest({ src, dest })),
+};
+
+// ディレクトリ操作
+w.vja.dir = {
+    create: (path: string) =>
+        mkPromise("dirCreate", () => s.dirCreateRequest({ path })),
+    delete: (path: string) =>
+        mkPromise("dirDelete", () => s.dirDeleteRequest({ path })),
+    list:   (path: string) =>
+        mkPromise("dirList",   () => s.dirListRequest({ path }))
+            .then((r: any) => r.entries),
+    exists: (path: string) =>
+        mkPromise("dirExists", () => s.dirExistsRequest({ path }))
+            .then((r: any) => r.value),
+};
+
+// クラウドインフラ
+w.vja.cloud = w.vja.cloud || {};
+w.vja.cloud.list = () =>
+    mkPromise("getCloudInfras", () => s.getCloudInfrasRequest({}))
+        .then((r: any) => r.infras);
+w.vja.cloud.getCredential = (infraId: string, key: string) =>
+    mkPromise("getDecryptedCred", () => s.getDecryptedCredentialRequest({ infraId, key }))
+        .then((r: any) => r.value);
 
 // console.* を vja.log.* (RPC経由) に差し替え
 const _origConsole = {

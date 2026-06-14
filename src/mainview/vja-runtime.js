@@ -263,25 +263,28 @@
         navigate(formName, options = {}) {
             const save = options.save !== false; // デフォルトtrue
             if (save) {
-                const curName = document.querySelector(".vja-form.active")?.id?.replace("form-", "") || "";
-                if (curName) {
-                    _formHistory.push({
-                        formName: curName,
-                        inputs: vja.widget.getAllInputs(),
-                    });
-                }
+                const inputs = vja.widget.getAllInputs();
+                _formHistory.push({ formName: document.title || "", inputs });
             }
-            if (typeof global.showForm === "function") global.showForm(formName);
-            else console.warn("[vja.form.navigate] showForm が未定義です");
+            // RPC経由でBun側にフォーム切り替えを依頼
+            if (vja.project?.navigate) {
+                vja.project.navigate(formName);
+            } else {
+                console.warn("[vja.form.navigate] vja.project.navigate が未定義です");
+            }
         },
 
         // 前の画面に戻る（入力内容を復元）
-        back() {
+        async back() {
             const prev = _formHistory.pop();
             if (!prev) { console.warn("[vja.form.back] 履歴がありません"); return; }
-            if (typeof global.showForm === "function") global.showForm(prev.formName);
-            // 少し待ってから復元（DOM更新後）
-            setTimeout(() => vja.widget.setAllInputs(prev.inputs), 50);
+            if (vja.project?.navigate) {
+                await vja.project.navigate(prev.formName);
+                // 少し待ってから復元（DOM更新後）
+                setTimeout(() => vja.widget.setAllInputs(prev.inputs), 50);
+            } else {
+                console.warn("[vja.form.back] vja.project.navigate が未定義です");
+            }
         },
 
         // 履歴をクリア
