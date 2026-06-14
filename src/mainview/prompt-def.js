@@ -8,15 +8,6 @@
     // [フロントエンド]利用可能なjavascript関数の説明.
     // AI以外に、js利用者向けのvjaランタイム説明等に利用を想定.
     const VJA_USE_FRONT_JS_INFO = `
-## 実行環境
-- フロントエンド: HTML/JavaScript（WebView）
-
-## 関数説明.
-~~~yaml
-# VJA Runtime API 関数一覧
-# vja.* で利用可能なAPI定義
-# ※ await が必要な関数には必ず await を付けること
-
 ## DB操作 (vja.db.*)
 
 - 関数名: await vja.db.query(sql, params?):
@@ -443,22 +434,11 @@
       const result = await vja.app.showConfirm('削除しますか？');
       if (!result?.confirmed) return;
   - 使用例説明: 削除確認ダイアログを表示し、キャンセル時は処理を中断する
-~~~
 `.trim();
 
     // [英語版][フロントエンド]利用可能なjavascript関数の説明.
     // ※必須条件: 英語版は使用例、使用例説明は不要.
     const VJA_USE_FRONT_JS_INFO_ENG = `
-## Execution Environment
-- Frontend: HTML/JavaScript (WebView)
-
-## Function Description
-
-~~~yaml
-# VJA Runtime API Function List
-# API definitions available in vja.*
-# * Always include await for functions that require it
-
 ## DB Operations (vja.db.*)
 
 - Function Name: await vja.db.query(sql, params?):
@@ -778,17 +758,11 @@
   - Arguments:
     - message: string - Message to display
   - Return value: "{ confirmed: boolean } - confirmed=true if OK is pressed"
-~~~
 `.trim();
 
     // [バックエンド]利用可能なjavascript関数の説明.
     // AI以外に、js利用者向けのvjaランタイム説明等に利用を想定.
     const VJA_USE_BACK_JS_INFO = `
-## 実行環境
-- バックエンド: Bun.js（SQLite, ファイルI/O）
-
-## 関数説明.
-~~~yaml
 ## DB操作 (vja.db.*)
 
 - 関数名: vja.db.query(sql, params?):
@@ -909,17 +883,11 @@
         'INSERT INTO app_log (start_time, end_time) VALUES (?, ?)',
         [startTime, endTime]
     );
-~~~
 `.trim();
 
     // [英語版][バックエンド]利用可能なjavascript関数の説明.
     // ※必須条件: 英語版は使用例、使用例説明は不要.
     const VJA_USE_BACK_JS_INFO_ENG = `
-## Execution Environment
-- Backend: Bun.js (SQLite, File I/O)
-
-## Function Description
-~~~yaml
 ## DB Operations (vja.db.*)
 
 - Function Name: vja.db.query(sql, params?):
@@ -988,7 +956,6 @@
       - Description: Outputs a WARN-level log to a file and terminal.
     - vja.log.error(message):
       - Description: Outputs an ERROR-level log to a file and terminal.
-~~~
 `.trim();
 
     // 英語promptの最後に日本語で表記としてつける文字
@@ -1054,9 +1021,18 @@
 ## コード生成ルール(原則)
 ${rule}
 
-## vjaランタイム.
+## vjaランタイムYAML.
 ---
+~~~yaml
 ${vjaUseJsInfo}
+~~~
+---
+
+### 拡張ランタイムYAML
+---
+~~~yaml
+${extRuntimeDoc}
+~~~
 ---
 
 ### フォーム内の入力パラメータ
@@ -1087,13 +1063,6 @@ ${formConstCtx}
 ### テーブル定義
 ---
 ${tablesCtx}
----
-
-### 拡張ランタイムYAML
----
-~~~yaml
-${extRuntimeDoc}
-~~~
 ---
 `.trim() + "\n";
     }
@@ -1155,9 +1124,18 @@ You generate JavaScript implementation code based on the YAML specification writ
 ## Code Generation Rules (Principles)
 ${rule}
 
-## vja Runtime.
+## vja Runtime(YAML).
 ---
+~~~yaml
 ${vjaUseJsInfo}
+~~~
+---
+
+### Extended Runtime(YAML)
+---
+~~~yaml
+${extRuntimeDoc}
+~~~
 ---
 
 ### Input Parameters in the Form
@@ -1188,13 +1166,6 @@ ${formConstCtx}
 ### Table Definitions
 ---
 ${tablesCtx}
----
-
-### Extended Runtime YAML
----
-~~~yaml
-${extRuntimeDoc}
-~~~
 ---
 `.trim() + "\n\n" + ENG_TO_LAST_PHRASE_JP;
     }
