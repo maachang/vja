@@ -18,6 +18,7 @@ import { Database } from "bun:sqlite";
 import { type VjaRPCType, type DbRow, type DbResult } from "../shared/types";
 import { initLogger, writeLog } from "./logger";
 import { copyCompileAssets } from "./copy-compile-assets";
+import { decompressGzip, parseCsvLine } from "./bun-utils";
 import { initProjectDb, clearProjectDb, getProjectDb, closeProjectDb } from "./db-manager";
 import type { TableDef } from "./db-manager";
 
@@ -1160,10 +1161,10 @@ const runOnStart = async (): Promise<void> => {
             const countRow = db.query(`SELECT COUNT(*) as cnt FROM ${tbl.name}`).get() as any;
             if (countRow?.cnt !== 0) continue;
             // gzip展開
-            const text = await _decompressGzip(csv.data);
+            const text = await decompressGzip(csv.data);
             const lines = text.split(/\r?\n/).filter((l: string) => l.trim());
             if (lines.length < 2) continue;
-            const headers = _parseCsvLine(lines[0]);
+            const headers = parseCsvLine(lines[0]);
             const tblCols = tbl.columns.map((c: any) => c.name);
             // テーブルに存在するカラムのみ使用
             const validHeaders = headers.filter((h: string) => tblCols.includes(h));
@@ -1174,7 +1175,7 @@ const runOnStart = async (): Promise<void> => {
             );
             const tx = db.transaction(() => {
                 for (let i = 1; i < lines.length; i++) {
-                    const vals = _parseCsvLine(lines[i]);
+                    const vals = parseCsvLine(lines[i]);
                     if (vals.length === 0) continue;
                     const row = colIndices.map((idx: number) => vals[idx] ?? null);
                     stmt.run(...row);
@@ -1194,48 +1195,7 @@ const runOnStart = async (): Promise<void> => {
     }
 };
 
-// gzip+Base64 → テキストに展開（Bun側）
-const _decompressGzip = async (b64: string): Promise<string> => {
-    const binary = atob(b64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const ds = new DecompressionStream("gzip");
-    const writer = ds.writable.getWriter();
-    writer.write(bytes);
-    writer.close();
-    const chunks: Uint8Array[] = [];
-    const reader = ds.readable.getReader();
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-    }
-    const total = chunks.reduce((s, c) => s + c.length, 0);
-    const result = new Uint8Array(total);
-    let offset = 0;
-    for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.length; }
-    return new TextDecoder().decode(result);
-};
 
-// CSV1行をパース（ダブルクォート対応）
-const _parseCsvLine = (line: string): string[] => {
-    const result: string[] = [];
-    let cur = "", inQ = false;
-    for (let i = 0; i < line.length; i++) {
-        const c = line[i];
-        if (inQ) {
-            if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
-            else if (c === '"') inQ = false;
-            else cur += c;
-        } else {
-            if (c === '"') inQ = true;
-            else if (c === ',') { result.push(cur); cur = ""; }
-            else cur += c;
-        }
-    }
-    result.push(cur);
-    return result;
-};
 
 // OnExit を Bun側で実行
 const runOnExit = async (): Promise<void> => {

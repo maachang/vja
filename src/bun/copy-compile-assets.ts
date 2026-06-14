@@ -13,6 +13,7 @@ const DEST = join(homedir(), ".vja-apps", "VJAFormDesigner", "compile-assets", "
 const FILES: [string, string][] = [
     ["logger.ts",                          "bun/logger.ts"],
     ["db-manager.ts",                      "bun/db-manager.ts"],
+    ["bun-utils.ts",                       "bun/bun-utils.ts"],
     ["standalone-index.ts",               "bun/standalone-index.ts"],
     [join("..", "shared", "types.ts"),     "shared/types.ts"],
     [join("..", "mainview", "project-bridge.ts"), "mainview/project-bridge.ts"],

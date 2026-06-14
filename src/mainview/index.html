@@ -3103,8 +3103,7 @@
             const ta = $(taId), hl = $(hlId);
             if (!ta || !hl) return;
             hl.innerHTML = tokenizeFn(ta.value);
-            // nowrap前提: 横幅のみscrollWidthに合わせる
-            // 縦はtextareaがコンテナに固定されるため設定不要
+            // nowrap前提: 横幅のみscrollWidthに合わせる（縦はflexで固定）
             hl.style.width = ta.scrollWidth + "px";
             _hlSync(taId, hlId);
         }
