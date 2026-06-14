@@ -9,26 +9,45 @@ import { homedir } from "os";
 
 const DEST = join(homedir(), ".vja-apps", "VJAFormDesigner", "compile-assets", "src");
 
-// コピー対象ファイル（import.meta.dir基準 → compile-assets/src/ 以下の相対パス）
-const FILES: [string, string][] = [
-    ["logger.ts",                          "bun/logger.ts"],
-    ["db-manager.ts",                      "bun/db-manager.ts"],
-    ["bun-utils.ts",                       "bun/bun-utils.ts"],
-    ["standalone-index.ts",               "bun/standalone-index.ts"],
-    [join("..", "shared", "types.ts"),     "shared/types.ts"],
-    [join("..", "mainview", "project-bridge.ts"), "mainview/project-bridge.ts"],
-    [join("..", "mainview", "vja-runtime.js"),    "mainview/vja-runtime.js"],
+// コピー対象ファイル定義
+// [vjaRoot/src/ からの相対パス, compile-assets/src/ からの相対パス]
+// compileProject() でも同じリストを使って一元管理する
+export const FILES: [string, string][] = [
+    ["bun/logger.ts", "bun/logger.ts"],
+    ["bun/db-manager.ts", "bun/db-manager.ts"],
+    ["bun/bun-utils.ts", "bun/bun-utils.ts"],
+    ["bun/standalone-index.ts", "bun/standalone-index.ts"],
+    ["bun/project-runner.ts", "bun/project-runner.ts"],
+    ["shared/types.ts", "shared/types.ts"],
+    ["mainview/project-bridge.ts", "mainview/project-bridge.ts"],
+    ["mainview/vja-runtime.js", "mainview/vja-runtime.js"],
 ];
 
-export const copyCompileAssets = (): void => {
+// build後のsrcパスを取得.
+export const BUILD_VJA_SRC_PATH = join(process.env.PWD, "..", "Resources/app");
+
+// vjaRoot: vjaプロジェクトルート（省略時は process.env.PWD を使用）
+export const copyCompileAssets = (vjaRoot?: string): void => {
+    // 指定引数をを整理.
+    let root = vjaRoot || process.env.PWD || "";
+    if (existsSync(BUILD_VJA_SRC_PATH)) {
+        // build後とみなして root にコンパイル済みでのパスをセット.
+        root = BUILD_VJA_SRC_PATH;
+    }
+    if (!root) {
+        console.warn("[copy-compile-assets] vjaプロジェクトルートが取得できません");
+        return;
+    }
+    console.debug("### start copyCompileAssets: " + root);
     let copied = 0;
     for (const [srcRel, dstRel] of FILES) {
-        const src = join(import.meta.dir, srcRel);
+        const src = join(root, "src", srcRel);
         const dst = join(DEST, dstRel);
         if (!existsSync(src)) {
-            // コンパイル済みバイナリ環境ではソースが存在しないためスキップ
             console.debug(`[copy-compile-assets] スキップ（ソースなし）: ${srcRel}`);
             continue;
+        } else {
+            console.debug(`[copy-compile-assets] NOスキップ: ${srcRel}`);
         }
         const dstDir = dirname(dst);
         if (!existsSync(dstDir)) mkdirSync(dstDir, { recursive: true });

@@ -1,6 +1,9 @@
 // electrobun.config.ts
 import type { ElectrobunConfig } from "electrobun";
 
+// 💡 実行コマンドに "build" が含まれているか判定
+const isBuildMode = process.argv.includes("build");
+
 export default {
     app: {
         name: "vja",
@@ -23,18 +26,17 @@ export default {
                 entrypoint: "src/mainview/project-bridge.ts",
             },
         },
-        // 現状アイコンの設定はうまく動かないのでコメントにしておく.
-        // [mac]アイコン(icns)
-        //mac: {
-        //    icons: "icon/vja.icns"
-        //},
-        // [windows]アイコン(ico)
-        //win: {
-        //    icon: "icon/vja.ico"
-        //},
-        // [linux]アイコン(png)
-        //linux: {
-        //    icon: "icon/vja.png"
-        //},
+        // build時のみ実行.
+        // ここでプロジェクトコンパイルで必要なファイルをコピー.
+        copy: isBuildMode ? {
+            "src/bun/logger.ts": "/src/bun/logger.ts",
+            "src/bun/db-manager.ts": "src/bun/db-manager.ts",
+            "src/bun/bun-utils.ts": "src/bun/bun-utils.ts",
+            "src/bun/standalone-index.ts": "src/bun/standalone-index.ts",
+            "src/bun/project-runner.ts": "src/bun/project-runner.ts",
+            "src/shared/types.ts": "src/shared/types.ts",
+            "src/mainview/project-bridge.ts": "src/mainview/project-bridge.ts",
+            "src/mainview/vja-runtime.js": "src/mainview/vja-runtime.js",
+        } : {},
     },
 } satisfies ElectrobunConfig;

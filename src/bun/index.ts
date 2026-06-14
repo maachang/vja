@@ -17,13 +17,41 @@ import {
 import { Database } from "bun:sqlite";
 import { type VjaRPCType, type DbRow, type DbResult } from "../shared/types";
 import { initLogger, writeLog } from "./logger";
-import { copyCompileAssets } from "./copy-compile-assets";
+import { copyCompileAssets, FILES, BUILD_VJA_SRC_PATH } from "./copy-compile-assets";
 import { decompressGzip, parseCsvLine } from "./bun-utils";
 import { initProjectDb, clearProjectDb, getProjectDb, closeProjectDb } from "./db-manager";
 import type { TableDef } from "./db-manager";
 
-const _TITLE = "VJA Form Designer";
-const _VERSION = "0.1.0";
+// vja の名前とバージョンを取得.
+let _VJA_JSON = null;
+let _VJA_RUN_MODE = "unknwon"; // 実行モード不明.
+// ビルド後なら、version.jsonを読み込む.
+try {
+    _VJA_JSON = JSON.parse(readFileSync(join(process.env.PWD, "..", "Resources", "version.json"), "UTF-8"));
+    _VJA_RUN_MODE = "build"; // コンパイル済み実行.
+} catch (e) {
+    _VJA_JSON = null;
+}
+if (_VJA_JSON == null) {
+    // ビルド前ならpackage.jsonを読み込む.
+    try {
+        _VJA_JSON = JSON.parse(readFileSync(join(process.env.PWD, "package.json"), "UTF-8"));
+        _VJA_RUN_MODE = "dev"; // コンパイル済み実行.
+    } catch (e) {
+        _VJA_JSON = {
+            name: "vja",
+            version: "unknown",
+        }
+    }
+}
+
+// jsonからタイトルとバージョンを取得.
+const _TITLE = _VJA_JSON.name;
+const _VERSION = _VJA_JSON.version;
+// 一旦コンソール出力.
+process.stdout.write("### run index.ts: " + _TITLE + "(" + _VERSION + "): " + _VJA_RUN_MODE + "\n");
+
+// 非同ファイル実行用.
 const execFileAsync = promisify(execFile);
 
 // ── コマンド実行ヘルパー ──────────────────────────────
@@ -719,40 +747,52 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
         if (!_currentProjectName) {
             return { ok: false, error: "プロジェクト名が設定されていません。\nプロジェクト情報からプロジェクト名を設定してください。" };
         }
-        const projName    = _currentProjectName;
+        const projName = _currentProjectName;
         const projVersion = _currentProjectVersion || "1.0.0";
-        const projId      = projName.toLowerCase().replace(/[^a-z0-9]/g, "-");
-        const distPath    = join(_distDir, projName);
+        const projId = projName.toLowerCase().replace(/[^a-z0-9]/g, "-");
+        const distPath = join(_distDir, projName);
 
-        // ── ディレクトリ構成を作成 ─────────────────────
-        const srcBunDir      = join(distPath, "src", "bun");
-        const srcSharedDir   = join(distPath, "src", "shared");
+        // ── ディレクトリ構成を作成（既存の場合はクリア） ──
+        if (existsSync(distPath)) rmSync(distPath, { recursive: true, force: true });
+        const srcBunDir = join(distPath, "src", "bun");
+        const srcSharedDir = join(distPath, "src", "shared");
         const srcMainviewDir = join(distPath, "src", "mainview");
         for (const d of [srcBunDir, srcSharedDir, srcMainviewDir]) {
-            if (!existsSync(d)) mkdirSync(d, { recursive: true });
+            mkdirSync(d, { recursive: true });
         }
 
         // ── 既存ファイルをコピー ───────────────────────
-        // scripts/copy-compile-assets.ts で app/src/ 以下にコピー済みのファイルを使う
-        // ビルド後は import.meta.dir/../../../app/src/ 以下に配置される
-        // compile-assets は起動時に copy-compile-assets.ts で最新化される
-        const _appSrcDir = join(_dataDir, "compile-assets", "src");
+        // vjaプロジェクトルートは PWD 環境変数から取得（bun run dev 実行時のカレントディレクトリ）
+        let vjaRoot = process.env.PWD || "";
+        if (existsSync(BUILD_VJA_SRC_PATH)) {
+            // build後とみなして root にコンパイル済みでのパスをセット.
+            vjaRoot = BUILD_VJA_SRC_PATH;
+        }
+        console.info("# compile src vjaRoot: " + vjaRoot);
+        if (!vjaRoot) throw new Error("PWD 環境変数が取得できません");
 
-        // Bun側
-        copyFileSync(join(_appSrcDir, "bun", "logger.ts"),     join(srcBunDir, "logger.ts"));
-        copyFileSync(join(_appSrcDir, "bun", "db-manager.ts"), join(srcBunDir, "db-manager.ts"));
-        // shared
-        copyFileSync(join(_appSrcDir, "shared", "types.ts"), join(srcSharedDir, "types.ts"));
-        // mainview
+        // FILES リストを使って一元管理（copy-compile-assets.tsと共通）
+        const destDirMap: Record<string, string> = {
+            "bun": srcBunDir,
+            "shared": srcSharedDir,
+            "mainview": srcMainviewDir,
+        };
+        for (const [srcRel, _] of FILES) {
+            const topDir = srcRel.split("/")[0];
+            const destDir = destDirMap[topDir];
+            if (!destDir) continue;
+            const fileName = srcRel.split("/").slice(1).join("/");
+            copyFileSync(join(vjaRoot, "src", srcRel), join(destDir, fileName));
+        }
+
+        // ── project-bridge.js（ビルド済み）をコピー ──
         const bridgeJsSrc = join(import.meta.dir, "..", "views", "projectview", "project-bridge.js");
         if (existsSync(bridgeJsSrc)) {
             copyFileSync(bridgeJsSrc, join(srcMainviewDir, "project-bridge.js"));
         }
-        copyFileSync(join(_appSrcDir, "mainview", "project-bridge.ts"), join(srcMainviewDir, "project-bridge.ts"));
-        copyFileSync(join(_appSrcDir, "mainview", "vja-runtime.js"),    join(srcMainviewDir, "vja-runtime.js"));
 
         // ── スタンドアロン版 index.ts をコピー ────────
-        copyFileSync(join(_appSrcDir, "bun", "standalone-index.ts"), join(srcBunDir, "index.ts"));
+        copyFileSync(join(vjaRoot, "src", "bun", "standalone-index.ts"), join(srcBunDir, "index.ts"));
 
         // ── フォームHTMLを生成 ────────────────────────
         const extRuntimeJs = (_currentProjectExtRuntime || "").trim();
