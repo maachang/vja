@@ -1054,11 +1054,6 @@
 ## コード生成ルール(原則)
 ${rule}
 
-## プロジェクト情報
-### 現在のフォーム: ${formName}
-### 対象ウィジェット: ${wname} ${wtag}) ${wdescription ? "//" + wdescription : ""}
-### 対象イベント: ${eventName}
-
 ## vjaランタイム.
 ---
 ${vjaUseJsInfo}
@@ -1160,11 +1155,6 @@ You generate JavaScript implementation code based on the YAML specification writ
 ## Code Generation Rules (Principles)
 ${rule}
 
-## Project Information
-### Current Form: ${formName}
-### Target Widget: ${wname} ${wtag}) ${wdescription ? "//" + wdescription : ""}
-### Target Event: ${eventName}
-
 ## vja Runtime.
 ---
 ${vjaUseJsInfo}
@@ -1245,6 +1235,14 @@ ${extRuntimeDoc}
             inputParamsCtx, allWidgetsCtx, formsCtx, globalConstCtx,
             formConstCtx, tablesCtx, extRuntimeDoc }) {
         let ret;
+
+        // フロント条件.
+        const frontInfo = isAppEvent ? "" : `
+## プロジェクト情報
+  - 現在のフォーム: ${formName}
+  - 対象ウィジェット: ${wname} ${wtag}) ${wdescription ? "//" + wdescription : ""}
+  - 対象イベント: ${eventName}`.trim();
+
         // yaml定義が設定されている場合.
         if (yamlDef.trim()) {
             // isAppEvent: true の場合、アプリイベント(bunネイティブ実行).
@@ -1255,8 +1253,8 @@ ${extRuntimeDoc}
                     "vja.db.query() / vja.session.get()等のAPIが利用可能です。";
             } else {
                 // ウィジットイベント(js).
-                ret = "「" + wname + "」の「" + eventName +
-                    "」イベント処理に対するインライン実装を、以下のYAML仕様に基づいてJavaScriptコードを生成してください。";
+                ret = frontInfo +
+                    "\n---\n\nイベント処理に対するインライン実装を、以下のYAML仕様に基づいてJavaScriptコードを生成してください。";
             }
             // [共通]テーブル定義.
             ret = ret +
@@ -1276,8 +1274,7 @@ ${extRuntimeDoc}
             }
             else {
                 // ウィジットイベント(js).
-                ret = "「" + wname + "」の「" + eventName +
-                    "」イベント処理に対するインライン実装の、JavaScriptコードを生成してください。";
+                ret = frontInfo + "\n---\n\nイベント処理に対するインライン実装の、JavaScriptコードを生成してください。";
             }
         }
         // 追加指示がある場合はセット.
@@ -1307,6 +1304,14 @@ ${extRuntimeDoc}
             inputParamsCtx, allWidgetsCtx, formsCtx, globalConstCtx,
             formConstCtx, tablesCtx, extRuntimeDoc }) {
         let ret;
+
+        // フロント条件.
+        const frontInfo = isAppEvent ? "" : `
+## Project Information
+  - Current Form: ${formName}
+  - Target Widget: ${wname} ${wtag}) ${wdescription ? "//" + wdescription : ""}
+  - Target Event: ${eventName}`.trim();
+
         // yaml定義が設定されている場合.
         if (yamlDef.trim()) {
             // isAppEvent: true の場合、アプリイベント(bunネイティブ実行).
@@ -1317,8 +1322,8 @@ ${extRuntimeDoc}
                     "APIs such as vja.db.query() / vja.session.get() are available."
             } else {
                 // ウィジットイベント(js).
-                ret = "Generate JavaScript code for the inline implementation of the " + wname + " " + eventName +
-                    " event handling based on the following YAML specification."
+                ret = frontInfo +
+                    "\n---\n\nGenerate JavaScript code for inline implementation of event handling based on the following YAML specification.";
             }
             // [共通]テーブル定義.
             ret = ret +
@@ -1338,8 +1343,7 @@ ${extRuntimeDoc}
             }
             else {
                 // ウィジットイベント(js).
-                ret = "Please generate JavaScript code for the inline implementation of the " +
-                    wname + " + " + eventName + " event handling."
+                ret = frontInfo + "\n---\n\nGenerate JavaScript code for inline implementation of event handling.";
             }
         }
         // 追加指示がある場合はセット.
