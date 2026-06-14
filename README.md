@@ -1,42 +1,90 @@
-# VJA Form Designer — Electrobun 版
+# 🎨 VJA Form Designer
 
-## 概要
+> **ノーエンジニアでも、ローカルGUIアプリが作れる。**
+> VB スタイルのフォームデザイナー × ローカル AI コード生成。
 
-このプロジェクトは基本ノーコードで ClaudeCode で作成(細かな部分は手動で修正している)。
+<p align="center">
+  <img src="docs/screenshot.png" alt="VJA Form Designer Screenshot" width="800"/>
+</p>
 
-VB スタイルのフォームデザイナー(vja = visual js for AI)。Electrobun + Bun で動作するローカル GUI アプリ。
+---
 
-最終的には ローカルLLM や OpenAIのAPIと連携して、ソースコード生成をAIで自動生成する。
+## ✨ VJA とは？
 
-これによって「ノーエンジニア」がローカルアプリを、VBライクに作成する事を目標としている。
+**VJA（Visual JavaScript for AI）** は、VB6 や Excel マクロの現代的な後継として設計された、デスクトップ GUI アプリ開発ツールです。
 
-- 2026/06/02 時点では、AIでソースコード作成は出来ない状態.
+- 🖱️ **ドラッグ＆ドロップ** でウィジェットを配置するだけ
+- 🤖 **ローカル LLM / OpenAI API** と連携し、イベント処理コードを AI が自動生成
+- 🏗️ **コンパイルして配布** — ユーザーの環境に Bun すら不要な単体アプリを生成
+- 🗄️ **SQLite 内蔵** — データベース操作も YAML で指示するだけ
 
-## 動作環境
+エンジニアでなくても、業務アプリが作れる時代へ。
 
-| 項目       | バージョン              |
-| ---------- | ----------------------- |
-| Bun        | 1.3.14 以上             |
-| Electrobun | latest                  |
-| OS         | macOS / Linux / Windows |
+---
 
-## セットアップ
+## 🚀 主な機能
 
-まず初めに「bun.js」をインストールする。
+### 🎨 フォームデザイナー
+- VB スタイルのドラッグ＆ドロップ UI
+- 複数フォーム（画面）管理・切り替え
+- リアルタイムプレビュー
 
-https://bun.com/
+### 🤖 AI コード生成
+- YAML でイベント処理の指示を記述 → AI が JavaScript を生成
+- ローカル LLM（llama.cpp）対応 — データがクラウドに出ない
+- OpenAI 互換 API にも対応
+- 拡張ランタイムの AI 向けドキュメント自動生成
 
-上のURLから、OSやCPUに合わせてダウンロード.
+### 📦 コンパイル・配布
+- ワンクリックで Electrobun ネイティブアプリを生成
+- Linux / macOS / Windows 向けインストーラーを出力
+- 配布先に Bun のインストールは不要
 
-ダウンロード後以下を実行する.
+### 🗄️ データ管理
+- SQLite データベース内蔵
+- テーブル定義をビジュアルエディタで管理
+- マスターデータを CSV でインポート（gzip 圧縮してプロジェクトに同梱）
+- テーブルが空の場合に自動 INSERT
+
+### ☁️ クラウドインフラ連携
+- AWS / GCP / Azure のクレデンシャルを安全に管理（AES-GCM 暗号化）
+- `vja.getCloudInfraCredential("AWS", "s3")` で取得、AI 生成コードでもそのまま使える
+
+### ⚙️ 拡張ランタイム
+- プロジェクト固有の JavaScript ライブラリを定義
+- AI がその API を理解してコード生成に活用
+
+---
+
+## 🛠️ ウィジェット一覧
+
+| カテゴリ | ウィジェット |
+|---------|-------------|
+| 入力 | text / inputType / checkbox / radioButton |
+| 表示 | label / picture / 水平線 / 垂直線 |
+| 選択 | listBox / selectBox |
+| レイアウト | groupBox / テーブル |
+| アクション | button |
+
+---
+
+## 📋 動作環境
+
+| 項目 | バージョン |
+|------|-----------|
+| Bun | 1.3.14 以上 |
+| Electrobun | latest |
+| OS | macOS / Linux / Windows |
+
+> ⚠️ **Windows on Snapdragon X（ARM64）** の場合、Electrobun が未対応のため x86 版 Bun をインストールしてエミュレーション実行が必要です。
+
+---
+
+## ⚡ セットアップ
 
 ```bash
-# 1. glt clone(https)
+# 1. リポジトリをクローン
 git clone https://github.com/maachang/vja.git
-# または glt clone(ssh)
-git clone git@github.com:maachang/vja.git
-
-# ディレクトリ移動.
 cd vja
 
 # 2. 依存パッケージをインストール
@@ -44,78 +92,17 @@ bun install
 
 # 3. 開発モードで起動
 bun run dev
-
 ```
 
-コンパイルして、実行ファイルを作成.
+### 配布用ビルド
 
 ```bash
-# ビルド（配布用）
 bun run build
 ```
 
-これにより、VB風の画面(vja)が起動することができる.
+### Linux での保存ダイアログ
 
-※ ただ windows for snapdragon x (ARM64 の Windows）の場合、electrobunが対応していないので、x86 用のbun.js をインストールしてエミュレーション実行で対応する必要があるので、注意が必要。
-
-## ファイル構成
-
-```
-vja-electrobun/
-├── README.md                      # このファイル
-├── electrobun.config.ts           # Electrobun ビルド設定
-├── package.json                   # 依存パッケージ定義
-└── src/
-    ├── bun/
-    │   └── index.ts               # メインプロセス（ウィンドウ生成・RPC定義）
-    ├── mainview/
-    │   ├── bridge.ts              # Electroview RPC ブリッジ
-    │   └── index.html             # フォームデザイナー本体 HTML
-    └── shared/
-        └── types.ts               # Bun ↔ Webview 共有 RPC 型定義
-```
-
-## RPC 設計（message ベース）
-
-Electrobun の RPC `request` はダイアログ表示中にタイムアウトするため、
-ファイル操作はすべて **`message`（タイムアウトなし）** で実装しています。
-
-```
-HTML側                        Bun側
-─────────────────────────────────────────────────
-bunOpenFile()   --[message]--> openFileRequest
-                               ↓ Utils.openFileDialog()
-bunOpenFile()   <-[message]--  openFileResult
-
-bunSaveProject() -[message]--> saveFileRequest
-                               ↓ saveFileDialog() + Bun.write()
-bunSaveProject() <-[message]-- saveFileResult
-
-bunCloseApp()   --[message]--> closeAppRequest
-                               ↓ win.close()
-```
-
-`bridge.ts` 内で Promise に変換しているので、
-HTML 側は `await window.bunOpenFile()` / `await window.bunSaveProject()` と
-通常の非同期関数として呼び出せます。
-
-## 主な機能
-
-- **フォームデザイナー** — VB スタイルのドラッグ＆ドロップでウィジェット配置
-- **マルチフォーム** — 複数画面をプロジェクト内で管理・切り替え
-- **プロジェクト保存・読み込み** — `.vjaproj`（JSON）形式
-- **HTML エクスポート** — 全フォームを1つの HTML に出力（画面遷移 JS 付き）
-- **YAML イベント定義** — 各ウィジェットのイベントを YAML 形式で記述（将来の AI 連携用）
-
-## ウィジェット一覧
-
-button / label / text（multiline対応）/ inputType / checkbox / radioButton /
-listBox / selectBox / groupBox / picture / 水平線 / 垂直線 / テーブル
-
-## Linux 環境での保存ダイアログ
-
-保存ダイアログに `zenity`（GNOME）または `kdialog`（KDE）を使用します。
-インストールされていない場合はダイアログが開きません。
+`zenity`（GNOME）または `kdialog`（KDE）が必要です。
 
 ```bash
 # GNOME 環境
@@ -124,3 +111,94 @@ sudo apt install zenity
 # KDE 環境
 sudo apt install kdialog
 ```
+
+---
+
+## 📁 ファイル構成
+
+```
+vja/
+├── electrobun.config.ts       # Electrobun ビルド設定
+├── package.json
+└── src/
+    ├── bun/
+    │   ├── index.ts           # メインプロセス（ウィンドウ生成・RPC定義）
+    │   ├── logger.ts          # ロガー
+    │   ├── db-manager.ts      # SQLite 管理
+    │   └── standalone-index.ts # コンパイル済みアプリのエントリポイント
+    ├── mainview/
+    │   ├── index.html         # フォームデザイナー本体
+    │   ├── bridge.ts          # Webview RPC ブリッジ
+    │   ├── project-bridge.ts  # プロジェクト実行ウィンドウ RPC
+    │   ├── vja-runtime.js     # vja.* API ランタイム
+    │   └── prompt-def.js      # AI プロンプト定義
+    └── shared/
+        └── types.ts           # Bun ↔ Webview 共有 RPC 型定義
+```
+
+---
+
+## 🤖 AI コード生成の使い方
+
+YAML でイベントの指示を書くだけで、AI が JavaScript を生成します。
+
+```yaml
+# ボタンクリック時の処理
+ai_prompt: |
+  ユーザー名と年齢を入力値から取得し、
+  users テーブルに INSERT してから Form2 に遷移する。
+  INSERT 前にバリデーションを行うこと。
+```
+
+生成されたコードはそのまま実行可能で、手動で微調整もできます。
+
+---
+
+## 📖 vja.* API（抜粋）
+
+```javascript
+// DB 操作
+const result = await vja.db.query('SELECT * FROM users WHERE id = ?', [id]);
+await vja.db.execute('INSERT INTO users (name, age) VALUES (?, ?)', [name, age]);
+
+// ウィジェット操作
+const name = vja.widget.getValue('txtName');
+vja.widget.setValue('lblResult', '処理完了');
+
+// 画面遷移
+vja.form.navigate('Form2');
+
+// クラウド認証情報
+const cred = await vja.getCloudInfraCredential('AWS', 's3');
+```
+
+---
+
+## 🏗️ アーキテクチャ
+
+```
+フォームデザイナー (WebView)
+    ↕ RPC (message ベース・タイムアウトなし)
+Bun.js メインプロセス
+    ├── SQLite (データベース)
+    ├── ファイル I/O
+    └── プロジェクト実行ウィンドウ (WebView)
+            ↕ RPC
+        vja-runtime.js (vja.* API)
+```
+
+Electrobun の RPC は `request` がダイアログ表示中にタイムアウトするため、
+ファイル操作はすべて **`message`（タイムアウトなし）** で実装しています。
+
+---
+
+## 📝 ライセンス
+
+MIT License
+
+---
+
+<p align="center">
+  <b>VJA Form Designer</b> — ノーエンジニアのためのローカル GUI アプリ開発環境<br/>
+  Built with ❤️ using Electrobun + Bun.js + Claude Code
+</p>
