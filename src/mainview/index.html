@@ -2528,9 +2528,11 @@
                 let extra = "";
                 if (isJs) {
                     // { で終わる行 → +1段、} で始まる行 → -1段
-                    if (curLine.trimEnd().endsWith("{")) {
+                    // コメント行（// で始まる）はインデント追加しない
+                    const isJsComment = curLine.trimStart().startsWith("//");
+                    if (!isJsComment && curLine.trimEnd().endsWith("{")) {
                         extra = "    ";
-                    } else if (curLine.trimStart().startsWith("}") && baseIndent.length >= 4) {
+                    } else if (!isJsComment && curLine.trimStart().startsWith("}") && baseIndent.length >= 4) {
                         const insert = "\n" + baseIndent.slice(4);
                         ta.value = v.slice(0, s) + insert + v.slice(en);
                         ta.selectionStart = ta.selectionEnd = s + insert.length;
@@ -2539,19 +2541,21 @@
                 } else {
                     // YAML Enter の動作
                     const t = curLine.trimStart();
-                    if (/^(-\s+)(.+)$/.test(t)) {
+                    // コメント行（# で始まる）はインデント追加しない
+                    const isYamlComment = t.startsWith("#");
+                    if (!isYamlComment && /^(-\s+)(.+)$/.test(t)) {
                         // "- 内容あり" → 次行も "- " を継続
                         const bullet = t.match(/^(-\s+)/)[1];
                         const insert = "\n" + baseIndent + bullet;
                         ta.value = v.slice(0, s) + insert + v.slice(en);
                         ta.selectionStart = ta.selectionEnd = s + insert.length;
                         editorHlUpdate(ta.id); return;
-                    } else if (/^-\s*$/.test(t)) {
+                    } else if (!isYamlComment && /^-\s*$/.test(t)) {
                         // "- " だけの空行 → リスト終了（行を削除して通常改行）
                         ta.value = v.slice(0, ls) + "\n" + v.slice(en);
                         ta.selectionStart = ta.selectionEnd = ls + 1;
                         editorHlUpdate(ta.id); return;
-                    } else if (/:\s*$/.test(t) && !t.startsWith("-")) {
+                    } else if (!isYamlComment && /:\s*$/.test(t) && !t.startsWith("-")) {
                         extra = "  ";
                     }
                 }
@@ -4401,14 +4405,14 @@
             const chunks = [];
             const reader = cs.readable.getReader();
             while (true) {
-                const { done, value } = await reader.read();
+                const {done, value} = await reader.read();
                 if (done) break;
                 chunks.push(value);
             }
             const total = chunks.reduce((s, c) => s + c.length, 0);
             const result = new Uint8Array(total);
             let offset = 0;
-            for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.length; }
+            for (const chunk of chunks) {result.set(chunk, offset); offset += chunk.length;}
             return btoa(String.fromCharCode(...result));
         }
 
@@ -4424,14 +4428,14 @@
             const chunks = [];
             const reader = ds.readable.getReader();
             while (true) {
-                const { done, value } = await reader.read();
+                const {done, value} = await reader.read();
                 if (done) break;
                 chunks.push(value);
             }
             const total = chunks.reduce((s, c) => s + c.length, 0);
             const result = new Uint8Array(total);
             let offset = 0;
-            for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.length; }
+            for (const chunk of chunks) {result.set(chunk, offset); offset += chunk.length;}
             return new TextDecoder().decode(result);
         }
 
@@ -4442,12 +4446,12 @@
             for (let i = 0; i < line.length; i++) {
                 const c = line[i];
                 if (inQ) {
-                    if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
+                    if (c === '"' && line[i + 1] === '"') {cur += '"'; i++;}
                     else if (c === '"') inQ = false;
                     else cur += c;
                 } else {
                     if (c === '"') inQ = true;
-                    else if (c === ',') { result.push(cur); cur = ""; }
+                    else if (c === ',') {result.push(cur); cur = "";}
                     else cur += c;
                 }
             }
@@ -4461,7 +4465,7 @@
             if (!csv?.data) return;
             try {
                 const text = await _decompressCsv(csv.data);
-                const blob = new Blob([text], { type: "text/csv" });
+                const blob = new Blob([text], {type: "text/csv"});
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
