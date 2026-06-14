@@ -2397,6 +2397,8 @@
         function editorKeyHandler(e) {
             const ta = e.target;
             if (!ta) return;
+            // IME変換中のキーイベントは無視（Mac等でのIME確定時の誤改行を防ぐ）
+            if (e.isComposing || e.keyCode === 229) return;
             const ctrl = e.ctrlKey || e.metaKey;
             const isJs = ta.id === "js-ta" || ta.id === "ta-extrt-js";
             const state = ta.id === "js-ta" ? _ju
