@@ -13,6 +13,8 @@ interface Pending<T> { resolve: Resolver<T>; reject: Rejecter; }
 const pending = {
     log:          null as Pending<{ ok: boolean }> | null,
     navigateForm: null as Pending<{ ok: boolean; error?: string }> | null,
+    openFile:     null as Pending<{ content: string | null; path: string | null }> | null,
+    dbInit:       null as Pending<{ ok: boolean; error?: string }> | null,
     sessionGet:   null as Pending<{ ok: boolean; value: string | null }> | null,
     sessionSet:   null as Pending<{ ok: boolean }> | null,
     dbQuery:      null as Pending<{ ok: boolean; rows: any[]; error?: string }> | null,
@@ -53,6 +55,8 @@ const rpc = Electroview.defineRPC<VjaRPCType>({
         messages: {
             logResult:          (v: any) => resolve("log",          v),
             navigateFormResult: (v: any) => resolve("navigateForm", v),
+            openFileResult:     (v: any) => resolve("openFile",     v),
+            dbInitResult:       (v: any) => resolve("dbInit",       v),
             sessionGetResult:   (v: any) => resolve("sessionGet",   v),
             sessionSetResult:   (v: any) => resolve("sessionSet",   v),
             dbQueryResult:       (v: any) => resolve("dbQuery",       v),
@@ -105,6 +109,15 @@ w.vja.app = {
             );
         }),
     closeWindow: () => s.stopProjectRequest({}),
+    loadScript: (url: string) =>
+        new Promise<void>((resolve, reject) => {
+            if (document.querySelector(`script[src="${url}"]`)) { resolve(); return; }
+            const sc = document.createElement("script");
+            sc.src = url;
+            sc.onload = () => resolve();
+            sc.onerror = () => reject(new Error("Script load failed: " + url));
+            document.head.appendChild(sc);
+        }),
 };
 // ショートハンド
 w.vja.dialog  = (message: string) => w.vja.app.showDialog(message);
@@ -215,7 +228,18 @@ w.vja.session = {
         mkPromise("sessionSet", () => s.sessionSetRequest({ key, value })),
     delete: (key: string) =>
         mkPromise("sessionSet", () => s.sessionSetRequest({ key, value: null })),
+    clear: () =>
+        mkPromise("sessionSet", () => s.sessionSetRequest({ key: "__clear_all__", value: "__clear__" })),
 };
+
+// ファイル選択（openCsv/openJson用）
+w.vja.io = w.vja.io || {};
+w.vja.io.openFile = (filter: string = "*") =>
+    mkPromise("openFile", () => s.openFileRequest({ filter, lastPath: null }));
+
+// DB init
+w.vja.db.init = (ddlStatements: string[]) =>
+    mkPromise("dbInit", () => s.dbInitRequest({ ddlStatements }));
 
 // ファイル操作
 w.vja.file = {

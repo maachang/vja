@@ -265,8 +265,13 @@ const openProjectWindow = async (htmlPath: string, w: number, h: number): Promis
                     _projectWindow?.webview.rpc.send.sessionGetResult({ ok: true, value });
                 },
                 sessionSetRequest: ({ key, value }) => {
-                    if (value === null) _session.delete(key);
-                    else _session.set(key, value);
+                    if (key === "__clear_all__" && value === "__clear__") {
+                        _session.clear();
+                    } else if (value === null) {
+                        _session.delete(key);
+                    } else {
+                        _session.set(key, value);
+                    }
                     _projectWindow?.webview.rpc.send.sessionSetResult({ ok: true });
                 },
                 stopProjectRequest: async () => {

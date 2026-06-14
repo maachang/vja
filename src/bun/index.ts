@@ -1378,8 +1378,13 @@ const openProjectWindow = async (htmlPath: string, w: number, h: number): Promis
                     _projectWindow?.webview.rpc.send.sessionGetResult({ ok: true, value });
                 },
                 sessionSetRequest: ({ key, value }) => {
-                    if (value === null) _session.delete(key);
-                    else _session.set(key, value);
+                    if (key === "__clear_all__" && value === "__clear__") {
+                        _session.clear();
+                    } else if (value === null) {
+                        _session.delete(key);
+                    } else {
+                        _session.set(key, value);
+                    }
                     _projectWindow?.webview.rpc.send.sessionSetResult({ ok: true });
                 },
                 stopProjectRequest: async () => {
@@ -1433,6 +1438,172 @@ const openProjectWindow = async (htmlPath: string, w: number, h: number): Promis
                     } catch (e: any) {
                         _projectWindow?.webview.rpc.send.dbTransactionResult({ ok: false, error: e.message });
                     }
+                },
+
+                dbInitRequest: async ({ ddlStatements }) => {
+                    try {
+                        const db = _currentProjectDbDir
+                            ? getProjectDb(_currentProjectDbDir)
+                            : getDb();
+                        const tx = db.transaction(() => {
+                            for (const ddl of ddlStatements) db.run(ddl);
+                        });
+                        tx();
+                        _projectWindow?.webview.rpc.send.dbInitResult({ ok: true });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.dbInitResult({ ok: false, error: e.message });
+                    }
+                },
+
+                openFileRequest: async ({ filter, lastPath }) => {
+                    try {
+                        const ext = filter === "vjaproj" ? "vjaproj" : filter;
+                        const startingFolder = lastPath ? dirname(lastPath) : _lastDir;
+                        const paths = await Utils.openFileDialog({
+                            allowedFileTypes: process.platform === "win32" ? ext : `*.${ext}`,
+                            startingFolder,
+                        });
+                        const path = paths?.[0] ?? null;
+                        if (path) {
+                            const content = await Bun.file(path).text();
+                            _projectWindow?.webview.rpc.send.openFileResult({ content, path });
+                        } else {
+                            _projectWindow?.webview.rpc.send.openFileResult({ content: null, path: null });
+                        }
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.openFileResult({ content: null, path: null });
+                    }
+                },
+
+                // ── クラウドインフラ ──────────────────────────
+                getCloudInfrasRequest: async () => {
+                    try {
+                        const decrypted = await Promise.all(_cloudInfras.map(async (inf: any) => {
+                            const creds: Record<string, string> = {};
+                            for (const [k, v] of Object.entries(inf.credentials || {})) {
+                                creds[k] = v ? await decryptCredential(v as string) : "";
+                            }
+                            return { ...inf, credentials: creds };
+                        }));
+                        _projectWindow?.webview.rpc.send.getCloudInfrasResult({ infras: decrypted });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.getCloudInfrasResult({ infras: [] });
+                    }
+                },
+
+                getDecryptedCredentialRequest: async ({ infraId, key }: { infraId: string; key: string }) => {
+                    try {
+                        const inf = _cloudInfras.find((c: any) => c.id === infraId);
+                        if (!inf) {
+                            _projectWindow?.webview.rpc.send.getDecryptedCredentialResult({ ok: false, value: "" });
+                            return;
+                        }
+                        const raw = inf.credentials?.[key] || "";
+                        const value = raw ? await decryptCredential(raw) : "";
+                        _projectWindow?.webview.rpc.send.getDecryptedCredentialResult({ ok: true, value });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.getDecryptedCredentialResult({ ok: false, value: "" });
+                    }
+                },
+
+                loadScriptRequest: async ({ url }: { url: string }) => {
+                    _projectWindow?.webview.rpc.send.loadScriptResult({ url });
+                },
+
+                // ── DBクリア ──────────────────────────────────
+                clearProjectDbRequest: async () => {
+                    try {
+                        closeProjectDb();
+                        clearProjectDb(_currentProjectDbDir);
+                        _projectWindow?.webview.rpc.send.clearProjectDbResult({ ok: true });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.clearProjectDbResult({ ok: false, error: e.message });
+                    }
+                },
+
+                // ── ファイル操作 ──────────────────────────────
+                fileReadRequest: async ({ path }) => {
+                    try {
+                        const content = await Bun.file(path).text();
+                        _projectWindow?.webview.rpc.send.fileReadResult({ ok: true, content });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.fileReadResult({ ok: false, content: null, error: e.message });
+                    }
+                },
+                fileWriteRequest: async ({ path, content }) => {
+                    try {
+                        await Bun.write(path, content);
+                        _projectWindow?.webview.rpc.send.fileWriteResult({ ok: true });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.fileWriteResult({ ok: false, error: e.message });
+                    }
+                },
+                fileReadBytesRequest: async ({ path }) => {
+                    try {
+                        const buf = await Bun.file(path).arrayBuffer();
+                        const data = Array.from(new Uint8Array(buf));
+                        _projectWindow?.webview.rpc.send.fileReadBytesResult({ ok: true, data });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.fileReadBytesResult({ ok: false, data: null, error: e.message });
+                    }
+                },
+                fileWriteBytesRequest: async ({ path, data }) => {
+                    try {
+                        await Bun.write(path, new Uint8Array(data));
+                        _projectWindow?.webview.rpc.send.fileWriteBytesResult({ ok: true });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.fileWriteBytesResult({ ok: false, error: e.message });
+                    }
+                },
+                fileExistsRequest: async ({ path }) => {
+                    const value = existsSync(path);
+                    _projectWindow?.webview.rpc.send.fileExistsResult({ ok: true, value });
+                },
+                fileDeleteRequest: async ({ path }) => {
+                    try {
+                        rmSync(path);
+                        _projectWindow?.webview.rpc.send.fileDeleteResult({ ok: true });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.fileDeleteResult({ ok: false, error: e.message });
+                    }
+                },
+                fileCopyRequest: async ({ src, dest }) => {
+                    try {
+                        copyFileSync(src, dest);
+                        _projectWindow?.webview.rpc.send.fileCopyResult({ ok: true });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.fileCopyResult({ ok: false, error: e.message });
+                    }
+                },
+
+                // ── ディレクトリ操作 ──────────────────────────
+                dirCreateRequest: async ({ path }) => {
+                    try {
+                        mkdirSync(path, { recursive: true });
+                        _projectWindow?.webview.rpc.send.dirCreateResult({ ok: true });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.dirCreateResult({ ok: false, error: e.message });
+                    }
+                },
+                dirDeleteRequest: async ({ path }) => {
+                    try {
+                        rmSync(path, { recursive: true, force: true });
+                        _projectWindow?.webview.rpc.send.dirDeleteResult({ ok: true });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.dirDeleteResult({ ok: false, error: e.message });
+                    }
+                },
+                dirListRequest: async ({ path }) => {
+                    try {
+                        const entries = readdirSync(path).map(String);
+                        _projectWindow?.webview.rpc.send.dirListResult({ ok: true, entries });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.dirListResult({ ok: false, entries: [], error: e.message });
+                    }
+                },
+                dirExistsRequest: async ({ path }) => {
+                    const value = existsSync(path);
+                    _projectWindow?.webview.rpc.send.dirExistsResult({ ok: true, value });
                 },
             },
         },
