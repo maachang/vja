@@ -348,6 +348,48 @@ const openProjectWindow = async (htmlPath: string, w: number, h: number): Promis
                     _projectWindow?.webview.rpc.send.loadScriptResult({ url });
                 },
 
+                // ── DB init ──────────────────────────────────
+                dbInitRequest: async ({ ddlStatements }) => {
+                    try {
+                        const db = getProjectDb(_currentProjectDbDir);
+                        const tx = db.transaction(() => {
+                            for (const ddl of ddlStatements) db.run(ddl);
+                        });
+                        tx();
+                        _projectWindow?.webview.rpc.send.dbInitResult({ ok: true });
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.dbInitResult({ ok: false, error: e.message });
+                    }
+                },
+
+                // ── ファイル選択 ──────────────────────────────
+                openFileRequest: async ({ filter, lastPath }) => {
+                    try {
+                        const path = await (async () => {
+                            const { readdirSync } = await import("fs");
+                            // スタンドアロン版ではホームディレクトリをデフォルトに
+                            const { homedir } = await import("os");
+                            const startDir = lastPath ? (await import("path")).dirname(lastPath) : homedir();
+                            // Electrobunのファイルダイアログを使用
+                            const { Utils } = await import("electrobun/bun");
+                            const ext = filter === "vjaproj" ? "vjaproj" : filter;
+                            const paths = await Utils.openFileDialog({
+                                allowedFileTypes: process.platform === "win32" ? ext : `*.${ext}`,
+                                startingFolder: startDir,
+                            });
+                            return paths?.[0] ?? null;
+                        })();
+                        if (path) {
+                            const content = await Bun.file(path).text();
+                            _projectWindow?.webview.rpc.send.openFileResult({ content, path });
+                        } else {
+                            _projectWindow?.webview.rpc.send.openFileResult({ content: null, path: null });
+                        }
+                    } catch (e: any) {
+                        _projectWindow?.webview.rpc.send.openFileResult({ content: null, path: null });
+                    }
+                },
+
                 // ── DBクリア ──────────────────────────────────
                 clearProjectDbRequest: async () => {
                     try {

@@ -463,12 +463,19 @@
     // ════════════════════════════════════════════════
     // vja.io.* — ファイル選択・CSV/JSON入出力
     // ════════════════════════════════════════════════
+    // ファイル選択のデフォルト実装（global.bunOpenFile経由）
+    // project-bridge.ts で差し替えることでRPC経由になる
+    vja._openFile = function(filter) {
+        if (!global.bunOpenFile) return Promise.reject(new Error("bunOpenFile未定義"));
+        return global.bunOpenFile({ filter, lastPath: null });
+    };
+
     vja.io = {
 
-        // ファイル選択ダイアログ（RPC経由）
+        // ファイル選択ダイアログ（差し替え可能な内部関数に委譲）
+        // project-bridge.ts側で vja._openFile を上書きすることでRPC経由に切り替わる
         openFile(filter = "vjaproj") {
-            if (!global.bunOpenFile) return Promise.reject(new Error("bunOpenFile未定義"));
-            return global.bunOpenFile({ filter, lastPath: null });
+            return vja._openFile(filter);
         },
 
         // CSVファイルを選択して読み込み → 行列の配列を返す

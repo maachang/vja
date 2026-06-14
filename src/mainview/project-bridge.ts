@@ -20,9 +20,11 @@ const pending = {
     dbQuery:      null as Pending<{ ok: boolean; rows: any[]; error?: string }> | null,
     dbExecute:    null as Pending<{ ok: boolean; result: any; error?: string }> | null,
     dbTransaction:null as Pending<{ ok: boolean; error?: string }> | null,
-    fileRead:     null as Pending<{ ok: boolean; content: string | null; error?: string }> | null,
-    fileWrite:    null as Pending<{ ok: boolean; error?: string }> | null,
-    fileExists:   null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
+    fileRead:      null as Pending<{ ok: boolean; content: string | null; error?: string }> | null,
+    fileWrite:     null as Pending<{ ok: boolean; error?: string }> | null,
+    fileReadBytes: null as Pending<{ ok: boolean; data: number[] | null; error?: string }> | null,
+    fileWriteBytes:null as Pending<{ ok: boolean; error?: string }> | null,
+    fileExists:    null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
     fileDelete:   null as Pending<{ ok: boolean; error?: string }> | null,
     fileCopy:     null as Pending<{ ok: boolean; error?: string }> | null,
     dirCreate:    null as Pending<{ ok: boolean; error?: string }> | null,
@@ -62,8 +64,10 @@ const rpc = Electroview.defineRPC<VjaRPCType>({
             dbQueryResult:       (v: any) => resolve("dbQuery",       v),
             dbExecuteResult:     (v: any) => resolve("dbExecute",     v),
             dbTransactionResult: (v: any) => resolve("dbTransaction",  v),
-            fileReadResult:      (v: any) => resolve("fileRead",       v),
-            fileWriteResult:     (v: any) => resolve("fileWrite",      v),
+            fileReadResult:       (v: any) => resolve("fileRead",       v),
+            fileWriteResult:      (v: any) => resolve("fileWrite",      v),
+            fileReadBytesResult:  (v: any) => resolve("fileReadBytes",  v),
+            fileWriteBytesResult: (v: any) => resolve("fileWriteBytes", v),
             fileExistsResult:    (v: any) => resolve("fileExists",     v),
             fileDeleteResult:    (v: any) => resolve("fileDelete",     v),
             fileCopyResult:      (v: any) => resolve("fileCopy",       v),
@@ -233,8 +237,8 @@ w.vja.session = {
 };
 
 // ファイル選択（openCsv/openJson用）
-w.vja.io = w.vja.io || {};
-w.vja.io.openFile = (filter: string = "*") =>
+// vja._openFile を差し替えることで vja.io.openFile/openCsv/openJson がRPC経由になる
+w.vja._openFile = (filter: string = "*") =>
     mkPromise("openFile", () => s.openFileRequest({ filter, lastPath: null }));
 
 // DB init
@@ -250,6 +254,11 @@ w.vja.file = {
     exists: (path: string) =>
         mkPromise("fileExists", () => s.fileExistsRequest({ path }))
             .then((r: any) => r.value),
+    readBytes: (path: string) =>
+        mkPromise("fileReadBytes", () => s.fileReadBytesRequest({ path }))
+            .then((r: any) => r.data ? new Uint8Array(r.data) : null),
+    writeBytes: (path: string, data: Uint8Array) =>
+        mkPromise("fileWriteBytes", () => s.fileWriteBytesRequest({ path, data: Array.from(data) })),
     delete: (path: string) =>
         mkPromise("fileDelete", () => s.fileDeleteRequest({ path })),
     copy:   (src: string, dest: string) =>

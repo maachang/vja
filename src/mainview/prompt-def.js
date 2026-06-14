@@ -309,6 +309,79 @@
   - 使用例: "vja.io.saveJson({ users: rows }, 'backup.json');"
   - 使用例説明: データをJSONファイルとしてダウンロードする
 
+## ファイル操作 (vja.file.*)
+
+- 関数名: await vja.file.read(path):
+  - 説明: 指定パスのファイルをテキストとして読み込む
+  - 引数:
+    - path: string - ファイルの絶対パス
+  - 戻り値: "{ ok: boolean, content: string | null }"
+
+- 関数名: await vja.file.write(path, content):
+  - 説明: 指定パスにテキストを書き込む（ファイルが存在しない場合は作成）
+  - 引数:
+    - path: string - ファイルの絶対パス
+    - content: string - 書き込む内容
+  - 戻り値: "{ ok: boolean }"
+
+- 関数名: await vja.file.readBytes(path):
+  - 説明: 指定パスのファイルをバイナリ（Uint8Array）で読み込む
+  - 引数:
+    - path: string - ファイルの絶対パス
+  - 戻り値: Uint8Array | null
+
+- 関数名: await vja.file.writeBytes(path, data):
+  - 説明: バイナリデータを指定パスのファイルに書き込む
+  - 引数:
+    - path: string - ファイルの絶対パス
+    - data: Uint8Array - 書き込むバイナリデータ
+  - 戻り値: なし
+
+- 関数名: await vja.file.exists(path):
+  - 説明: 指定パスのファイルが存在するか確認する
+  - 引数:
+    - path: string - ファイルの絶対パス
+  - 戻り値: boolean
+
+- 関数名: await vja.file.delete(path):
+  - 説明: 指定パスのファイルを削除する
+  - 引数:
+    - path: string - ファイルの絶対パス
+  - 戻り値: "{ ok: boolean }"
+
+- 関数名: await vja.file.copy(src, dest):
+  - 説明: ファイルをコピーする
+  - 引数:
+    - src: string - コピー元パス
+    - dest: string - コピー先パス
+  - 戻り値: "{ ok: boolean }"
+
+## ディレクトリ操作 (vja.dir.*)
+
+- 関数名: await vja.dir.create(path):
+  - 説明: ディレクトリを作成する（再帰的に作成）
+  - 引数:
+    - path: string - 作成するディレクトリパス
+  - 戻り値: "{ ok: boolean }"
+
+- 関数名: await vja.dir.delete(path):
+  - 説明: ディレクトリを削除する（再帰的に削除）
+  - 引数:
+    - path: string - 削除するディレクトリパス
+  - 戻り値: "{ ok: boolean }"
+
+- 関数名: await vja.dir.list(path):
+  - 説明: ディレクトリ内のファイル/フォルダ名一覧を取得する
+  - 引数:
+    - path: string - 対象ディレクトリパス
+  - 戻り値: string[]
+
+- 関数名: await vja.dir.exists(path):
+  - 説明: ディレクトリが存在するか確認する
+  - 引数:
+    - path: string - 対象ディレクトリパス
+  - 戻り値: boolean
+
 ## 通知 (vja.notify.*)
 
 - 関数名: vja.notify.toast(message, duration?):
@@ -660,6 +733,79 @@
     - data: any - Data to save
     - filename: string - File name to download
   - Return value: None
+
+## File Operations (vja.file.*)
+
+- Function Name: await vja.file.read(path):
+  - Description: Reads a file as text
+  - Arguments:
+    - path: string - Absolute file path
+  - Return Value: "{ ok: boolean, content: string | null }"
+
+- Function Name: await vja.file.write(path, content):
+  - Description: Writes text to a file (creates if not exists)
+  - Arguments:
+    - path: string - Absolute file path
+    - content: string - Content to write
+  - Return Value: "{ ok: boolean }"
+
+- Function Name: await vja.file.readBytes(path):
+  - Description: Reads a file as binary (Uint8Array)
+  - Arguments:
+    - path: string - Absolute file path
+  - Return Value: Uint8Array | null
+
+- Function Name: await vja.file.writeBytes(path, data):
+  - Description: Writes binary data to a file
+  - Arguments:
+    - path: string - Absolute file path
+    - data: Uint8Array - Binary data to write
+  - Return Value: none
+
+- Function Name: await vja.file.exists(path):
+  - Description: Checks if a file exists
+  - Arguments:
+    - path: string - Absolute file path
+  - Return Value: boolean
+
+- Function Name: await vja.file.delete(path):
+  - Description: Deletes a file
+  - Arguments:
+    - path: string - Absolute file path
+  - Return Value: "{ ok: boolean }"
+
+- Function Name: await vja.file.copy(src, dest):
+  - Description: Copies a file
+  - Arguments:
+    - src: string - Source path
+    - dest: string - Destination path
+  - Return Value: "{ ok: boolean }"
+
+## Directory Operations (vja.dir.*)
+
+- Function Name: await vja.dir.create(path):
+  - Description: Creates a directory (recursive)
+  - Arguments:
+    - path: string - Directory path to create
+  - Return Value: "{ ok: boolean }"
+
+- Function Name: await vja.dir.delete(path):
+  - Description: Deletes a directory (recursive)
+  - Arguments:
+    - path: string - Directory path to delete
+  - Return Value: "{ ok: boolean }"
+
+- Function Name: await vja.dir.list(path):
+  - Description: Lists files/folders in a directory
+  - Arguments:
+    - path: string - Target directory path
+  - Return Value: string[]
+
+- Function Name: await vja.dir.exists(path):
+  - Description: Checks if a directory exists
+  - Arguments:
+    - path: string - Target directory path
+  - Return Value: boolean
 
 ## Notifications (vja.notify.*)
 
