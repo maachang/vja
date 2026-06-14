@@ -197,25 +197,21 @@ export const runOnExit = async (): Promise<void> => {
     await _runAppEventCode("onExit", code);
 };
 
-// vjaプロジェクト実行実行設定.
+// vjaプロジェクト実行設定.
 export const setVjaProject = (mode: true): void => {
     _vjaProject = mode;
 }
 
+// vjaプロジェクト実行モード取得.
+export const getVjaProject = (): boolean => _vjaProject;
+
 // ── URL読み込み ───────────────────────────────────────
 export const _loadProjectURL = async (htmlPath: string): Promise<void> => {
     if (!_projectWindow) throw new Error("プロジェクトウィンドウが開いていません");
-    if (!_vjaProject) {
-        // _vjaProject == false この場合は vja開発環境.
-        // この場合は window.location 実行の禁止措置.
-        _projectWindow.webview.setNavigationRules(["^$"]);
-        await _projectWindow.webview.loadURL(`file://${htmlPath}`);
-        _projectWindow.webview.setNavigationRules(["^*"]);
-    } else {
-        // _vjaProject == false この場合は vjaプロジェクト実行.
-        // この場合は window.location 実行の禁止措置は不要.
-        await _projectWindow.webview.loadURL(`file://${htmlPath}`);
-    }
+    const projDir = dirname(htmlPath);
+    _projectWindow.webview.setNavigationRules([`file://${projDir}/*`]);
+    await _projectWindow.webview.loadURL(`file://${htmlPath}`);
+    // ロック解除はpageLoadedRequest（DOMContentLoaded通知）で行う
 };
 
 export const navigateProjectWindow = async (htmlPath: string, w: number, h: number): Promise<void> => {
@@ -259,7 +255,10 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
                 logRequest: ({ level, message }) => {
                     writeLog(level, `[proj] ${message}`);
                 },
-                pageLoadedRequest: () => { },
+                pageLoadedRequest: () => {
+                    // ページ読み込み完了 → 遷移をロック
+                    _projectWindow?.webview.setNavigationRules(["^*"]);
+                },
 
                 navigateFormRequest: async ({ formName }) => {
                     try {
