@@ -1925,6 +1925,14 @@
         }
 
         function setFormCfg(k, v) {
+            if (k === "title") {
+                if (!v || !/^[a-zA-Z0-9_\-\.]+$/.test(v)) {
+                    showToast("画面名は英数字・アンダースコア・ハイフン・ドットのみ使用できます", 5000);
+                    const titleInput = document.querySelector("#plist .pv-input");
+                    if (titleInput) titleInput.value = formCfg.title;
+                    return;
+                }
+            }
             formCfg[k] = v;
             forms[curFormIdx].cfg[k] = v;
             buildFormSelect();
@@ -3585,6 +3593,7 @@
             if (!root) return;
             const t = document.createElement("div");
             t.className = "toast-msg";
+            t.style.fontSize = "15px";
             t.textContent = msg;
             root.appendChild(t);
             requestAnimationFrame(() => t.classList.add("show"));
@@ -3891,6 +3900,10 @@
         function formNew() {
             showVjaPrompt("新しい画面の名前を入力してください", "Form" + (forms.length + 1), (title) => {
                 if (!title) return;
+                if (!/^[a-zA-Z0-9_\-\.]+$/.test(title)) {
+                    showToast("画面名は英数字・アンダースコア・ハイフン・ドットのみ使用できます", 5000);
+                    return;
+                }
                 commitIdCnt();
                 pushUndo();
                 const f = makeFormData(title);
@@ -3920,6 +3933,10 @@
         function formRename() {
             showVjaPrompt("画面名を変更してください", formCfg.title, (newTitle) => {
                 if (!newTitle || newTitle === formCfg.title) return;
+                if (!/^[a-zA-Z0-9_\-\.]+$/.test(newTitle)) {
+                    showToast("画面名は英数字・アンダースコア・ハイフン・ドットのみ使用できます", 5000);
+                    return;
+                }
                 pushUndo();
                 formCfg.title = newTitle;
                 forms[curFormIdx].cfg.title = newTitle;
