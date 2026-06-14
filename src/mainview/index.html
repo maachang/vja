@@ -3529,7 +3529,7 @@
         async function actSave() {
             commitIdCnt();
             const content = snapshot();
-            const projName = forms[0]?.cfg?.title || "project";
+            const projName = projectInfo.name?.trim() || "project";
             // bridge.ts がロードされているか確認
             if (typeof window.bunSaveProject !== "function") {
                 showVjaAlert("エラー: bunSaveProject が未定義です。bridge.ts が正しくロードされていません。");
