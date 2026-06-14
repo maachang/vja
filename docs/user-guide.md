@@ -32,7 +32,7 @@ VJA を起動すると以下の画面が表示されます。
 ### 画面イメージ:
 
 <p align="center">
-  <img src="screenshot.png" alt="VJA Form Designer Screenshot" width="400"/>
+  <img src="screenshot.png" alt="VJA Form Designer Screenshot" width="800"/>
 </p>
 
 ### 説明:
