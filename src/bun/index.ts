@@ -17,10 +17,15 @@ import {
 import { Database } from "bun:sqlite";
 import { type VjaRPCType, type DbRow, type DbResult } from "../shared/types";
 import { initLogger, writeLog } from "./logger";
-import { copyCompileAssets, FILES, BUILD_VJA_SRC_PATH } from "./copy-compile-assets";
-import { decompressGzip, parseCsvLine } from "./bun-utils";
-import { initProjectDb, clearProjectDb, getProjectDb, closeProjectDb } from "./db-manager";
-import type { TableDef } from "./db-manager";
+import { copyCompileAssets, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH } from "./copy-compile-assets";
+import { clearProjectDb, closeProjectDb } from "./db-manager";
+import {
+    _VJA_PASSPHRASE, _decrypt,
+    setProjectData, setFormHtmlPathResolver, setCloudInfras,
+    openProjectWindow, closeProjectWindow, navigateProjectWindow, getProjectFormPath,
+    _currentProjectForms, _currentProjectName,
+    _cloudInfras, _session, _projectWindow,
+} from "./project-runner";
 
 // vja の名前とバージョンを取得.
 let _VJA_JSON = null;
@@ -83,9 +88,8 @@ copyCompileAssets();
 const _configDir = join(homedir(), ".vja-designer");
 const _lastDirFile = join(_configDir, "last-dir.txt");
 
-// ── 暗号化基盤 ────────────────────────────────────────
-// vja共通パスフレーズ（ソースに埋め込み・難読化レベル）
-const _VJA_PASSPHRASE = "vja-form-designer-2024-xK9mPqR7nL2wT5vY";
+// ── 暗号化基盤（index.ts固有: 暗号化のみ。復号・パスフレーズはproject-runner.tsから使用） ──
+let _vjaPass: string = "";
 
 const _strToKey = async (passphrase: string): Promise<CryptoKey> => {
     const enc = new TextEncoder();
@@ -112,18 +116,6 @@ const _encrypt = async (plain: string, passphrase: string): Promise<string> => {
     return Buffer.from(combined).toString("base64");
 };
 
-const _decrypt = async (b64: string, passphrase: string): Promise<string> => {
-    const key = await _strToKey(passphrase);
-    const combined = Buffer.from(b64, "base64");
-    const iv = combined.slice(0, 12);
-    const cipher = combined.slice(12);
-    const plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
-    return new TextDecoder().decode(plainBuf);
-};
-
-// vjaPass: プロジェクトごとのパスフレーズ（共通パスフレーズで暗号化して保存）
-let _vjaPass: string = "";
-
 const _generateVjaPass = (): string => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
     const arr = crypto.getRandomValues(new Uint8Array(32));
@@ -148,18 +140,13 @@ const _injectVjaPass = async (jsonStr: string): Promise<string> => {
     return JSON.stringify(proj);
 };
 
-// クレデンシャルの暗号化・復号
+// クレデンシャルの暗号化
 const encryptCredential = async (plain: string): Promise<string> => {
     if (!_vjaPass) _vjaPass = _generateVjaPass();
     return _encrypt(plain, _vjaPass);
 };
-const decryptCredential = async (b64: string): Promise<string> => {
-    if (!_vjaPass) return "";
-    try { return await _decrypt(b64, _vjaPass); } catch (e) { console.debug("[vja] decryptCredential failed:", e); return ""; }
-};
 
-// 現在のクラウドインフラ設定
-let _cloudInfras: any[] = [];
+// 現在のプロジェクト拡張ランタイム
 let _currentProjectExtRuntime: string = "";
 
 const loadLastDir = (): string => {
@@ -297,7 +284,7 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                         }
                         return { ...inf, credentials: encCreds };
                     }));
-                    _cloudInfras = merged;
+                    setCloudInfras(merged);
                     browserWindow.webview.rpc.send.saveCloudInfrasResult({ ok: true });
                 } catch (e: any) {
                     browserWindow.webview.rpc.send.saveCloudInfrasResult({ ok: false, error: e.message });
@@ -577,7 +564,9 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                         browserWindow.webview.rpc.send.runProjectResult({ ok: false, error: result.error });
                         return;
                     }
-                    await openProjectWindow(result.startFormPath!, result.startFormW!, result.startFormH!);
+                    await openProjectWindow(result.startFormPath!, result.startFormW!, result.startFormH!, () => {
+                        browserWindow.webview.rpc.send.stopProjectResult({ ok: true });
+                    });
                     browserWindow.webview.rpc.send.runProjectResult({ ok: true });
                 } catch (e: any) {
                     browserWindow.webview.rpc.send.runProjectResult({ ok: false, error: e.message });
@@ -655,38 +644,39 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
 // プロジェクトの作業ディレクトリ
 const _projectWorkDir = join(_dataDir, "projectWork");
 
-// セッション管理（メモリのみ・再起動でリセット）
-const _session = new Map<string, string>();
+// フォームパス解決をproject-runner.tsに登録（デザイナー版: _projectWorkDir配下のHTMLを使用）
+setFormHtmlPathResolver((formTitle: string) =>
+    join(_projectWorkDir, _currentProjectName || "project", `${formTitle}.html`)
+);
 
-// 現在のプロジェクトのDB管理ディレクトリ
+// 現在のプロジェクトのDB管理ディレクトリ（index.ts固有）
 let _currentProjectDbDir = "";
-
-// 実行中のプロジェクトウィンドウ
-let _projectWindow: BrowserWindow | null = null;
-
-// 現在読み込まれているプロジェクトのフォームデータ（navigateで参照）
-let _currentProjectForms: any[] = [];
-let _currentProjectName: string = "";
 let _currentProjectVersion: string = "1.0.0";
 let _currentProjectFilePath: string = "";
-let _currentProjectTables: TableDef[] = [];
 
 // プロジェクトデータをメモリに反映する共通関数
 const _updateProjectData = (jsonStr: string, filePath?: string): boolean => {
     try {
         const proj = JSON.parse(jsonStr);
-        _currentProjectForms = proj.forms || [];
-        _currentProjectTables = proj.tables || [];
-        _currentProjectName = proj.projectInfo?.name || "";
+        const name = proj.projectInfo?.name || "";
         _currentProjectVersion = proj.projectInfo?.version || "1.0.0";
         if (filePath) _currentProjectFilePath = filePath;
-        _onStartCode = proj.projectInfo?.appEvents?.onStart || "";
-        _onExitCode = proj.projectInfo?.appEvents?.onExit || "";
-        _currentProjectDbDir = join(_projectWorkDir, _currentProjectName, "db");
-        _cloudInfras = proj.cloudInfras || [];
+        _currentProjectDbDir = join(_projectWorkDir, name, "db");
         _currentProjectExtRuntime = proj.extRuntime?.js || "";
         // vjaPass を非同期で読み込み（await不可なので then で）
         _loadVjaPass(proj).then(pass => { _vjaPass = pass; });
+        // project-runner.ts の setProjectData でプロジェクト共通データを設定
+        setProjectData({
+            forms: proj.forms || [],
+            tables: proj.tables || [],
+            name,
+            dbDir: _currentProjectDbDir,
+            extRuntime: proj.extRuntime?.js || "",
+            cloudInfras: proj.cloudInfras || [],
+            onStartCode: proj.projectInfo?.appEvents?.onStart || "",
+            onExitCode: proj.projectInfo?.appEvents?.onExit || "",
+            vjaPass: _vjaPass,
+        });
         return true;
     } catch (e) {
         console.error("[vja] _updateProjectData failed:", e);
@@ -771,13 +761,13 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
         console.info("# compile src vjaRoot: " + vjaRoot);
         if (!vjaRoot) throw new Error("PWD 環境変数が取得できません");
 
-        // FILES リストを使って一元管理（copy-compile-assets.tsと共通）
+        // COPY_BUILD_FILES リストを使って一元管理（copy-compile-assets.tsと共通）
         const destDirMap: Record<string, string> = {
             "bun": srcBunDir,
             "shared": srcSharedDir,
             "mainview": srcMainviewDir,
         };
-        for (const [srcRel, _] of FILES) {
+        for (const [srcRel, _] of COPY_BUILD_FILES) {
             const topDir = srcRel.split("/")[0];
             const destDir = destDirMap[topDir];
             if (!destDir) continue;
@@ -1171,180 +1161,6 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     return lines.join("\n");
 };
 
-// ── AppEvents（OnStart/OnExit）Bun側実行 ──────────────
-
-// 現在のプロジェクトのAppEventsコードを保持
-let _onStartCode = "";
-let _onExitCode = "";
-
-// OnStart を Bun側で実行（TS文字列を一時ファイル経由でimport）
-const runOnStart = async (): Promise<void> => {
-    // セッションで2度目の実行を阻止
-    if (_session.get("__onStart_done__")) return;
-    _session.set("__onStart_done__", "1");
-
-    // ① テーブル定義があればDB初期化・マイグレーション
-    if (_currentProjectDbDir && _currentProjectTables.length > 0) {
-        try {
-            await initProjectDb(_currentProjectDbDir, _currentProjectTables);
-        } catch (e: any) {
-            console.error("[db] DB初期化エラー:", e.message);
-        }
-    }
-
-    // ② マスターCSVのINSERT処理（テーブルが0件の場合のみ）
-    for (const tbl of _currentProjectTables) {
-        const csv = (tbl as any).masterCsv;
-        if (!csv?.data) continue;
-        try {
-            const db = getProjectDb(_currentProjectDbDir);
-            const countRow = db.query(`SELECT COUNT(*) as cnt FROM ${tbl.name}`).get() as any;
-            if (countRow?.cnt !== 0) continue;
-            // gzip展開
-            const text = await decompressGzip(csv.data);
-            const lines = text.split(/\r?\n/).filter((l: string) => l.trim());
-            if (lines.length < 2) continue;
-            const headers = parseCsvLine(lines[0]);
-            const tblCols = tbl.columns.map((c: any) => c.name);
-            // テーブルに存在するカラムのみ使用
-            const validHeaders = headers.filter((h: string) => tblCols.includes(h));
-            if (validHeaders.length === 0) continue;
-            const colIndices = validHeaders.map((h: string) => headers.indexOf(h));
-            const stmt = db.prepare(
-                `INSERT INTO ${tbl.name} (${validHeaders.join(",")}) VALUES (${validHeaders.map(() => "?").join(",")})`
-            );
-            const tx = db.transaction(() => {
-                for (let i = 1; i < lines.length; i++) {
-                    const vals = parseCsvLine(lines[i]);
-                    if (vals.length === 0) continue;
-                    const row = colIndices.map((idx: number) => vals[idx] ?? null);
-                    stmt.run(...row);
-                }
-            });
-            tx();
-            console.log(`[db] マスターCSVインポート完了: ${tbl.name} (${lines.length - 1} 行)`);
-        } catch (e: any) {
-            console.error(`[db] マスターCSVインポートエラー (${tbl.name}):`, e.message);
-        }
-    }
-
-    // ③ OnStartコードを実行
-    const code = _onStartCode.trim();
-    if (code) {
-        await _runAppEventCode("onStart", code);
-    }
-};
-
-
-
-// OnExit を Bun側で実行
-const runOnExit = async (): Promise<void> => {
-    const code = _onExitCode.trim();
-    if (!code) return;
-    await _runAppEventCode("onExit", code);
-};
-
-// TSコードを一時ファイルに書き出してimport実行
-const _runAppEventCode = async (name: string, code: string): Promise<void> => {
-    const tmpFile = join(_projectWorkDir, `.vja_${name}_tmp_${Date.now()}.ts`);
-    try {
-        // Bun側で使えるAPIをvjaオブジェクトとして注入
-        const wrapper = `
-export const vja = {
-    session: {
-        get: (key: string) => _getSession(key),
-        set: (key: string, val: string) => _setSession(key, val),
-        delete: (key: string) => _deleteSession(key),
-    },
-    db: {
-        query: (sql: string, params?: any[]) => _dbQuery(sql, params),
-        execute: (sql: string, params?: any[]) => _dbExecute(sql, params),
-        clearTable: (tableName: string) => _dbExecute("DELETE FROM " + tableName),
-        importCsv: async (tableName: string, filePath: string) => _dbImportCsv(tableName, filePath),
-        importJson: async (tableName: string, filePath: string) => _dbImportJson(tableName, filePath),
-    },
-    log: {
-        info:  (msg: string) => console.info("[app]", msg),
-        warn:  (msg: string) => console.warn("[app]", msg),
-        error: (msg: string) => console.error("[app]", msg),
-    },
-};
-${code}
-`;
-        await Bun.write(tmpFile, wrapper);
-        await import(tmpFile);
-        console.log(`[app] ${name} 実行完了`);
-    } catch (e: any) {
-        console.error(`[app] ${name} 実行エラー:`, e.message);
-    } finally {
-        try { rmSync(tmpFile); } catch (e) { console.debug('[vja] rmSync failed:', e); }
-    }
-};
-
-// AppEvents用のセッションヘルパー
-const _getSession = (key: string): string | null => _session.get(key) ?? null;
-const _setSession = (key: string, val: string): void => { _session.set(key, val); };
-const _deleteSession = (key: string): void => { _session.delete(key); };
-const _dbQuery = (sql: string, params?: any[]): any[] => {
-    try {
-        const db = _currentProjectDbDir
-            ? getProjectDb(_currentProjectDbDir)
-            : getDb();
-        return db.query(sql).all(...(params || [])) as any[];
-    } catch (e) { console.debug('[vja] catch:', e); return []; }
-};
-const _dbExecute = (sql: string, params?: any[]): any => {
-    try {
-        const db = _currentProjectDbDir
-            ? getProjectDb(_currentProjectDbDir)
-            : getDb();
-        return db.run(sql, ...(params || []));
-    } catch { return null; }
-};
-
-// AppEvents用DBインポートヘルパー
-const _dbImportCsv = async (tableName: string, filePath: string): Promise<void> => {
-    const text = await Bun.file(filePath).text();
-    const lines = text.split("\n").filter((l: string) => l.trim());
-    if (lines.length < 2) return;
-    const parseCsvLine = (line: string): string[] => {
-        const result: string[] = [];
-        let cur = "", inQ = false;
-        for (let i = 0; i < line.length; i++) {
-            const c = line[i];
-            if (inQ) {
-                if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
-                else if (c === '"') inQ = false;
-                else cur += c;
-            } else {
-                if (c === '"') inQ = true;
-                else if (c === ",") { result.push(cur); cur = ""; }
-                else cur += c;
-            }
-        }
-        result.push(cur);
-        return result;
-    };
-    const headers = parseCsvLine(lines[0]);
-    const db = _currentProjectDbDir ? getProjectDb(_currentProjectDbDir) : getDb();
-    const sql = "INSERT INTO " + tableName + " (" + headers.join(",") + ") VALUES (" + headers.map(() => "?").join(",") + ")";
-    const stmt = db.prepare(sql);
-    const insertMany = db.transaction((rows: any[]) => { for (const row of rows) stmt.run(...row); });
-    const rows = lines.slice(1).map((l: string) => parseCsvLine(l));
-    insertMany(rows);
-};
-
-const _dbImportJson = async (tableName: string, filePath: string): Promise<void> => {
-    const data = await Bun.file(filePath).json();
-    if (!Array.isArray(data) || data.length === 0) return;
-    const headers = Object.keys(data[0]);
-    const db = _currentProjectDbDir ? getProjectDb(_currentProjectDbDir) : getDb();
-    const sql = "INSERT INTO " + tableName + " (" + headers.join(",") + ") VALUES (" + headers.map(() => "?").join(",") + ")";
-    const stmt = db.prepare(sql);
-    const insertMany = db.transaction((rows: any[]) => { for (const row of rows) stmt.run(...headers.map((h: string) => row[h] ?? null)); });
-    insertMany(data);
-};
-
 // イベント名 → DOM イベント名
 const evNameToDom = (evName: string): string => {
     const map: Record<string, string> = {
@@ -1362,375 +1178,6 @@ const evNameToDom = (evName: string): string => {
     };
     return map[evName] || evName.toLowerCase();
 };
-
-// プロジェクトウィンドウ用RPC（vjaデザイナーのRPCとは独立）
-let _projectRPC: ReturnType<typeof BrowserView.defineRPC> | null = null;
-
-// プロジェクトウィンドウを開く
-// プロジェクトウィンドウのURLを切り替えてリサイズ
-// プロジェクトウィンドウのURL読み込みコア（許可→loadURL→deny）
-const _loadProjectURL = async (htmlPath: string): Promise<void> => {
-    if (!_projectWindow) throw new Error("プロジェクトウィンドウが開いていません");
-    const projDir = join(_projectWorkDir, _currentProjectName || "project");
-    // 遷移を一時許可
-    _projectWindow.webview.setNavigationRules([`file://${projDir}/*`]);
-    // file:// が付いていない場合は付ける
-    if (!htmlPath.startsWith("file://")) {
-        htmlPath = "file://" + htmlPath;
-    }
-    await _projectWindow.webview.loadURL(htmlPath);
-    // ロックはフロント側の DOMContentLoaded 通知（pageLoadedRequest）で行う
-};
-
-const navigateProjectWindow = async (htmlPath: string, w: number, h: number): Promise<void> => {
-    await _loadProjectURL(htmlPath);
-    _projectWindow!.setSize(w, h);
-    console.log(`[project] navigate: ${htmlPath} (${w}x${h})`);
-};
-
-const openProjectWindow = async (htmlPath: string, w: number, h: number): Promise<void> => {
-    closeProjectWindow();
-    _session.clear();
-    // プロジェクトウィンドウ専用のRPCを作成（vjaRPCと分離）
-    _projectRPC = BrowserView.defineRPC<VjaRPCType>({
-        maxRequestTime: 5000,
-        handlers: {
-            requests: {},
-            messages: {
-                logRequest: ({ level, message }) => {
-                    writeLog(level, `[proj] ${message}`);
-                },
-                pageLoadedRequest: () => {
-                    // ページ読み込み完了 → 遷移をロック
-                    _projectWindow?.webview.setNavigationRules(["^*"]);
-                },
-                navigateFormRequest: async ({ formName }) => {
-                    try {
-                        const result = getProjectFormPath(formName);
-                        if (!result.ok || !_projectWindow) return;
-                        await navigateProjectWindow(result.path!, result.w!, result.h!);
-                    } catch (e: any) {
-                        console.error("[project] navigate error:", e.message);
-                    }
-                },
-                sessionGetRequest: ({ key }) => {
-                    const value = _session.get(key) ?? null;
-                    _projectWindow?.webview.rpc.send.sessionGetResult({ ok: true, value });
-                },
-                sessionSetRequest: ({ key, value }) => {
-                    if (key === "__clear_all__" && value === "__clear__") {
-                        _session.clear();
-                    } else if (value === null) {
-                        _session.delete(key);
-                    } else {
-                        _session.set(key, value);
-                    }
-                    _projectWindow?.webview.rpc.send.sessionSetResult({ ok: true });
-                },
-                stopProjectRequest: async () => {
-                    closeProjectWindow();
-                    browserWindow.webview.rpc.send.stopProjectResult({ ok: true });
-                },
-
-
-                // ── DB操作（プロジェクトウィンドウ → Bun → _projectWindow へ返す） ──
-                dbQueryRequest: async ({ sql, params }) => {
-                    try {
-                        const db = _currentProjectDbDir
-                            ? getProjectDb(_currentProjectDbDir)
-                            : getDb();
-                        const rows = db.query(sql).all(...(params || []));
-                        _projectWindow?.webview.rpc.send.dbQueryResult({ ok: true, rows: rows as any });
-                    } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.dbQueryResult({ ok: false, rows: [], error: e.message });
-                    }
-                },
-                dbExecuteRequest: async ({ sql, params }) => {
-                    try {
-                        const db = _currentProjectDbDir
-                            ? getProjectDb(_currentProjectDbDir)
-                            : getDb();
-                        const r = db.run(sql, ...(params || []));
-                        _projectWindow?.webview.rpc.send.dbExecuteResult({
-                            ok: true,
-                            result: { changes: r.changes, lastInsertRowid: Number(r.lastInsertRowid) },
-                        });
-                    } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.dbExecuteResult({
-                            ok: false,
-                            result: { changes: 0, lastInsertRowid: 0 },
-                            error: e.message,
-                        });
-                    }
-                },
-                dbTransactionRequest: async ({ statements }) => {
-                    try {
-                        const db = _currentProjectDbDir
-                            ? getProjectDb(_currentProjectDbDir)
-                            : getDb();
-                        const tx = db.transaction(() => {
-                            for (const { sql, params } of statements) {
-                                db.run(sql, ...(params || []));
-                            }
-                        });
-                        tx();
-                        _projectWindow?.webview.rpc.send.dbTransactionResult({ ok: true });
-                    } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.dbTransactionResult({ ok: false, error: e.message });
-                    }
-                },
-
-                dbInitRequest: async ({ ddlStatements }) => {
-                    try {
-                        const db = _currentProjectDbDir
-                            ? getProjectDb(_currentProjectDbDir)
-                            : getDb();
-                        const tx = db.transaction(() => {
-                            for (const ddl of ddlStatements) db.run(ddl);
-                        });
-                        tx();
-                        _projectWindow?.webview.rpc.send.dbInitResult({ ok: true });
-                    } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.dbInitResult({ ok: false, error: e.message });
-                    }
-                },
-
-                openFileRequest: async ({ filter, lastPath }) => {
-                    try {
-                        const ext = filter === "vjaproj" ? "vjaproj" : filter;
-                        const startingFolder = lastPath ? dirname(lastPath) : _lastDir;
-                        const paths = await Utils.openFileDialog({
-                            allowedFileTypes: process.platform === "win32" ? ext : `*.${ext}`,
-                            startingFolder,
-                        });
-                        const path = paths?.[0] ?? null;
-                        if (path) {
-                            const content = await Bun.file(path).text();
-                            _projectWindow?.webview.rpc.send.openFileResult({ content, path });
-                        } else {
-                            _projectWindow?.webview.rpc.send.openFileResult({ content: null, path: null });
-                        }
-                    } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.openFileResult({ content: null, path: null });
-                    }
-                },
-
-                // ── クラウドインフラ ──────────────────────────
-                getCloudInfrasRequest: async () => {
-                    try {
-                        const decrypted = await Promise.all(_cloudInfras.map(async (inf: any) => {
-                            const creds: Record<string, string> = {};
-                            for (const [k, v] of Object.entries(inf.credentials || {})) {
-                                creds[k] = v ? await decryptCredential(v as string) : "";
-                            }
-                            return { ...inf, credentials: creds };
-                        }));
-                        _projectWindow?.webview.rpc.send.getCloudInfrasResult({ infras: decrypted });
-                    } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.getCloudInfrasResult({ infras: [] });
-                    }
-                },
-
-                getDecryptedCredentialRequest: async ({ infraId, key }: { infraId: string; key: string }) => {
-                    try {
-                        const inf = _cloudInfras.find((c: any) => c.id === infraId);
-                        if (!inf) {
-                            _projectWindow?.webview.rpc.send.getDecryptedCredentialResult({ ok: false, value: "" });
-                            return;
-                        }
-                        const raw = inf.credentials?.[key] || "";
-                        const value = raw ? await decryptCredential(raw) : "";
-                        _projectWindow?.webview.rpc.send.getDecryptedCredentialResult({ ok: true, value });
-                    } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.getDecryptedCredentialResult({ ok: false, value: "" });
-                    }
-                },
-
-                loadScriptRequest: async ({ url }: { url: string }) => {
-                    _projectWindow?.webview.rpc.send.loadScriptResult({ url });
-                },
-
-                // ── DBクリア ──────────────────────────────────
-                clearProjectDbRequest: async () => {
-                    try {
-                        closeProjectDb();
-                        clearProjectDb(_currentProjectDbDir);
-                        _projectWindow?.webview.rpc.send.clearProjectDbResult({ ok: true });
-                    } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.clearProjectDbResult({ ok: false, error: e.message });
-                    }
-                },
-
-                // ── ファイル操作 ──────────────────────────────
-                fileReadRequest: async ({ path }) => {
-                    try {
-                        const content = await Bun.file(path).text();
-                        _projectWindow?.webview.rpc.send.fileReadResult({ ok: true, content });
-                    } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.fileReadResult({ ok: false, content: null, error: e.message });
-                    }
-                },
-                fileWriteRequest: async ({ path, content }) => {
-                    try {
-                        await Bun.write(path, content);
-                        _projectWindow?.webview.rpc.send.fileWriteResult({ ok: true });
-                    } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.fileWriteResult({ ok: false, error: e.message });
-                    }
-                },
-                fileReadBytesRequest: async ({ path }) => {
-                    try {
-                        const buf = await Bun.file(path).arrayBuffer();
-                        const data = Array.from(new Uint8Array(buf));
-                        _projectWindow?.webview.rpc.send.fileReadBytesResult({ ok: true, data });
-                    } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.fileReadBytesResult({ ok: false, data: null, error: e.message });
-                    }
-                },
-                fileWriteBytesRequest: async ({ path, data }) => {
-                    try {
-                        await Bun.write(path, new Uint8Array(data));
-                        _projectWindow?.webview.rpc.send.fileWriteBytesResult({ ok: true });
-                    } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.fileWriteBytesResult({ ok: false, error: e.message });
-                    }
-                },
-                fileExistsRequest: async ({ path }) => {
-                    const value = existsSync(path);
-                    _projectWindow?.webview.rpc.send.fileExistsResult({ ok: true, value });
-                },
-                fileDeleteRequest: async ({ path }) => {
-                    try {
-                        rmSync(path);
-                        _projectWindow?.webview.rpc.send.fileDeleteResult({ ok: true });
-                    } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.fileDeleteResult({ ok: false, error: e.message });
-                    }
-                },
-                fileCopyRequest: async ({ src, dest }) => {
-                    try {
-                        copyFileSync(src, dest);
-                        _projectWindow?.webview.rpc.send.fileCopyResult({ ok: true });
-                    } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.fileCopyResult({ ok: false, error: e.message });
-                    }
-                },
-
-                // ── ディレクトリ操作 ──────────────────────────
-                dirCreateRequest: async ({ path }) => {
-                    try {
-                        mkdirSync(path, { recursive: true });
-                        _projectWindow?.webview.rpc.send.dirCreateResult({ ok: true });
-                    } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.dirCreateResult({ ok: false, error: e.message });
-                    }
-                },
-                dirDeleteRequest: async ({ path }) => {
-                    try {
-                        rmSync(path, { recursive: true, force: true });
-                        _projectWindow?.webview.rpc.send.dirDeleteResult({ ok: true });
-                    } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.dirDeleteResult({ ok: false, error: e.message });
-                    }
-                },
-                dirListRequest: async ({ path }) => {
-                    try {
-                        const entries = readdirSync(path).map(String);
-                        _projectWindow?.webview.rpc.send.dirListResult({ ok: true, entries });
-                    } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.dirListResult({ ok: false, entries: [], error: e.message });
-                    }
-                },
-                dirExistsRequest: async ({ path }) => {
-                    const value = existsSync(path);
-                    _projectWindow?.webview.rpc.send.dirExistsResult({ ok: true, value });
-                },
-            },
-        },
-    });
-    _projectWindow = new BrowserWindow({
-        title: _currentProjectName || "VJA Project",
-        frame: { x: 100, y: 100, width: w, height: h },
-        titleBarStyle: "hidden",
-        rpc: _projectRPC,
-    });
-    // 初期状態: 全遷移をブロック（vja.navigate()経由のみ許可）
-    _projectWindow.webview.setNavigationRules(["^*"]);
-    // 最初のフォームを読み込む
-    await _loadProjectURL(htmlPath);
-    // win.on("close") で確実にクローズ検知
-    _projectWindow.on("close", () => {
-        _onProjectWindowClosed();
-    });
-    console.log(`[project] opened: ${htmlPath} (${w}x${h})`);
-    // OnStart を Bun側で実行（ウィンドウ表示後）
-    setTimeout(async () => {
-        try {
-            await runOnStart();
-        } catch (e: any) {
-            console.error("[app] OnStart実行エラー:", e.message);
-        }
-    }, 300);
-};
-// プロジェクトウィンドウを閉じる
-const closeProjectWindow = (): void => {
-    if (_projectWindow) {
-        const win = _projectWindow;
-        _projectWindow = null;
-        _projectRPC = null;
-        try {
-            _session.clear();
-            win.close();
-            console.log("[project] closed");
-        } catch (e) {
-            console.error("[project] closeProjectWindow エラー:", e);
-        } finally {
-            try { _session.clear(); } catch (e) { console.debug("[vja] session.clear failed:", e); }
-        }
-    }
-};
-
-// プロジェクトウィンドウが閉じられた時の処理
-const _onProjectWindowClosed = (): void => {
-    // 非同期でOnExitを実行してから終了フラグをON
-    (async () => {
-        try {
-            await runOnExit();
-        } catch (err: any) {
-            console.error("[close] 終了トリガーでエラーが発生", err);
-        } finally {
-            try {
-                _projectWindow = null;
-                _projectRPC = null;
-                _session.clear();
-                // vjaデザイナー側にボタンリセットを通知
-                setTimeout(() => {
-                    try {
-                        browserWindow.webview.rpc.send.stopProjectResult({ ok: true });
-                    } catch (e) {
-                        console.warn("[project] stopProjectResult送信エラー:", e);
-                    }
-                }, 100);
-            } catch (wn: any) {
-                console.warn("プロジェクト終了フラグの設定に失敗しました", wn);
-            }
-        }
-    })();
-};
-
-// フォーム名からURL・サイズを取得
-const getProjectFormPath = (formName: string): {
-    ok: boolean; error?: string; path?: string; w?: number; h?: number;
-} => {
-    const form = _currentProjectForms.find(f => f.cfg.title === formName);
-    if (!form) return { ok: false, error: `フォーム "${formName}" が見つかりません` };
-    const projName = _currentProjectName || "project";
-    const path = `file://${join(_projectWorkDir, projName, `${formName}.html`)}`;
-    const w = form.cfg.w || 640;
-    const h = form.cfg.h || 420;
-    return { ok: true, path, w, h };
-};
-
 
 // ── BrowserWindow 生成 ────────────────────────────────
 const isWin = process.platform === "win32";

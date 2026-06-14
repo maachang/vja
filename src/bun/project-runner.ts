@@ -72,6 +72,10 @@ export const setProjectData = (data: {
     _vjaPass = data.vjaPass;
 };
 
+export const setCloudInfras = (infras: any[]): void => {
+    _cloudInfras = infras;
+};
+
 // ── セッション管理 ────────────────────────────────────
 export const _session = new Map<string, string>();
 
@@ -244,7 +248,7 @@ const _onProjectWindowClosed = (): void => {
 };
 
 // ── プロジェクトウィンドウを開く ──────────────────────
-export const openProjectWindow = async (htmlPath: string, w: number, h: number): Promise<void> => {
+export const openProjectWindow = async (htmlPath: string, w: number, h: number, onStop?: () => void): Promise<void> => {
     _session.clear();
 
     _projectRPC = BrowserView.defineRPC<VjaRPCType>({
@@ -285,7 +289,7 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number):
                     _projectWindow?.webview.rpc.send.sessionSetResult({ ok: true });
                 },
 
-                stopProjectRequest: async () => { closeProjectWindow(); },
+                stopProjectRequest: async () => { closeProjectWindow(); onStop?.(); },
 
                 dbQueryRequest: async ({ sql, params }) => {
                     try {

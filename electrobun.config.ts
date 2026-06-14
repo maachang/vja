@@ -1,10 +1,11 @@
 // electrobun.config.ts
 import type { ElectrobunConfig } from "electrobun";
+import { join } from "path";
 
-// 💡 実行コマンドに "build" が含まれているか判定
-const isBuildMode = process.argv.includes("build");
+import { COPY_BUILD_FILES } from "./src/bun/copy-compile-assets";
 
-export default {
+// 基本コンフィグ定義をセット.
+const conf = {
     app: {
         name: "vja",
         identifier: "vja",
@@ -28,15 +29,21 @@ export default {
         },
         // build時のみ実行.
         // ここでプロジェクトコンパイルで必要なファイルをコピー.
-        copy: isBuildMode ? {
-            "src/bun/logger.ts": "/src/bun/logger.ts",
-            "src/bun/db-manager.ts": "src/bun/db-manager.ts",
-            "src/bun/bun-utils.ts": "src/bun/bun-utils.ts",
-            "src/bun/standalone-index.ts": "src/bun/standalone-index.ts",
-            "src/bun/project-runner.ts": "src/bun/project-runner.ts",
-            "src/shared/types.ts": "src/shared/types.ts",
-            "src/mainview/project-bridge.ts": "src/mainview/project-bridge.ts",
-            "src/mainview/vja-runtime.js": "src/mainview/vja-runtime.js",
-        } : {},
+        copy: {},
     },
 } satisfies ElectrobunConfig;
+
+// build時のみ実行(実行コマンドに "build" が含まれているか判定).
+// ここでプロジェクトコンパイルで必要なファイルをコピー.
+// COPY_BUILD_FILES=copy-compile-assets
+if (process.argv.includes("build")) {
+    const target = conf.build.copy;
+    for (const [srcRel, destRel] of COPY_BUILD_FILES) {
+        const src = join("src", srcRel);
+        const dest = join("src", destRel);
+        target[src] = dest;
+    }
+}
+
+// defaultセット.
+export default conf;

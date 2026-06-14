@@ -12,7 +12,7 @@ const DEST = join(homedir(), ".vja-apps", "VJAFormDesigner", "compile-assets", "
 // コピー対象ファイル定義
 // [vjaRoot/src/ からの相対パス, compile-assets/src/ からの相対パス]
 // compileProject() でも同じリストを使って一元管理する
-export const FILES: [string, string][] = [
+export const COPY_BUILD_FILES: [string, string][] = [
     ["bun/logger.ts", "bun/logger.ts"],
     ["bun/db-manager.ts", "bun/db-manager.ts"],
     ["bun/bun-utils.ts", "bun/bun-utils.ts"],
@@ -40,7 +40,7 @@ export const copyCompileAssets = (vjaRoot?: string): void => {
     }
     console.debug("### start copyCompileAssets: " + root);
     let copied = 0;
-    for (const [srcRel, dstRel] of FILES) {
+    for (const [srcRel, dstRel] of COPY_BUILD_FILES) {
         const src = join(root, "src", srcRel);
         const dst = join(DEST, dstRel);
         if (!existsSync(src)) {
