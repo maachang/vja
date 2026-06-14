@@ -1170,9 +1170,12 @@ textarea.yaml:focus {
     font-size: var(--editor-font-size);
     line-height: 1.6;
     letter-spacing: normal;
-    resize: vertical;
-    display: block;
+    resize: none;
+    display: flex;
     width: 100%;
+    flex: 1;
+    min-height: 0;
+    box-sizing: border-box;
     white-space: pre;
     overflow: auto;
 }
@@ -1797,7 +1800,8 @@ textarea.yaml:focus {
     display: flex;
     gap: 6px;
     align-items: center;
-    flex-wrap: wrap
+    flex-wrap: wrap;
+    flex-shrink: 0
 }
 
 .yaml-ai-bar input {
@@ -2332,6 +2336,7 @@ textarea.yaml:focus {
     width: 100%;
     flex: 1;
     min-height: 0;
+    height: 100%;
     box-sizing: border-box;
     white-space: pre;
     overflow: auto;

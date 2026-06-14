@@ -1427,13 +1427,13 @@ Include the function name, description, arguments, return value, and exceptions.
 #
 
 # ここから記載してください。
-イベント: ${eventName} (${wname})
+# イベント: ${eventName} (${wname})
 説明:
 
-#テーブルが存在する場合はコメントを外して、利用テーブルを指定します.
+# テーブルが存在する場合はコメントを外して、利用テーブルを指定します.
 #利用テーブル:
 
-`.trim();
+`.trim() + "\n\n\n";
     }
 
     //////////////////

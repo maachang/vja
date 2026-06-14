@@ -2536,7 +2536,7 @@
                         const insert = "\n" + baseIndent.slice(4);
                         ta.value = v.slice(0, s) + insert + v.slice(en);
                         ta.selectionStart = ta.selectionEnd = s + insert.length;
-                        editorHlUpdate(ta.id); return;
+                        editorHlUpdate(ta.id); _ensureCursorVisible(ta); return;
                     }
                 } else {
                     // YAML Enter の動作
@@ -2549,12 +2549,12 @@
                         const insert = "\n" + baseIndent + bullet;
                         ta.value = v.slice(0, s) + insert + v.slice(en);
                         ta.selectionStart = ta.selectionEnd = s + insert.length;
-                        editorHlUpdate(ta.id); return;
+                        editorHlUpdate(ta.id); _ensureCursorVisible(ta); return;
                     } else if (!isYamlComment && /^-\s*$/.test(t)) {
                         // "- " だけの空行 → リスト終了（行を削除して通常改行）
                         ta.value = v.slice(0, ls) + "\n" + v.slice(en);
                         ta.selectionStart = ta.selectionEnd = ls + 1;
-                        editorHlUpdate(ta.id); return;
+                        editorHlUpdate(ta.id); _ensureCursorVisible(ta); return;
                     } else if (!isYamlComment && /:\s*$/.test(t) && !t.startsWith("-")) {
                         extra = "  ";
                     }
@@ -2562,7 +2562,7 @@
                 const insert = "\n" + baseIndent + extra;
                 ta.value = v.slice(0, s) + insert + v.slice(en);
                 ta.selectionStart = ta.selectionEnd = s + insert.length;
-                editorHlUpdate(ta.id); return;
+                editorHlUpdate(ta.id); _ensureCursorVisible(ta); return;
             }
         }
 
@@ -2690,7 +2690,7 @@
                 "<div class='editor-main'>" +
                 "<div class='yaml-hl-wrap'>" +
                 "<div class='yaml-hl-bg' id='yaml-hl'></div>" +
-                "<textarea class='yaml' id='yaml-ta' style='height:100%;min-height:300px' " +
+                "<textarea class='yaml' id='yaml-ta' " +
                 "oninput='yamlHlUpdate();editorUpdateGutter(\"yaml-ta\",\"yaml-gutter\")' " +
                 "onscroll='yamlHlSync();editorSyncGutter(\"yaml-ta\",\"yaml-gutter\")' " +
                 ">" + esc(cur) + "</textarea>" +
@@ -3076,6 +3076,19 @@
         // textarea の上に重ねた hl（ハイライトレイヤー）を
         // スクロール位置・サイズ同期して疑似シンタックスハイライトを実現する。
 
+        // カーソル位置が表示範囲に収まるよう textarea をスクロールする。
+        function _ensureCursorVisible(ta) {
+            const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 20;
+            const cursorLine = ta.value.slice(0, ta.selectionStart).split("\n").length;
+            const cursorTop    = (cursorLine - 1) * lineHeight;
+            const cursorBottom = cursorTop + lineHeight;
+            if (cursorBottom > ta.scrollTop + ta.clientHeight) {
+                ta.scrollTop = cursorBottom - ta.clientHeight + 8;
+            } else if (cursorTop < ta.scrollTop) {
+                ta.scrollTop = cursorTop;
+            }
+        }
+
         // textarea と hl のスクロール位置を transform で同期する。
         // nowrap前提: hl は scrollWidth/scrollHeight サイズで固定し
         // transform で textarea のスクロール量だけずらす。
@@ -3090,9 +3103,9 @@
             const ta = $(taId), hl = $(hlId);
             if (!ta || !hl) return;
             hl.innerHTML = tokenizeFn(ta.value);
-            // nowrap前提: scrollWidth/scrollHeight でhlサイズを設定
+            // nowrap前提: 横幅のみscrollWidthに合わせる
+            // 縦はtextareaがコンテナに固定されるため設定不要
             hl.style.width = ta.scrollWidth + "px";
-            hl.style.height = ta.scrollHeight + "px";
             _hlSync(taId, hlId);
         }
         function yamlHlUpdate() {_hlUpdate("yaml-ta", "yaml-hl", yamlTokenize);}
@@ -4405,14 +4418,14 @@
             const chunks = [];
             const reader = cs.readable.getReader();
             while (true) {
-                const {done, value} = await reader.read();
+                const { done, value } = await reader.read();
                 if (done) break;
                 chunks.push(value);
             }
             const total = chunks.reduce((s, c) => s + c.length, 0);
             const result = new Uint8Array(total);
             let offset = 0;
-            for (const chunk of chunks) {result.set(chunk, offset); offset += chunk.length;}
+            for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.length; }
             return btoa(String.fromCharCode(...result));
         }
 
@@ -4428,14 +4441,14 @@
             const chunks = [];
             const reader = ds.readable.getReader();
             while (true) {
-                const {done, value} = await reader.read();
+                const { done, value } = await reader.read();
                 if (done) break;
                 chunks.push(value);
             }
             const total = chunks.reduce((s, c) => s + c.length, 0);
             const result = new Uint8Array(total);
             let offset = 0;
-            for (const chunk of chunks) {result.set(chunk, offset); offset += chunk.length;}
+            for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.length; }
             return new TextDecoder().decode(result);
         }
 
@@ -4446,12 +4459,12 @@
             for (let i = 0; i < line.length; i++) {
                 const c = line[i];
                 if (inQ) {
-                    if (c === '"' && line[i + 1] === '"') {cur += '"'; i++;}
+                    if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
                     else if (c === '"') inQ = false;
                     else cur += c;
                 } else {
                     if (c === '"') inQ = true;
-                    else if (c === ',') {result.push(cur); cur = "";}
+                    else if (c === ',') { result.push(cur); cur = ""; }
                     else cur += c;
                 }
             }
@@ -4465,7 +4478,7 @@
             if (!csv?.data) return;
             try {
                 const text = await _decompressCsv(csv.data);
-                const blob = new Blob([text], {type: "text/csv"});
+                const blob = new Blob([text], { type: "text/csv" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
