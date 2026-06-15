@@ -150,6 +150,9 @@ export type VjaRPCType = {
 
             // ── フォルダを開く ────────────────────────────
             openFolderRequest: { path: string };
+
+            // ── バージョン情報取得 ────────────────────────
+            getVersionRequest: { _?: never };
         };
     }>;
 
@@ -227,6 +230,9 @@ export type VjaRPCType = {
 
             // ── プロジェクトコンパイル結果 ────────────────
             compileProjectResult: { ok: boolean; error?: string; distPath?: string };
+
+            // ── バージョン情報結果 ────────────────────────
+            getVersionResult: { version: string; runMode: string };
         };
     }>;
 };

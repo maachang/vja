@@ -2,14 +2,14 @@
 import type { ElectrobunConfig } from "electrobun";
 import { join } from "path";
 
-import { COPY_BUILD_FILES } from "./src/bun/copy-compile-assets";
+import { COPY_BUILD_FILES, getVersion } from "./src/bun/copy-compile-assets";
 
 // 基本コンフィグ定義をセット.
 const conf = {
     app: {
         name: "vja",
         identifier: "vja",
-        version: "0.1.0",
+        version: "unknown",
     },
     build: {
         // vjaのbun.jsメイン.
@@ -44,6 +44,13 @@ if (process.argv.includes("build")) {
         target[src] = dest;
     }
 }
+
+// バージョンを取得して差し替える.
+const info = getVersion();
+conf.app.name = info.name
+conf.app.version = info.version;
+
+console.debug("# electrobun.config: " + JSON.stringify(conf.app, null, "  "));
 
 // defaultセット.
 export default conf;

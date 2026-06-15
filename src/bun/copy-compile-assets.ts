@@ -3,7 +3,7 @@
 // ~/.vja-apps/VJAFormDesigner/compile-assets/ にコピーする。
 // index.ts の起動時に呼び出すことで最新状態を維持する。
 
-import { copyFileSync, existsSync, mkdirSync } from "fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from "fs";
 import { join, dirname } from "path";
 import { homedir } from "os";
 
@@ -58,3 +58,36 @@ export const copyCompileAssets = (vjaRoot?: string): void => {
         console.log(`[copy-compile-assets] ${copied} ファイルをコピーしました → ${DEST}`);
     }
 };
+
+// 実行モジュールのバージョンを返却します.
+export const getVersion = (): any => {
+    // カレントパス.
+    const current = process.env.PWD;
+    // モジュール名の名前とバージョンを取得.
+    let json = null;
+    let runMode = "unknwon"; // 実行モード不明.
+    // ビルド後なら、version.jsonを読み込む.
+    try {
+        json = JSON.parse(readFileSync(join(current, "..", "Resources", "version.json"), "UTF-8"));
+        runMode = "build"; // コンパイル済み実行.
+    } catch (e) {
+        json = null;
+    }
+    if (json == null) {
+        // ビルド前ならpackage.jsonを読み込む.
+        try {
+            json = JSON.parse(readFileSync(join(current, "package.json"), "UTF-8"));
+            runMode = "dev"; // コンパイル済み実行.
+        } catch (e) {
+            json = {
+                name: "unknown",
+                version: "unknown"
+            }
+        }
+    }
+    return {
+        name: json.name,
+        version: json.version,
+        runMode: runMode
+    }
+}

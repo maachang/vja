@@ -40,6 +40,7 @@ const pending = {
     getCloudInfras:    null as Pending<{ infras:any[] }>                               | null,
     getDecryptedCred:  null as Pending<{ ok:boolean; value:string }>                   | null,
     compileProject:    null as Pending<{ ok:boolean; error?:string; distPath?:string }> | null,
+    getVersion:        null as Pending<{ version:string; runMode:string }>               | null,
 };
 
 const resolve = <K extends keyof typeof pending>(
@@ -87,6 +88,7 @@ const rpc = Electroview.defineRPC({
             getDecryptedCredentialResult:(v: any) => resolve("getDecryptedCred", v),
             loadScriptResult:            (v: any) => { /* フロント側で処理 */ },
             compileProjectResult:   (v: any) => resolve("compileProject",   v),
+            getVersionResult:       (v: any) => resolve("getVersion",       v),
             stopProjectResult  : (v: any) => {
                 if (pending.stopProject) {
                     resolve("stopProject", v);
@@ -122,6 +124,7 @@ w.bunGetCloudInfras        = ()               => mkPromise("getCloudInfras",   (
 w.bunGetDecryptedCredential= (infraId: string, key: string) =>
     mkPromise("getDecryptedCred", () => s.getDecryptedCredentialRequest({ infraId, key }));
 w.bunOpenFolder       = (path: string) => s.openFolderRequest({ path });
+w.bunGetVersion       = ()             => mkPromise("getVersion", () => s.getVersionRequest({}));
 
 // vja.db
 w.vja = {

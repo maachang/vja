@@ -17,7 +17,7 @@ import {
 import { Database } from "bun:sqlite";
 import { type VjaRPCType, type DbRow, type DbResult } from "../shared/types";
 import { initLogger, writeLog } from "./logger";
-import { copyCompileAssets, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH } from "./copy-compile-assets";
+import { copyCompileAssets, getVersion, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH } from "./copy-compile-assets";
 import { clearProjectDb, closeProjectDb } from "./db-manager";
 import {
     _VJA_PASSPHRASE, _decrypt,
@@ -28,31 +28,13 @@ import {
 } from "./project-runner";
 
 // vja の名前とバージョンを取得.
-let _VJA_JSON = null;
-let _VJA_RUN_MODE = "unknwon"; // 実行モード不明.
-// ビルド後なら、version.jsonを読み込む.
-try {
-    _VJA_JSON = JSON.parse(readFileSync(join(process.env.PWD, "..", "Resources", "version.json"), "UTF-8"));
-    _VJA_RUN_MODE = "build"; // コンパイル済み実行.
-} catch (e) {
-    _VJA_JSON = null;
-}
-if (_VJA_JSON == null) {
-    // ビルド前ならpackage.jsonを読み込む.
-    try {
-        _VJA_JSON = JSON.parse(readFileSync(join(process.env.PWD, "package.json"), "UTF-8"));
-        _VJA_RUN_MODE = "dev"; // コンパイル済み実行.
-    } catch (e) {
-        _VJA_JSON = {
-            name: "vja",
-            version: "unknown",
-        }
-    }
-}
+const _VJA_VERION = getVersion();
 
 // jsonからタイトルとバージョンを取得.
-const _TITLE = _VJA_JSON.name;
-const _VERSION = _VJA_JSON.version;
+const _TITLE = _VJA_VERION.name;
+const _VERSION = _VJA_VERION.version;
+const _VJA_RUN_MODE = _VJA_VERION.runMode;
+
 // 一旦コンソール出力.
 process.stdout.write("### run index.ts: " + _TITLE + "(" + _VERSION + "): " + _VJA_RUN_MODE + "\n");
 
@@ -577,6 +559,14 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
 
             openFolderRequest: ({ path }) => {
                 Utils.showItemInFolder(path);
+            },
+
+            // ── バージョン情報取得 ────────────────────────
+            getVersionRequest: () => {
+                browserWindow.webview.rpc.send.getVersionResult({
+                    version: _VERSION,
+                    runMode: _VJA_RUN_MODE,
+                });
             },
 
             // ══ コンパイル ════════════════════════════════
