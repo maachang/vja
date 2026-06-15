@@ -170,10 +170,10 @@ const saveFileDialog = async (
 ): Promise<string | null> => {
     const defaultPath = join(_lastDir, defaultName);
     if (process.platform === "darwin") {
-        const script = `choose file name default name "${defaultName}" with prompt "保存先を選択"`;
+        const script = `POSIX path of (choose file name default name "${defaultName}" with prompt "保存先を選択" default location (path to home folder))`;
         const out = await execCmd(["osascript", "-e", script]);
         if (!out) return null;
-        let p = out.replace(/^alias [^:]+:/, "/").replace(/:/g, "/").replace(/\n/g, "");
+        const p = out.trim();
         return p && !p.endsWith("." + ext) ? p + "." + ext : p || null;
     } else if (process.platform === "linux") {
         const hasZenity = (await execCmd(["which", "zenity"])).length > 0;
