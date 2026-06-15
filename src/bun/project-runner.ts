@@ -94,9 +94,9 @@ export const setFormHtmlPathResolver = (fn: (formTitle: string) => string): void
 export const getProjectFormPath = (formName: string): {
     ok: boolean; path?: string; w?: number; h?: number; error?: string;
 } => {
-    const form = _currentProjectForms.find((f: any) => f.cfg.title === formName);
+    const form = _currentProjectForms.find((f: any) => (f.cfg.name || f.cfg.title) === formName);
     if (!form) return { ok: false, error: `フォーム "${formName}" が見つかりません` };
-    return { ok: true, path: _getFormHtmlPath(form.cfg.title), w: form.cfg.w, h: form.cfg.h };
+    return { ok: true, path: _getFormHtmlPath(form.cfg.name || form.cfg.title), w: form.cfg.w, h: form.cfg.h };
 };
 
 // ── AppEvents ─────────────────────────────────────────

@@ -47,8 +47,13 @@ const loadProject = async (): Promise<boolean> => {
             catch (e) { console.debug("[vja] vjaPass decrypt failed:", e); }
         }
 
+        // 互換: nameがなければtitleをnameとして補完
+        const forms = (proj.forms || []).map((f: any) => ({
+            ...f,
+            cfg: { ...f.cfg, name: f.cfg.name || f.cfg.title },
+        }));
         setProjectData({
-            forms: proj.forms || [],
+            forms,
             tables: proj.tables || [],
             name: proj.projectInfo?.name || "project",
             dbDir: _dbDir,
@@ -71,7 +76,7 @@ if (!await loadProject()) {
     process.exit(1);
 }
 
-const startFormTitle = _currentProjectForms[0]?.cfg?.title || "";
+const startFormTitle = _currentProjectForms[0]?.cfg?.name || _currentProjectForms[0]?.cfg?.title || "";
 const startResult = getProjectFormPath(startFormTitle);
 
 if (!startResult.ok || !startResult.path) {

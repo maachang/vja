@@ -732,7 +732,7 @@
                     "f" +
                     Date.now() +
                     Math.random().toString(36).slice(2, 6),
-                cfg: {title, w: 640, h: 420, bg: "#ececec", description: ""},
+                cfg: {title, name: title, w: 640, h: 420, bg: "#ececec", description: ""},
                 widgets: [],
                 idCnt: 1,
                 constants: [], // フォーム単位の定数
@@ -1908,7 +1908,8 @@
         function renderFormProps() {
             const pl = $("plist");
             [
-                {lb: "タイトル", k: "title", t: "text"},
+                {lb: "name", k: "name", t: "text"},
+                {lb: "title", k: "title", t: "text"},
                 {lb: "Width", k: "w", t: "num"},
                 {lb: "Height", k: "h", t: "num"},
                 {lb: "背景色", k: "bg", t: "color"},
@@ -1941,11 +1942,11 @@
         }
 
         function setFormCfg(k, v) {
-            if (k === "title") {
+            if (k === "name") {
                 if (!v || !/^[a-zA-Z0-9_\-\.]+$/.test(v)) {
-                    showToast("画面名は英数字・アンダースコア・ハイフン・ドットのみ使用できます", 5000);
-                    const titleInput = document.querySelector("#plist .pv-input");
-                    if (titleInput) titleInput.value = formCfg.title;
+                    showToast("名前は英数字・アンダースコア・ハイフン・ドットのみ使用できます", 5000);
+                    const nameInput = document.querySelectorAll("#plist .pv-input")[0];
+                    if (nameInput) nameInput.value = formCfg.name || formCfg.title;
                     return;
                 }
             }
@@ -3726,6 +3727,15 @@
                 showVjaAlert("bridge が読み込まれていません");
                 return;
             }
+            // 未保存チェック
+            if (!_lastSavePath) {
+                showVjaAlert("プロジェクトを保存してからコンパイルしてください。");
+                return;
+            }
+            if (isDirty()) {
+                showVjaAlert("未保存の変更があります。保存してからコンパイルしてください。");
+                return;
+            }
             // コンパイル前の確認
             showVjaDialog(
                 "コンパイルを開始しますか？\nコンパイルには数分かかる場合があります。",
@@ -3859,7 +3869,7 @@
                 item.className =
                     "fdd-item" + (i === curFormIdx ? " fdd-active" : "");
                 // 初期フォームに★マークを付ける
-                item.textContent = (f.id === startFormId ? "★ " : "") + `[${i + 1}] ${f.cfg.title}`;
+                item.textContent = (f.id === startFormId ? "★ " : "") + `[${i + 1}] ${f.cfg.name || f.cfg.title}`;
                 item.onclick = (e) => {
                     e.stopPropagation();
                     switchForm(i);
@@ -3870,7 +3880,7 @@
             // ボタンラベル更新
             const cur = forms[curFormIdx];
             $("fdd-label").textContent = cur
-                ? `[${curFormIdx + 1}] ${cur.cfg.title}`
+                ? `[${curFormIdx + 1}] ${cur.cfg.name || cur.cfg.title}`
                 : "";
             updateStartBtn();
         }
@@ -3929,15 +3939,20 @@
 
         // 現在の画面名を変更
         function formRename() {
-            showVjaPrompt("画面名を変更してください", formCfg.title, (newTitle) => {
-                if (!newTitle || newTitle === formCfg.title) return;
-                if (!/^[a-zA-Z0-9_\-\.]+$/.test(newTitle)) {
+            showVjaPrompt("画面名を変更してください", formCfg.name || formCfg.title, (newName) => {
+                if (!newName || newName === (formCfg.name || formCfg.title)) return;
+                if (!/^[a-zA-Z0-9_\-\.]+$/.test(newName)) {
                     showToast("画面名は英数字・アンダースコア・ハイフン・ドットのみ使用できます", 5000);
                     return;
                 }
                 pushUndo();
-                formCfg.title = newTitle;
-                forms[curFormIdx].cfg.title = newTitle;
+                formCfg.name = newName;
+                forms[curFormIdx].cfg.name = newName;
+                // titleが未設定または同じだった場合はtitleも更新
+                if (!formCfg.title || formCfg.title === formCfg.name) {
+                    formCfg.title = newName;
+                    forms[curFormIdx].cfg.title = newName;
+                }
                 applyForm();
                 buildFormSelect();
             });

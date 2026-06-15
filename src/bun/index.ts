@@ -687,8 +687,13 @@ const _updateProjectData = (jsonStr: string, filePath?: string): boolean => {
         // vjaPass を非同期で読み込み（await不可なので then で）
         _loadVjaPass(proj).then(pass => { _vjaPass = pass; });
         // project-runner.ts の setProjectData でプロジェクト共通データを設定
+        // 互換: nameがなければtitleをnameとして補完
+        const forms = (proj.forms || []).map((f: any) => ({
+            ...f,
+            cfg: { ...f.cfg, name: f.cfg.name || f.cfg.title },
+        }));
         setProjectData({
-            forms: proj.forms || [],
+            forms,
             tables: proj.tables || [],
             name,
             dbDir: _currentProjectDbDir,
@@ -730,13 +735,15 @@ const buildProjectFiles = async (): Promise<{
         const extRuntimeJs = (_currentProjectExtRuntime || "").trim();
         for (const form of _currentProjectForms) {
             const html = buildFormHtml(form, _currentProjectForms, extRuntimeJs);
-            await Bun.write(join(outDir, `${form.cfg.title}.html`), html);
+            const fileName = (form.cfg.name || form.cfg.title) + ".html";
+            await Bun.write(join(outDir, fileName), html);
         }
 
         const startForm = _currentProjectForms[0];
+        const startFileName = (startForm.cfg.name || startForm.cfg.title) + ".html";
         return {
             ok: true,
-            startFormPath: join(outDir, `${startForm.cfg.title}.html`),
+            startFormPath: join(outDir, startFileName),
             startFormW: startForm.cfg.w,
             startFormH: startForm.cfg.h,
         };
@@ -812,7 +819,7 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
             "src/project.vjaproj": "project.vjaproj",
         };
         for (const form of _currentProjectForms) {
-            const htmlFileName = `${form.cfg.title}.html`;
+            const htmlFileName = `${form.cfg.name || form.cfg.title}.html`;
             const html = buildFormHtml(form, _currentProjectForms, extRuntimeJs);
             await Bun.write(join(srcMainviewDir, htmlFileName), html);
             copyEntries[`src/mainview/${htmlFileName}`] = `views/mainview/${htmlFileName}`;
