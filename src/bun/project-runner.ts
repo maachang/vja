@@ -13,7 +13,7 @@ import type { VjaRPCType, TableDef } from "../shared/types";
 // ── 暗号化基盤 ────────────────────────────────────────
 export const _VJA_PASSPHRASE = "vja-form-designer-2024-xK9mPqR7nL2wT5vY";
 
-const _deriveKey = async (passphrase: string): Promise<CryptoKey> => {
+export const _deriveKey = async (passphrase: string): Promise<CryptoKey> => {
     const keyMaterial = await crypto.subtle.importKey(
         "raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveKey"]
     );

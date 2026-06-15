@@ -20,7 +20,7 @@ import { initLogger, writeLog } from "./logger";
 import { copyCompileAssets, getVersion, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH } from "./copy-compile-assets";
 import { clearProjectDb, closeProjectDb } from "./db-manager";
 import {
-    _VJA_PASSPHRASE, _decrypt,
+    _VJA_PASSPHRASE, _decrypt, _deriveKey,
     setProjectData, setFormHtmlPathResolver, setCloudInfras,
     openProjectWindow, closeProjectWindow, navigateProjectWindow, getProjectFormPath,
     _currentProjectForms, _currentProjectName,
@@ -73,22 +73,8 @@ const _lastDirFile = join(_configDir, "last-dir.txt");
 // ── 暗号化基盤（index.ts固有: 暗号化のみ。復号・パスフレーズはproject-runner.tsから使用） ──
 let _vjaPass: string = "";
 
-const _strToKey = async (passphrase: string): Promise<CryptoKey> => {
-    const enc = new TextEncoder();
-    const keyMaterial = await crypto.subtle.importKey(
-        "raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]
-    );
-    return crypto.subtle.deriveKey(
-        { name: "PBKDF2", salt: enc.encode("vja-salt-2024"), iterations: 100000, hash: "SHA-256" },
-        keyMaterial,
-        { name: "AES-GCM", length: 256 },
-        false,
-        ["encrypt", "decrypt"]
-    );
-};
-
 const _encrypt = async (plain: string, passphrase: string): Promise<string> => {
-    const key = await _strToKey(passphrase);
+    const key = await _deriveKey(passphrase);
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const enc = new TextEncoder();
     const cipherBuf = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, enc.encode(plain));

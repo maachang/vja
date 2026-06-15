@@ -223,7 +223,8 @@ w.vja.db = {
 // フォーム切り替え
 w.vja.project = {
     navigate: (formName: string) =>
-        mkPromise("navigateForm", () => s.navigateFormRequest({ formName })),
+        mkPromise("navigateForm", () => s.navigateFormRequest({ formName }))
+            .then(() => {}),
 };
 
 // セッション

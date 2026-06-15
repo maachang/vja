@@ -1963,7 +1963,7 @@
             const hasY = w.events?.[evName]?.trim().length > 0;
             if (!hasY) return;
             const _dlg1 = await vja.app.showConfirm("「" + evName + "」のイベント定義を削除してよろしいですか？");
-            if (!_dlg1?.confirmed) return;
+            if (!_dlg1) return;
             if (w.events) delete w.events[evName];
             renderEvents();
             pushUndo();
@@ -2359,7 +2359,7 @@
             const w = getWidget(wid);
             if (!w) return;
             if (!aiConfig.enabled) {
-                if ((await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？"))?.confirmed) {
+                if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
                     closeModal();
                     openAiConfig();
                 }
@@ -2464,7 +2464,7 @@
             const confirmMsg = jsTaHasCode
                 ? "JavaScriptタブに既存のコードがあります。\nAI生成で上書きしますか？\n※実行前に現在の内容を保存します。"
                 : "JavaScriptコードを生成しますか？\n※実行前に現在の内容を保存します。";
-            if (!(await vja.app.showConfirm(confirmMsg))?.confirmed) {
+            if (!(await vja.app.showConfirm(confirmMsg))) {
                 if (btn) btn.disabled = false;
                 if (status) status.textContent = "";
                 return;
@@ -3304,7 +3304,7 @@
             const hasY = f.events?.[evName]?.trim().length > 0;
             if (!hasY) return;
             const dlg = await vja.app.showConfirm("「" + evName + "」のイベント定義を削除してよろしいですか？");
-            if (!dlg?.confirmed) return;
+            if (!dlg) return;
             if (f.events) {delete f.events[evName]; delete f.events["_js_" + evName];}
             renderEvents();
             pushUndo();
@@ -3737,37 +3737,29 @@
                 return;
             }
             // コンパイル前の確認
-            showVjaDialog(
-                "コンパイルを開始しますか？\nコンパイルには数分かかる場合があります。",
-                async (confirmed) => {
-                    if (!confirmed) return;
-                    const btn = $("btn-compile");
-                    if (btn) {btn.disabled = true;}
-                    showLoadingModal("コンパイル中...");
-                    try {
-                        const result = await window.bunCompileProject();
-                        closeModal();
-                        if (result?.ok) {
-                            showVjaDialog(
-                                `コンパイル完了！
+            const confirmCompile = await vja.app.showConfirm("コンパイルを開始しますか？\nコンパイルには数分かかる場合があります。");
+            if (!confirmCompile) return;
+            const btn = $("btn-compile");
+            if (btn) {btn.disabled = true;}
+            showLoadingModal("コンパイル中...");
+            try {
+                const result = await window.bunCompileProject();
+                closeModal();
+                if (result?.ok) {
+                    const openFolder = await vja.app.showConfirm(`コンパイル完了！
 出力先: ${result.distPath}
 
-出力先フォルダを開きますか？`,
-                                (confirmed) => {
-                                    if (confirmed) window.bunOpenFolder(result.distPath);
-                                }
-                            );
-                        } else {
-                            showVjaAlert(`コンパイル失敗: ${result?.error || "不明なエラー"}`);
-                        }
-                    } catch (e) {
-                        closeModal();
-                        showVjaAlert("コンパイルに失敗しました: " + e.message);
-                    } finally {
-                        if (btn) {btn.disabled = false;}
-                    }
+出力先フォルダを開きますか？`);
+                    if (openFolder) window.bunOpenFolder(result.distPath);
+                } else {
+                    showVjaAlert(`コンパイル失敗: ${result?.error || "不明なエラー"}`);
                 }
-            );
+            } catch (e) {
+                closeModal();
+                showVjaAlert("コンパイルに失敗しました: " + e.message);
+            } finally {
+                if (btn) {btn.disabled = false;}
+            }
         }
 
         async function actRunProject() {
@@ -3804,7 +3796,7 @@
             const confirmed = await vja.app.showConfirm(
                 "このプロジェクトのDBデータを全て削除します。\nこの操作は元に戻せません。よろしいですか？"
             );
-            if (!confirmed?.confirmed) return;
+            if (!confirmed) return;
             try {
                 const result = await vja.project.clearDb();
                 if (result.ok) {
@@ -3928,7 +3920,7 @@
                 showVjaAlert("最後の画面は削除できません");
                 return;
             }
-            if (!(await vja.app.showConfirm(`"${formCfg.title}" を削除しますか？`))?.confirmed) return;
+            if (!(await vja.app.showConfirm(`"${formCfg.title}" を削除しますか？`))) return;
             commitIdCnt();
             pushUndo();
             forms.splice(curFormIdx, 1);
@@ -4206,7 +4198,7 @@
         async function deleteTable(idx) {
             const t = tables[idx];
             if (!t) return;
-            if (!(await vja.app.showConfirm("テーブル「" + t.name + "」を削除しますか？この操作は元に戻せません。"))?.confirmed) return;
+            if (!(await vja.app.showConfirm("テーブル「" + t.name + "」を削除しますか？この操作は元に戻せません。"))) return;
             tables.splice(idx, 1);
             pushUndo();
             reopenModal(renderTableManagerModal);
@@ -4520,13 +4512,12 @@
         }
 
         // マスターCSVを削除する
-        function tblDeleteMasterCsv() {
-            showVjaDialog("マスターCSVを削除しますか？", (confirmed) => {
-                if (!confirmed) return;
-                delete _tblEdit.masterCsv;
-                renderTableEditModal();
-                showToast("マスターCSVを削除しました");
-            });
+        async function tblDeleteMasterCsv() {
+            const confirmed = await vja.app.showConfirm("マスターCSVを削除しますか？");
+            if (!confirmed) return;
+            delete _tblEdit.masterCsv;
+            renderTableEditModal();
+            showToast("マスターCSVを削除しました");
         }
 
         // カラム値を更新
@@ -4968,7 +4959,7 @@
             const confirmMsg = existsDoc
                 ? "既に内容が登録されています。\n上書きしますか？\n※実行前に現在の内容を保存します。"
                 : "AI向け説明を生成しますか？\n※実行前に現在の内容を保存します。";
-            if (!(await vja.app.showConfirm(confirmMsg))?.confirmed) return;
+            if (!(await vja.app.showConfirm(confirmMsg))) return;
             // AI生成前に保存
             saveExtRuntime();
             await runAiGenerate({
