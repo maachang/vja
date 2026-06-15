@@ -184,9 +184,24 @@
   - 引数:
     - key: string - セッションキー
     - value: any - 保存する値（JSON変換される）
-  - 戻り値: なし
+  - 戻り値: boolean - 成功時true
   - 使用例: "await vja.session.set('loginUser', { id: 1, name: '山田' });"
   - 使用例説明: ログインユーザー情報をセッションに保存する
+
+- 関数名: await vja.session.delete(key):
+  - 説明: セッションから指定キーを削除する
+  - 引数:
+    - key: string - セッションキー
+  - 戻り値: boolean - 成功時true
+  - 使用例: "await vja.session.delete('loginUser');"
+  - 使用例説明: セッションからログインユーザー情報を削除する
+
+- 関数名: await vja.session.clear():
+  - 説明: セッションの全データを削除する
+  - 引数: なし
+  - 戻り値: boolean - 成功時true
+  - 使用例: "await vja.session.clear();"
+  - 使用例説明: セッションを全クリアする
 
 - 関数名: await vja.session.get(key, default?):
   - 説明: セッションからキーに対応する値を取得する
@@ -518,8 +533,8 @@
   - Description: Executes an SQL SELECT statement and returns the result rows
   - Arguments:
     - sql: string - The SQL statement to execute (use the placeholder ?)
-    - Return value: Record<string, any>[] - Array of result rows (throws an exception on error)
-  - Return Value: "{ ok: boolean, rows: Record<string, any>[] } - If ok=true, rows will contain an array of result rows"
+    - params?: (string|number|boolean|null)[] - Array of values to pass to the placeholder (optional)
+  - Return Value: Record<string, any>[] - Array of result rows (throws an exception on error)
 
 - Function name: await vja.db.execute(sql, params?):
   - Description: Executes an SQL INSERT/UPDATE/DELETE statement
@@ -642,7 +657,18 @@
   - Arguments:
     - key: string - Session Key
     - value: any - Value to save (converted to JSON)
-  - Return Value: None
+  - Return Value: boolean - true on success
+
+- Function Name: await vja.session.delete(key):
+  - Description: Deletes the specified key from the session
+  - Arguments:
+    - key: string - Session key
+  - Return Value: boolean - true on success
+
+- Function Name: await vja.session.clear():
+  - Description: Deletes all session data
+  - Arguments: None
+  - Return Value: boolean - true on success
 
 - Function Name: await vja.session.get(key, default?):
   - Description: Retrieves the value corresponding to the key from the session
@@ -931,7 +957,7 @@
   - 説明: 指定テーブルの全データを削除する
   - 引数:
     - tableName: string - クリアするテーブル名
-  - 戻り値: "{ changes: number, lastInsertRowid: number } | null"
+  - 戻り値: なし
   - 使用例: "vja.db.clearTable('temp_data');"
   - 使用例説明: 一時データテーブルを全削除する
 
@@ -964,18 +990,30 @@
   - 戻り値: "string | null - セッション値。存在しない場合はnull"
   - 使用例: "const lastLogin = vja.session.get('lastLogin');"
   - 使用例説明: 前回ログイン日時をセッションから取得する
-  - 類似関数:
-    - vja.session.delete(key):
-      - 説明: セッションから指定キーを削除する
 
 - 関数名: vja.session.set(key, value):
   - 説明: セッションにキーと値を保存する
   - 引数:
     - key: string - セッションキー
     - value: string - 保存する値
-  - 戻り値: なし
+  - 戻り値: boolean - 成功時true
   - 使用例: "vja.session.set('appStartTime', new Date().toISOString());"
   - 使用例説明: アプリ起動時刻をセッションに保存する
+
+- 関数名: vja.session.delete(key):
+  - 説明: セッションから指定キーを削除する
+  - 引数:
+    - key: string - セッションキー
+  - 戻り値: boolean - 成功時true
+  - 使用例: "vja.session.delete('tempKey');"
+  - 使用例説明: 不要なセッションキーを削除する
+
+- 関数名: vja.session.clear():
+  - 説明: セッションの全データを削除する
+  - 引数: なし
+  - 戻り値: boolean - 成功時true
+  - 使用例: "vja.session.clear();"
+  - 使用例説明: セッションを全クリアする
 
 ## ログ (vja.log.*)
 
@@ -1052,7 +1090,7 @@
   - Description: Deletes all data in the specified table
   - Arguments:
     - tableName: string - The name of the table to clear
-  - Return Value: "{ changes: number, lastInsertRowid: number } | null"
+  - Return Value: None
 
 - Function name: await vja.db.importCsv(tableName, filePath):
   - Description: Reads a CSV file and imports it into the specified table in bulk. The first row of the CSV is used as the header.
@@ -1077,16 +1115,24 @@
   - Arguments:
     - key: string - Session key
   - Return value: "string | null - Session value. null if it does not exist."
-  - Similar functions:
-    - vja.session.delete(key):
-      - Description: Deletes the specified key from the session.
 
 - Function Name: vja.session.set(key, value):
   - Description: Saves a key and value to the session.
   - Arguments:
     - key: string - Session key
     - value: string - Value to save
-  - Return value: None
+  - Return value: boolean - true on success
+
+- Function Name: vja.session.delete(key):
+  - Description: Deletes the specified key from the session.
+  - Arguments:
+    - key: string - Session key
+  - Return value: boolean - true on success
+
+- Function Name: vja.session.clear():
+  - Description: Deletes all session data.
+  - Arguments: None
+  - Return value: boolean - true on success
 
 ## Logs (vja.log.*)
 
@@ -1554,7 +1600,6 @@ Include the function name, description, arguments, return value, and exceptions.
     const DEFAULT_YAML_VALUE = function (eventName, wname) {
         return `
 # YAML形式でAIへの指示を記述します.
-
 # --- 定義サンプル説明 ---
 # 処理:
 # - 「YES, NO」のダイアログを「テストです」の内容で表示する:
