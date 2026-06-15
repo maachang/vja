@@ -5396,6 +5396,13 @@
                     "<option value='" + i + "' style='background:#1e1e2e;color:#e0e0f0' " + (f.value === curUiFont ? "selected" : "") + ">" + esc(f.label) + "</option>"
                 ).join("") +
                 "</select></div></div>" +
+                // UIフォントプレビュー
+                "<div style='display:flex;flex-direction:column;gap:6px'>" +
+                "<label style='font-size:var(--ui-font-size);color:var(--text2)'>UIプレビュー</label>" +
+                "<div id='uf-preview' style='background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px;" +
+                "font-size:" + curUiSize + "px;font-family:" + (curUiFont || "inherit") + ";line-height:1.8;color:var(--text)'>" +
+                "保存　キャンセル　閉じる　プロパティ　フォント設定　表示" +
+                "</div></div>" +
 
                 // ── エディタフォント設定 ──
                 "<div style='font-size:var(--ui-font-size);font-weight:bold;color:var(--accent);padding-bottom:4px;border-bottom:1px solid var(--border);margin-top:6px'>エディタフォント設定</div>" +
@@ -5432,7 +5439,9 @@
             );
             rAfBind("#ef-save-btn", "click", saveFontConfig);
             let _pfLastSize = curSize, _pfLastIdx = -1;
+            let _ufLastSize = curUiSize, _ufLastIdx = -1;
             const _pfPoll = setInterval(() => {
+                // エディタプレビュー更新
                 const sel = $("ef-font-sel");
                 const sizeIn = $("ef-size");
                 const prev = $("ef-preview");
@@ -5445,6 +5454,21 @@
                     const f = EDITOR_FONTS[nowIdx] || EDITOR_FONTS[0];
                     prev.style.setProperty("font-size", nowSize + "px", "important");
                     prev.style.setProperty("font-family", f.value, "important");
+                }
+                // UIフォントプレビュー更新
+                const uiSel = $("uf-font-sel");
+                const uiSizeIn = $("uf-size");
+                const uiPrev = $("uf-preview");
+                if (uiSel && uiPrev) {
+                    const nowUiSize = parseInt(uiSizeIn?.value) || 13;
+                    const nowUiIdx = uiSel.selectedIndex;
+                    if (nowUiSize !== _ufLastSize || nowUiIdx !== _ufLastIdx) {
+                        _ufLastSize = nowUiSize;
+                        _ufLastIdx = nowUiIdx;
+                        const uf = UI_FONT_LIST[nowUiIdx] || UI_FONT_LIST[0];
+                        uiPrev.style.setProperty("font-size", nowUiSize + "px", "important");
+                        uiPrev.style.setProperty("font-family", uf.value || "inherit", "important");
+                    }
                 }
             }, 150);
         }
