@@ -1965,8 +1965,7 @@
             const _dlg1 = await vja.app.showConfirm("「" + evName + "」のイベント定義を削除してよろしいですか？");
             if (!_dlg1) return;
             if (w.events) delete w.events[evName];
-            renderEvents();
-            pushUndo();
+            renderEventsAndPush();
         }
 
         function renderEvents() {
@@ -3266,8 +3265,7 @@
             if (!w.jsCode) w.jsCode = {};
             w.events[evName] = $("yaml-ta")?.value || "";
             w.jsCode[evName] = $("js-ta")?.value || "";
-            renderEvents();
-            pushUndo();
+            renderEventsAndPush();
         }
         function saveYaml(wid, evName) {
             _saveYamlData(wid, evName);
@@ -3294,8 +3292,7 @@
             f.events[evName] = $("yaml-ta")?.value || "";
             f.events["_js_" + evName] = $("js-ta")?.value || "";
             closeModal();
-            renderEvents();
-            pushUndo();
+            renderEventsAndPush();
             showToast("フォームイベントを保存しました");
         }
 
@@ -3306,8 +3303,7 @@
             const dlg = await vja.app.showConfirm("「" + evName + "」のイベント定義を削除してよろしいですか？");
             if (!dlg) return;
             if (f.events) {delete f.events[evName]; delete f.events["_js_" + evName];}
-            renderEvents();
-            pushUndo();
+            renderEventsAndPush();
         }
 
 
@@ -3502,6 +3498,18 @@
             undoStack.push(JSON.stringify(snapshot()));
             if (undoStack.length > 60) undoStack.shift();
             redoStack = [];
+        }
+
+        // commitIdCnt + pushUndo の共通処理
+        function commitAndPush() {
+            commitIdCnt();
+            pushUndo();
+        }
+
+        // renderEvents + pushUndo の共通処理
+        function renderEventsAndPush() {
+            renderEvents();
+            pushUndo();
         }
         // ── プロジェクトデータ復元共通処理 ──────────────
         // スナップショットや保存データから状態を復元する共通処理。
@@ -3919,14 +3927,14 @@
 
         // 新しい画面を追加
         function formNew() {
+            commitCurrentInput();
             showVjaPrompt("新しい画面の名前を入力してください", "Form" + (forms.length + 1), (title) => {
                 if (!title) return;
                 if (!/^[a-zA-Z0-9_\-\.]+$/.test(title)) {
                     showToast("画面名は英数字・アンダースコア・ハイフン・ドットのみ使用できます", 5000);
                     return;
                 }
-                commitIdCnt();
-                pushUndo();
+                commitAndPush();
                 const f = makeFormData(title);
                 forms.push(f);
                 curFormIdx = forms.length - 1;
@@ -3937,13 +3945,13 @@
 
         // 現在の画面を削除
         async function formDelete() {
+            commitCurrentInput();
             if (forms.length <= 1) {
                 showVjaAlert("最後の画面は削除できません");
                 return;
             }
             if (!(await vja.app.showConfirm(`"${formCfg.title}" を削除しますか？`))) return;
-            commitIdCnt();
-            pushUndo();
+            commitAndPush();
             forms.splice(curFormIdx, 1);
             curFormIdx = Math.min(curFormIdx, forms.length - 1);
             selId = null;
@@ -3952,6 +3960,7 @@
 
         // 現在の画面名を変更
         function formRename() {
+            commitCurrentInput();
             showVjaPrompt("画面名を変更してください", formCfg.name || formCfg.title, (newName) => {
                 if (!newName || newName === (formCfg.name || formCfg.title)) return;
                 if (!/^[a-zA-Z0-9_\-\.]+$/.test(newName)) {
