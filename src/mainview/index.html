@@ -3680,6 +3680,7 @@
         // 保存（上書き or 名前を付けて保存）
         // Bun側でダイアログ取得→書き込みまで一括処理するので RPC は1回だけ
         async function actSave() {
+            commitCurrentInput();
             commitIdCnt();
             const snap = snapshot();
             const content = JSON.stringify(snap);
@@ -3981,6 +3982,7 @@
             const el = document.activeElement;
             if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT")) {
                 el.dispatchEvent(new Event("change", { bubbles: true }));
+                el.dispatchEvent(new Event("blur", { bubbles: true }));
             }
         }
 
