@@ -5,8 +5,11 @@
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { initLogger } from "./logger";
-import { setProjectData, setFormHtmlPathResolver, getProjectFormPath, openProjectWindow, _VJA_PASSPHRASE, setVjaProject, _decrypt }
-    from "./project-runner";
+import {
+    setProjectData, setFormHtmlPathResolver, getProjectFormPath,
+    openProjectWindow, _VJA_PASSPHRASE, setVjaProject, _decrypt,
+    _currentProjectForms
+} from "./project-runner";
 
 // 一旦コンソール出力.
 process.stdout.write("### run standalone-index.ts\n");
@@ -68,13 +71,8 @@ if (!await loadProject()) {
     process.exit(1);
 }
 
-const startResult = getProjectFormPath(
-    // starterFormはforms[0]
-    (await (async () => {
-        const { _currentProjectForms } = await import("./project-runner");
-        return _currentProjectForms[0]?.cfg?.title || "";
-    })())
-);
+const startFormTitle = _currentProjectForms[0]?.cfg?.title || "";
+const startResult = getProjectFormPath(startFormTitle);
 
 if (!startResult.ok || !startResult.path) {
     console.error("[app] 開始フォームが見つかりません。終了します。");

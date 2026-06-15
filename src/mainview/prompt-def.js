@@ -1565,8 +1565,6 @@ Include the function name, description, arguments, return value, and exceptions.
 # --- 規定ワード ---
 # 利用テーブル:
 #   - table1
-#   - table2
-#   - table3
 #   今回の処理で利用するデータベーステーブル名を設定することで、AIがテーブル内容を理解してくれる。
 #   テーブルのI/Oを行う場合は必須。
 # 説明: 処理に対する概要説明

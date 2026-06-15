@@ -38,17 +38,18 @@ export const copyCompileAssets = (vjaRoot?: string): void => {
         console.warn("[copy-compile-assets] vjaプロジェクトルートが取得できません");
         return;
     }
-    console.debug("### start copyCompileAssets: " + root);
+    console.debug("`## [copy-compile-assets] start: " + root);
     let copied = 0;
     for (const [srcRel, dstRel] of COPY_BUILD_FILES) {
         const src = join(root, "src", srcRel);
         const dst = join(DEST, dstRel);
         if (!existsSync(src)) {
-            console.debug(`[copy-compile-assets] スキップ（ソースなし）: ${srcRel}`);
+            //console.debug(`[copy-compile-assets] スキップ（ソースなし）: ${srcRel}`);
             continue;
-        } else {
-            console.debug(`[copy-compile-assets] NOスキップ: ${srcRel}`);
         }
+        //} else {
+        //    console.debug(`[copy-compile-assets] NOスキップ: ${srcRel}`);
+        //}
         const dstDir = dirname(dst);
         if (!existsSync(dstDir)) mkdirSync(dstDir, { recursive: true });
         copyFileSync(src, dst);
@@ -57,6 +58,7 @@ export const copyCompileAssets = (vjaRoot?: string): void => {
     if (copied > 0) {
         console.log(`[copy-compile-assets] ${copied} ファイルをコピーしました → ${DEST}`);
     }
+    console.debug("`## [copy-compile-assets] end");
 };
 
 // 実行モジュールのバージョンを返却します.
@@ -68,7 +70,9 @@ export const getVersion = (): any => {
     let runMode = "unknwon"; // 実行モード不明.
     // ビルド後なら、version.jsonを読み込む.
     try {
-        json = JSON.parse(readFileSync(join(current, "..", "Resources", "version.json"), "UTF-8"));
+        json = JSON.parse(
+            readFileSync(
+                join(current, "..", "Resources", "version.json"), "UTF-8"));
         runMode = "build"; // コンパイル済み実行.
     } catch (e) {
         json = null;
@@ -76,7 +80,9 @@ export const getVersion = (): any => {
     if (json == null) {
         // ビルド前ならpackage.jsonを読み込む.
         try {
-            json = JSON.parse(readFileSync(join(current, "package.json"), "UTF-8"));
+            json = JSON.parse(
+                readFileSync(
+                    join(current, "package.json"), "UTF-8"));
             runMode = "dev"; // コンパイル済み実行.
         } catch (e) {
             json = {
