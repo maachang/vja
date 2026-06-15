@@ -224,7 +224,7 @@
         txtName: { required: true },
         txtEmail: { required: true, isEmail: true }
       });
-      if (!valid) { vja.widget.setValue('lblError', Object.values(errors).join('\n')); return; }
+      if (!valid) { vja.widget.setValue('lblError', Object.values(errors).join('\\n')); return; }
   - 使用例説明: 名前とメールアドレスの入力チェックを行い、エラーがあれば表示する
 
 - 関数名: vja.validate.required(value):

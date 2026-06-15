@@ -2016,26 +2016,70 @@
           YAML EDITOR
         ═══════════════════════════════════════════ */
 
+        // YAMLテキストからナビゲーション項目を解析
+        function _parseApiRefNav(text) {
+            const nav = []; // { type: 'category'|'func', label, anchor }
+            let catIdx = 0, fnIdx = 0;
+            text.split("\n").forEach(line => {
+                if (/^##\s/.test(line)) {
+                    nav.push({ type: "category", label: line.replace(/^##\s*/, ""), anchor: "cat-" + catIdx++ });
+                } else if (/^-\s*関数名:\s*/.test(line) || /^-\s*Function\s*(N|n)ame:\s*/.test(line)) {
+                    const label = line.replace(/^-\s*(関数名|Function\s*(N|n)ame):\s*/, "").trim();
+                    nav.push({ type: "func", label, anchor: "fn-" + fnIdx++ });
+                }
+            });
+            return nav;
+        }
+
         // APIリファレンスモーダルを開く
         function openApiRef(isAppEvent) {
             const info = isAppEvent
                 ? window._PROMPT_DEF.VJA_USE_BACK_JS_INFO
                 : window._PROMPT_DEF.VJA_USE_FRONT_JS_INFO;
             const title = isAppEvent ? "📖 APIリファレンス（バックエンド）" : "📖 APIリファレンス（フロントエンド）";
+            const nav = _parseApiRefNav(info);
+
+            // 左パネルのナビゲーションHTML生成（カテゴリのみ）
+            const navHtml = nav.filter(item => item.type === "category").map(item => {
+                return "<div class='api-ref-cat' data-label='" + esc(item.label) + "' onmousedown='_apiRefJump(this.dataset.label)'>" + esc(item.label) + "</div>";
+            }).join("");
+
             showModal(
                 mhdrHTML(title, "modal-layer-1") +
-                "<div class='mbody' style='flex:1;min-height:0;overflow:hidden;gap:6px'>" +
+                "<div class='mbody' style='flex:1;min-height:0;overflow:hidden;padding:0;flex-direction:row;gap:0'>" +
+                "<div id='api-ref-nav' style='width:260px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border);padding:6px 0;background:var(--bg2);display:flex;flex-direction:column;gap:1px'>" +
+                navHtml +
+                "</div>" +
+                "<div style='flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;padding:8px;overflow:hidden'>" +
                 "<input id='api-ref-search' placeholder='🔍 検索...' oninput='_apiRefFilter()' " +
                 "style='height:30px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:13px;padding:0 10px;outline:none;flex-shrink:0;width:100%;box-sizing:border-box'>" +
                 "<div id='api-ref-body' style='flex:1;overflow:auto;font-size:18px;line-height:1.7;font-family:monospace;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:10px;white-space:pre-wrap;word-break:break-word;width:100%;box-sizing:border-box'>" +
                 yamlTokenize(info) +
                 "</div>" +
                 "</div>" +
+                "</div>" +
                 mfootHTML([{label: "閉じる", action: 'closeModal("modal-layer-1")'}]),
                 "modal-api-ref", "modal-layer-1"
             );
+
             window._apiRefRaw = info;
-            window._apiRefFilter = function () {
+
+            // カテゴリラベルのテキストで該当行を検索してスクロール
+            window._apiRefJump = function(label) {
+                const body = document.getElementById("api-ref-body");
+                if (!body) return;
+                // bodyのテキストノードを走査して##行を探す
+                const spans = body.querySelectorAll("span");
+                for (const span of spans) {
+                    if (span.textContent.includes(label)) {
+                        body.scrollTop = span.offsetTop - body.offsetTop - 8;
+                        return;
+                    }
+                }
+            };
+
+            // 検索フィルター
+            window._apiRefFilter = function() {
                 const q = (document.getElementById("api-ref-search")?.value || "").toLowerCase();
                 const body = document.getElementById("api-ref-body");
                 if (!body) return;
@@ -2048,8 +2092,8 @@
                     const matched = line.toLowerCase().includes(q);
                     const highlighted = yamlTokenize(line);
                     return matched
-                        ? `<span style='background:var(--accent-dim,#2a3a6a);display:block'>${highlighted}</span>`
-                        : `<span style='opacity:0.3;display:block'>${highlighted}</span>`;
+                        ? "<span style='background:var(--accent-dim,#2a3a6a);display:block'>" + highlighted + "</span>"
+                        : "<span style='opacity:0.3;display:block'>" + highlighted + "</span>";
                 }).join("");
             };
         }

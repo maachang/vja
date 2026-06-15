@@ -2278,7 +2278,22 @@ textarea.yaml:focus {
     min-height: 0;
     overflow: hidden;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+}
+
+.api-ref-cat {
+    padding: 6px 10px;
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--accent);
+    cursor: pointer;
+    user-select: none;
+    border-radius: 3px;
+    margin: 0 4px;
+}
+
+.api-ref-cat:hover {
+    background: var(--bg3);
 }
 
 .yaml-api-ref-btn {
