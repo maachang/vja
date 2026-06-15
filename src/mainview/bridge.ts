@@ -141,60 +141,74 @@ w.bunLoadUiConfig     = () => mkPromise("loadUiConfig", () => s.loadUiConfigRequ
 w.vja = {
     db: {
         query: (sql: string, params?: any[]) =>
-            mkPromise("dbQuery", () => s.dbQueryRequest({ sql, params })),
+            mkPromise("dbQuery", () => s.dbQueryRequest({ sql, params }))
+                .then((r: any) => r.rows),
         execute: (sql: string, params?: any[]) =>
-            mkPromise("dbExecute", () => s.dbExecuteRequest({ sql, params })),
+            mkPromise("dbExecute", () => s.dbExecuteRequest({ sql, params }))
+                .then((r: any) => r.ok ? r.result : null),
         transaction: (statements: { sql: string; params?: any[] }[]) =>
-            mkPromise("dbTransaction", () => s.dbTransactionRequest({ statements })),
+            mkPromise("dbTransaction", () => s.dbTransactionRequest({ statements }))
+                .then((r: any) => r.ok),
         init: (ddlStatements: string[]) =>
-            mkPromise("dbInit", () => s.dbInitRequest({ ddlStatements })),
+            mkPromise("dbInit", () => s.dbInitRequest({ ddlStatements }))
+                .then((r: any) => r.ok),
     },
     file: {
         read: (path: string) =>
-            mkPromise("fileRead", () => s.fileReadRequest({ path })),
+            mkPromise("fileRead", () => s.fileReadRequest({ path }))
+                .then((r: any) => r.ok ? r.content : null),
         write: (path: string, content: string) =>
-            mkPromise("fileWrite", () => s.fileWriteRequest({ path, content })),
+            mkPromise("fileWrite", () => s.fileWriteRequest({ path, content }))
+                .then((r: any) => r.ok),
         readBytes: (path: string) =>
-            mkPromise("fileReadBytes", () => s.fileReadBytesRequest({ path })),
+            mkPromise("fileReadBytes", () => s.fileReadBytesRequest({ path }))
+                .then((r: any) => r.data ? new Uint8Array(r.data) : null),
         writeBytes: (path: string, data: number[]) =>
-            mkPromise("fileWriteBytes", () => s.fileWriteBytesRequest({ path, data })),
+            mkPromise("fileWriteBytes", () => s.fileWriteBytesRequest({ path, data }))
+                .then((r: any) => r.ok),
         exists: (path: string) =>
-            mkPromise("fileExists", () => s.fileExistsRequest({ path })),
+            mkPromise("fileExists", () => s.fileExistsRequest({ path }))
+                .then((r: any) => r.value),
         delete: (path: string) =>
-            mkPromise("fileDelete", () => s.fileDeleteRequest({ path })),
+            mkPromise("fileDelete", () => s.fileDeleteRequest({ path }))
+                .then((r: any) => r.ok),
         copy: (src: string, dest: string) =>
-            mkPromise("fileCopy", () => s.fileCopyRequest({ src, dest })),
+            mkPromise("fileCopy", () => s.fileCopyRequest({ src, dest }))
+                .then((r: any) => r.ok),
     },
     dir: {
         create: (path: string) =>
-            mkPromise("dirCreate", () => s.dirCreateRequest({ path })),
+            mkPromise("dirCreate", () => s.dirCreateRequest({ path }))
+                .then((r: any) => r.ok),
         delete: (path: string) =>
-            mkPromise("dirDelete", () => s.dirDeleteRequest({ path })),
+            mkPromise("dirDelete", () => s.dirDeleteRequest({ path }))
+                .then((r: any) => r.ok),
         list: (path: string) =>
-            mkPromise("dirList", () => s.dirListRequest({ path })),
+            mkPromise("dirList", () => s.dirListRequest({ path }))
+                .then((r: any) => r.entries),
         exists: (path: string) =>
-            mkPromise("dirExists", () => s.dirExistsRequest({ path })),
+            mkPromise("dirExists", () => s.dirExistsRequest({ path }))
+                .then((r: any) => r.value),
     },
     log: {
-        trace: (message: string) => mkPromise("log", () => s.logRequest({ level: "trace", message })),
-        debug: (message: string) => mkPromise("log", () => s.logRequest({ level: "debug", message })),
-        info:  (message: string) => mkPromise("log", () => s.logRequest({ level: "info",  message })),
-        warn:  (message: string) => mkPromise("log", () => s.logRequest({ level: "warn",  message })),
-        error: (message: string) => mkPromise("log", () => s.logRequest({ level: "error", message })),
-        log:   (message: string) => mkPromise("log", () => s.logRequest({ level: "log",   message })),
+        trace: (message: string) => { s.logRequest({ level: "trace", message }); },
+        debug: (message: string) => { s.logRequest({ level: "debug", message }); },
+        info:  (message: string) => { s.logRequest({ level: "info",  message }); },
+        warn:  (message: string) => { s.logRequest({ level: "warn",  message }); },
+        error: (message: string) => { s.logRequest({ level: "error", message }); },
+        log:   (message: string) => { s.logRequest({ level: "log",   message }); },
     },
     app: {
         getInfo: () =>
             mkPromise("appInfo", () => s.appInfoRequest({})),
-        // showDialog / showConfirm はフロント側 #dialog-root ダイアログで処理
         showDialog: (message: string) =>
-            new Promise<{ ok: boolean }>((resolve) => {
-                (w as any).showVjaAlert?.(message, () => resolve({ ok: true }));
+            new Promise<void>((resolve) => {
+                (w as any).showVjaAlert?.(message, () => resolve());
             }),
         showConfirm: (message: string) =>
-            new Promise<{ ok: boolean; confirmed: boolean }>((resolve) => {
+            new Promise<boolean>((resolve) => {
                 (w as any).showVjaDialog?.(message, (confirmed: boolean) =>
-                    resolve({ ok: true, confirmed })
+                    resolve(confirmed)
                 );
             }),
     },
@@ -205,16 +219,20 @@ w.vja = {
         stop: () =>
             mkPromise("stopProject", () => s.stopProjectRequest({})),
         navigate: (formName: string) =>
-            mkPromise("navigateForm", () => s.navigateFormRequest({ formName })),
+            mkPromise("navigateForm", () => s.navigateFormRequest({ formName }))
+                .then(() => {}),
         clearDb: () =>
-            mkPromise("clearProjectDb", () => s.clearProjectDbRequest({})),
+            mkPromise("clearProjectDb", () => s.clearProjectDbRequest({}))
+                .then((r: any) => { if (!r.ok) throw new Error(r.error || "clearDb failed"); }),
     },
     // ── セッション管理 ────────────────────────────────
     session: {
-        get: (key: string) =>
-            mkPromise("sessionGet", () => s.sessionGetRequest({ key })),
+        get: (key: string, defaultVal: any = null) =>
+            mkPromise("sessionGet", () => s.sessionGetRequest({ key }))
+                .then((r: any) => r.value !== null ? r.value : defaultVal),
         set: (key: string, value: string | null) =>
-            mkPromise("sessionSet", () => s.sessionSetRequest({ key, value })),
+            mkPromise("sessionSet", () => s.sessionSetRequest({ key, value }))
+                .then((r: any) => r.ok),
     },
 };
 

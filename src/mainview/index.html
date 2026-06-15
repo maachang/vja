@@ -3798,14 +3798,10 @@
             );
             if (!confirmed) return;
             try {
-                const result = await vja.project.clearDb();
-                if (result.ok) {
-                    showToast("DBデータをクリアしました");
-                } else {
-                    showVjaAlert("DBクリアに失敗しました: " + (result.error || "不明なエラー"));
-                }
+                await vja.project.clearDb();
+                showToast("DBデータをクリアしました");
             } catch (e) {
-                showVjaAlert("DBクリアに失敗しました: " + e.message);
+                showVjaAlert("DBクリアに失敗しました: " + (e.message || "不明なエラー"));
             }
         }
 
