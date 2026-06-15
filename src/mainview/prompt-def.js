@@ -24,7 +24,7 @@
   - 引数:
     - sql: string - 実行するSQL文（プレースホルダー ? を使用）
     - params?: (string|number|boolean|null)[] - プレースホルダーに渡す値の配列（省略可）
-  - 戻り値: "{ ok: boolean, result: { changes: number, lastInsertRowid: number } }"
+  - 戻り値: "{ changes: number, lastInsertRowid: number } | null - 実行結果。失敗時はnull"
   - 使用例: "await vja.db.execute('INSERT INTO users (name, age) VALUES (?, ?)', ['山田', 30]);"
   - 使用例説明: usersテーブルに新しいレコードを挿入する
 
@@ -32,7 +32,7 @@
   - 説明: 複数のSQL文をトランザクションとして実行する
   - 引数:
     - statements: "{ sql: string, params?: any[] }[] - 実行するSQL文と引数のペアの配列"
-  - 戻り値: "{ ok: boolean } - 全文実行成功でok=true、失敗時はロールバック"
+  - 戻り値: boolean - 全文実行成功でtrue、失敗時はロールバックしてfalse
   - 使用例: |
       await vja.db.transaction([
         { sql: 'INSERT INTO orders (item) VALUES (?)', params: ['商品A'] },
@@ -44,7 +44,7 @@
   - 説明: テーブル作成（CREATE TABLE IF NOT EXISTS）を実行する
   - 引数:
     - ddlStatements: string[] - DDL文の配列
-  - 戻り値: "{ ok: boolean }"
+  - 戻り値: boolean - 成功時true
   - 使用例: "await vja.db.init(['CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)']);"
   - 使用例説明: usersテーブルが存在しない場合に作成する
 
@@ -315,14 +315,14 @@
   - 説明: 指定パスのファイルをテキストとして読み込む
   - 引数:
     - path: string - ファイルの絶対パス
-  - 戻り値: "{ ok: boolean, content: string | null }"
+  - 戻り値: string | null - 成功時はファイル内容、失敗時はnull
 
 - 関数名: await vja.file.write(path, content):
   - 説明: 指定パスにテキストを書き込む（ファイルが存在しない場合は作成）
   - 引数:
     - path: string - ファイルの絶対パス
     - content: string - 書き込む内容
-  - 戻り値: "{ ok: boolean }"
+  - 戻り値: boolean - 成功時true
 
 - 関数名: await vja.file.readBytes(path):
   - 説明: 指定パスのファイルをバイナリ（Uint8Array）で読み込む
@@ -335,7 +335,7 @@
   - 引数:
     - path: string - ファイルの絶対パス
     - data: Uint8Array - 書き込むバイナリデータ
-  - 戻り値: なし
+  - 戻り値: boolean - 成功時true
 
 - 関数名: await vja.file.exists(path):
   - 説明: 指定パスのファイルが存在するか確認する
@@ -347,14 +347,14 @@
   - 説明: 指定パスのファイルを削除する
   - 引数:
     - path: string - ファイルの絶対パス
-  - 戻り値: "{ ok: boolean }"
+  - 戻り値: boolean - 成功時true
 
 - 関数名: await vja.file.copy(src, dest):
   - 説明: ファイルをコピーする
   - 引数:
     - src: string - コピー元パス
     - dest: string - コピー先パス
-  - 戻り値: "{ ok: boolean }"
+  - 戻り値: boolean - 成功時true
 
 ## ディレクトリ操作 (vja.dir.*)
 
@@ -362,13 +362,13 @@
   - 説明: ディレクトリを作成する（再帰的に作成）
   - 引数:
     - path: string - 作成するディレクトリパス
-  - 戻り値: "{ ok: boolean }"
+  - 戻り値: boolean - 成功時true
 
 - 関数名: await vja.dir.delete(path):
   - 説明: ディレクトリを削除する（再帰的に削除）
   - 引数:
     - path: string - 削除するディレクトリパス
-  - 戻り値: "{ ok: boolean }"
+  - 戻り値: boolean - 成功時true
 
 - 関数名: await vja.dir.list(path):
   - 説明: ディレクトリ内のファイル/フォルダ名一覧を取得する
@@ -494,7 +494,7 @@
   - 説明: アラートダイアログを表示する
   - 引数:
     - message: string - 表示するメッセージ
-  - 戻り値: "{ ok: boolean }"
+  - 戻り値: なし
   - 使用例: "await vja.app.showDialog('処理が完了しました');"
   - 使用例説明: 完了メッセージをアラートで表示する
 
@@ -502,10 +502,10 @@
   - 説明: 確認ダイアログを表示する
   - 引数:
     - message: string - 表示するメッセージ
-  - 戻り値: "{ confirmed: boolean } - OKを押した場合confirmed=true"
+  - 戻り値: boolean - OKを押した場合true、キャンセルの場合false
   - 使用例: |
-      const result = await vja.app.showConfirm('削除しますか？');
-      if (!result?.confirmed) return;
+      const ok = await vja.app.showConfirm('削除しますか？');
+      if (!ok) return;
   - 使用例説明: 削除確認ダイアログを表示し、キャンセル時は処理を中断する
 `.trim();
 
@@ -526,23 +526,21 @@
   - Arguments:
     - sql: string - The SQL statement to execute (using the placeholder ?)
     - params?: (string|number|boolean|null)[] - An array of values to pass to the placeholder (optional)
-  - Return value: "{ ok: boolean, result: { changes: number, lastInsertRowid: number } }"
+  - Return value: "{ changes: number, lastInsertRowid: number } | null - Execution result. null on failure"
 
 - Function name: await vja.db.transaction(statements[]):
   - Description: Executes multiple SQL statements as a transaction.
   - Arguments:
     - statements: "{ sql: string, params?: any[] }[] - Array of pairs of SQL statements and arguments to execute"
-  - Return Value: "{ ok: boolean } - ok=true if all statements are executed successfully, rollback on failure"
+  - Return Value: boolean - true if all statements executed successfully, rollback and false on failure
 
 - Function Name: await vja.db.init(ddlStatements[]):
   - Description: Executes table creation (CREATE TABLE IF NOT EXISTS)
   - Arguments:
     - ddlStatements: string[] - Array of DDL statements
-  - Return value: "{ ok: boolean }"
+  - Return value: boolean - true on success
 
 ## Widget operations (vja.widget.*)
-
-  - Function name: vja.widget.getValue(name):
   - Description: Gets the current value of the widget with the specified name
   - Arguments:
     - name: string - Widget name
@@ -740,14 +738,14 @@
   - Description: Reads a file as text
   - Arguments:
     - path: string - Absolute file path
-  - Return Value: "{ ok: boolean, content: string | null }"
+  - Return Value: string | null - File content on success, null on failure
 
 - Function Name: await vja.file.write(path, content):
   - Description: Writes text to a file (creates if not exists)
   - Arguments:
     - path: string - Absolute file path
     - content: string - Content to write
-  - Return Value: "{ ok: boolean }"
+  - Return Value: boolean - true on success
 
 - Function Name: await vja.file.readBytes(path):
   - Description: Reads a file as binary (Uint8Array)
@@ -760,7 +758,7 @@
   - Arguments:
     - path: string - Absolute file path
     - data: Uint8Array - Binary data to write
-  - Return Value: none
+  - Return Value: boolean - true on success
 
 - Function Name: await vja.file.exists(path):
   - Description: Checks if a file exists
@@ -772,14 +770,14 @@
   - Description: Deletes a file
   - Arguments:
     - path: string - Absolute file path
-  - Return Value: "{ ok: boolean }"
+  - Return Value: boolean - true on success
 
 - Function Name: await vja.file.copy(src, dest):
   - Description: Copies a file
   - Arguments:
     - src: string - Source path
     - dest: string - Destination path
-  - Return Value: "{ ok: boolean }"
+  - Return Value: boolean - true on success
 
 ## Directory Operations (vja.dir.*)
 
@@ -787,13 +785,13 @@
   - Description: Creates a directory (recursive)
   - Arguments:
     - path: string - Directory path to create
-  - Return Value: "{ ok: boolean }"
+  - Return Value: boolean - true on success
 
 - Function Name: await vja.dir.delete(path):
   - Description: Deletes a directory (recursive)
   - Arguments:
     - path: string - Directory path to delete
-  - Return Value: "{ ok: boolean }"
+  - Return Value: boolean - true on success
 
 - Function Name: await vja.dir.list(path):
   - Description: Lists files/folders in a directory
@@ -897,13 +895,13 @@
   - Description: Displays an alert dialog
   - Arguments:
     - message: string - Message to display
-  - Return value: "{ ok: boolean }"
+  - Return value: none
 
 - Function name: await vja.app.showConfirm(message):
   - Description: Displays a confirmation dialog
   - Arguments:
     - message: string - Message to display
-  - Return value: "{ confirmed: boolean } - confirmed=true if OK is pressed"
+  - Return value: boolean - true if OK is pressed, false if cancelled
 `.trim();
 
     // [バックエンド]利用可能なjavascript関数の説明.
@@ -1180,21 +1178,6 @@ ${vjaUseJsInfo}
 ${extRuntimeDoc}
 ~~~
 ---
-
-### 画面一覧
----
-${formsCtx}
----
-
-### グローバル定数
----
-${globalConstCtx}
----
-
-### テーブル定義
----
-${tablesCtx}
----
 `.trim() + "\n";
     }
 
@@ -1268,21 +1251,6 @@ ${vjaUseJsInfo}
 ${extRuntimeDoc}
 ~~~
 ---
-
-### Screen List
----
-${formsCtx}
----
-
-### Global Constants
----
-${globalConstCtx}
----
-
-### Table Definitions
----
-${tablesCtx}
----
 `.trim() + "\n\n" + ENG_TO_LAST_PHRASE_JP;
     }
 
@@ -1343,6 +1311,21 @@ ${tablesCtx}
   ### フォーム内の入力パラメータ
   ---
   ${inputParamsCtx}
+  ---
+
+  ### 画面一覧
+  ---
+  ${formsCtx}
+  ---
+
+  ### グローバル定数
+  ---
+  ${globalConstCtx}
+  ---
+
+  ### テーブル定義
+  ---
+  ${tablesCtx}
   ---
 
   `.trim();
@@ -1430,6 +1413,22 @@ ${tablesCtx}
   ---
   ${inputParamsCtx}
   ---
+
+  ### Screen List
+  ---
+  ${formsCtx}
+  ---
+
+  ### Global Constants
+  ---
+  ${globalConstCtx}
+  ---
+
+  ### Table Definitions
+  ---
+  ${tablesCtx}
+  ---
+
   `.trim();
 
         // yaml定義が設定されている場合.
