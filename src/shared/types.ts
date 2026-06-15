@@ -153,6 +153,10 @@ export type VjaRPCType = {
 
             // ── バージョン情報取得 ────────────────────────
             getVersionRequest: { _?: never };
+
+            // ── UI設定 ───────────────────────────────────
+            saveUiConfigRequest: { uiFontSize: number; uiFontFamily: string; editorFontSize: number; editorFontFamily: string; leftPanelW: number; rightPanelW: number };
+            loadUiConfigRequest: { _?: never };
         };
     }>;
 
@@ -233,6 +237,9 @@ export type VjaRPCType = {
 
             // ── バージョン情報結果 ────────────────────────
             getVersionResult: { version: string; runMode: string };
+
+            // ── UI設定結果 ───────────────────────────────
+            loadUiConfigResult: { uiFontSize: number; uiFontFamily: string; editorFontSize: number; editorFontFamily: string; leftPanelW: number; rightPanelW: number };
         };
     }>;
 };

@@ -759,13 +759,27 @@
             appEvents: {onStart: "", onExit: "", onStart_yaml: "", onExit_yaml: ""},
         };
 
-        // エディタフォント設定
-        let editorConfig = {
-            fontSize: 16,
-            fontFamily: "'Courier New', Courier, monospace",
+        // エディタ設定（一時保持のみ・保存はuiConfig経由）
+        // UIフォント設定（vja自身に保存）
+        let uiConfig = {
+            uiFontSize: 13,
+            uiFontFamily: "",
+            editorFontSize: 16,
+            editorFontFamily: "'Courier New', Courier, monospace",
             leftPanelW: 110,
             rightPanelW: 420,
         };
+
+        // UIフォント用フォントリスト
+        const UI_FONT_LIST = [
+            {label: "（システムデフォルト）", value: ""},
+            {label: "Yu Gothic UI", value: "'Yu Gothic UI', 'Meiryo UI', sans-serif"},
+            {label: "Meiryo", value: "'Meiryo', sans-serif"},
+            {label: "Segoe UI", value: "'Segoe UI', sans-serif"},
+            {label: "Noto Sans JP", value: "'Noto Sans JP', sans-serif"},
+            {label: "sans-serif", value: "sans-serif"},
+            {label: "serif", value: "serif"},
+        ];
 
         // ── クラウドインフラ設定 ──────────────────────────
         let cloudInfras = []; // { id, name, url, enabled, sdkUrl, credentials: {key: "暗号化済み"} }
@@ -3464,7 +3478,7 @@
         ═══════════════════════════════════════════ */
         // プロジェクト全体を JSON 文字列にシリアライズして返す。
         function snapshot() {
-            return JSON.stringify({forms, curFormIdx, constants, startFormId, aiConfig, cloudInfras, tables, snapOn, showGrid, editorConfig, projectInfo, extRuntime});
+            return JSON.stringify({forms, curFormIdx, constants, startFormId, aiConfig, cloudInfras, tables, snapOn, showGrid, projectInfo, extRuntime});
         }
         // 現在の状態を undoStack に積む。redoStack はクリアする。
         function pushUndo() {
@@ -3484,7 +3498,7 @@
             tables = d.tables || [];
             snapOn = d.snapOn !== undefined ? d.snapOn : true;
             showGrid = d.showGrid !== undefined ? d.showGrid : false;
-            if (d.editorConfig) editorConfig = {...editorConfig, ...d.editorConfig};
+            // editorConfigはvja設定ファイルで管理するためプロジェクトからは読み込まない
             if (d.projectInfo) projectInfo = {...projectInfo, ...d.projectInfo};
             const _ac = d.aiConfig || {};
             aiConfig = {
@@ -5356,51 +5370,67 @@
 
 
         function openFontConfig() {
-            const curFont = editorConfig.fontFamily;
-            const curSize = editorConfig.fontSize;
+            const curFont = uiConfig.editorFontFamily;
+            const curSize = uiConfig.editorFontSize;
+            const curUiSize = uiConfig.uiFontSize;
+            const curUiFont = uiConfig.uiFontFamily;
 
             showModal(
-                mhdrHTML("🔤 エディタフォント設定") +
+                mhdrHTML("🔤 フォント設定") +
                 "<div class='mbody' style='gap:14px'>" +
-                // フォントサイズ
+
+                // ── UIフォント設定 ──
+                "<div style='font-size:var(--ui-font-size);font-weight:bold;color:var(--accent);padding-bottom:4px;border-bottom:1px solid var(--border)'>UI全体フォント設定</div>" +
+                "<div class='ai-cfg-row'><label>フォントサイズ</label>" +
+                "<div style='display:flex;align-items:center;gap:8px'>" +
+                "<input id='uf-size' type='number' value='" + curUiSize + "' min='10' max='20' step='1' " +
+                "style='width:70px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);padding:0 8px;outline:none;text-align:center'>" +
+                "<button onmousedown='ufSizeStep(1)'  style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);cursor:pointer'>▲</button>" +
+                "<button onmousedown='ufSizeStep(-1)' style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);cursor:pointer'>▼</button>" +
+                "<span style='color:var(--text2);font-size:var(--ui-font-size)'>px (10〜20)</span>" +
+                "</div></div>" +
+                "<div class='ai-cfg-row'><label>フォント</label>" +
+                "<div style='flex:1;background:#1e1e2e;border:1px solid #666;border-radius:3px;overflow:hidden'>" +
+                "<select id='uf-font-sel' style='width:100%;height:30px;background:transparent;border:none;color:#e0e0f0;font-size:var(--ui-font-size);padding:0 4px;outline:none;color-scheme:dark'>" +
+                UI_FONT_LIST.map((f, i) =>
+                    "<option value='" + i + "' style='background:#1e1e2e;color:#e0e0f0' " + (f.value === curUiFont ? "selected" : "") + ">" + esc(f.label) + "</option>"
+                ).join("") +
+                "</select></div></div>" +
+
+                // ── エディタフォント設定 ──
+                "<div style='font-size:var(--ui-font-size);font-weight:bold;color:var(--accent);padding-bottom:4px;border-bottom:1px solid var(--border);margin-top:6px'>エディタフォント設定</div>" +
                 "<div class='ai-cfg-row'><label>フォントサイズ</label>" +
                 "<div style='display:flex;align-items:center;gap:8px'>" +
                 "<input id='ef-size' type='number' value='" + curSize + "' min='10' max='32' step='1' " +
-                "style='width:70px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:13px;padding:0 8px;outline:none;text-align:center' " +
-                ">" +
-                "<button onmousedown='efSizeStep(1)'  style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:13px;cursor:pointer'>▲</button>" +
-                "<button onmousedown='efSizeStep(-1)' style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:13px;cursor:pointer'>▼</button>" +
-                "<span style='color:var(--text2);font-size:12px'>px (10〜32)</span>" +
+                "style='width:70px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);padding:0 8px;outline:none;text-align:center'>" +
+                "<button onmousedown='efSizeStep(1)'  style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);cursor:pointer'>▲</button>" +
+                "<button onmousedown='efSizeStep(-1)' style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);cursor:pointer'>▼</button>" +
+                "<span style='color:var(--text2);font-size:var(--ui-font-size)'>px (10〜32)</span>" +
                 "</div></div>" +
-                // フォントファミリー
                 "<div class='ai-cfg-row'><label>フォント</label>" +
                 "<div style='flex:1;background:#1e1e2e;border:1px solid #666;border-radius:3px;overflow:hidden'>" +
-                "<select id='ef-font-sel' style='width:100%;height:30px;background:transparent;border:none;color:#e0e0f0;font-size:13px;padding:0 4px;outline:none;color-scheme:dark'>" +
+                "<select id='ef-font-sel' style='width:100%;height:30px;background:transparent;border:none;color:#e0e0f0;font-size:var(--ui-font-size);padding:0 4px;outline:none;color-scheme:dark'>" +
                 EDITOR_FONTS.map((f, i) =>
                     "<option value='" + i + "' style='background:#1e1e2e;color:#e0e0f0' " + (f.value === curFont ? "selected" : "") + ">" + esc(f.label) + "</option>"
                 ).join("") +
-                "</select>" +
-                "</div>" +
-                "</div>" +
+                "</select></div></div>" +
+
                 // プレビュー
                 "<div style='display:flex;flex-direction:column;gap:6px'>" +
-                "<label style='font-size:12px;color:var(--text2)'>プレビュー</label>" +
+                "<label style='font-size:var(--ui-font-size);color:var(--text2)'>エディタプレビュー</label>" +
                 "<div id='ef-preview' style='background:#1e1e2e;border:1px solid var(--border);border-radius:4px;padding:12px;" +
                 "font-size:" + curSize + "px;font-family:" + curFont + ";line-height:1.6;color:#e8e8f0;white-space:pre'>" +
                 "<span style='color:#7ec8ff'>function</span> <span style='color:#ffe080'>hello</span>() {\n" +
                 "  <span style='color:#7ec8ff'>const</span> msg = <span style='color:#f0a87a'>&quot;Hello, VJA!&quot;</span>;\n" +
                 "  <span style='color:#7ec8ff'>return</span> msg;\n" +
                 "}" +
-                "</div>" +
-                "</div>" +
+                "</div></div>" +
                 "<div class='mfoot'>" +
-                mfootHTML([{label: "キャンセル", action: "closeModal()"}]) + "" +
+                mfootHTML([{label: "キャンセル", action: "closeModal()"}]) +
                 "<button class='pri' id='ef-save-btn'>保存</button>" +
                 "</div>"
             );
-            // 保存ボタンに直接addEventListener登録
             rAfBind("#ef-save-btn", "click", saveFontConfig);
-            // ポーリングでプレビュー更新
             let _pfLastSize = curSize, _pfLastIdx = -1;
             const _pfPoll = setInterval(() => {
                 const sel = $("ef-font-sel");
@@ -5426,14 +5456,29 @@
             const v = Math.max(10, Math.min(32, (parseInt(el.value) || 16) + dir));
             el.value = v;
         }
+        function ufSizeStep(dir) {
+            const el = $("uf-size");
+            if (!el) return;
+            const v = Math.max(10, Math.min(20, (parseInt(el.value) || 13) + dir));
+            el.value = v;
+        }
 
         function saveFontConfig() {
-            const size = Math.max(10, Math.min(32, parseInt($("ef-size")?.value) || 16));
-            const sel = $("ef-font-sel");
-            const fontIdx = sel ? (parseInt(sel.options[sel.selectedIndex]?.value) || 0) : 0;
-            const font = (EDITOR_FONTS[fontIdx] || EDITOR_FONTS[0]).value;
-            editorConfig = {fontSize: size, fontFamily: font};
+            // エディタフォント
+            const editorSize = Math.max(10, Math.min(32, parseInt($("ef-size")?.value) || 16));
+            const edSel = $("ef-font-sel");
+            const edFontIdx = edSel ? (parseInt(edSel.options[edSel.selectedIndex]?.value) || 0) : 0;
+            const edFont = (EDITOR_FONTS[edFontIdx] || EDITOR_FONTS[0]).value;
+            // UIフォント
+            const uiSize = Math.max(10, Math.min(20, parseInt($("uf-size")?.value) || 13));
+            const uiSel = $("uf-font-sel");
+            const uiFontIdx = uiSel ? (parseInt(uiSel.options[uiSel.selectedIndex]?.value) || 0) : 0;
+            const uiFont = (UI_FONT_LIST[uiFontIdx] || UI_FONT_LIST[0]).value;
+            // uiConfigに統合して保存
+            uiConfig = { ...uiConfig, editorFontSize: editorSize, editorFontFamily: edFont, uiFontSize: uiSize, uiFontFamily: uiFont };
             applyEditorConfig();
+            applyUiConfig();
+            window.bunSaveUiConfig?.(uiSize, uiFont, editorSize, edFont, uiConfig.leftPanelW, uiConfig.rightPanelW);
             closeModal();
             pushUndo();
             showToast("フォント設定を保存しました");
@@ -5526,9 +5571,32 @@
             }
         }
 
+        // bridge.tsからのUI設定読み込み結果を受け取るハンドラー
+        window._onLoadUiConfigResult = function(cfg) {
+            if (!cfg) return;
+            uiConfig = {
+                uiFontSize:       cfg.uiFontSize       || 13,
+                uiFontFamily:     cfg.uiFontFamily     || "",
+                editorFontSize:   cfg.editorFontSize   || 16,
+                editorFontFamily: cfg.editorFontFamily || "'Courier New', Courier, monospace",
+                leftPanelW:       cfg.leftPanelW       || 110,
+                rightPanelW:      cfg.rightPanelW      || 420,
+            };
+            applyUiConfig();
+            applyEditorConfig();
+            applyViewSettings();
+        };
+
+        function applyUiConfig() {
+            document.documentElement.style.setProperty("--ui-font-size", uiConfig.uiFontSize + "px");
+            if (uiConfig.uiFontFamily) {
+                document.documentElement.style.setProperty("--font", uiConfig.uiFontFamily);
+            }
+        }
+
         function applyEditorConfig() {
-            const fs = editorConfig.fontSize + "px";
-            const ff = editorConfig.fontFamily;
+            const fs = uiConfig.editorFontSize + "px";
+            const ff = uiConfig.editorFontFamily;
             // CSS変数を更新
             document.documentElement.style.setProperty("--editor-font-size", fs);
             document.documentElement.style.setProperty("--editor-font-family", ff);
@@ -5546,8 +5614,8 @@
 
         function applyViewSettings() {
             // パネル幅を復元
-            const lw = editorConfig.leftPanelW || 110;
-            const rw = editorConfig.rightPanelW || 420;
+            const lw = uiConfig.leftPanelW || 110;
+            const rw = uiConfig.rightPanelW || 420;
             document.documentElement.style.setProperty("--panel", lw + "px");
             document.documentElement.style.setProperty("--prop", rw + "px");
             const tb = $("toolbox"), pp = $("props-panel");
@@ -5677,12 +5745,12 @@
                     newW = Math.min(MAX_W, Math.max(MIN_W, startW + (me.clientX - startX)));
                     tb.style.width = newW + "px";
                     document.documentElement.style.setProperty("--panel", newW + "px");
-                    editorConfig.leftPanelW = newW;
+                    uiConfig.leftPanelW = newW;
                 } else {
                     newW = Math.min(MAX_W, Math.max(MIN_W, startW - (me.clientX - startX)));
                     pp.style.width = newW + "px";
                     document.documentElement.style.setProperty("--prop", newW + "px");
-                    editorConfig.rightPanelW = newW;
+                    uiConfig.rightPanelW = newW;
                 }
                 requestAnimationFrame(drawRulers);
             };
@@ -5691,6 +5759,12 @@
                 document.removeEventListener("mouseup", onUp);
                 document.body.style.cursor = "";
                 document.body.style.userSelect = "";
+                // パネル幅をui-config.jsonに保存
+                window.bunSaveUiConfig?.(
+                    uiConfig.uiFontSize, uiConfig.uiFontFamily,
+                    uiConfig.editorFontSize, uiConfig.editorFontFamily,
+                    uiConfig.leftPanelW, uiConfig.rightPanelW
+                );
                 pushUndo();
             };
             document.body.style.cursor = "col-resize";

@@ -10,6 +10,7 @@ html {
 }
 
 :root {
+    --ui-font-size: 13px;
     --editor-font-size: 16px;
     --editor-font-family: 'Courier New', Courier, monospace;
     --bg: #1e1e2e;
@@ -64,7 +65,7 @@ html {
 
 body {
     font-family: var(--font);
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     background: var(--bg);
     color: var(--text);
     height: 100%;
@@ -104,7 +105,7 @@ body {
     background: transparent;
     color: var(--text);
     cursor: pointer;
-    font-size: 11px;
+    font-size: var(--ui-font-size);
     display: flex;
     align-items: center;
     gap: 4px;
@@ -136,7 +137,7 @@ body {
     padding: 4px 10px;
     cursor: pointer;
     border-radius: 3px;
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     position: relative;
 }
 
@@ -166,7 +167,7 @@ body {
 .dd-item {
     padding: 6px 14px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -180,7 +181,7 @@ body {
 .dd-item .sc {
     margin-left: auto;
     color: var(--text3);
-    font-size: 11px;
+    font-size: var(--ui-font-size);
 }
 
 .dd-sep {
@@ -224,7 +225,7 @@ body {
 }
 
 #toolbox h3 {
-    font-size: 10px;
+    font-size: var(--ui-font-size);
     padding: 7px 10px 5px;
     color: var(--text3);
     text-transform: uppercase;
@@ -248,7 +249,7 @@ body {
     flex-direction: row;
     align-items: center;
     gap: 6px;
-    font-size: 11px;
+    font-size: var(--ui-font-size);
     color: var(--text2);
     transition: 0.1s;
     white-space: nowrap;
@@ -272,7 +273,7 @@ body {
 }
 
 .ti {
-    font-size: 16px;
+    font-size: var(--ui-font-size);
     line-height: 1;
     flex-shrink: 0;
 }
@@ -502,7 +503,7 @@ body {
 }
 
 #props-panel h3 {
-    font-size: 13px;
+    font-size: var(--ui-font-size);
     padding: 7px 10px 5px;
     color: var(--text3);
     text-transform: uppercase;
@@ -513,7 +514,7 @@ body {
 
 #prop-obj {
     padding: 6px 10px;
-    font-size: 14px;
+    font-size: var(--ui-font-size);
     color: var(--accent);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
@@ -530,7 +531,7 @@ body {
     padding: 6px 0;
     text-align: center;
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--ui-font-size);
     color: var(--text2);
     border-bottom: 2px solid transparent;
 }
@@ -566,7 +567,7 @@ body {
 .pk {
     padding: 5px 8px;
     color: var(--text2);
-    font-size: 13px;
+    font-size: var(--ui-font-size);
     display: flex;
     align-items: center;
     border-right: 1px solid #ffffff08;
@@ -588,7 +589,7 @@ body {
     border: 1px solid var(--border);
     border-radius: 2px;
     color: var(--text);
-    font-size: 13px;
+    font-size: var(--ui-font-size);
     font-family: var(--font);
     padding: 0 4px;
     outline: none;
@@ -619,7 +620,7 @@ body {
     border: 1px solid var(--border);
     border-radius: 2px;
     color: var(--text);
-    font-size: 11px;
+    font-size: var(--ui-font-size);
     resize: none;
     outline: none;
     padding: 3px 4px;
@@ -632,7 +633,7 @@ body {
 
 .psec {
     padding: 5px 8px;
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     color: var(--accent2);
     text-transform: uppercase;
     letter-spacing: 0.6px;
@@ -654,7 +655,7 @@ body {
 .ek {
     padding: 5px 8px;
     color: var(--text2);
-    font-size: 13px;
+    font-size: var(--ui-font-size);
     display: flex;
     align-items: center;
     gap: 4px;
@@ -704,7 +705,7 @@ body {
     justify-content: center;
     flex-shrink: 0;
     color: var(--text3);
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     line-height: 1;
 }
 
@@ -733,7 +734,7 @@ body {
     align-items: center;
     padding: 0 10px;
     gap: 16px;
-    font-size: 11px;
+    font-size: var(--ui-font-size);
     color: var(--text3);
     flex-shrink: 0;
 }
@@ -847,7 +848,7 @@ body {
     gap: 6px;
     padding: 7px 10px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--ui-font-size);
     color: var(--text);
     font-weight: bold;
     background: var(--bg3);
@@ -860,7 +861,7 @@ body {
 }
 
 .yaml-rpanel-hdr .rp-arrow {
-    font-size: 9px;
+    font-size: var(--ui-font-size);
     margin-left: auto;
     color: var(--text3);
     transition: .15s;
@@ -884,7 +885,7 @@ body {
 .rp-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 14px;
+    font-size: var(--ui-font-size);
 }
 
 .rp-table tr {
@@ -909,12 +910,12 @@ body {
 
 .rp-table .rp-tag-col {
     color: var(--text3);
-    font-size: 13px;
+    font-size: var(--ui-font-size);
 }
 
 .rp-table .rp-val-col {
     color: var(--text2);
-    font-size: 13px;
+    font-size: var(--ui-font-size);
     max-width: 80px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -931,7 +932,7 @@ body {
     margin-bottom: 8px;
 }
 .tbl-csv-area > label {
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     color: var(--text2);
 }
 .tbl-csv-info {
@@ -942,7 +943,7 @@ body {
     border: 1px solid var(--border);
     border-radius: 4px;
     padding: 8px;
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     color: var(--text1);
 }
 
@@ -957,7 +958,7 @@ body {
     gap: 6px;
     padding: 5px 8px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--ui-font-size);
 }
 
 .rp-tbl-header:hover {
@@ -973,7 +974,7 @@ body {
 
 .rp-tbl-desc {
     color: var(--text3);
-    font-size: 13px;
+    font-size: var(--ui-font-size);
     font-style: italic;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -982,7 +983,7 @@ body {
 }
 
 .rp-tbl-expand {
-    font-size: 13px;
+    font-size: var(--ui-font-size);
     color: #fff;
     background: var(--accent);
     cursor: pointer;
@@ -1009,7 +1010,7 @@ body {
 .rp-tbl-cols table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
+    font-size: var(--ui-font-size);
 }
 
 .rp-tbl-cols td {
@@ -1035,7 +1036,7 @@ body {
 
 .rp-tbl-cols .col-flag {
     color: var(--accent2);
-    font-size: 12px;
+    font-size: var(--ui-font-size);
 }
 
 .mhdr {
@@ -1047,7 +1048,7 @@ body {
 }
 
 .mhdr h4 {
-    font-size: 15px;
+    font-size: var(--ui-font-size);
 }
 
 .mclose {
@@ -1057,7 +1058,7 @@ body {
     border: none;
     color: var(--text2);
     cursor: pointer;
-    font-size: 16px;
+    font-size: var(--ui-font-size);
     border-radius: 3px;
     display: flex;
     align-items: center;
@@ -1091,7 +1092,7 @@ body {
     background: var(--bg3);
     color: var(--text);
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--ui-font-size);
 }
 
 .mfoot button.pri {
@@ -1225,7 +1226,7 @@ textarea.yaml:focus {
     border: 1px solid var(--border);
     border-radius: 4px;
     padding: 8px;
-    font-size: 13px;
+    font-size: var(--ui-font-size);
     color: var(--text2);
     line-height: 1.6;
 }
@@ -1239,7 +1240,7 @@ textarea.yaml:focus {
 }
 
 .lbl {
-    font-size: 11px;
+    font-size: var(--ui-font-size);
     color: var(--text2);
 }
 
@@ -1252,7 +1253,7 @@ textarea.yaml:focus {
 }
 
 #form-label {
-    font-size: 10px;
+    font-size: var(--ui-font-size);
     color: var(--text3);
     white-space: nowrap;
 }
@@ -1271,7 +1272,7 @@ textarea.yaml:focus {
     border: 1px solid var(--border);
     border-radius: 3px;
     color: #e0e0f0;
-    font-size: 11px;
+    font-size: var(--ui-font-size);
     padding: 0 24px 0 8px;
     cursor: pointer;
     text-align: left;
@@ -1292,7 +1293,7 @@ textarea.yaml:focus {
 #fdd-btn .fdd-arrow {
     flex-shrink: 0;
     opacity: 0.6;
-    font-size: 9px;
+    font-size: var(--ui-font-size);
 }
 
 #fdd-list {
@@ -1317,7 +1318,7 @@ textarea.yaml:focus {
 
 .fdd-item {
     padding: 5px 10px;
-    font-size: 11px;
+    font-size: var(--ui-font-size);
     color: var(--text2);
     cursor: pointer;
     white-space: nowrap;
@@ -1366,15 +1367,10 @@ textarea.yaml:focus {
 
 /* ── z-index レイヤー管理 ──────────────────────────────
    #modal-root    : 1000  汎用モーダル
-   #modal-layer-1 : 2000  重ね表示用（layer-1）
-   #modal-layer-2 : 3000  重ね表示用（layer-2）
-   #close-confirm : 4000  閉じる確認ダイアログ
+   #close-confirm : 2000  閉じる確認ダイアログ
    #dialog-root   : 8000  vja.app.showConfirm / showDialog 専用
    #toast-root    : 9000  トースト通知
 ──────────────────────────────────────────────────── */
-
-#modal-layer-1 .ov { z-index: 2000; }
-#modal-layer-2 .ov { z-index: 3000; }
 
 /* ── vja.app ダイアログ ── */
 #dialog-root {
@@ -1409,7 +1405,7 @@ textarea.yaml:focus {
 #dialog-root .box p {
     margin: 0;
     color: var(--text1);
-    font-size: 14px;
+    font-size: var(--ui-font-size);
     text-align: center;
     white-space: pre-wrap;
     word-break: break-word;
@@ -1428,7 +1424,7 @@ textarea.yaml:focus {
     background: var(--bg3);
     color: var(--text1);
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--ui-font-size);
 }
 #dialog-root .box .btns button:hover {
     background: var(--bg4);
@@ -1449,7 +1445,7 @@ textarea.yaml:focus {
     border-radius: 4px;
     color: var(--text1);
     padding: 6px 10px;
-    font-size: 13px;
+    font-size: var(--ui-font-size);
     outline: none;
 }
 #dialog-root .box input:focus {
@@ -1474,7 +1470,7 @@ textarea.yaml:focus {
     border: 1px solid var(--accent);
     border-radius: 4px;
     color: #e0e0f0;
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     padding: 6px 16px;
     opacity: 0;
     transition: opacity .2s;
@@ -1517,7 +1513,7 @@ textarea.yaml:focus {
 }
 
 #close-confirm .box p {
-    font-size: 14px;
+    font-size: var(--ui-font-size);
     color: var(--text);
     text-align: center;
     line-height: 1.6;
@@ -1533,7 +1529,7 @@ textarea.yaml:focus {
     padding: 7px 24px;
     border-radius: 4px;
     border: 1px solid var(--border);
-    font-size: 13px;
+    font-size: var(--ui-font-size);
     cursor: pointer;
 }
 
@@ -1561,7 +1557,7 @@ textarea.yaml:focus {
 #coldef-modal .coldef-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 12px
+    font-size: var(--ui-font-size)
 }
 
 #coldef-modal .coldef-table th {
@@ -1569,7 +1565,7 @@ textarea.yaml:focus {
     padding: 5px 8px;
     border: 1px solid var(--border);
     text-align: left;
-    font-size: 11px;
+    font-size: var(--ui-font-size);
     color: var(--text2)
 }
 
@@ -1581,7 +1577,7 @@ textarea.yaml:focus {
 #coldef-modal .coldef-table td:first-child {
     text-align: center;
     color: var(--text3);
-    font-size: 11px;
+    font-size: var(--ui-font-size);
     width: 36px;
     background: var(--bg3)
 }
@@ -1592,7 +1588,7 @@ textarea.yaml:focus {
     background: var(--bg4);
     border: none;
     color: var(--text);
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     padding: 0 4px;
     outline: none;
     border-radius: 2px
@@ -1609,7 +1605,7 @@ textarea.yaml:focus {
     border: none;
     color: #ff6b6b;
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--ui-font-size);
     border-radius: 2px
 }
 
@@ -1632,7 +1628,7 @@ textarea.yaml:focus {
     border-radius: 3px;
     color: var(--text);
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     margin-top: 6px
 }
 
@@ -1645,7 +1641,7 @@ textarea.yaml:focus {
 #const-modal .const-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 12px
+    font-size: var(--ui-font-size)
 }
 
 #const-modal .const-table th {
@@ -1653,7 +1649,7 @@ textarea.yaml:focus {
     padding: 5px 8px;
     border: 1px solid var(--border);
     text-align: left;
-    font-size: 11px;
+    font-size: var(--ui-font-size);
     color: var(--text2)
 }
 
@@ -1665,7 +1661,7 @@ textarea.yaml:focus {
 #const-modal .const-table td:first-child {
     text-align: center;
     color: var(--text3);
-    font-size: 11px;
+    font-size: var(--ui-font-size);
     width: 36px;
     background: var(--bg3)
 }
@@ -1676,7 +1672,7 @@ textarea.yaml:focus {
     background: var(--bg4);
     border: none;
     color: var(--text);
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     padding: 0 4px;
     outline: none;
     border-radius: 2px
@@ -1693,7 +1689,7 @@ textarea.yaml:focus {
     border: none;
     color: #ff6b6b;
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--ui-font-size);
     border-radius: 2px
 }
 
@@ -1716,7 +1712,7 @@ textarea.yaml:focus {
     border-radius: 3px;
     color: var(--text);
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     margin-top: 6px
 }
 
@@ -1738,7 +1734,7 @@ textarea.yaml:focus {
     border: 1px solid var(--border);
     border-radius: 2px;
     color: var(--text);
-    font-size: 13px;
+    font-size: var(--ui-font-size);
     font-family: var(--font);
     padding: 0 20px 0 4px;
     text-align: left;
@@ -1756,7 +1752,7 @@ textarea.yaml:focus {
 }
 
 .pv-sel-btn .arr {
-    font-size: 9px;
+    font-size: var(--ui-font-size);
     opacity: .6;
     flex-shrink: 0;
     margin-left: 4px
@@ -1782,7 +1778,7 @@ textarea.yaml:focus {
 
 .pv-sel-opt {
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     color: var(--text2);
     cursor: pointer;
     white-space: nowrap
@@ -1816,7 +1812,7 @@ textarea.yaml:focus {
     border: 1px solid var(--border);
     border-radius: 3px;
     color: var(--text);
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     padding: 0 8px;
     outline: none;
     min-width: 80px
@@ -1834,7 +1830,7 @@ textarea.yaml:focus {
     background: var(--accent);
     color: #fff;
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     white-space: nowrap;
     flex-shrink: 0
 }
@@ -1849,7 +1845,7 @@ textarea.yaml:focus {
 }
 
 .yaml-ai-status {
-    font-size: 11px;
+    font-size: var(--ui-font-size);
     color: var(--text2)
 }
 
@@ -1858,7 +1854,7 @@ textarea.yaml:focus {
     grid-template-columns: 100px 1fr;
     gap: 6px;
     align-items: center;
-    font-size: 12px
+    font-size: var(--ui-font-size)
 }
 
 .ai-cfg-row label {
@@ -1871,7 +1867,7 @@ textarea.yaml:focus {
     border: 1px solid var(--border);
     border-radius: 3px;
     color: var(--text);
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     padding: 0 8px;
     outline: none
 }
@@ -1894,7 +1890,7 @@ textarea.yaml:focus {
 }
 
 .tbl-mgr-header h5 {
-    font-size: 13px;
+    font-size: var(--ui-font-size);
     color: var(--text)
 }
 
@@ -1906,7 +1902,7 @@ textarea.yaml:focus {
     border-radius: 4px;
     color: #fff;
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     font-weight: bold
 }
 
@@ -1924,7 +1920,7 @@ textarea.yaml:focus {
 .tbl-list-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 12px
+    font-size: var(--ui-font-size)
 }
 
 .tbl-list-table th {
@@ -1932,7 +1928,7 @@ textarea.yaml:focus {
     padding: 6px 8px;
     border: 1px solid var(--border);
     text-align: left;
-    font-size: 11px;
+    font-size: var(--ui-font-size);
     color: var(--text2);
     white-space: nowrap
 }
@@ -1963,7 +1959,7 @@ textarea.yaml:focus {
     background: var(--bg3);
     color: var(--text);
     cursor: pointer;
-    font-size: 11px;
+    font-size: var(--ui-font-size);
     margin: 0 2px
 }
 
@@ -1985,7 +1981,7 @@ textarea.yaml:focus {
     padding: 24px;
     text-align: center;
     color: var(--text3);
-    font-size: 12px
+    font-size: var(--ui-font-size)
 }
 
 /* ── テーブル編集 ── */
@@ -2002,7 +1998,7 @@ textarea.yaml:focus {
 }
 
 .tbl-name-row label {
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     color: var(--text2);
     white-space: nowrap;
     width: 80px
@@ -2015,7 +2011,7 @@ textarea.yaml:focus {
     border: 1px solid var(--border);
     border-radius: 3px;
     color: var(--text);
-    font-size: 13px;
+    font-size: var(--ui-font-size);
     padding: 0 8px;
     outline: none
 }
@@ -2031,7 +2027,7 @@ textarea.yaml:focus {
 }
 
 .tbl-desc-row label {
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     color: var(--text2);
     white-space: nowrap;
     width: 80px;
@@ -2045,7 +2041,7 @@ textarea.yaml:focus {
     border: 1px solid var(--border);
     border-radius: 3px;
     color: var(--text);
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     padding: 4px 8px;
     outline: none;
     resize: vertical
@@ -2065,7 +2061,7 @@ textarea.yaml:focus {
 .col-list-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 12px
+    font-size: var(--ui-font-size)
 }
 
 .col-list-table th {
@@ -2073,7 +2069,7 @@ textarea.yaml:focus {
     padding: 5px 6px;
     border: 1px solid var(--border);
     text-align: center;
-    font-size: 11px;
+    font-size: var(--ui-font-size);
     color: var(--text2);
     white-space: nowrap
 }
@@ -2110,7 +2106,7 @@ textarea.yaml:focus {
     border: 1px solid var(--border);
     border-radius: 2px;
     color: var(--text);
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     padding: 0 4px;
     outline: none
 }
@@ -2126,7 +2122,7 @@ textarea.yaml:focus {
     border: 1px solid var(--border);
     border-radius: 2px;
     color: var(--text);
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     padding: 0 6px;
     outline: none;
     cursor: pointer;
@@ -2161,7 +2157,7 @@ textarea.yaml:focus {
 
 .col-type-opt {
     padding: 4px 10px;
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     color: var(--text2);
     cursor: pointer;
     white-space: nowrap
@@ -2193,7 +2189,7 @@ textarea.yaml:focus {
     border-radius: 3px;
     color: var(--text);
     cursor: pointer;
-    font-size: 12px
+    font-size: var(--ui-font-size)
 }
 
 .col-add-btn:hover {
@@ -2218,7 +2214,7 @@ textarea.yaml:focus {
 .ci {
     padding: 6px 14px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -2264,62 +2260,9 @@ textarea.yaml:focus {
     background: var(--bg3)
 }
 
-.modal.modal-api-ref {
-    height: 80vh;
-    max-height: 80vh;
-    max-width: 1650px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.modal.modal-api-ref .mbody {
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-    display: flex;
-    flex-direction: row;
-}
-
-.api-ref-cat {
-    padding: 6px 10px;
-    font-size: 14px;
-    font-weight: bold;
-    color: var(--accent);
-    cursor: pointer;
-    user-select: none;
-    border-radius: 3px;
-    margin: 0 4px;
-}
-
-.api-ref-cat:hover {
-    background: var(--bg3);
-}
-
-.yaml-api-ref-btn {
-    margin-left: auto;
-    margin-right: 6px;
-    align-self: center;
-    height: 30px;
-    padding: 0 16px;
-    border-radius: 3px;
-    border: 1px solid var(--border);
-    background: var(--bg2);
-    color: var(--text2);
-    cursor: pointer;
-    font-size: 13px;
-    white-space: nowrap;
-    flex-shrink: 0
-}
-
-.yaml-api-ref-btn:hover {
-    background: var(--bg3);
-    color: var(--text)
-}
-
 .yaml-tab {
     padding: 9px 32px;
-    font-size: 13px;
+    font-size: var(--ui-font-size);
     cursor: pointer;
     color: var(--text2);
     border-bottom: 2px solid transparent;
@@ -2456,7 +2399,7 @@ input[type=number] {
     border: 1px solid var(--border);
     border-radius: 2px;
     color: var(--text);
-    font-size: 15px;
+    font-size: var(--ui-font-size);
     padding: 0 4px;
     outline: none;
     box-sizing: border-box;
@@ -2490,7 +2433,7 @@ select.pv-input:focus {
     border: 1px solid var(--border);
     border-radius: 2px;
     color: var(--text);
-    font-size: 11px;
+    font-size: var(--ui-font-size);
     resize: none;
     outline: none;
     padding: 3px 4px;

@@ -41,6 +41,7 @@ const pending = {
     getDecryptedCred:  null as Pending<{ ok:boolean; value:string }>                   | null,
     compileProject:    null as Pending<{ ok:boolean; error?:string; distPath?:string }> | null,
     getVersion:        null as Pending<{ version:string; runMode:string }>               | null,
+    loadUiConfig:      null as Pending<{ uiFontSize:number; uiFontFamily:string }>       | null,
 };
 
 const resolve = <K extends keyof typeof pending>(
@@ -89,6 +90,13 @@ const rpc = Electroview.defineRPC({
             loadScriptResult:            (v: any) => { /* フロント側で処理 */ },
             compileProjectResult:   (v: any) => resolve("compileProject",   v),
             getVersionResult:       (v: any) => resolve("getVersion",       v),
+            loadUiConfigResult:     (v: any) => {
+                resolve("loadUiConfig", v);
+                // window関数が定義されていれば呼び出してUI設定を適用
+                if (typeof (w as any)._onLoadUiConfigResult === "function") {
+                    (w as any)._onLoadUiConfigResult(v);
+                }
+            },
             stopProjectResult  : (v: any) => {
                 if (pending.stopProject) {
                     resolve("stopProject", v);
@@ -125,6 +133,9 @@ w.bunGetDecryptedCredential= (infraId: string, key: string) =>
     mkPromise("getDecryptedCred", () => s.getDecryptedCredentialRequest({ infraId, key }));
 w.bunOpenFolder       = (path: string) => s.openFolderRequest({ path });
 w.bunGetVersion       = ()             => mkPromise("getVersion", () => s.getVersionRequest({}));
+w.bunSaveUiConfig     = (uiFontSize: number, uiFontFamily: string, editorFontSize: number, editorFontFamily: string, leftPanelW: number, rightPanelW: number) =>
+    s.saveUiConfigRequest({ uiFontSize, uiFontFamily, editorFontSize, editorFontFamily, leftPanelW, rightPanelW });
+w.bunLoadUiConfig     = () => mkPromise("loadUiConfig", () => s.loadUiConfigRequest({}));
 
 // vja.db
 w.vja = {
@@ -211,3 +222,6 @@ w.vja = {
 if (typeof (window as any)._flushLogQueue === "function") {
     (window as any)._flushLogQueue();
 }
+
+// bridge.tsロード完了時にUI設定を自動読み込み
+s.loadUiConfigRequest({});

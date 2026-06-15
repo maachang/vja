@@ -569,6 +569,37 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 });
             },
 
+            // ── UI設定 ───────────────────────────────────
+            saveUiConfigRequest: async ({ uiFontSize, uiFontFamily, editorFontSize, editorFontFamily, leftPanelW, rightPanelW }) => {
+                try {
+                    const configPath = join(_configDir, "ui-config.json");
+                    if (!existsSync(_configDir)) mkdirSync(_configDir, { recursive: true });
+                    await Bun.write(configPath, JSON.stringify({ uiFontSize, uiFontFamily, editorFontSize, editorFontFamily, leftPanelW, rightPanelW }, null, 2));
+                } catch (e) { console.error("[vja] saveUiConfig failed:", e); }
+            },
+            loadUiConfigRequest: () => {
+                try {
+                    const configPath = join(_configDir, "ui-config.json");
+                    if (existsSync(configPath)) {
+                        const cfg = JSON.parse(readFileSync(configPath, "utf-8"));
+                        browserWindow.webview.rpc.send.loadUiConfigResult({
+                            uiFontSize:       cfg.uiFontSize       || 13,
+                            uiFontFamily:     cfg.uiFontFamily     || "",
+                            editorFontSize:   cfg.editorFontSize   || 16,
+                            editorFontFamily: cfg.editorFontFamily || "'Courier New', Courier, monospace",
+                            leftPanelW:       cfg.leftPanelW       || 110,
+                            rightPanelW:      cfg.rightPanelW      || 420,
+                        });
+                        return;
+                    }
+                } catch (e) { console.error("[vja] loadUiConfig failed:", e); }
+                browserWindow.webview.rpc.send.loadUiConfigResult({
+                    uiFontSize: 13, uiFontFamily: "",
+                    editorFontSize: 16, editorFontFamily: "'Courier New', Courier, monospace",
+                    leftPanelW: 110, rightPanelW: 420,
+                });
+            },
+
             // ══ コンパイル ════════════════════════════════
 
             compileProjectRequest: async () => {
