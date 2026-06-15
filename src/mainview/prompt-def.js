@@ -1142,14 +1142,15 @@
             // バックエンド.
             `
   - コメント等は日本語で
+  - コードだけを返却（厳守：説明文・マークダウンは不要）
   - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
   - 全ての vja.* 呼び出しは await を付ける
   - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
-  - コードのみを返す（説明文・マークダウン不要）
 `.trim() :
             // フロントエンド.
             `
   - コメント等は日本語で
+  - コードだけを返却（厳守：説明文・マークダウンは不要）
   - ロジックは必ずインラインで記述する。ヘルパー関数を定義してはいけない（例: handleXxx, doXxx 等の関数定義は禁止）
     - 悪い例: async function handleButtonClick() { ... }
     - 良い例: const result = await vja.app.showConfirm("...");
@@ -1157,7 +1158,6 @@
   - 全ての vja.* 呼び出しは await を付ける
   - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
   - window.confirm, window.alertは原則禁止(vja.app.showDialog, vja.app.showConfirmを利用)
-  - コードのみを返す（説明文・マークダウン不要）
 `.trim();
 
         return `
@@ -1181,16 +1181,6 @@ ${extRuntimeDoc}
 ~~~
 ---
 
-### フォーム内の入力パラメータ
----
-${inputParamsCtx}
----
-
-### フォーム内の全ウィジェット
----
-${allWidgetsCtx}
----
-
 ### 画面一覧
 ---
 ${formsCtx}
@@ -1199,11 +1189,6 @@ ${formsCtx}
 ### グローバル定数
 ---
 ${globalConstCtx}
----
-
-### フォーム定数（${formName}）
----
-${formConstCtx}
 ---
 
 ### テーブル定義
@@ -1244,14 +1229,15 @@ ${tablesCtx}
             // バックエンド.
             `
   - Comments and other information should be in Japanese.
+  - Return only the code (strictly enforced: no explanation or Markdown required).
   - Always use placeholders (?) in SQL queries (to prevent SQL injection).
   - Add "await" to all "vja.*" calls.
   - Use "vja.form.navigate('screen name')" for screen transitions (never use "location").
-  - Return only code (no explanations or markdown required).
 `.trim() :
             // フロントエンド.
             `
   - Comments and other information should be in Japanese.
+  - Return only the code (strictly enforced: no explanation or Markdown required).
   - Write all logic inline. Never define helper functions (e.g. handleXxx, doXxx).
     - Bad: async function handleButtonClick() { ... }
     - Good: const result = await vja.app.showConfirm("...");
@@ -1259,7 +1245,6 @@ ${tablesCtx}
   - Add "await" to all "vja.*" calls.
   - Use "vja.form.navigate('screen name')" for screen transitions (※ "location" should never be used).
   - Using window.confirm and window.alert is generally prohibited (use vja.app.showDialog and vja.app.showConfirm instead).
-  - Return only code (no explanations or markdown required).
 `.trim();
 
 
@@ -1284,16 +1269,6 @@ ${extRuntimeDoc}
 ~~~
 ---
 
-### Input Parameters in the Form
----
-${inputParamsCtx}
----
-
-### All Widgets in the Form
----
-${allWidgetsCtx}
----
-
 ### Screen List
 ---
 ${formsCtx}
@@ -1302,11 +1277,6 @@ ${formsCtx}
 ### Global Constants
 ---
 ${globalConstCtx}
----
-
-### Form Constants (${formName})
----
-${formConstCtx}
 ---
 
 ### Table Definitions
@@ -1358,7 +1328,24 @@ ${tablesCtx}
 ## プロジェクト情報
   - 現在のフォーム: ${formName}
   - 対象ウィジェット: ${wname} ${wtag}) ${wdescription ? "//" + wdescription : ""}
-  - 対象イベント: ${eventName}`.trim();
+  - 対象イベント: ${eventName}
+
+  ### フォーム内の全ウィジェット
+  ---
+  ${allWidgetsCtx}
+  ---
+
+  ### フォーム定数（${formName}）
+  ---
+  ${formConstCtx}
+  ---
+
+  ### フォーム内の入力パラメータ
+  ---
+  ${inputParamsCtx}
+  ---
+
+  `.trim();
 
         // yaml定義が設定されている場合.
         if (yamlDef.trim()) {
@@ -1371,7 +1358,7 @@ ${tablesCtx}
             } else {
                 // ウィジットイベント(js).
                 ret = frontInfo +
-                    "\n---\n\nイベント処理に対するインライン実装を、以下のYAML仕様に基づいてJavaScriptコードを生成してください。";
+                    "\n\n\nイベント処理に対するインライン実装を、以下のYAML仕様に基づいてJavaScriptコードを生成してください。";
             }
             // [共通]テーブル定義.
             ret = ret +
@@ -1391,7 +1378,7 @@ ${tablesCtx}
             }
             else {
                 // ウィジットイベント(js).
-                ret = frontInfo + "\n---\n\nイベント処理に対するインライン実装の、JavaScriptコードを生成してください。";
+                ret = frontInfo + "\n\n\nイベント処理に対するインライン実装の、JavaScriptコードを生成してください。";
             }
         }
         // 追加指示がある場合はセット.
@@ -1427,7 +1414,23 @@ ${tablesCtx}
 ## Project Information
   - Current Form: ${formName}
   - Target Widget: ${wname} ${wtag}) ${wdescription ? "//" + wdescription : ""}
-  - Target Event: ${eventName}`.trim();
+  - Target Event: ${eventName}
+
+  ### All Widgets in the Form
+  ---
+  ${allWidgetsCtx}
+  ---
+
+  ### Form Constants (${formName})
+  ---
+  ${formConstCtx}
+  ---
+
+  ### Input Parameters in the Form
+  ---
+  ${inputParamsCtx}
+  ---
+  `.trim();
 
         // yaml定義が設定されている場合.
         if (yamlDef.trim()) {
@@ -1440,7 +1443,7 @@ ${tablesCtx}
             } else {
                 // ウィジットイベント(js).
                 ret = frontInfo +
-                    "\n---\n\nGenerate JavaScript code for inline implementation of event handling based on the following YAML specification.";
+                    "\n\n\nGenerate JavaScript code for inline implementation of event handling based on the following YAML specification.";
             }
             // [共通]テーブル定義.
             ret = ret +
@@ -1460,7 +1463,7 @@ ${tablesCtx}
             }
             else {
                 // ウィジットイベント(js).
-                ret = frontInfo + "\n---\n\nGenerate JavaScript code for inline implementation of event handling.";
+                ret = frontInfo + "\n\n\nGenerate JavaScript code for inline implementation of event handling.";
             }
         }
         // 追加指示がある場合はセット.
