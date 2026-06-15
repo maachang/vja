@@ -47,8 +47,12 @@ if (process.argv.includes("build")) {
 
 // バージョンを取得して差し替える.
 const info = getVersion();
-conf.app.name = info.name
+conf.app.name = info.name;
 conf.app.version = info.version;
+if (!conf.app.identifier) {
+    // identifier が設定されていない場合は name をセット.
+    conf.app.identifier = info.name;
+}
 
 console.debug("# electrobun.config: " + JSON.stringify(conf.app, null, "  "));
 
