@@ -3474,13 +3474,32 @@
           最大60件保持。編集確定時に pushUndo() を呼ぶ。
         ═══════════════════════════════════════════ */
         // プロジェクト全体を JSON 文字列にシリアライズして返す。
+        // 再帰的なキー・バリュー比較
+        function deepEqual(a, b) {
+            if (a === b) return true;
+            if (a === null || b === null) return a === b;
+            if (Array.isArray(a) && Array.isArray(b)) {
+                if (a.length !== b.length) return false;
+                return a.every((v, i) => deepEqual(v, b[i]));
+            }
+            if (Array.isArray(a) !== Array.isArray(b)) return false;
+            if (typeof a === "object" && typeof b === "object") {
+                const keysA = Object.keys(a).filter(k => a[k] !== undefined);
+                const keysB = Object.keys(b).filter(k => b[k] !== undefined);
+                if (keysA.length !== keysB.length) return false;
+                if (!keysA.every(k => k in b)) return false;
+                return keysA.every(k => deepEqual(a[k], b[k]));
+            }
+            return a === b;
+        }
+
         function snapshot() {
-            return JSON.stringify({forms, curFormIdx, constants, startFormId, aiConfig, cloudInfras, tables, snapOn, showGrid, projectInfo, extRuntime});
+            return {forms, curFormIdx, constants, startFormId, aiConfig, cloudInfras, tables, snapOn, showGrid, projectInfo, extRuntime};
         }
         // 現在の状態を undoStack に積む。redoStack はクリアする。
         function pushUndo() {
             commitIdCnt();
-            undoStack.push(snapshot());
+            undoStack.push(JSON.stringify(snapshot()));
             if (undoStack.length > 60) undoStack.shift();
             redoStack = [];
         }
@@ -3522,13 +3541,13 @@
         // Undo 実行。現在の状態を redoStack に退避してから直前のスナップに戻す。
         function actUndo() {
             if (!undoStack.length) return;
-            redoStack.push(snapshot());
+            redoStack.push(JSON.stringify(snapshot()));
             restoreSnap(undoStack.pop());
         }
         // Redo 実行。現在の状態を undoStack に退避してから Redo スタックのスナップに進む。
         function actRedo() {
             if (!redoStack.length) return;
-            undoStack.push(snapshot());
+            undoStack.push(JSON.stringify(snapshot()));
             restoreSnap(redoStack.pop());
         }
 
@@ -3589,7 +3608,7 @@
             redoStack = [];
             refreshAll();
             pushUndo();
-            _savedSnapshot = snapshot();
+            _savedSnapshot = JSON.stringify(snapshot());
         }
 
         // ── ファイル保存・オープン（Bunネイティブ経由）──
@@ -3608,7 +3627,11 @@
                     forms = [{id: "f0", cfg: d.formCfg, widgets: d.widgets || [], idCnt: d.idCnt || 1}];
                     curFormIdx = 0;
                 } else {
-                    forms = d.forms;
+                    // 互換: nameがなければtitleをnameとして補完
+                    forms = (d.forms || []).map(f => ({
+                        ...f,
+                        cfg: { ...f.cfg, name: f.cfg.name || f.cfg.title }
+                    }));
                     curFormIdx = d.curFormIdx || 0;
                 }
                 applyProjectData(d);
@@ -3616,7 +3639,7 @@
                 undoStack = [];
                 redoStack = [];
                 refreshAll();
-                _savedSnapshot = snapshot();
+                _savedSnapshot = JSON.stringify(snapshot());
                 applyViewSettings();
             } catch (err) {
                 showVjaAlert("読み込み失敗: " + err.message);
@@ -3658,7 +3681,8 @@
         // Bun側でダイアログ取得→書き込みまで一括処理するので RPC は1回だけ
         async function actSave() {
             commitIdCnt();
-            const content = snapshot();
+            const snap = snapshot();
+            const content = JSON.stringify(snap);
             const projName = projectInfo.name?.trim() || "project";
             // bridge.ts がロードされているか確認
             if (typeof window.bunSaveProject !== "function") {
@@ -3675,7 +3699,7 @@
                 if (result && result.ok && result.path) {
                     _lastSavePath = result.path;
                     _lastOpenPath = result.path;
-                    _savedSnapshot = content;
+                    _savedSnapshot = JSON.stringify(snap);
                     showToast("保存しました: " + result.path);
                 }
                 // result.cancelled === true の場合は何もしない（エラーなし）
@@ -3952,8 +3976,18 @@
 
         /* ── ウィンドウを閉じる確認 ── */
         // 未保存の変更があるか判定する。_savedSnapshot と現在の状態を比較する。
+        // フォーカス中の入力値を確定してからisDirtyを返す
+        function commitCurrentInput() {
+            const el = document.activeElement;
+            if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT")) {
+                el.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+        }
+
         function isDirty() {
-            return _savedSnapshot !== null && snapshot() !== _savedSnapshot;
+            commitCurrentInput();
+            if (_savedSnapshot === null) return false;
+            return !deepEqual(snapshot(), JSON.parse(_savedSnapshot));
         }
         // クローズボタン押下時の処理。未保存の変更がある場合は確認ダイアログを表示する。
         function confirmClose() {
@@ -5850,7 +5884,7 @@
             requestAnimationFrame(drawRulers),
         );
         pushUndo();
-        _savedSnapshot = snapshot();
+        _savedSnapshot = JSON.stringify(snapshot());
         renderProps();
 
     </script>
