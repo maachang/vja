@@ -35,10 +35,6 @@
                         名前を付けて保存…
                     </div>
                     <div class="dd-sep"></div>
-                    <div class="dd-item" onmousedown="actExport()">
-                        HTMLエクスポート
-                    </div>
-                    <div class="dd-sep"></div>
                     <div class="dd-item" onmousedown="openProjectInfo()">
                         プロジェクト情報…
                     </div>
@@ -3826,119 +3822,6 @@
             if (runBtn) {runBtn.style.display = ""; runBtn.disabled = false;}
             if (stopBtn) stopBtn.style.display = "none";
             showToast("プロジェクトを停止しました");
-        }
-
-        function actExport() {
-            commitIdCnt();
-            const projTitle = forms[0]?.cfg?.title || "project";
-            // 全フォームのHTML生成
-            const dgScripts = [];
-            const formHtmls = forms.map((f) => {
-                const lines2 = [];
-                const cfg = f.cfg;
-                lines2.push(
-                    `<div class="vja-form" id="form-${f.id}" style="display:none;position:relative;width:${cfg.w}px;height:${cfg.h}px;background:${cfg.bg}">`,
-                );
-                f.widgets.forEach((w) => {
-                    const html = makeExportWidget(w, dgScripts);
-                    if (html) lines2.push(html);
-                });
-                lines2.push("</div>");
-                return lines2.join("\n");
-            });
-
-            // ナビゲーションHTML
-            const navItems = forms
-                .map(
-                    (f, i) =>
-                        `<button onclick="showForm('${f.id}')" style="padding:4px 12px;margin:0 2px;cursor:pointer">${esc(f.cfg.title)}</button>`,
-                )
-                .join("");
-
-            const lines = [
-                "<!DOCTYPE html>",
-                '<html lang="ja">',
-                "<head>",
-                '<meta charset="UTF-8">',
-                `<title>${esc(projTitle)}</title>`,
-                "<style>",
-                "*{box-sizing:border-box;margin:0;padding:0}",
-                `body{font-family:'Segoe UI',sans-serif}`,
-                `#titlebar{background:linear-gradient(90deg,#003f91,#0060c8);color:#fff;height:24px;display:flex;align-items:center;padding:0 8px;font-size:12px;gap:8px}`,
-                `#nav{padding:4px 8px;background:#f0f0f0;border-bottom:1px solid #ccc;display:flex;align-items:center;gap:4px}`,
-                `#content{position:relative}`,
-                ".vja-form{display:none}",
-                ".vja-form.active{display:block}",
-                "</style>",
-                "</head>",
-                "<body>",
-                `<div id="titlebar"><span>${esc(projTitle)}</span></div>`,
-                `<div id="nav">${navItems}</div>`,
-                `<div id="content">`,
-                ...formHtmls,
-                `</div>`,
-            ];
-
-            // イベントスクリプト
-            const evLines = [];
-            forms.forEach((f) => {
-                f.widgets.forEach((w) => {
-                    Object.entries(w.events || {}).forEach(([ev, yaml]) => {
-                        if (!yaml?.trim()) return;
-                        const jEv =
-                            ev === "Click"
-                                ? "click"
-                                : ev === "TextChanged"
-                                    ? "input"
-                                    : "click";
-                        evLines.push(
-                            `/* ${w.name}.${ev} */\ndocument.getElementById('${w.name}')?.addEventListener('${jEv}',()=>{\n  /* YAML:\n${yaml
-                                .split("\n")
-                                .map((l) => "    " + l)
-                                .join(
-                                    "\n",
-                                )}\n  */\n  \n});`,
-                        );
-                    });
-                });
-            });
-
-            // 画面遷移JS
-            const navJS = `function showForm(id){\n  document.querySelectorAll('.vja-form').forEach(el=>el.classList.remove('active'));\n  const el=document.getElementById('form-'+id);\n  if(el) el.classList.add('active');\n}\n// 最初の画面を表示\nshowForm('${startFormId || forms[0]?.id || ""}');`;
-            // datagrid ヘルパーJS を evLines に統合
-            dgScripts.forEach(function (s) {evLines.push(s);});
-            lines.push(
-                `<script>\n${navJS}\n${evLines.join("\n")}\n<\/script>`,
-            );
-            lines.push("</body>", "</html>");
-
-            const html = lines.join("\n");
-            showModal(`
-    ${mhdrHTML("📤 HTMLエクスポート")}
-    <div class="mbody">
-      <textarea class="yaml" style="height:260px;font-size:10px" readonly>${esc(html)}</textarea>
-    </div>
-    <div class="mfoot">
-      <button onmousedown="closeModal()">閉じる</button>
-      <button class="pri" onclick="dlHTML()">ダウンロード</button>
-    </div>`);
-            window._exportHTML = html;
-        }
-        async function dlHTML() {
-            const projName = forms[0]?.cfg?.title || "form";
-            try {
-                const result = await window.bunSaveProject({
-                    content: window._exportHTML,
-                    defaultName: projName + ".html",
-                    lastPath: null, // 常に名前を付けて保存ダイアログ
-                });
-                if (result && result.ok) {
-                    closeModal();
-                    showToast("エクスポートしました: " + result.path);
-                }
-            } catch (e) {
-                showVjaAlert("エクスポートに失敗しました: " + e.message);
-            }
         }
 
         /* ═══════════════════════════════════════════
