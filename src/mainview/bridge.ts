@@ -233,8 +233,23 @@ w.vja = {
         set: (key: string, value: string | null) =>
             mkPromise("sessionSet", () => s.sessionSetRequest({ key, value }))
                 .then((r: any) => r.ok),
+        delete: (key: string) =>
+            mkPromise("sessionSet", () => s.sessionSetRequest({ key, value: null }))
+                .then((r: any) => r.ok),
+        clear: () =>
+            mkPromise("sessionSet", () => s.sessionSetRequest({ key: "__clear_all__", value: "__clear__" }))
+                .then((r: any) => r.ok),
     },
 };
+
+// vja.cloud
+w.vja.cloud = w.vja.cloud || {};
+w.vja.cloud.list = () =>
+    mkPromise("getCloudInfras", () => s.getCloudInfrasRequest({}))
+        .then((r: any) => r.infras);
+w.vja.cloud.getCredential = (infraId: string, key: string) =>
+    mkPromise("getDecryptedCred", () => s.getDecryptedCredentialRequest({ infraId, key }))
+        .then((r: any) => r.value);
 
 // bridge.ts 読み込み完了後、コンソールのキューを flush
 if (typeof (window as any)._flushLogQueue === "function") {
