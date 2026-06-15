@@ -11,7 +11,6 @@ type Rejecter = (e: Error) => void;
 interface Pending<T> { resolve: Resolver<T>; reject: Rejecter; }
 
 const pending = {
-    log:          null as Pending<{ ok: boolean }> | null,
     navigateForm: null as Pending<{ ok: boolean; error?: string }> | null,
     openFile:     null as Pending<{ content: string | null; path: string | null }> | null,
     dbInit:       null as Pending<{ ok: boolean; error?: string }> | null,
@@ -33,6 +32,7 @@ const pending = {
     dirExists:    null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
     getCloudInfras:    null as Pending<{ infras: any[] }> | null,
     getDecryptedCred:  null as Pending<{ ok: boolean; value: string }> | null,
+    getVersion:        null as Pending<{ version: string; runMode: string }>               | null,
 };
 
 const resolve = <K extends keyof typeof pending>(
@@ -55,7 +55,6 @@ const rpc = Electroview.defineRPC<VjaRPCType>({
     handlers: {
         requests: {},
         messages: {
-            logResult:          (v: any) => resolve("log",          v),
             navigateFormResult: (v: any) => resolve("navigateForm", v),
             openFileResult:     (v: any) => resolve("openFile",     v),
             dbInitResult:       (v: any) => resolve("dbInit",       v),
@@ -89,14 +88,14 @@ const w = window as any;
 // ── vja.* API をプロジェクトウィンドウ用に上書き ─────
 w.vja = w.vja || {};
 
-// ログ
+// ログ（fire-and-forget: 結果を待たない）
 w.vja.log = {
-    trace: (msg: string) => mkPromise("log", () => s.logRequest({ level: "trace", message: msg })),
-    debug: (msg: string) => mkPromise("log", () => s.logRequest({ level: "debug", message: msg })),
-    info:  (msg: string) => mkPromise("log", () => s.logRequest({ level: "info",  message: msg })),
-    warn:  (msg: string) => mkPromise("log", () => s.logRequest({ level: "warn",  message: msg })),
-    error: (msg: string) => mkPromise("log", () => s.logRequest({ level: "error", message: msg })),
-    log:   (msg: string) => mkPromise("log", () => s.logRequest({ level: "log",   message: msg })),
+    trace: (msg: string) => { s.logRequest({ level: "trace", message: msg }); },
+    debug: (msg: string) => { s.logRequest({ level: "debug", message: msg }); },
+    info:  (msg: string) => { s.logRequest({ level: "info",  message: msg }); },
+    warn:  (msg: string) => { s.logRequest({ level: "warn",  message: msg }); },
+    error: (msg: string) => { s.logRequest({ level: "error", message: msg }); },
+    log:   (msg: string) => { s.logRequest({ level: "log",   message: msg }); },
 };
 
 // ダイアログ・ウィンドウ操作
@@ -141,7 +140,8 @@ w.vja.db = {
 
     // テーブル全行削除
     clearTable: (tableName: string) =>
-        mkPromise("dbExecute", () => s.dbExecuteRequest({ sql: `DELETE FROM ${tableName}` })),
+        mkPromise("dbExecute", () => s.dbExecuteRequest({ sql: `DELETE FROM ${tableName}` }))
+            .then(() => {}),
 
     // テーブル一覧取得
     tables: async (): Promise<string[]> => {
@@ -315,11 +315,11 @@ const _fmtArgs = (...args: any[]) => args.map(a => {
     if (typeof a === "object") { try { return JSON.stringify(a); } catch { return String(a); } }
     return String(a);
 }).join(" ");
-console.log   = (...a: any[]) => { _origConsole.log(...a);   w.vja.log?.log?.(  _fmtArgs(...a))?.catch(() => {}); };
-console.info  = (...a: any[]) => { _origConsole.info(...a);  w.vja.log?.info?.( _fmtArgs(...a))?.catch(() => {}); };
-console.warn  = (...a: any[]) => { _origConsole.warn(...a);  w.vja.log?.warn?.( _fmtArgs(...a))?.catch(() => {}); };
-console.error = (...a: any[]) => { _origConsole.error(...a); w.vja.log?.error?.(_fmtArgs(...a))?.catch(() => {}); };
-console.debug = (...a: any[]) => { _origConsole.debug(...a); w.vja.log?.debug?.(_fmtArgs(...a))?.catch(() => {}); };
+console.log   = (...a: any[]) => { _origConsole.log(...a);   w.vja.log?.log?.(  _fmtArgs(...a)); };
+console.info  = (...a: any[]) => { _origConsole.info(...a);  w.vja.log?.info?.( _fmtArgs(...a)); };
+console.warn  = (...a: any[]) => { _origConsole.warn(...a);  w.vja.log?.warn?.( _fmtArgs(...a)); };
+console.error = (...a: any[]) => { _origConsole.error(...a); w.vja.log?.error?.(_fmtArgs(...a)); };
+console.debug = (...a: any[]) => { _origConsole.debug(...a); w.vja.log?.debug?.(_fmtArgs(...a)); };
 
 // ページ読み込み完了をBun側に通知（Bun側でnavigationをロックする）
 document.addEventListener("DOMContentLoaded", () => {
@@ -328,10 +328,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // 未捕捉エラー・未処理Rejection もBun側ログに転送
 window.addEventListener("error", (e: ErrorEvent) => {
-    w.vja.log?.error?.(`[UnhandledError] ${e.message} (${e.filename}:${e.lineno})`)?.catch(() => {});
+    w.vja.log?.error?.(`[UnhandledError] ${e.message} (${e.filename}:${e.lineno})`);
 });
 window.addEventListener("unhandledrejection", (e: PromiseRejectionEvent) => {
-    w.vja.log?.error?.(`[UnhandledRejection] ${String(e.reason)}`)?.catch(() => {});
+    w.vja.log?.error?.(`[UnhandledRejection] ${String(e.reason)}`);
 });
 
 console.log("[project-bridge] loaded");

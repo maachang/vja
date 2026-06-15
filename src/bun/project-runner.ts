@@ -110,35 +110,29 @@ const _dbExecute = (sql: string, params?: any[]): any => {
 };
 
 const _runAppEventCode = async (name: string, code: string): Promise<void> => {
-    const tmpFile = join(import.meta.dir, `.vja_${name}_tmp_${Date.now()}.ts`);
     try {
-        const wrapper = `
-export const vja = {
-    session: {
-        get:    (key: string) => _session.get(key) ?? null,
-        set:    (key: string, val: string) => { _session.set(key, val); },
-        delete: (key: string) => { _session.delete(key); },
-    },
-    db: {
-        query:      (sql: string, params?: any[]) => ${_dbQuery}(sql, params),
-        execute:    (sql: string, params?: any[]) => ${_dbExecute}(sql, params),
-        clearTable: (tableName: string) => ${_dbExecute}("DELETE FROM " + tableName),
-    },
-    log: {
-        info:  (msg: string) => console.info("[app]", msg),
-        warn:  (msg: string) => console.warn("[app]", msg),
-        error: (msg: string) => console.error("[app]", msg),
-    },
-};
-${code}
-`;
-        await Bun.write(tmpFile, wrapper);
-        await import(tmpFile);
+        const vja = {
+            session: {
+                get:    (key: string) => _session.get(key) ?? null,
+                set:    (key: string, val: string) => { _session.set(key, val); },
+                delete: (key: string) => { _session.delete(key); },
+            },
+            db: {
+                query:      (sql: string, params?: any[]) => _dbQuery(sql, params),
+                execute:    (sql: string, params?: any[]) => _dbExecute(sql, params),
+                clearTable: (tableName: string) => _dbExecute(`DELETE FROM ${tableName}`),
+            },
+            log: {
+                info:  (msg: string) => console.info("[app]", msg),
+                warn:  (msg: string) => console.warn("[app]", msg),
+                error: (msg: string) => console.error("[app]", msg),
+            },
+        };
+        const fn = new Function("vja", `"use strict";\n${code}`);
+        await fn(vja);
         console.log(`[app] ${name} 実行完了`);
     } catch (e: any) {
         console.error(`[app] ${name} 実行エラー:`, e.message);
-    } finally {
-        try { rmSync(tmpFile); } catch { /* ignore */ }
     }
 };
 
@@ -446,18 +440,8 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
                 },
 
                 getCloudInfrasRequest: async () => {
-                    try {
-                        const decrypted = await Promise.all(_cloudInfras.map(async (inf: any) => {
-                            const creds: Record<string, string> = {};
-                            for (const [k, v] of Object.entries(inf.credentials || {})) {
-                                creds[k] = v ? await decryptCredential(v as string) : "";
-                            }
-                            return { ...inf, credentials: creds };
-                        }));
-                        _projectWindow?.webview.rpc.send.getCloudInfrasResult({ infras: decrypted });
-                    } catch {
-                        _projectWindow?.webview.rpc.send.getCloudInfrasResult({ infras: [] });
-                    }
+                    // クレデンシャルは getDecryptedCredentialRequest で個別取得するため、ここでは復号しない
+                    _projectWindow?.webview.rpc.send.getCloudInfrasResult({ infras: _cloudInfras });
                 },
                 getDecryptedCredentialRequest: async ({ infraId, key }) => {
                     try {
