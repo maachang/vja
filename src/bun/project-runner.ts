@@ -286,17 +286,17 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
 
                 dbQueryRequest: async ({ sql, params }) => {
                     try {
-                        const rows = getProjectDb(_currentProjectDbDir).query(sql).all(...(params || []));
-                        _projectWindow?.webview.rpc.send.dbQueryResult({ ok: true, rows: rows as any });
+                        const rows = _dbQuery(sql, params);
+                        _projectWindow?.webview.rpc.send.dbQueryResult({ ok: true, rows });
                     } catch (e: any) {
                         _projectWindow?.webview.rpc.send.dbQueryResult({ ok: false, rows: [], error: e.message });
                     }
                 },
                 dbExecuteRequest: async ({ sql, params }) => {
                     try {
-                        const r = getProjectDb(_currentProjectDbDir).run(sql, ...(params || []));
+                        const r = _dbExecute(sql, params);
                         _projectWindow?.webview.rpc.send.dbExecuteResult({
-                            ok: true, result: { changes: r.changes, lastInsertRowid: Number(r.lastInsertRowid) },
+                            ok: true, result: { changes: r?.changes ?? 0, lastInsertRowid: Number(r?.lastInsertRowid ?? 0) },
                         });
                     } catch (e: any) {
                         _projectWindow?.webview.rpc.send.dbExecuteResult({
@@ -307,10 +307,9 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
                 dbTransactionRequest: async ({ statements }) => {
                     try {
                         const db = getProjectDb(_currentProjectDbDir);
-                        const tx = db.transaction(() => {
-                            for (const { sql, params } of statements) db.run(sql, ...(params || []));
-                        });
-                        tx();
+                        db.transaction(() => {
+                            for (const { sql, params } of statements) _dbExecute(sql, params);
+                        })();
                         _projectWindow?.webview.rpc.send.dbTransactionResult({ ok: true });
                     } catch (e: any) {
                         _projectWindow?.webview.rpc.send.dbTransactionResult({ ok: false, error: e.message });
@@ -319,10 +318,9 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
                 dbInitRequest: async ({ ddlStatements }) => {
                     try {
                         const db = getProjectDb(_currentProjectDbDir);
-                        const tx = db.transaction(() => {
-                            for (const ddl of ddlStatements) db.run(ddl);
-                        });
-                        tx();
+                        db.transaction(() => {
+                            for (const ddl of ddlStatements) _dbExecute(ddl);
+                        })();
                         _projectWindow?.webview.rpc.send.dbInitResult({ ok: true });
                     } catch (e: any) {
                         _projectWindow?.webview.rpc.send.dbInitResult({ ok: false, error: e.message });

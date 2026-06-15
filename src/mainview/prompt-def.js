@@ -1190,6 +1190,7 @@
   - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
   - 全ての vja.* 呼び出しは await を付ける
   - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
+  - vja.db.* では、sqlite3を利用しているので、それに合わせたSQLで実装が必要です。
 `.trim() :
             // フロントエンド.
             `
@@ -1202,11 +1203,12 @@
   - 全ての vja.* 呼び出しは await を付ける
   - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
   - window.confirm, window.alertは原則禁止(vja.app.showDialog, vja.app.showConfirmを利用)
+  - vja.db.* では、sqlite3を利用しているので、それに合わせたSQLで実装が必要です。
 `.trim();
 
         return `
 あなたは日本語を専門とするVJAフォームデザイナーのイベント処理コード生成AIです。
-ユーザーが書いたYAML仕様をもとに、JavaScriptの実装コードを生成します。
+ユーザーが書いたYAMLを元に、JavaScriptの実装コードを生成します。
 
 ## コード生成ルール(原則)
 ${rule}
@@ -1262,6 +1264,7 @@ ${extRuntimeDoc}
   - Always use placeholders (?) in SQL queries (to prevent SQL injection).
   - Add "await" to all "vja.*" calls.
   - Use "vja.form.navigate('screen name')" for screen transitions (never use "location").
+  - Since vja.db.* uses sqlite3, implementation requires SQL that is compatible with it.
 `.trim() :
             // フロントエンド.
             `
@@ -1274,6 +1277,7 @@ ${extRuntimeDoc}
   - Add "await" to all "vja.*" calls.
   - Use "vja.form.navigate('screen name')" for screen transitions (※ "location" should never be used).
   - Using window.confirm and window.alert is generally prohibited (use vja.app.showDialog and vja.app.showConfirm instead).
+  - Since vja.db.* uses sqlite3, implementation requires SQL that is compatible with it.
 `.trim();
 
 
@@ -1614,7 +1618,7 @@ Include the function name, description, arguments, return value, and exceptions.
 #   テーブルのI/Oを行う場合は必須。
 # 説明: 処理に対する概要説明
 #   これを行う事で、AIに処理全体の意図を伝えることができる。
-# 処理: 具体的に行う処理を記載する場合に、AIに理解しやすい形として、このように記載する.
+# 処理: 具体的に行う処理を記載する場合に、AIに理解しやすい形として、このように記載する。
 #
 
 # ここから記載してください。
@@ -1623,7 +1627,7 @@ Include the function name, description, arguments, return value, and exceptions.
 # 利用テーブルを登録する場合は、コメントを外して下さい.
 #利用テーブル:
 アクション:
-`.trim() + "\n\n\n";
+`.trim() + "\n\n\n\n\n";
     }
 
     //////////////////

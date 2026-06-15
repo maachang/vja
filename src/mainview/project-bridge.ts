@@ -32,7 +32,6 @@ const pending = {
     dirExists:    null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
     getCloudInfras:    null as Pending<{ infras: any[] }> | null,
     getDecryptedCred:  null as Pending<{ ok: boolean; value: string }> | null,
-    getVersion:        null as Pending<{ version: string; runMode: string }>               | null,
 };
 
 const resolve = <K extends keyof typeof pending>(
@@ -84,6 +83,26 @@ const rpc = Electroview.defineRPC<VjaRPCType>({
 const _ev = new Electroview({ rpc });
 const s = _ev.rpc.send;
 const w = window as any;
+
+// ── 共通ユーティリティ ────────────────────────────────
+const _parseCsvLine = (line: string): string[] => {
+    const result: string[] = [];
+    let cur = "", inQ = false;
+    for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (inQ) {
+            if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
+            else if (c === '"') inQ = false;
+            else cur += c;
+        } else {
+            if (c === '"') inQ = true;
+            else if (c === ",") { result.push(cur); cur = ""; }
+            else cur += c;
+        }
+    }
+    result.push(cur);
+    return result;
+};
 
 // ── vja.* API をプロジェクトウィンドウ用に上書き ─────
 w.vja = w.vja || {};
@@ -178,27 +197,9 @@ w.vja.db = {
     importCsv: async (tableName: string, csv: string): Promise<void> => {
         const lines = csv.split("\n").filter((l: string) => l.trim());
         if (lines.length < 2) return;
-        const parseCsvLine = (line: string): string[] => {
-            const result: string[] = [];
-            let cur = "", inQ = false;
-            for (let i = 0; i < line.length; i++) {
-                const c = line[i];
-                if (inQ) {
-                    if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
-                    else if (c === '"') inQ = false;
-                    else cur += c;
-                } else {
-                    if (c === '"') inQ = true;
-                    else if (c === ",") { result.push(cur); cur = ""; }
-                    else cur += c;
-                }
-            }
-            result.push(cur);
-            return result;
-        };
-        const headers = parseCsvLine(lines[0]);
+        const headers = _parseCsvLine(lines[0]);
         const statements = lines.slice(1).map((line: string) => {
-            const vals = parseCsvLine(line);
+            const vals = _parseCsvLine(line);
             return {
                 sql: `INSERT INTO ${tableName} (${headers.join(",")}) VALUES (${headers.map(() => "?").join(",")})`,
                 params: vals,
