@@ -2259,6 +2259,44 @@ textarea.yaml:focus {
     background: var(--bg3)
 }
 
+.modal.modal-api-ref {
+    height: 80vh;
+    max-height: 80vh;
+    max-width: 1650px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modal.modal-api-ref .mbody {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.yaml-api-ref-btn {
+    margin-left: auto;
+    margin-right: 6px;
+    align-self: center;
+    height: 30px;
+    padding: 0 16px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 13px;
+    white-space: nowrap;
+    flex-shrink: 0
+}
+
+.yaml-api-ref-btn:hover {
+    background: var(--bg3);
+    color: var(--text)
+}
+
 .yaml-tab {
     padding: 9px 32px;
     font-size: 13px;

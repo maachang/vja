@@ -2013,6 +2013,45 @@
         /* ═══════════════════════════════════════════
           YAML EDITOR
         ═══════════════════════════════════════════ */
+
+        // APIリファレンスモーダルを開く
+        function openApiRef(isAppEvent) {
+            const info = isAppEvent
+                ? window._PROMPT_DEF.VJA_USE_BACK_JS_INFO
+                : window._PROMPT_DEF.VJA_USE_FRONT_JS_INFO;
+            const title = isAppEvent ? "📖 APIリファレンス（バックエンド）" : "📖 APIリファレンス（フロントエンド）";
+            showModal(
+                mhdrHTML(title) +
+                "<div class='mbody' style='flex:1;min-height:0;overflow:hidden;gap:6px'>" +
+                "<input id='api-ref-search' placeholder='🔍 検索...' oninput='_apiRefFilter()' " +
+                "style='height:30px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:13px;padding:0 10px;outline:none;flex-shrink:0;width:100%;box-sizing:border-box'>" +
+                "<div id='api-ref-body' style='flex:1;overflow:auto;font-size:18px;line-height:1.7;font-family:monospace;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:10px;white-space:pre-wrap;word-break:break-word;width:100%;box-sizing:border-box'>" +
+                yamlTokenize(info) +
+                "</div>" +
+                "</div>" +
+                mfootHTML([{label: "閉じる", action: "closeModal()"}]),
+                "modal-api-ref"
+            );
+            window._apiRefRaw = info;
+            window._apiRefFilter = function () {
+                const q = (document.getElementById("api-ref-search")?.value || "").toLowerCase();
+                const body = document.getElementById("api-ref-body");
+                if (!body) return;
+                if (!q) {
+                    body.innerHTML = yamlTokenize(window._apiRefRaw);
+                    return;
+                }
+                const lines = window._apiRefRaw.split("\n");
+                body.innerHTML = lines.map(line => {
+                    const matched = line.toLowerCase().includes(q);
+                    const highlighted = yamlTokenize(line);
+                    return matched
+                        ? `<span style='background:var(--accent-dim,#2a3a6a);display:block'>${highlighted}</span>`
+                        : `<span style='opacity:0.3;display:block'>${highlighted}</span>`;
+                }).join("");
+            };
+        }
+
         function openYaml(wid, evName) {
             const w = getWidget(wid);
             if (!w) return;
@@ -2021,9 +2060,10 @@
                 // 空の場合はデフォルトのYAMLセット.
                 _PROMPT_DEF.DEFAULT_YAML_VALUE(evName, w.name);
             const curJs = (w.jsCode && w.jsCode[evName]) || "";
+            const isAppEvent = (wid === "appev");
             pvRegister("yamlSave", () => saveYaml(wid, evName));
             pvRegister("yamlAiGen", () => yamlAiGenerate(wid, evName));
-            showModal(buildYamlEditorHTML(cur, curJs, true, mhdrHTML("📋 " + esc(w.name) + " — " + esc(evName))));
+            showModal(buildYamlEditorHTML(cur, curJs, true, mhdrHTML("📋 " + esc(w.name) + " — " + esc(evName)), "", null, isAppEvent));
             initYamlEditorModal(cur, curJs);
         }
 
@@ -2632,7 +2672,7 @@
 
         /* ── YAMLエディタ共通HTML生成 ── */
         // tabConfig: null=通常(YAML+JS), {tabs:[{id,label,type:'yaml'|'js',val,ph}], aiBar, saveAction}
-        function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", extraTabsHTML = "", tabConfig = null) {
+        function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", extraTabsHTML = "", tabConfig = null, isAppEvent = false) {
             const aiEnabled = aiConfig.enabled;
 
             // カスタムタブ構成
@@ -2695,6 +2735,7 @@
                 "<div class='yaml-tab-bar'>" +
                 "<div class='yaml-tab active' id='tab-yaml'>📋 YAML</div>" +
                 "<div class='yaml-tab' id='tab-js'>📜 JavaScript</div>" +
+                "<button class='yaml-api-ref-btn' onmousedown='openApiRef(" + isAppEvent + ")'>📖 API</button>" +
                 "</div>" +
                 "<div class='yaml-pane active' id='pane-yaml'>" +
                 "<div class='editor-wrap'>" +
