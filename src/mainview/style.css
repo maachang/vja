@@ -1366,10 +1366,15 @@ textarea.yaml:focus {
 
 /* ── z-index レイヤー管理 ──────────────────────────────
    #modal-root    : 1000  汎用モーダル
-   #close-confirm : 2000  閉じる確認ダイアログ
+   #modal-layer-1 : 2000  重ね表示用（layer-1）
+   #modal-layer-2 : 3000  重ね表示用（layer-2）
+   #close-confirm : 4000  閉じる確認ダイアログ
    #dialog-root   : 8000  vja.app.showConfirm / showDialog 専用
    #toast-root    : 9000  トースト通知
 ──────────────────────────────────────────────────── */
+
+#modal-layer-1 .ov { z-index: 2000; }
+#modal-layer-2 .ov { z-index: 3000; }
 
 /* ── vja.app ダイアログ ── */
 #dialog-root {

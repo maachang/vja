@@ -385,6 +385,8 @@
 
     <!-- modal (z-index: 1000) -->
     <div id="modal-root"></div>
+    <div id="modal-layer-1"></div>
+    <div id="modal-layer-2"></div>
     <!-- カラム型フローティングドロップダウン -->
     <div id="col-type-float"></div>
     <!-- vja.app.showConfirm/showDialog 専用ダイアログ (z-index: 8000) -->
@@ -1785,9 +1787,9 @@
         }
 
         // モーダルヘッダー生成ヘルパー
-        function mhdrHTML(title) {
+        function mhdrHTML(title, layer = "modal-root") {
             return "<div class='mhdr'><h4>" + title + "</h4>" +
-                "<button class='mclose' onmousedown='closeModal()'>✕</button></div>";
+                "<button class='mclose' onmousedown='closeModal(\"" + layer + "\")'>✕</button></div>";
         }
         // モーダルフッター生成ヘルパー
         function mfootHTML(btns) {
@@ -2021,7 +2023,7 @@
                 : window._PROMPT_DEF.VJA_USE_FRONT_JS_INFO;
             const title = isAppEvent ? "📖 APIリファレンス（バックエンド）" : "📖 APIリファレンス（フロントエンド）";
             showModal(
-                mhdrHTML(title) +
+                mhdrHTML(title, "modal-layer-1") +
                 "<div class='mbody' style='flex:1;min-height:0;overflow:hidden;gap:6px'>" +
                 "<input id='api-ref-search' placeholder='🔍 検索...' oninput='_apiRefFilter()' " +
                 "style='height:30px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:13px;padding:0 10px;outline:none;flex-shrink:0;width:100%;box-sizing:border-box'>" +
@@ -2029,8 +2031,8 @@
                 yamlTokenize(info) +
                 "</div>" +
                 "</div>" +
-                mfootHTML([{label: "閉じる", action: "closeModal()"}]),
-                "modal-api-ref"
+                mfootHTML([{label: "閉じる", action: 'closeModal("modal-layer-1")'}]),
+                "modal-api-ref", "modal-layer-1"
             );
             window._apiRefRaw = info;
             window._apiRefFilter = function () {
@@ -3262,14 +3264,15 @@
         ═══════════════════════════════════════════ */
         // 汎用モーダルを表示する。yaml系モーダルは外クリックで閉じない制御も兼ねる。
         // extraClass: 追加CSSクラス（例: "modal-yaml", "modal-cloud"）
-        function showModal(html, extraClass = "") {
+        // layer: 表示先のroot要素ID（省略時は"modal-root"）
+        function showModal(html, extraClass = "", layer = "modal-root") {
             const isYaml = /^\s*<div class=["']modal-yaml["']>/.test(html);
             const cls = isYaml ? " modal-yaml" : (extraClass ? " " + extraClass : "");
             // modal-yaml ラッパーは不要なので中身を取り出す
             const inner = isYaml
                 ? html.replace(/^\s*<div class=["']modal-yaml["']>/, "").replace(/<\/div>\s*$/, "")
                 : html;
-            $("modal-root").innerHTML =
+            $(layer).innerHTML =
                 `<div class="ov" onclick="ovClick(event)"><div class="modal${cls}">${inner}</div></div>`;
         }
         // ── vja.app ダイアログ（#dialog-root, z-index:8000）────────────────
@@ -3277,9 +3280,10 @@
         // vja-runtime.js に共通実装済み（デザイナー・プロジェクト実行ウィンドウ共通）
 
         // モーダルを閉じる。AIローディングタイマーが残っていれば合わせてクリアする。
-        function closeModal() {
-            if (_aiLoadingTimer) {clearInterval(_aiLoadingTimer); _aiLoadingTimer = null;}
-            $("modal-root").innerHTML = "";
+        // layer: 閉じる対象のroot要素ID（省略時は"modal-root"）
+        function closeModal(layer = "modal-root") {
+            if (layer === "modal-root" && _aiLoadingTimer) {clearInterval(_aiLoadingTimer); _aiLoadingTimer = null;}
+            $(layer).innerHTML = "";
         }
         // AI生成中のローディングモーダルを表示する。
         // 経過秒数タイマーとキャンセルボタンを持つ。_aiLoadingTimer で管理。
@@ -3368,11 +3372,13 @@
         // yaml/loading 系モーダルは誤操作防止のため外クリックでは閉じない。
         function ovClick(e) {
             if (!e.target.classList.contains("ov")) return;
-            const modal = document.querySelector(".modal");
+            const modal = e.target.querySelector(".modal");
             if (modal && modal.classList.contains("modal-yaml")) return;
             if (modal && modal.classList.contains("modal-loading")) return;
             if (modal && modal.classList.contains("modal-cloud")) return;
-            closeModal();
+            // クリックされたovが属するlayerを特定して閉じる
+            const root = e.target.closest("#modal-root, #modal-layer-1, #modal-layer-2");
+            closeModal(root ? root.id : "modal-root");
         }
 
         /* ═══════════════════════════════════════════
