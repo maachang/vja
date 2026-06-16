@@ -1444,18 +1444,17 @@
         const rule = isAppEvent ?
             // バックエンド.
             `
-  - コメントは日本語で
   - Typescriptコードだけを返却（厳守：説明文・マークダウンは不要で返却しないでください）
   - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
   - 全ての vja.* 呼び出しは await を付ける
   - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
-  - vja.db.* では、sqlite3を利用しているので、それに合わせたSQLで実装が必要です。
+  - vja.db.* は、sqlite3用SQLで実装する。
+  - コメントは日本語で
 `.trim() :
 
             // フロントエンド.
             `
-  - コメントは日本語で
-  - Javascriptコードだけ返却（厳守：説明文・マークダウンは不要）
+  - Javascriptコードだけ返却（厳守：説明文・マークダウンは原則不要）
   - Javascriptは必ず "インライン" で記述する。ヘルパー関数を定義してはいけない（例: handleXxx, doXxx 等の関数定義は禁止）
     - 悪い例: async function handleButtonClick() { ... }
     - 良い例: const result = await vja.app.showConfirm("...");
@@ -1463,7 +1462,8 @@
   - 全ての vja.* 呼び出しは await を付ける
   - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
   - window.confirm, window.alertは原則禁止(vja.app.showDialog, vja.app.showConfirmを利用)
-  - vja.db.* では、sqlite3を利用しているので、それに合わせたSQLで実装が必要です。
+  - vja.db.* は、sqlite3用SQLで実装する。
+  - コメントは日本語で
 `.trim();
 
         return `
@@ -1519,18 +1519,17 @@ ${extRuntimeDoc}
         const rule = isAppEvent ?
             // バックエンド.
             `
-  - Comments must be in Japanese.
-  - Return only TypeScript code (strictly enforced: do not return any explanatory text or Markdown).
+  - Only TypeScript code will be returned (strictly enforced: explanations and Markdown are generally not required).
   - Always use placeholders (?) in SQL queries (to prevent SQL injection).
   - Add "await" to all "vja.*" calls.
   - Use "vja.form.navigate('screen name')" for screen transitions (never use "location").
-  - Since vja.db.* uses sqlite3, implementation requires SQL that is compatible with it.
+  - The vja.db.* files are implemented using SQL for sqlite3.
+  - Comments must be in Japanese.
 `.trim() :
 
             // フロントエンド.
             `
-  - Comments must be in Japanese.
-  - Return only JavaScript code (strictly enforced: do not return any explanatory text or Markdown).
+  - Only JavaScript code will be returned (strictly enforced: explanations and Markdown are generally not required).
   - JavaScript must always be written "inline". Helper functions are not allowed (e.g., function definitions like "handleXxx" and "doXxx" are prohibited).
     - Bad example: async function handleButtonClick() { ... }
     - Good example: const result = await vja.app.showConfirm("...");
@@ -1538,7 +1537,8 @@ ${extRuntimeDoc}
   - Add "await" to all "vja.*" calls.
   - Use "vja.form.navigate('screen name')" for screen transitions (※ "location" should never be used).
   - Using window.confirm and window.alert is generally prohibited (use vja.app.showDialog and vja.app.showConfirm instead).
-  - Since vja.db.* uses sqlite3, implementation requires SQL that is compatible with it.
+  - The vja.db.* files are implemented using SQL for sqlite3.
+  - Comments must be in Japanese.
 `.trim();
 
         return `
