@@ -465,7 +465,7 @@
     // ════════════════════════════════════════════════
     // ファイル選択のデフォルト実装（global.bunOpenFile経由）
     // project-bridge.ts で差し替えることでRPC経由になる
-    vja._openFile = function(filter) {
+    vja._openFile = function (filter) {
         if (!global.bunOpenFile) return Promise.reject(new Error("bunOpenFile未定義"));
         return global.bunOpenFile({ filter, lastPath: null });
     };
@@ -755,7 +755,7 @@
     // vja側クレデンシャル（最優先）+ アプリ側入力を統合して返す
     // 戻り値: { KEY: "value", ... } または null
     // ════════════════════════════════════════════════
-    vja.getCloudInfraCredential = async function(infra, service) {
+    vja.getCloudInfraCredential = async function (infra, service) {
         // Bun側から復号済みインフラ一覧を取得
         const infras = await vja.cloud.list().catch(() => []);
 
@@ -803,7 +803,7 @@
     };
 
     // アプリ側入力ファイル（~/vja/credential.json or .yml/.yaml）を読み込む
-    const _loadAppCredentials = async function(infra) {
+    const _loadAppCredentials = async function (infra) {
         const home = await _getHomeDir();
         if (!home) return null;
 
@@ -855,7 +855,7 @@
     };
 
     // ホームディレクトリを取得
-    const _getHomeDir = async function() {
+    const _getHomeDir = async function () {
         try {
             const isWin = navigator.platform?.toLowerCase().includes("win");
             if (isWin) return await vja.session.get("__home__") || null;
@@ -869,7 +869,7 @@
     };
 
     // シンプルYAMLパーサ（ネスト・リスト対応）
-    const _parseSimpleYaml = function(text) {
+    const _parseSimpleYaml = function (text) {
         const lines = text.split("\n");
         const root = {};
         const stack = [{ obj: root, indent: -1 }];
@@ -1007,16 +1007,16 @@
     let _dialogOkCallback = null;
 
     const _escHtml = (s) => String(s)
-        .replace(/&/g,"&amp;").replace(/</g,"&lt;")
-        .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
-        .replace(/'/g,"&#39;");
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 
     const _showDialogRoot = (html) => {
         let root = document.getElementById("dialog-root");
         if (!root) return;
-        root.style.left   = "0";
-        root.style.top    = "0";
-        root.style.width  = window.innerWidth  + "px";
+        root.style.left = "0";
+        root.style.top = "0";
+        root.style.width = window.innerWidth + "px";
         root.style.height = window.innerHeight + "px";
         root.innerHTML = html;
         root.classList.add("show");

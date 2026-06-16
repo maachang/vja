@@ -6,6 +6,7 @@
     "use strict";
 
     // [フロントエンド]利用可能なjavascript関数の説明.
+    // 「vja ランタイムの追加・変更・削除がある場合は、反映が必要」
     // AI以外に、js利用者向けのvjaランタイム説明等に利用を想定.
     const VJA_USE_FRONT_JS_INFO = `
 ## DB操作 (vja.db.*)
@@ -503,7 +504,7 @@
     - await vja.log.error(message):
       - 説明: ERRORレベルのログをBun側に記録する
 
-## ダイアログ
+## ダイアログ出力
 
 - 関数名: await vja.app.showDialog(message):
   - 説明: アラートダイアログを表示する
@@ -522,11 +523,287 @@
       const ok = await vja.app.showConfirm('削除しますか？');
       if (!ok) return;
   - 使用例説明: 削除確認ダイアログを表示し、キャンセル時は処理を中断する
+`.trim() + "\n\n\n\n\n\n\n\n\n\n\n";
+
+    // [英語版][フロントエンド]利用可能なjavascript関数の説明.
+    // 使わなそうなものは削除.
+    // 「vja ランタイムの追加・変更・削除がある場合は、反映が必要」
+    // ※必須条件: 英語版は使用例、使用例説明は不要.
+    const VJA_USE_FRONT_JS_INFO_ENG = `
+## DB Operations (vja.db.*)
+
+- Function Name: await vja.db.query(sql, params?):
+  - Description: Executes an SQL SELECT statement and returns the result rows
+  - Arguments:
+    - sql: string - The SQL statement to execute (use the placeholder ?)
+    - params?: (string|number|boolean|null)[] - Array of values to pass to the placeholder (optional)
+  - Return Value: Record<string, any>[] - Array of result rows (throws an exception on error)
+
+- Function name: await vja.db.execute(sql, params?):
+  - Description: Executes an SQL INSERT/UPDATE/DELETE statement
+  - Arguments:
+    - sql: string - The SQL statement to execute (using the placeholder ?)
+    - params?: (string|number|boolean|null)[] - An array of values to pass to the placeholder (optional)
+  - Return value: "{ changes: number, lastInsertRowid: number } | null - Execution result. null on failure"
+
+- Function name: await vja.db.transaction(statements[]):
+  - Description: Executes multiple SQL statements as a transaction.
+  - Arguments:
+    - statements: "{ sql: string, params?: any[] }[] - Array of pairs of SQL statements and arguments to execute"
+  - Return Value: boolean - true if all statements executed successfully, rollback and false on failure
+
+- Function Name: await vja.db.init(ddlStatements[]):
+  - Description: Executes table creation (CREATE TABLE IF NOT EXISTS)
+  - Arguments:
+    - ddlStatements: string[] - Array of DDL statements
+  - Return value: boolean - true on success
+
+## Widget operations (vja.widget.*)
+  - Description: Gets the current value of the widget with the specified name
+  - Arguments:
+    - name: string - Widget name
+  - Return value: "string | number | boolean | null - Widget value"
+
+- Function name: vja.widget.setValue(name, value):
+  - Description: Sets a value to the widget with the specified name.
+  - Arguments:
+    - name: string - Widget name
+    - value: string|number|boolean - Value to set
+  - Return value: None
+
+- Function name: vja.widget.show(name):
+  - Description: Displays the widget with the specified name.
+  - Arguments:
+    - name: string - Widget name
+  - Return value: None
+  - Similar functions:
+    - vja.widget.hide(name):
+      - Description: Hides the widget with the specified name.
+    - vja.widget.enable(name):
+      - Description: Enables the widget with the specified name.
+    - vja.widget.disable(name):
+      - Description: Disables the widget with the specified name.
+
+- Function Name: vja.widget.setVisible(name, visible):
+  - Description: Toggles the display/hide of the widget with the specified name
+  - Arguments:
+    - name: string - Widget name
+  - visible: boolean - Show for true, hide for false
+  - Return Value: None
+
+- Function name: vja.widget.setItems(name, items[]):
+  - Description: Sets items in a selectBox or listBox
+  - Arguments:
+    - name: string - Widget name
+    - items: string[] | { label: string, value: string }[] - Array of items
+  - Return value: None
+
+- Function name: vja.widget.setTableData(name, rows[]):
+  - Description: Sets data in a table widget.
+  - Arguments:
+  - name: string - Table widget name
+  - rows: Record<string, any>[] - Array of row data
+  - Return value: None
+
+- Function name: vja.widget.getAllInputs():
+  - Description: Gets the values of all input widgets in a form.
+  - Arguments: None
+  - Return value: "Record<string, any> - in the format { Widget name: Value }"
+
+## Constants (vja.const.*)
+
+- Function name: vja.const.get(key, default?):
+  - Description: Retrieves a constant. Form constants take precedence; if none exist, a global constant is returned.
+  - Arguments:
+    - key: string - Constant name
+    - default?: any - Default value if the constant does not exist (optional)
+  - Return value: any - Constant value or default value
+
+- Function name: vja.const.getAll():
+  - Description: Retrieves all constants (form constants override global constants)
+  - Arguments: None
+  - Return value: "Record<string, any> - in the format { constant name: value }"
+
+## Screen Transitions (vja.form.*)
+
+- Function name: vja.form.navigate(formName, options?):
+  - Description: Navigates to the specified screen. Saves current input values by default
+  - Arguments:
+    - formName: string - Name of the destination form
+    - "options?: { save?: boolean } - save=false to not save input values (defaults to true)"
+  - Return value: None
+  - Exception: Outputs a warning if showForm is undefined
+
+- Function name: vja.form.back():
+  - Description: Returns to the previous screen and restores the input content
+  - Arguments: None
+  - Return value: None
+
+- Function name: vja.form.setParam(key, value):
+  - Description: Sets the parameters to pass to the next screen
+  - Arguments:
+    - key: string - Parameter name
+    - value: any - Parameter value
+  - Return Value: None
+
+- Function Name: vja.form.getParam(key, default?):
+  - Description: Retrieves the parameter passed from the previous screen.
+  - Arguments:
+    - key: string - Parameter name
+    - default?: any - Default value if the parameter does not exist (optional)
+  - Return Value: any - Parameter value or default value
+
+## Session (vja.session.*)
+
+- Function Name: await vja.session.set(key, value):
+  - Description: Saves the key and value to the session (persistence)
+  - Arguments:
+    - key: string - Session Key
+    - value: any - Value to save (converted to JSON)
+  - Return Value: boolean - true on success
+
+- Function Name: await vja.session.delete(key):
+  - Description: Deletes the specified key from the session
+  - Arguments:
+    - key: string - Session key
+  - Return Value: boolean - true on success
+
+- Function Name: await vja.session.clear():
+  - Description: Deletes all session data
+  - Arguments: None
+  - Return Value: boolean - true on success
+
+- Function Name: await vja.session.get(key, default?):
+  - Description: Retrieves the value corresponding to the key from the session
+  - Arguments:
+    - key: string - Session key
+    - default?: any - Default value if not present (optional)
+  - Return Value: any - Session value or default value
+
+## Validation (vja.validate.*)
+
+- Function Name: vja.validate.check(rules):
+  - Description: Validates the input values of multiple widgets according to the rules.
+  - Arguments:
+    - "rules: Record<string, { required?: boolean, maxLength?: number, ... }> - Validation rules"
+  - Return Value: "{ valid: boolean, errors: Record<string, string> } - Error message in errors if valid is false"
+
+- Function Name: vja.validate.required(value):
+  - Description: Checks if the value is not empty.
+  - Arguments:
+    - value: any - The value to check.
+  - Return Value: boolean - Returns true if not empty.
+  - Similar Functions:
+    - vja.validate.isEmail(value):
+      - Description: Checks if the value is in email address format.
+    - vja.validate.isNumber(value):
+      - Description: Checks if the value is a number.
+    - vja.validate.isInteger(value):
+      - Description: Checks if the value is in integer format.
+
+## Utilities (vja.util.*)
+
+- Function Name: vja.util.today():
+  - Description: Returns today's date in YYYY-MM-DD format.
+  - Arguments: None
+  - Return Value: string - A string in "YYYY-MM-DD" format.
+
+- Function Name: vja.util.formatDate(date, format?):
+  - Description: Formats the date and returns it as a string.
+  - Arguments:
+    - date: Date|string - Date string and Date object.
+    - "format?: string - Format string (default: 'YYYY-MM-DD')
+  - Return Value: string - Formatted date string
+
+- Function name: vja.util.formatNumber(n, decimals?):
+  - Description: Formats a number into a string with decimal separators.
+  - Arguments:
+    - n: number - The number to format
+    - decimals?: number - Number of decimal places (optional)
+  - Return value: string - The formatted number string
+
+## File I/O (vja.io.*)
+
+- Function Name: await vja.io.openCsv():
+  - Description: Selects and reads a CSV file using a file selection dialog.
+  - Arguments: None
+  - Return Value: "Record<string, string>[] | null - An array where each row of the CSV is an object"
+  - Exception: Returns null if file selection is canceled.
+
+- Function Name: await vja.io.openJson():
+  - Description: Selects and reads a JSON file using a file selection dialog.
+  - Arguments: None
+  - Return Value: "any | null - Parsed JSON data
+  - Exception: Throws an error if JSON parsing fails
+
+- Function name: vja.io.saveCsv(rows, filename):
+  - Description: Downloads data in CSV format
+  - Arguments:
+    - rows: Record<string, any>[] - Array of row data to save
+    - filename: string - File name to download
+  - Return value: None
+
+- Function name: vja.io.saveJson(data, filename):
+  - Description: Downloads data in JSON format
+  - Arguments:
+    - data: any - Data to save
+    - filename: string - File name to download
+  - Return value: None
+
+## Notifications (vja.notify.*)
+
+- Function Name: vja.notify.toast(message, duration?):
+  - Description: Displays a toast notification at the bottom of the screen.
+  - Arguments:
+    - message: string - The message to display.
+    - duration?: number - Display time in milliseconds (default: 2500)
+  - Return Value: None
+
+## External APIs (vja.http.*)
+
+- Function Name: await vja.http.get(url, headers?):
+  - Description: Sends an HTTP GET request
+  - Arguments:
+    - url: string - Request URL
+    - headers?: Record<string, string> - Request headers (optional)
+  - Return Value: any - JSON object or text of the response
+  - Exception: Throws an error on HTTP errors
+  - Similar Functions:
+    - await vja.http.delete(url, headers?):
+      - Description: Sends an HTTP DELETE request
+
+- Function Name: await vja.http.post(url, body, headers?):
+  - Description: Sends an HTTP POST request
+  - Arguments:
+    - url: string - Request URL
+    - body: object|string - Request body (object is converted to JSON)
+    - headers?: Record<string, string> - Request headers (optional)
+  - Return value: any - JSON object or text of the response
+  - Exceptions: Throws an error on HTTP errors
+  - Similar functions:
+    - await vja.http.put(url, body, headers?):
+      - Description: Sends an HTTP PUT request
+
+## Dialog
+
+- Function name: await vja.app.showDialog(message):
+  - Description: Displays an alert dialog
+  - Arguments:
+    - message: string - Message to display
+  - Return value: none
+
+- Function name: await vja.app.showConfirm(message):
+  - Description: Displays a confirmation dialog
+  - Arguments:
+    - message: string - Message to display
+  - Return value: boolean - true if OK is pressed, false if cancelled
 `.trim();
 
     // [英語版][フロントエンド]利用可能なjavascript関数の説明.
+    // これはオリジナルのもので、実際には「あまり使わないものは削除」する.
+    // 「vja ランタイムの追加・変更・削除がある場合は、反映が必要」
     // ※必須条件: 英語版は使用例、使用例説明は不要.
-    const VJA_USE_FRONT_JS_INFO_ENG = `
+    const VJA_USE_FRONT_JS_INFO_ENG_ORIGIN = `
 ## DB Operations (vja.db.*)
 
 - Function Name: await vja.db.query(sql, params?):
@@ -932,6 +1209,7 @@
 
     // [バックエンド]利用可能なjavascript関数の説明.
     // AI以外に、js利用者向けのvjaランタイム説明等に利用を想定.
+    // 「vja ランタイムの追加・変更・削除がある場合は、反映が必要」
     const VJA_USE_BACK_JS_INFO = `
 ## DB操作 (vja.db.*)
 
@@ -1069,6 +1347,7 @@
 
     // [英語版][バックエンド]利用可能なjavascript関数の説明.
     // ※必須条件: 英語版は使用例、使用例説明は不要.
+    // 「vja ランタイムの追加・変更・削除がある場合は、反映が必要」
     const VJA_USE_BACK_JS_INFO_ENG = `
 ## DB Operations (vja.db.*)
 
@@ -1185,8 +1464,8 @@
         const rule = isAppEvent ?
             // バックエンド.
             `
-  - コメント等は日本語で
-  - コードだけを返却（厳守：説明文・マークダウンは不要）
+  - コメントは日本語で
+  - Typescriptコードだけを返却（厳守：説明文・マークダウンは不要で返却しないでください）
   - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
   - 全ての vja.* 呼び出しは await を付ける
   - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
@@ -1194,9 +1473,9 @@
 `.trim() :
             // フロントエンド.
             `
-  - コメント等は日本語で
-  - コードだけを返却（厳守：説明文・マークダウンは不要）
-  - ロジックは必ずインラインで記述する。ヘルパー関数を定義してはいけない（例: handleXxx, doXxx 等の関数定義は禁止）
+  - コメントは日本語で
+  - Javascriptコードだけ返却（厳守：説明文・マークダウンは不要）
+  - Javascriptは必ず "インライン" で記述する。ヘルパー関数を定義してはいけない（例: handleXxx, doXxx 等の関数定義は禁止）
     - 悪い例: async function handleButtonClick() { ... }
     - 良い例: const result = await vja.app.showConfirm("...");
   - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
@@ -1259,8 +1538,8 @@ ${extRuntimeDoc}
         const rule = isAppEvent ?
             // バックエンド.
             `
-  - Comments and other information should be in Japanese.
-  - Return only the code (strictly enforced: no explanation or Markdown required).
+  - Comments must be in Japanese.
+  - Return only TypeScript code (strictly enforced: do not return any explanatory text or Markdown).
   - Always use placeholders (?) in SQL queries (to prevent SQL injection).
   - Add "await" to all "vja.*" calls.
   - Use "vja.form.navigate('screen name')" for screen transitions (never use "location").
@@ -1268,11 +1547,11 @@ ${extRuntimeDoc}
 `.trim() :
             // フロントエンド.
             `
-  - Comments and other information should be in Japanese.
-  - Return only the code (strictly enforced: no explanation or Markdown required).
-  - Write all logic inline. Never define helper functions (e.g. handleXxx, doXxx).
-    - Bad: async function handleButtonClick() { ... }
-    - Good: const result = await vja.app.showConfirm("...");
+  - Comments must be in Japanese.
+  - Return only JavaScript code (strictly enforced: do not return any explanatory text or Markdown).
+  - JavaScript must always be written "inline". Helper functions are not allowed (e.g., function definitions like "handleXxx" and "doXxx" are prohibited).
+    - Bad example: async function handleButtonClick() { ... }
+    - Good example: const result = await vja.app.showConfirm("...");
   - Always use placeholders (?) in SQL (to prevent SQL injection).
   - Add "await" to all "vja.*" calls.
   - Use "vja.form.navigate('screen name')" for screen transitions (※ "location" should never be used).

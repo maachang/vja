@@ -6,42 +6,42 @@ import type { DbRow, DbResult } from "../shared/types";
 
 // ── コールバック待機マップ ────────────────────────────
 type Resolver<T> = (v: T) => void;
-type Rejecter    = (e: Error) => void;
+type Rejecter = (e: Error) => void;
 
 interface Pending<T> { resolve: Resolver<T>; reject: Rejecter; }
 
 const pending = {
-    openFile     : null as Pending<{ content: string|null; path: string|null }>   | null,
-    saveFile     : null as Pending<{ ok:boolean; path:string|null; cancelled:boolean }> | null,
-    dbQuery      : null as Pending<{ ok:boolean; rows:DbRow[]; error?:string }>   | null,
-    dbExecute    : null as Pending<{ ok:boolean; result:DbResult; error?:string }> | null,
-    dbTransaction: null as Pending<{ ok:boolean; error?:string }>                 | null,
-    dbInit       : null as Pending<{ ok:boolean; error?:string }>                 | null,
-    fileRead     : null as Pending<{ ok:boolean; content:string|null; error?:string }> | null,
-    fileWrite    : null as Pending<{ ok:boolean; error?:string }>                 | null,
-    fileReadBytes: null as Pending<{ ok:boolean; data:number[]|null; error?:string }> | null,
-    fileWriteBytes:null as Pending<{ ok:boolean; error?:string }>                 | null,
-    fileExists   : null as Pending<{ ok:boolean; value:boolean; error?:string }>  | null,
-    fileDelete   : null as Pending<{ ok:boolean; error?:string }>                 | null,
-    fileCopy     : null as Pending<{ ok:boolean; error?:string }>                 | null,
-    dirCreate    : null as Pending<{ ok:boolean; error?:string }>                 | null,
-    dirDelete    : null as Pending<{ ok:boolean; error?:string }>                 | null,
-    dirList      : null as Pending<{ ok:boolean; entries:string[]; error?:string }> | null,
-    dirExists    : null as Pending<{ ok:boolean; value:boolean; error?:string }>  | null,
-    log          : null as Pending<{ ok:boolean }>                                | null,
-    appInfo      : null as Pending<{ ok:boolean; info:any }>                      | null,
-    runProject   : null as Pending<{ ok:boolean; error?:string }>                 | null,
-    stopProject  : null as Pending<{ ok:boolean }>                                | null,
-    navigateForm : null as Pending<{ ok:boolean; error?:string }>                 | null,
-    sessionGet   : null as Pending<{ ok:boolean; value:string|null }>             | null,
-    sessionSet   : null as Pending<{ ok:boolean }>                                | null,
-    clearProjectDb:    null as Pending<{ ok:boolean; error?:string }>               | null,
-    saveCloudInfras:   null as Pending<{ ok:boolean; error?:string }>               | null,
-    getCloudInfras:    null as Pending<{ infras:any[] }>                               | null,
-    getDecryptedCred:  null as Pending<{ ok:boolean; value:string }>                   | null,
-    compileProject:    null as Pending<{ ok:boolean; error?:string; distPath?:string }> | null,
-    getVersion:        null as Pending<{ version:string; runMode:string }>               | null,
-    loadUiConfig:      null as Pending<{ uiFontSize:number; uiFontFamily:string }>       | null,
+    openFile: null as Pending<{ content: string | null; path: string | null }> | null,
+    saveFile: null as Pending<{ ok: boolean; path: string | null; cancelled: boolean }> | null,
+    dbQuery: null as Pending<{ ok: boolean; rows: DbRow[]; error?: string }> | null,
+    dbExecute: null as Pending<{ ok: boolean; result: DbResult; error?: string }> | null,
+    dbTransaction: null as Pending<{ ok: boolean; error?: string }> | null,
+    dbInit: null as Pending<{ ok: boolean; error?: string }> | null,
+    fileRead: null as Pending<{ ok: boolean; content: string | null; error?: string }> | null,
+    fileWrite: null as Pending<{ ok: boolean; error?: string }> | null,
+    fileReadBytes: null as Pending<{ ok: boolean; data: number[] | null; error?: string }> | null,
+    fileWriteBytes: null as Pending<{ ok: boolean; error?: string }> | null,
+    fileExists: null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
+    fileDelete: null as Pending<{ ok: boolean; error?: string }> | null,
+    fileCopy: null as Pending<{ ok: boolean; error?: string }> | null,
+    dirCreate: null as Pending<{ ok: boolean; error?: string }> | null,
+    dirDelete: null as Pending<{ ok: boolean; error?: string }> | null,
+    dirList: null as Pending<{ ok: boolean; entries: string[]; error?: string }> | null,
+    dirExists: null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
+    log: null as Pending<{ ok: boolean }> | null,
+    appInfo: null as Pending<{ ok: boolean; info: any }> | null,
+    runProject: null as Pending<{ ok: boolean; error?: string }> | null,
+    stopProject: null as Pending<{ ok: boolean }> | null,
+    navigateForm: null as Pending<{ ok: boolean; error?: string }> | null,
+    sessionGet: null as Pending<{ ok: boolean; value: string | null }> | null,
+    sessionSet: null as Pending<{ ok: boolean }> | null,
+    clearProjectDb: null as Pending<{ ok: boolean; error?: string }> | null,
+    saveCloudInfras: null as Pending<{ ok: boolean; error?: string }> | null,
+    getCloudInfras: null as Pending<{ infras: any[] }> | null,
+    getDecryptedCred: null as Pending<{ ok: boolean; value: string }> | null,
+    compileProject: null as Pending<{ ok: boolean; error?: string; distPath?: string }> | null,
+    getVersion: null as Pending<{ version: string; runMode: string }> | null,
+    loadUiConfig: null as Pending<{ uiFontSize: number; uiFontFamily: string }> | null,
 };
 
 const resolve = <K extends keyof typeof pending>(
@@ -64,54 +64,54 @@ const rpc = Electroview.defineRPC({
     handlers: {
         requests: {},
         messages: {
-            openFileResult  : (v: any) => resolve("openFile",      v),
-            saveFileResult  : (v: any) => resolve("saveFile",      v),
-            dbQueryResult   : (v: any) => resolve("dbQuery",       v),
-            dbExecuteResult : (v: any) => resolve("dbExecute",     v),
-            dbTransactionResult:(v:any) => resolve("dbTransaction", v),
-            dbInitResult    : (v: any) => resolve("dbInit",        v),
-            fileReadResult  : (v: any) => resolve("fileRead",      v),
-            fileWriteResult : (v: any) => resolve("fileWrite",     v),
-            fileReadBytesResult :(v:any)=> resolve("fileReadBytes", v),
-            fileWriteBytesResult:(v:any)=> resolve("fileWriteBytes",v),
-            fileExistsResult: (v: any) => resolve("fileExists",    v),
-            fileDeleteResult: (v: any) => resolve("fileDelete",    v),
-            fileCopyResult  : (v: any) => resolve("fileCopy",      v),
-            dirCreateResult : (v: any) => resolve("dirCreate",     v),
-            dirDeleteResult : (v: any) => resolve("dirDelete",     v),
-            dirListResult   : (v: any) => resolve("dirList",       v),
-            dirExistsResult : (v: any) => resolve("dirExists",     v),
-            logResult       : (v: any) => resolve("log",           v),
-            appInfoResult   : (v: any) => resolve("appInfo",       v),
-            runProjectResult   : (v: any) => resolve("runProject",    v),
-            saveCloudInfrasResult:       (v: any) => resolve("saveCloudInfras",  v),
-            getCloudInfrasResult:        (v: any) => resolve("getCloudInfras",   v),
-            getDecryptedCredentialResult:(v: any) => resolve("getDecryptedCred", v),
-            loadScriptResult:            (v: any) => { /* フロント側で処理 */ },
-            compileProjectResult:   (v: any) => resolve("compileProject",   v),
-            getVersionResult:       (v: any) => resolve("getVersion",       v),
-            loadUiConfigResult:     (v: any) => {
+            openFileResult: (v: any) => resolve("openFile", v),
+            saveFileResult: (v: any) => resolve("saveFile", v),
+            dbQueryResult: (v: any) => resolve("dbQuery", v),
+            dbExecuteResult: (v: any) => resolve("dbExecute", v),
+            dbTransactionResult: (v: any) => resolve("dbTransaction", v),
+            dbInitResult: (v: any) => resolve("dbInit", v),
+            fileReadResult: (v: any) => resolve("fileRead", v),
+            fileWriteResult: (v: any) => resolve("fileWrite", v),
+            fileReadBytesResult: (v: any) => resolve("fileReadBytes", v),
+            fileWriteBytesResult: (v: any) => resolve("fileWriteBytes", v),
+            fileExistsResult: (v: any) => resolve("fileExists", v),
+            fileDeleteResult: (v: any) => resolve("fileDelete", v),
+            fileCopyResult: (v: any) => resolve("fileCopy", v),
+            dirCreateResult: (v: any) => resolve("dirCreate", v),
+            dirDeleteResult: (v: any) => resolve("dirDelete", v),
+            dirListResult: (v: any) => resolve("dirList", v),
+            dirExistsResult: (v: any) => resolve("dirExists", v),
+            logResult: (v: any) => resolve("log", v),
+            appInfoResult: (v: any) => resolve("appInfo", v),
+            runProjectResult: (v: any) => resolve("runProject", v),
+            saveCloudInfrasResult: (v: any) => resolve("saveCloudInfras", v),
+            getCloudInfrasResult: (v: any) => resolve("getCloudInfras", v),
+            getDecryptedCredentialResult: (v: any) => resolve("getDecryptedCred", v),
+            loadScriptResult: (v: any) => { /* フロント側で処理 */ },
+            compileProjectResult: (v: any) => resolve("compileProject", v),
+            getVersionResult: (v: any) => resolve("getVersion", v),
+            loadUiConfigResult: (v: any) => {
                 resolve("loadUiConfig", v);
                 // window関数が定義されていれば呼び出してUI設定を適用
                 if (typeof (w as any)._onLoadUiConfigResult === "function") {
                     (w as any)._onLoadUiConfigResult(v);
                 }
             },
-            stopProjectResult  : (v: any) => {
+            stopProjectResult: (v: any) => {
                 if (pending.stopProject) {
                     resolve("stopProject", v);
                 }
                 // 常にボタン状態をリセット（×ボタンで閉じた場合も含む）
                 try {
-                    const runBtn  = document.getElementById("btn-run-project") as HTMLButtonElement | null;
+                    const runBtn = document.getElementById("btn-run-project") as HTMLButtonElement | null;
                     const stopBtn = document.getElementById("btn-stop-project") as HTMLButtonElement | null;
-                    if (runBtn)  { runBtn.style.display = ""; runBtn.disabled = false; }
+                    if (runBtn) { runBtn.style.display = ""; runBtn.disabled = false; }
                     if (stopBtn) stopBtn.style.display = "none";
-                } catch {}
+                } catch { }
             },
-            navigateFormResult : (v: any) => resolve("navigateForm",  v),
-            sessionGetResult   : (v: any) => resolve("sessionGet",    v),
-            sessionSetResult   : (v: any) => resolve("sessionSet",    v),
+            navigateFormResult: (v: any) => resolve("navigateForm", v),
+            sessionGetResult: (v: any) => resolve("sessionGet", v),
+            sessionSetResult: (v: any) => resolve("sessionSet", v),
             clearProjectDbResult: (v: any) => resolve("clearProjectDb", v),
         },
     },
@@ -122,20 +122,20 @@ const s = _ev.rpc.send;
 // ── window.vja.* API ─────────────────────────────────
 const w = window as any;
 
-w.bunOpenFile    = (a: any) => mkPromise("openFile",  () => s.openFileRequest(a));
-w.bunSaveProject = (a: any) => mkPromise("saveFile",  () => s.saveFileRequest(a));
-w.bunCloseApp        = ()       => s.closeAppRequest({});
-w.bunToggleDevTools  = ()       => s.toggleDevToolsRequest({});
-w.bunSaveCloudInfras  = (infras: any[]) => mkPromise("saveCloudInfras",  () => s.saveCloudInfrasRequest({ infras }));
-w.bunCompileProject        = ()               => mkPromise("compileProject",   () => s.compileProjectRequest({}));
-w.bunGetCloudInfras        = ()               => mkPromise("getCloudInfras",   () => s.getCloudInfrasRequest({}));
-w.bunGetDecryptedCredential= (infraId: string, key: string) =>
+w.bunOpenFile = (a: any) => mkPromise("openFile", () => s.openFileRequest(a));
+w.bunSaveProject = (a: any) => mkPromise("saveFile", () => s.saveFileRequest(a));
+w.bunCloseApp = () => s.closeAppRequest({});
+w.bunToggleDevTools = () => s.toggleDevToolsRequest({});
+w.bunSaveCloudInfras = (infras: any[]) => mkPromise("saveCloudInfras", () => s.saveCloudInfrasRequest({ infras }));
+w.bunCompileProject = () => mkPromise("compileProject", () => s.compileProjectRequest({}));
+w.bunGetCloudInfras = () => mkPromise("getCloudInfras", () => s.getCloudInfrasRequest({}));
+w.bunGetDecryptedCredential = (infraId: string, key: string) =>
     mkPromise("getDecryptedCred", () => s.getDecryptedCredentialRequest({ infraId, key }));
-w.bunOpenFolder       = (path: string) => s.openFolderRequest({ path });
-w.bunGetVersion       = ()             => mkPromise("getVersion", () => s.getVersionRequest({}));
-w.bunSaveUiConfig     = (uiFontSize: number, uiFontFamily: string, editorFontSize: number, editorFontFamily: string, leftPanelW: number, rightPanelW: number) =>
+w.bunOpenFolder = (path: string) => s.openFolderRequest({ path });
+w.bunGetVersion = () => mkPromise("getVersion", () => s.getVersionRequest({}));
+w.bunSaveUiConfig = (uiFontSize: number, uiFontFamily: string, editorFontSize: number, editorFontFamily: string, leftPanelW: number, rightPanelW: number) =>
     s.saveUiConfigRequest({ uiFontSize, uiFontFamily, editorFontSize, editorFontFamily, leftPanelW, rightPanelW });
-w.bunLoadUiConfig     = () => mkPromise("loadUiConfig", () => s.loadUiConfigRequest({}));
+w.bunLoadUiConfig = () => mkPromise("loadUiConfig", () => s.loadUiConfigRequest({}));
 
 // vja.db
 w.vja = {
@@ -193,10 +193,10 @@ w.vja = {
     log: {
         trace: (message: string) => { s.logRequest({ level: "trace", message }); },
         debug: (message: string) => { s.logRequest({ level: "debug", message }); },
-        info:  (message: string) => { s.logRequest({ level: "info",  message }); },
-        warn:  (message: string) => { s.logRequest({ level: "warn",  message }); },
+        info: (message: string) => { s.logRequest({ level: "info", message }); },
+        warn: (message: string) => { s.logRequest({ level: "warn", message }); },
         error: (message: string) => { s.logRequest({ level: "error", message }); },
-        log:   (message: string) => { s.logRequest({ level: "log",   message }); },
+        log: (message: string) => { s.logRequest({ level: "log", message }); },
     },
     app: {
         getInfo: () =>
@@ -220,7 +220,7 @@ w.vja = {
             mkPromise("stopProject", () => s.stopProjectRequest({})),
         navigate: (formName: string) =>
             mkPromise("navigateForm", () => s.navigateFormRequest({ formName }))
-                .then(() => {}),
+                .then(() => { }),
         clearDb: () =>
             mkPromise("clearProjectDb", () => s.clearProjectDbRequest({}))
                 .then((r: any) => { if (!r.ok) throw new Error(r.error || "clearDb failed"); }),
