@@ -9,7 +9,8 @@
     // [フロントエンド]利用可能なjavascript関数の説明.
     // 「vja ランタイムの追加・変更・削除がある場合は、反映が必要」
     // AI以外に、js利用者向けのvjaランタイム説明等に利用を想定.
-    const VJA_USE_FRONT_JS_INFO = `
+    const VJA_USE_FRONT_JS_INFO =
+        `
 ## DB操作 (vja.db.*)
 
 - 関数名: await vja.db.query(sql, params?):
@@ -518,8 +519,6 @@
   - 使用例説明: 削除確認ダイアログを表示し、キャンセル時は処理を中断する
 `.trim() + "\n\n\n\n\n\n\n\n\n\n\n";
 
-
-
     // [英語版][フロントエンド]利用可能なjavascript関数の説明.
     // これはオリジナルのもので、実際には「あまり使わないものは削除」する.
     // 「vja ランタイムの追加・変更・削除がある場合は、反映が必要」
@@ -923,8 +922,6 @@
   - Return value: boolean - true if OK is pressed, false if cancelled
 `.trim();
 
-
-
     // ### [systemPromptで利用]
     // [英語版][フロントエンド]利用可能なjavascript関数の説明.
     // ※使わなそうなものは削除.
@@ -1179,15 +1176,19 @@
   - Arguments:
     - message: string - Message to display
   - Return value: boolean - true if OK is pressed, false if cancelled
+
+## Logging
+- Function name: console.info(message)
+- Function name: console.warn(message)
+- Function name: console.error(message)
 `.trim();
-
-
 
     // ### [AIP説明で利用]
     // [バックエンド]利用可能なjavascript関数の説明.
     // AI以外に、js利用者向けのvjaランタイム説明等に利用を想定.
     // 「vja ランタイムの追加・変更・削除がある場合は、反映が必要」
-    const VJA_USE_BACK_JS_INFO = `
+    const VJA_USE_BACK_JS_INFO =
+        `
 ## DB操作 (vja.db.*)
 
 - 関数名: vja.db.query(sql, params?):
@@ -1322,8 +1323,6 @@
     );
 `.trim() + "\n\n\n\n\n\n\n\n\n\n\n";
 
-
-
     // ### [systemPromptで利用]
     // [英語版][バックエンド]利用可能なjavascript関数の説明.
     // ※必須条件: 英語版は使用例、使用例説明は不要.
@@ -1429,33 +1428,43 @@
     // - extRuntimeDoc: [任意]拡張ランタイムのyaml定義を設定します.
     const YAML_TO_JS_SYS_PROMPT = function (
         isAppEvent,
-        { formName, eventName, wname, wtag, wdescription,
-            inputParamsCtx, allWidgetsCtx, formsCtx, globalConstCtx,
-            formConstCtx, tablesCtx, extRuntimeDoc }) {
-
+        {
+            formName,
+            eventName,
+            wname,
+            wtag,
+            wdescription,
+            inputParamsCtx,
+            allWidgetsCtx,
+            formsCtx,
+            globalConstCtx,
+            formConstCtx,
+            tablesCtx,
+            extRuntimeDoc,
+        },
+    ) {
         // isAppEvent で、フロントとバックのランタイム説明の切替を行う.
         //   - true の場合、アプリイベント(bunネイティブ実行).
         //   - falseの場合、ウィジットイベント(js).
-        const vjaUseJsInfo = isAppEvent ?
-            VJA_USE_BACK_JS_INFO :
-            VJA_USE_FRONT_JS_INFO;
+        const vjaUseJsInfo = isAppEvent
+            ? VJA_USE_BACK_JS_INFO
+            : VJA_USE_FRONT_JS_INFO;
 
         // ルールをバックエンド、フロントエンドで記載.
-        const rule = isAppEvent ?
-            // バックエンド.
-            `
-  - Typescriptコードだけを返却（厳守：説明文・マークダウンは不要で返却しないでください）
+        const rule = isAppEvent
+            ? // バックエンド.
+              `
+  - Typescriptコードだけを返却（厳守：説明文・マークダウンは不要で絶対に返却しないでください）
   - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
   - 全ての vja.* 呼び出しは await を付ける
   - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
   - vja.db.* は、sqlite3用SQLで実装する。
   - コメントは日本語で
-`.trim() :
-
-            // フロントエンド.
-            `
-  - Javascriptコードだけ返却（厳守：説明文・マークダウンは原則不要）
-  - Javascriptは必ず "インライン" で記述する。ヘルパー関数を定義してはいけない（例: handleXxx, doXxx 等の関数定義は禁止）
+`.trim()
+            : // フロントエンド.
+              `
+  - Javascriptコードだけ返却（厳守：説明文・マークダウンは不要で絶対に返却しないでください）
+  - 生成するJavascriptコードは必ず "インライン" で記述。ヘルパー関数の記載は絶対禁止（例: handleXxx, doXxx, addEventListener 等の関数定義は絶対に禁止）
     - 悪い例: async function handleButtonClick() { ... }
     - 良い例: const result = await vja.app.showConfirm("...");
   - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
@@ -1466,7 +1475,8 @@
   - コメントは日本語で
 `.trim();
 
-        return `
+        return (
+            `
 あなたは日本語を専門とするVJAフォームデザイナーのイベント処理コード生成AIです。
 ユーザーが書いたYAMLを元に、JavaScriptの実装コードを生成します。
 
@@ -1486,8 +1496,9 @@ ${vjaUseJsInfo}
 ${extRuntimeDoc}
 ~~~
 ---
-`.trim() + "\n";
-    }
+`.trim() + "\n"
+        );
+    };
 
     // [英語]YAMLからjsに変換する場合のシステムプロンプトを生成.
     // - isAppEvent: [必須]定義されている場合はアプリイベント(bunネイティブ実行)で、存在しない場合はイベント系(js)で実行.
@@ -1505,32 +1516,43 @@ ${extRuntimeDoc}
     // - extRuntimeDoc: [任意]拡張ランタイムのyaml定義を設定します.
     const ENG_YAML_TO_JS_SYS_PROMPT = function (
         isAppEvent,
-        { formName, eventName, wname, wtag, wdescription,
-            inputParamsCtx, allWidgetsCtx, formsCtx, globalConstCtx,
-            formConstCtx, tablesCtx, extRuntimeDoc }) {
+        {
+            formName,
+            eventName,
+            wname,
+            wtag,
+            wdescription,
+            inputParamsCtx,
+            allWidgetsCtx,
+            formsCtx,
+            globalConstCtx,
+            formConstCtx,
+            tablesCtx,
+            extRuntimeDoc,
+        },
+    ) {
         // [英語]isAppEvent で、フロントとバックのランタイム説明の切替を行う.
         //   - true の場合、アプリイベント(bunネイティブ実行).
         //   - falseの場合、ウィジットイベント(js).
-        const vjaUseJsInfo = isAppEvent ?
-            VJA_USE_BACK_JS_INFO_ENG :
-            VJA_USE_FRONT_JS_INFO_ENG;
+        const vjaUseJsInfo = isAppEvent
+            ? VJA_USE_BACK_JS_INFO_ENG
+            : VJA_USE_FRONT_JS_INFO_ENG;
 
         // ルールをバックエンド、フロントエンドで記載.
-        const rule = isAppEvent ?
-            // バックエンド.
-            `
-  - Only TypeScript code will be returned (strictly enforced: explanations and Markdown are generally not required).
+        const rule = isAppEvent
+            ? // バックエンド.
+              `
+  - Return only the Typescript code (strictly enforced: no explanations or Markdown are necessary, and absolutely do not return them).
   - Always use placeholders (?) in SQL queries (to prevent SQL injection).
   - Add "await" to all "vja.*" calls.
   - Use "vja.form.navigate('screen name')" for screen transitions (never use "location").
   - The vja.db.* files are implemented using SQL for sqlite3.
   - Comments must be in Japanese.
-`.trim() :
-
-            // フロントエンド.
-            `
-  - Only JavaScript code will be returned (strictly enforced: explanations and Markdown are generally not required).
-  - JavaScript must always be written "inline". Helper functions are not allowed (e.g., function definitions like "handleXxx" and "doXxx" are prohibited).
+`.trim()
+            : // フロントエンド.
+              `
+  - Return only the Javascript code (strictly enforced: no explanations or Markdown are necessary, and absolutely do not return them).
+  - The generated JavaScript code must be written "inline". Helper functions are strictly prohibited (e.g., function definitions such as handleXxx, doXxx, addEventListener, etc. are strictly prohibited).
     - Bad example: async function handleButtonClick() { ... }
     - Good example: const result = await vja.app.showConfirm("...");
   - Always use placeholders (?) in SQL (to prevent SQL injection).
@@ -1541,7 +1563,8 @@ ${extRuntimeDoc}
   - Comments must be in Japanese.
 `.trim();
 
-        return `
+        return (
+            `
 You are a VJA form designer and event handling code generation AI specializing in Japanese.
 You generate JavaScript implementation code based on the YAML specification written by the user.
 
@@ -1561,8 +1584,11 @@ ${vjaUseJsInfo}
 ${extRuntimeDoc}
 ~~~
 ---
-`.trim() + "\n\n" + ENG_TO_LAST_PHRASE_JP;
-    }
+`.trim() +
+            "\n\n" +
+            ENG_TO_LAST_PHRASE_JP
+        );
+    };
 
     // yamlのコメントを削除(AIによっては、コメントが逆に影響を及ぼす事になるため)
     const _removeYamlShComments = function (sourceCode) {
@@ -1571,12 +1597,12 @@ ${extRuntimeDoc}
         // - ブロックスカラー（|, >）内の#を誤って消さない
         // - 空行の連続を圧縮してトークン削減
         return sourceCode
-            .split('\n')
-            .filter(line => !/^\s*#/.test(line))  // 行頭コメント行のみ削除
-            .join('\n')
-            .replace(/\n{3,}/g, '\n\n')          // 空行の連続を最大2行に圧縮
+            .split("\n")
+            .filter((line) => !/^\s*#/.test(line)) // 行頭コメント行のみ削除
+            .join("\n")
+            .replace(/\n{3,}/g, "\n\n") // 空行の連続を最大2行に圧縮
             .trim();
-    }
+    };
 
     // YAMLからjsに変換する場合のユーザプロンプトを生成.
     // - isAppEvent: [必須]定義されている場合はアプリイベント(bunネイティブ実行)で、存在しない場合はイベント系(js)で実行.
@@ -1595,14 +1621,31 @@ ${extRuntimeDoc}
     // - tablesCtx: [任意]テーブル定義内容を設定します.
     // - extRuntimeDoc: [任意]拡張ランタイムのyaml定義を設定します.
     // 戻り値: ユーザプロンプトが返却されます.
-    const YAML_TO_JS_USER_PROMPT = function (isAppEvent, yamlDef, addPrompt,
-        { formName, eventName, wname, wtag, wdescription,
-            inputParamsCtx, allWidgetsCtx, formsCtx, globalConstCtx,
-            formConstCtx, tablesCtx, extRuntimeDoc }) {
+    const YAML_TO_JS_USER_PROMPT = function (
+        isAppEvent,
+        yamlDef,
+        addPrompt,
+        {
+            formName,
+            eventName,
+            wname,
+            wtag,
+            wdescription,
+            inputParamsCtx,
+            allWidgetsCtx,
+            formsCtx,
+            globalConstCtx,
+            formConstCtx,
+            tablesCtx,
+            extRuntimeDoc,
+        },
+    ) {
         let ret;
 
         // フロント条件.
-        const frontInfo = isAppEvent ? "" : `
+        const frontInfo = isAppEvent
+            ? ""
+            : `
 ## プロジェクト情報
   - 現在のフォーム: ${formName}
   - 対象ウィジェット: ${wname} ${wtag}) ${wdescription ? "//" + wdescription : ""}
@@ -1645,16 +1688,20 @@ ${extRuntimeDoc}
             // isAppEvent: true の場合、アプリイベント(bunネイティブ実行).
             if (isAppEvent) {
                 // アプリイベント: bun(rpc実行先）の生成処理(ts).
-                ret = "アプリイベント「" + eventName +
+                ret =
+                    "アプリイベント「" +
+                    eventName +
                     "」をBun.jsで実行するTypeScriptコードとして、以下のYAML仕様に基づいて生成してください。\n" +
                     "vja.db.query() / vja.session.get()等のAPIが利用可能です。";
             } else {
                 // ウィジットイベント(js).
-                ret = frontInfo +
+                ret =
+                    frontInfo +
                     "\n\n\nイベント処理に対するインライン実装を、以下のYAML仕様に基づいてJavaScriptコードを生成してください。";
             }
             // [共通]テーブル定義.
-            ret = ret +
+            ret =
+                ret +
                 "\n---" +
                 "~~~yaml\n" +
                 _removeYamlShComments(yamlDef) + // yamlのコメントを除去.
@@ -1665,19 +1712,21 @@ ${extRuntimeDoc}
             // isAppEvent: true の場合、アプリイベント(bunネイティブ実行).
             if (isAppEvent) {
                 // アプリイベント: bun(rpc実行先）の生成処理.(ts).
-                ret = "アプリイベント「" + eventName +
+                ret =
+                    "アプリイベント「" +
+                    eventName +
                     "」をBun.jsで実行されるTypeScriptコードとして生成してください。\n" +
                     "vja.db.query() / vja.session.get()等のAPIが利用可能です。";
-            }
-            else {
+            } else {
                 // ウィジットイベント(js).
-                ret = frontInfo + "\n\n\nイベント処理に対するインライン実装の、JavaScriptコードを生成してください。";
+                ret =
+                    frontInfo +
+                    "\n\n\nイベント処理に対するインライン実装の、JavaScriptコードを生成してください。";
             }
         }
         // 追加指示がある場合はセット.
-        return ret + "\n\n" +
-            (addPrompt ? "\n追加指示: " + addPrompt : "");
-    }
+        return ret + "\n\n" + (addPrompt ? "\n追加指示: " + addPrompt : "");
+    };
 
     // [英語]YAMLからjsに変換する場合のユーザプロンプトを生成.
     // - isAppEvent: [必須]定義されている場合はアプリイベント(bunネイティブ実行)で、存在しない場合はイベント系(js)で実行.
@@ -1696,14 +1745,31 @@ ${extRuntimeDoc}
     // - tablesCtx: [任意]テーブル定義内容を設定します.
     // - extRuntimeDoc: [任意]拡張ランタイムのyaml定義を設定します.
     // 戻り値: ユーザプロンプトが返却されます.
-    const ENG_YAML_TO_JS_USER_PROMPT = function (isAppEvent, yamlDef, addPrompt,
-        { formName, eventName, wname, wtag, wdescription,
-            inputParamsCtx, allWidgetsCtx, formsCtx, globalConstCtx,
-            formConstCtx, tablesCtx, extRuntimeDoc }) {
+    const ENG_YAML_TO_JS_USER_PROMPT = function (
+        isAppEvent,
+        yamlDef,
+        addPrompt,
+        {
+            formName,
+            eventName,
+            wname,
+            wtag,
+            wdescription,
+            inputParamsCtx,
+            allWidgetsCtx,
+            formsCtx,
+            globalConstCtx,
+            formConstCtx,
+            tablesCtx,
+            extRuntimeDoc,
+        },
+    ) {
         let ret;
 
         // フロント条件.
-        const frontInfo = isAppEvent ? "" : `
+        const frontInfo = isAppEvent
+            ? ""
+            : `
 ## Project Information
   - Current Form: ${formName}
   - Target Widget: ${wname} ${wtag}) ${wdescription ? "//" + wdescription : ""}
@@ -1746,16 +1812,20 @@ ${extRuntimeDoc}
             // isAppEvent: true の場合、アプリイベント(bunネイティブ実行).
             if (isAppEvent) {
                 // アプリイベント: bun(rpc実行先）の生成処理(ts).
-                ret = "Please generate the following YAML specification as TypeScript code to execute the app event " +
-                    eventName + " using Bun.js.\n" +
-                    "APIs such as vja.db.query() / vja.session.get() are available."
+                ret =
+                    "Please generate the following YAML specification as TypeScript code to execute the app event " +
+                    eventName +
+                    " using Bun.js.\n" +
+                    "APIs such as vja.db.query() / vja.session.get() are available.";
             } else {
                 // ウィジットイベント(js).
-                ret = frontInfo +
+                ret =
+                    frontInfo +
                     "\n\n\nGenerate JavaScript code for inline implementation of event handling based on the following YAML specification.";
             }
             // [共通]テーブル定義.
-            ret = ret +
+            ret =
+                ret +
                 "\n---" +
                 "~~~yaml\n" +
                 _removeYamlShComments(yamlDef) + // yamlのコメントを除去.
@@ -1766,20 +1836,28 @@ ${extRuntimeDoc}
             // isAppEvent: true の場合、アプリイベント(bunネイティブ実行).
             if (isAppEvent) {
                 // アプリイベント: bun(rpc実行先）の生成処理.(ts).
-                ret = "Please generate the app event " + eventName +
+                ret =
+                    "Please generate the app event " +
+                    eventName +
                     " as TypeScript code that will be executed by Bun.js.\n" +
                     "APIs such as vja.db.query() / vja.session.get() are available.";
-            }
-            else {
+            } else {
                 // ウィジットイベント(js).
-                ret = frontInfo + "\n\n\nGenerate JavaScript code for inline implementation of event handling.";
+                ret =
+                    frontInfo +
+                    "\n\n\nGenerate JavaScript code for inline implementation of event handling.";
             }
         }
         // 追加指示がある場合はセット.
-        return ret + "\n\n" +
-            (addPrompt ? "\nAdditional instructions: " + addPrompt + "\n\n" : "") +
-            ENG_TO_LAST_PHRASE_JP;
-    }
+        return (
+            ret +
+            "\n\n" +
+            (addPrompt
+                ? "\nAdditional instructions: " + addPrompt + "\n\n"
+                : "") +
+            ENG_TO_LAST_PHRASE_JP
+        );
+    };
 
     // 拡張ランタイム用システムプロンプト.
     const EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT = function () {
@@ -1808,13 +1886,14 @@ ${extRuntimeDoc}
 - 日本語で説明
 - yamlのみを返す（説明文・マークダウン・ソースコード不要）
 `.trim();
-    }
+    };
 
     // 拡張ランタイム用システムプロンプト.
     const ENG_EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT = function () {
         // システムプロンプト.
         // これに対して出力は英語で行う(この方がAIとして都合が良いため).
-        return `
+        return (
+            `
 You are a JavaScript code documentation generation assistant specializing in English.
 Please create a list of available functions for the target JavaScript, following the YAML rules below.
 ~~~YAML
@@ -1833,9 +1912,11 @@ Please create a list of available functions for the target JavaScript, following
 ## YAML Generation Rules (Principles)
 - Explanation in English
 - Return only YAML (no explanation, Markdown, or source code required)
-`.trim() + "\n\n" + ENG_TO_LAST_PHRASE_ENG;
-    }
-
+`.trim() +
+            "\n\n" +
+            ENG_TO_LAST_PHRASE_ENG
+        );
+    };
 
     // 拡張ランタイム用ユーザプロンプト.
     const EXT_RUNTIME_JS_TO_YAML_USER_PROMPT = function (js) {
@@ -1843,10 +1924,10 @@ Please create a list of available functions for the target JavaScript, following
         const ret = `
 以下のJavaScriptコード（vja拡張ランタイム）の使い方をYAML形式で説明してください。
 関数名・説明・引数・戻り値・例外・使用例を含めてください。
-`
+`;
         // 最後に対象とするJSファイル内容をセット.
         return ret.trim() + "\n\n---\n~~~javascript\n" + js + "~~~\n---\n";
-    }
+    };
 
     // 拡張ランタイム用ユーザプロンプト.
     const ENG_EXT_RUNTIME_JS_TO_YAML_USER_PROMPT = function (js) {
@@ -1854,15 +1935,21 @@ Please create a list of available functions for the target JavaScript, following
         const ret = `
 Please explain how to use the following JavaScript code (vja extended runtime) in YAML format.
 Include the function name, description, arguments, return value, and exceptions.
-`
+`;
         // 最後に対象とするJSファイル内容をセット.
-        return ret.trim() +
-            "\n\n---\n~~~javascript\n" + js + "~~~\n---\n\n" + ENG_TO_LAST_PHRASE_ENG;
-    }
+        return (
+            ret.trim() +
+            "\n\n---\n~~~javascript\n" +
+            js +
+            "~~~\n---\n\n" +
+            ENG_TO_LAST_PHRASE_ENG
+        );
+    };
 
     // プログラム生成におけるYAMLが存在しない場合にセット
     const DEFAULT_YAML_VALUE = function (eventName, wname) {
-        return `
+        return (
+            `
 # --- YAML定義サンプル説明 ---
 # 処理:
 #  「YES, NO」の確認ダイアログ「テストです」と表示する:
@@ -1886,8 +1973,9 @@ Include the function name, description, arguments, return value, and exceptions.
 
 
 # EOF.
-`.trim() + "\n\n\n\n\n";
-    }
+`.trim() + "\n\n\n\n\n"
+        );
+    };
 
     //////////////////
     // グローバル展開.
@@ -1897,7 +1985,7 @@ Include the function name, description, arguments, return value, and exceptions.
 
     // [日本語]利用可能関数一覧: js利用者向けのvjaランタイム説明等.
     o.VJA_USE_BACK_JS_INFO = VJA_USE_BACK_JS_INFO; // バックエンド.
-    o.VJA_USE_FRONT_JS_INFO = VJA_USE_FRONT_JS_INFO // フロントエンド.
+    o.VJA_USE_FRONT_JS_INFO = VJA_USE_FRONT_JS_INFO; // フロントエンド.
 
     // [プロンプト]yamlから js AI生成依頼.
     // 日本語版.
@@ -1913,9 +2001,9 @@ Include the function name, description, arguments, return value, and exceptions.
     //o.EXT_RUNTIME_JS_TO_YAML_USER_PROMPT = EXT_RUNTIME_JS_TO_YAML_USER_PROMPT;
     // 英語版.
     o.EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT = ENG_EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT;
-    o.EXT_RUNTIME_JS_TO_YAML_USER_PROMPT = ENG_EXT_RUNTIME_JS_TO_YAML_USER_PROMPT;
+    o.EXT_RUNTIME_JS_TO_YAML_USER_PROMPT =
+        ENG_EXT_RUNTIME_JS_TO_YAML_USER_PROMPT;
 
     // イベント用yamlエディタ初期値.
     o.DEFAULT_YAML_VALUE = DEFAULT_YAML_VALUE;
-
 })();
