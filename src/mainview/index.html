@@ -785,7 +785,7 @@
         let _aiAbortCtrl = null;
         let _aiLoadingTimer = null;
         let aiConfig = {
-            endpoint: "http://127.0.0.1:8080",
+            endpoint: "http://localhost:8080",
             apiKey: "",
             model: "",
             models: [],
@@ -2874,7 +2874,7 @@
             if (!aiConfig.routerMode) aiConfig.routerMode = false;
             if (!aiConfig.apiKey) aiConfig.apiKey = "";
             if (!aiConfig.models) aiConfig.models = [];
-            if (!aiConfig.endpoint) aiConfig.endpoint = "http://127.0.0.1:8080";
+            if (!aiConfig.endpoint) aiConfig.endpoint = "http://localhost:8080";
 
             const isEnabled = aiConfig.enabled === true;
             const isRouter = aiConfig.routerMode === true;
@@ -2897,7 +2897,7 @@
 
                 // エンドポイント
                 "<div class='ai-cfg-row'><label>エンドポイント</label>" +
-                "<input id='ai-ep' value='" + esc(aiConfig.endpoint) + "' placeholder='http://127.0.0.1:8080'></div>" +
+                "<input id='ai-ep' value='" + esc(aiConfig.endpoint) + "' placeholder='http://localhost:8080'></div>" +
 
                 // API Key
                 "<div class='ai-cfg-row'><label>API Key</label>" +
@@ -2992,7 +2992,7 @@
         }
 
         function saveAiConfig() {
-            const ep = $("ai-ep")?.value?.trim() || "http://127.0.0.1:8080";
+            const ep = $("ai-ep")?.value?.trim() || "http://localhost:8080";
             const apiKey = $("ai-apikey")?.value?.trim() || "";
             const enaSel = document.querySelector("#ai-ena-sel    .pv-sel-btn span:first-child");
             const rtrSel = document.querySelector("#ai-router-sel .pv-sel-btn span:first-child");
@@ -3540,7 +3540,7 @@
             if (d.projectInfo) projectInfo = {...projectInfo, ...d.projectInfo};
             const _ac = d.aiConfig || {};
             aiConfig = {
-                endpoint: _ac.endpoint || "http://127.0.0.1:8080",
+                endpoint: _ac.endpoint || "http://localhost:8080",
                 apiKey: _ac.apiKey || "",
                 model: _ac.model || "",
                 models: _ac.models || [],
