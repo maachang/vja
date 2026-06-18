@@ -126,6 +126,8 @@ YAML でやりたいことを書くだけで、AI が SQLite3 アクセスコー
 
 > ⚠️ **Windows on Snapdragon X（ARM64）** の場合、Electrobun が未対応のため x86 版 Bun をインストールしてエミュレーション実行が必要です。
 
+- この場合は bun.js の windows11(x64)のランタイムzipをダウンロードし、回答して「環境変数をセット」する事で実行可能となります。
+
 ---
 
 ## ⚡ セットアップ
@@ -187,6 +189,8 @@ mlx_lm server --model mlx-community/${MODEL} --port 8080 --max-tokens 16384 --te
 
 モデル一覧: https://huggingface.co/models?search=mlx-community
 
+- Mac（Apple Silicon）: [セットアップ方法詳細](docs/localLlm/mac-mlx-lm-setup.md)
+
 ### Windows 11（Copilot PC / Snapdragon X）— Foundry Local
 
 ```powershell
@@ -194,6 +198,8 @@ winget install Microsoft.FoundryLocal
 foundry service set --port 8080
 foundry model run qwen2.5-7b
 ```
+
+- Windows AI PC（Copilot+ PC）:  [セットアップ方法詳細](docs/localLlm/win-foundry-setup.md)
 
 ### Linux / その他 — llama.cpp / Ollama
 
@@ -215,7 +221,7 @@ YAML でイベントの指示を書くだけで、AI が JavaScript を生成し
 正常終了: ログで「終了しました」として下さい。
 ```
 
-生成されたコードはそのまま実行可能。動かない場合は AI に修正を依頼できます。  
+生成されたコードはそのまま実行可能。動かない場合は AI に修正を依頼できます（今後AIアシスタント機能を予定）。 
 **この「作る → 動かす → 直す」サイクルを繰り返すことで、プログラムが自然に読めるようになります。**
 
 ---
