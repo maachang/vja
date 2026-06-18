@@ -332,7 +332,7 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
                         const ext = filter === "vjaproj" ? "vjaproj" : filter;
                         const startingFolder = lastPath ? dirname(lastPath) : import.meta.dir;
                         const paths = await Utils.openFileDialog({
-                            allowedFileTypes: process.platform === "win32" ? ext : `*.${ext}`,
+                            allowedFileTypes: process.platform === "win32" || process.platform === "darwin" ? ext : `*.${ext}`,
                             startingFolder,
                         });
                         const path = paths?.[0] ?? null;
