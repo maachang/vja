@@ -405,6 +405,16 @@
 
 ## 外部API (vja.http.*)
 
+- 関数名: await vja.fetch(url, options?):
+  - 説明: Bun経由でHTTPリクエストを送信する低レベルAPI（vja.http.*の内部でも使用）
+  - 引数:
+    - url: string - リクエスト先URL
+    - options?: { method?, headers?, body? } - リクエストオプション（省略可）
+  - 戻り値: { ok, status, headers, text(), json() } - fetchライクなレスポンスオブジェクト
+  - 例外: ネットワークエラー時はエラーをスロー
+  - 使用例: "const res = await vja.fetch('https://api.example.com/data', { method: 'GET' }); const data = await res.json();"
+  - 備考: vja.http.* で対応できない場合（独自ヘッダー等）に使用する
+
 - 関数名: await vja.http.get(url, headers?):
   - 説明: HTTP GETリクエストを送信する
   - 引数:
@@ -780,6 +790,9 @@
   - Similar functions:
     - await vja.http.put(url, body, headers?):
       - Description: Sends an HTTP PUT request
+
+- Function Name: await vja.fetch(url, options?):
+  - Description: Use this instead of window.fetch.
 
 ## Dialog (vja.app.*)
 
