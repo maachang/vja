@@ -191,12 +191,12 @@ w.vja = {
                 .then((r: any) => r.value),
     },
     log: {
-        trace: (message: string) => { s.logRequest({ level: "trace", message }); },
-        debug: (message: string) => { s.logRequest({ level: "debug", message }); },
-        info: (message: string) => { s.logRequest({ level: "info", message }); },
-        warn: (message: string) => { s.logRequest({ level: "warn", message }); },
-        error: (message: string) => { s.logRequest({ level: "error", message }); },
-        log: (message: string) => { s.logRequest({ level: "log", message }); },
+        trace: (message: string) => { try { s.logRequest({ level: "trace", message }); } catch(e: any) { process.stdout.write(e.message + "\n"); } },
+        debug: (message: string) => { try { s.logRequest({ level: "debug", message }); } catch(e: any) { process.stdout.write(e.message + "\n"); } },
+        info:  (message: string) => { try { s.logRequest({ level: "info",  message }); } catch(e: any) { process.stdout.write(e.message + "\n"); } },
+        warn:  (message: string) => { try { s.logRequest({ level: "warn",  message }); } catch(e: any) { process.stderr.write(e.message + "\n"); } },
+        error: (message: string) => { try { s.logRequest({ level: "error", message }); } catch(e: any) { process.stderr.write(e.message + "\n"); } },
+        log:   (message: string) => { try { s.logRequest({ level: "log",   message }); } catch(e: any) { process.stdout.write(e.message + "\n"); } },
     },
     app: {
         getInfo: () =>

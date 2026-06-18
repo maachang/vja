@@ -3391,8 +3391,11 @@
             if (modelName) body.model = modelName;
             _aiAbortCtrl = new AbortController();
             showLoadingModal(loadingMsg || "AI生成中…");
+            let res = null;
             try {
-                const res = await fetch(endpoint + "/v1/chat/completions", {
+                // リクエスト送信前ログ
+                window.vja?.log?.debug?.("[AI] request: endpoint=" + endpoint + " model=" + (modelName || "none") + " systemLen=" + systemPrompt.length + " userLen=" + userPrompt.length);
+                res = await fetch(endpoint + "/v1/chat/completions", {
                     method: "POST", headers, body: JSON.stringify(body),
                     signal: _aiAbortCtrl.signal
                 });
@@ -3401,13 +3404,23 @@
                     throw new Error("HTTP " + res.status + (errText ? " — " + errText.slice(0, 120) : ""));
                 }
                 const data = await res.json();
+                // レスポンス全体ログ
+                window.vja?.log?.debug?.("[AI] response data: " + JSON.stringify(data).slice(0, 500));
                 const msg = data.choices?.[0]?.message || {};
                 const raw = (msg.content || msg.reasoning_content || "");
+                // rawログ
+                window.vja?.log?.debug?.("[AI] raw: " + raw.slice(0, 300));
                 const generated = raw
                     .replace(/<think>[\s\S]*?<\/think>/gi, "")
                     .replace(/^```(?:javascript|js|yaml)?\n?/i, "")
                     .replace(/```$/, "")
                     .trim();
+                // 空チェック
+                if (!generated) {
+                    window.vja?.log?.warn?.("[AI] generated is empty. raw=" + raw.slice(0, 200));
+                } else {
+                    window.vja?.log?.debug?.("[AI] generated ok: " + generated.slice(0, 200));
+                }
                 closeModal();
                 if (onSuccess) await onSuccess(generated);
             } catch (e) {
@@ -3417,7 +3430,10 @@
                     if (onCancel) await onCancel();
                 } else {
                     showToast("AI生成エラー: " + e.message);
-                    await window.vja?.log?.error?.("AI生成エラー: " + e.message).catch(() => { });
+                    // エラーログ
+                    window.vja?.log?.error?.("[AI] error: " + e.message + " res.status=" + (res?.status ?? "null"));
+                    // エラーデバッグ出力
+                    window.vja?.log?.debug?.("[AI] fetch-response: " + JSON.stringify(res));
                     if (onError) await onError(e);
                 }
             } finally {
