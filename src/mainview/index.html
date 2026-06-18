@@ -2973,7 +2973,7 @@
                 // API Key あり → OpenAI /v1/models
                 // API Key なし → ローカル llama-server /v1/models
                 const fetchEp = apiKey ? "https://api.openai.com" : ep;
-                const headers = {"Content-Type": "application/json"};
+                const headers = {"Content-Type": "application/json", mode: 'cors'};
                 if (apiKey) headers["Authorization"] = "Bearer " + apiKey;
                 const res = await fetch(fetchEp + "/v1/models", {headers});
                 if (!res.ok) throw new Error("HTTP " + res.status);
@@ -3397,7 +3397,8 @@
                 window.vja?.log?.debug?.("[AI] request: endpoint=" + endpoint + " model=" + (modelName || "none") + " systemLen=" + systemPrompt.length + " userLen=" + userPrompt.length);
                 res = await fetch(endpoint + "/v1/chat/completions", {
                     method: "POST", headers, body: JSON.stringify(body),
-                    signal: _aiAbortCtrl.signal
+                    signal: _aiAbortCtrl.signal,
+                    mode: 'cors'
                 });
                 if (!res.ok) {
                     const errText = await res.text().catch(() => "");
