@@ -2032,10 +2032,10 @@
             let catIdx = 0, fnIdx = 0;
             text.split("\n").forEach(line => {
                 if (/^##\s/.test(line)) {
-                    nav.push({type: "category", label: line.replace(/^##\s*/, ""), anchor: "cat-" + catIdx++});
+                    nav.push({ type: "category", label: line.replace(/^##\s*/, ""), anchor: "cat-" + catIdx++ });
                 } else if (/^-\s*関数名:\s*/.test(line) || /^-\s*Function\s*(N|n)ame:\s*/.test(line)) {
                     const label = line.replace(/^-\s*(関数名|Function\s*(N|n)ame):\s*/, "").trim();
-                    nav.push({type: "func", label, anchor: "fn-" + fnIdx++});
+                    nav.push({ type: "func", label, anchor: "fn-" + fnIdx++ });
                 }
             });
             return nav;
@@ -2075,7 +2075,7 @@
             window._apiRefRaw = info;
 
             // カテゴリラベルのテキストで該当行を検索してスクロール
-            window._apiRefJump = function (label) {
+            window._apiRefJump = function(label) {
                 const body = document.getElementById("api-ref-body");
                 if (!body) return;
                 // bodyのテキストノードを走査して##行を探す
@@ -2089,7 +2089,7 @@
             };
 
             // 検索フィルター
-            window._apiRefFilter = function () {
+            window._apiRefFilter = function() {
                 const q = (document.getElementById("api-ref-search")?.value || "").toLowerCase();
                 const body = document.getElementById("api-ref-body");
                 if (!body) return;
@@ -2513,6 +2513,11 @@
                 : ta.id === "ta-extrt-js" ? _extRtJuState
                     : ta.id === "ta-extrt-doc" ? _extRtYuState
                         : _yu;
+
+            // ── Mac: Ctrl+C / Ctrl+V を無効化（OS側のEmacsキーバインド干渉防止）──
+            if (navigator.platform.startsWith("Mac") && e.ctrlKey && !e.metaKey && (e.key === "c" || e.key === "v")) {
+                e.preventDefault(); return;
+            }
 
             // ── Undo / Redo ───────────────────────────────────
             if (ctrl && e.key.toLowerCase() === "z" && !e.shiftKey) {
@@ -3189,7 +3194,7 @@
         function _ensureCursorVisible(ta) {
             const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 20;
             const cursorLine = ta.value.slice(0, ta.selectionStart).split("\n").length;
-            const cursorTop = (cursorLine - 1) * lineHeight;
+            const cursorTop    = (cursorLine - 1) * lineHeight;
             const cursorBottom = cursorTop + lineHeight;
             if (cursorBottom > ta.scrollTop + ta.clientHeight) {
                 ta.scrollTop = cursorBottom - ta.clientHeight + 8;
@@ -3489,12 +3494,8 @@
             return a === b;
         }
 
-        // 現在のvjaプロジェクトのスナップショットを取得する。
         function snapshot() {
-            return {
-                forms, curFormIdx, constants, startFormId, aiConfig,
-                cloudInfras, tables, snapOn, showGrid, projectInfo, extRuntime
-            };
+            return {forms, curFormIdx, constants, startFormId, aiConfig, cloudInfras, tables, snapOn, showGrid, projectInfo, extRuntime};
         }
         // 現在の状態を undoStack に積む。redoStack はクリアする。
         function pushUndo() {
@@ -3642,7 +3643,7 @@
                     // 互換: nameがなければtitleをnameとして補完
                     forms = (d.forms || []).map(f => ({
                         ...f,
-                        cfg: {...f.cfg, name: f.cfg.name || f.cfg.title}
+                        cfg: { ...f.cfg, name: f.cfg.name || f.cfg.title }
                     }));
                     curFormIdx = d.curFormIdx || 0;
                 }
@@ -3994,8 +3995,8 @@
         function commitCurrentInput() {
             const el = document.activeElement;
             if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT")) {
-                el.dispatchEvent(new Event("change", {bubbles: true}));
-                el.dispatchEvent(new Event("blur", {bubbles: true}));
+                el.dispatchEvent(new Event("change", { bubbles: true }));
+                el.dispatchEvent(new Event("blur", { bubbles: true }));
             }
         }
 
@@ -4484,14 +4485,14 @@
             const chunks = [];
             const reader = cs.readable.getReader();
             while (true) {
-                const {done, value} = await reader.read();
+                const { done, value } = await reader.read();
                 if (done) break;
                 chunks.push(value);
             }
             const total = chunks.reduce((s, c) => s + c.length, 0);
             const result = new Uint8Array(total);
             let offset = 0;
-            for (const chunk of chunks) {result.set(chunk, offset); offset += chunk.length;}
+            for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.length; }
             return btoa(String.fromCharCode(...result));
         }
 
@@ -4507,14 +4508,14 @@
             const chunks = [];
             const reader = ds.readable.getReader();
             while (true) {
-                const {done, value} = await reader.read();
+                const { done, value } = await reader.read();
                 if (done) break;
                 chunks.push(value);
             }
             const total = chunks.reduce((s, c) => s + c.length, 0);
             const result = new Uint8Array(total);
             let offset = 0;
-            for (const chunk of chunks) {result.set(chunk, offset); offset += chunk.length;}
+            for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.length; }
             return new TextDecoder().decode(result);
         }
 
@@ -4525,12 +4526,12 @@
             for (let i = 0; i < line.length; i++) {
                 const c = line[i];
                 if (inQ) {
-                    if (c === '"' && line[i + 1] === '"') {cur += '"'; i++;}
+                    if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
                     else if (c === '"') inQ = false;
                     else cur += c;
                 } else {
                     if (c === '"') inQ = true;
-                    else if (c === ',') {result.push(cur); cur = "";}
+                    else if (c === ',') { result.push(cur); cur = ""; }
                     else cur += c;
                 }
             }
@@ -4544,7 +4545,7 @@
             if (!csv?.data) return;
             try {
                 const text = await _decompressCsv(csv.data);
-                const blob = new Blob([text], {type: "text/csv"});
+                const blob = new Blob([text], { type: "text/csv" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
@@ -5433,7 +5434,7 @@
             const uiFontIdx = uiSel ? (parseInt(uiSel.options[uiSel.selectedIndex]?.value) || 0) : 0;
             const uiFont = (UI_FONT_LIST[uiFontIdx] || UI_FONT_LIST[0]).value;
             // uiConfigに統合して保存
-            uiConfig = {...uiConfig, editorFontSize: editorSize, editorFontFamily: edFont, uiFontSize: uiSize, uiFontFamily: uiFont};
+            uiConfig = { ...uiConfig, editorFontSize: editorSize, editorFontFamily: edFont, uiFontSize: uiSize, uiFontFamily: uiFont };
             applyEditorConfig();
             applyUiConfig();
             window.bunSaveUiConfig?.(uiSize, uiFont, editorSize, edFont, uiConfig.leftPanelW, uiConfig.rightPanelW);
@@ -5530,15 +5531,15 @@
         }
 
         // bridge.tsからのUI設定読み込み結果を受け取るハンドラー
-        window._onLoadUiConfigResult = function (cfg) {
+        window._onLoadUiConfigResult = function(cfg) {
             if (!cfg) return;
             uiConfig = {
-                uiFontSize: cfg.uiFontSize || 13,
-                uiFontFamily: cfg.uiFontFamily || "",
-                editorFontSize: cfg.editorFontSize || 16,
+                uiFontSize:       cfg.uiFontSize       || 13,
+                uiFontFamily:     cfg.uiFontFamily     || "",
+                editorFontSize:   cfg.editorFontSize   || 16,
                 editorFontFamily: cfg.editorFontFamily || "'Courier New', Courier, monospace",
-                leftPanelW: cfg.leftPanelW || 110,
-                rightPanelW: cfg.rightPanelW || 420,
+                leftPanelW:       cfg.leftPanelW       || 110,
+                rightPanelW:      cfg.rightPanelW      || 420,
             };
             applyUiConfig();
             applyEditorConfig();
