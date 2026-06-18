@@ -32,6 +32,7 @@ const pending = {
     dirExists:    null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
     getCloudInfras:    null as Pending<{ infras: any[] }> | null,
     getDecryptedCred:  null as Pending<{ ok: boolean; value: string }> | null,
+    fetch:             null as Pending<{ ok: boolean; status: number; headers: Record<string, string>; body: string; error?: string }> | null,
 };
 
 const resolve = <K extends keyof typeof pending>(
@@ -75,6 +76,7 @@ const rpc = Electroview.defineRPC<VjaRPCType>({
             dirExistsResult:     (v: any) => resolve("dirExists",      v),
             getCloudInfrasResult:        (v: any) => resolve("getCloudInfras",   v),
             getDecryptedCredentialResult:(v: any) => resolve("getDecryptedCred", v),
+            fetchResult:                 (v: any) => resolve("fetch",            v),
             loadScriptResult:            () => {},
         },
     },
@@ -295,6 +297,20 @@ w.vja.dir = {
 };
 
 // クラウドインフラ
+// vja.fetch（Bun経由の汎用fetch、WebKitタイムアウト回避）
+w.vja.fetch = (url: string, options: { method?: string; headers?: Record<string, string>; body?: string } = {}) =>
+    mkPromise("fetch", () => s.fetchRequest({ url, ...options }))
+        .then((r: any) => {
+            if (r.error) throw new Error(r.error);
+            return {
+                ok: r.ok,
+                status: r.status,
+                headers: r.headers,
+                text: () => Promise.resolve(r.body),
+                json: () => Promise.resolve(JSON.parse(r.body)),
+            };
+        });
+
 w.vja.cloud = w.vja.cloud || {};
 w.vja.cloud.list = () =>
     mkPromise("getCloudInfras", () => s.getCloudInfrasRequest({}))

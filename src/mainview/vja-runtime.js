@@ -611,15 +611,15 @@
     vja.http = {
 
         async get(url, headers = {}) {
-            const res = await fetch(url, { method: "GET", headers });
+            const res = await vja.fetch(url, { method: "GET", headers });
             if (!res.ok) throw new Error(`GET ${url} → HTTP ${res.status}`);
-            const ct = res.headers.get("content-type") || "";
+            const ct = res.headers["content-type"] || "";
             return ct.includes("application/json") ? res.json() : res.text();
         },
 
         async post(url, body, headers = {}) {
             const isJson = typeof body === "object" && !(body instanceof FormData);
-            const res = await fetch(url, {
+            const res = await vja.fetch(url, {
                 method: "POST",
                 headers: {
                     ...(isJson ? { "Content-Type": "application/json" } : {}),
@@ -628,24 +628,24 @@
                 body: isJson ? JSON.stringify(body) : body,
             });
             if (!res.ok) throw new Error(`POST ${url} → HTTP ${res.status}`);
-            const ct = res.headers.get("content-type") || "";
+            const ct = res.headers["content-type"] || "";
             return ct.includes("application/json") ? res.json() : res.text();
         },
 
         async put(url, body, headers = {}) {
             const isJson = typeof body === "object";
-            const res = await fetch(url, {
+            const res = await vja.fetch(url, {
                 method: "PUT",
                 headers: { ...(isJson ? { "Content-Type": "application/json" } : {}), ...headers },
                 body: isJson ? JSON.stringify(body) : body,
             });
             if (!res.ok) throw new Error(`PUT ${url} → HTTP ${res.status}`);
-            const ct = res.headers.get("content-type") || "";
+            const ct = res.headers["content-type"] || "";
             return ct.includes("application/json") ? res.json() : res.text();
         },
 
         async delete(url, headers = {}) {
-            const res = await fetch(url, { method: "DELETE", headers });
+            const res = await vja.fetch(url, { method: "DELETE", headers });
             if (!res.ok) throw new Error(`DELETE ${url} → HTTP ${res.status}`);
             return res.ok;
         },
