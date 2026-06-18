@@ -3413,8 +3413,7 @@
                 window.vja?.log?.debug?.("[AI] raw: " + raw.slice(0, 300));
                 const generated = raw
                     .replace(/<think>[\s\S]*?<\/think>/gi, "")
-                    .replace(/^```(?:javascript|js|yaml)?\n?/i, "")
-                    .replace(/```$/, "")
+                    .replace(/```(?:javascript|js|yaml)?\n?/gi, "")
                     .trim();
                 // 空チェック
                 if (!generated) {
