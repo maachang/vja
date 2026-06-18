@@ -601,8 +601,8 @@ API Key:        （サービスの API キー）
 
 もしあなたが利用している PC が 以下の環境の場合は、指定セットアップで最適なローカルLLMが利用可能(OpenAIのURL互換）です。
 
-- Windows AI PC（Copilot+ PC）:  [セットアップ方法](docs/localLlm/win-foundry-setup.md)
-- Mac（Apple Silicon）: [セットアップ方法](docs/localLlm/mac-mlx-lm-setup.md)
+- Windows AI PC（Copilot+ PC）:  [セットアップ方法](localLlm/win-foundry-setup.md)
+- Mac（Apple Silicon）: [セットアップ方法](localLlm/mac-mlx-lm-setup.md)
 
 これらは上の内容を参考にセットアップする事で「ルーターモードON」で「http://localhost:8080」で利用する事ができます。
 
