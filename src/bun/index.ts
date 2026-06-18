@@ -1,7 +1,7 @@
 // src/bun/index.ts
 // VJA Form Designer - Electrobun メインプロセス
 
-import { BrowserWindow, BrowserView, Utils, Screen } from "electrobun/bun";
+import { BrowserWindow, BrowserView, Utils, Screen, ApplicationMenu } from "electrobun/bun";
 import { homedir } from "os";
 import { execFile } from "child_process";
 import { promisify } from "util";
@@ -1192,6 +1192,27 @@ const evNameToDom = (evName: string): string => {
     };
     return map[evName] || evName.toLowerCase();
 };
+
+// ── macOS向け Editメニュー設定（Cmd+C/V を有効化）────────
+if (process.platform === "darwin") {
+    ApplicationMenu.setApplicationMenu([
+        {
+            submenu: [{ label: "Quit", role: "quit" }],
+        },
+        {
+            label: "Edit",
+            submenu: [
+                { role: "undo" },
+                { role: "redo" },
+                { type: "separator" },
+                { role: "cut" },
+                { role: "copy" },
+                { role: "paste" },
+                { role: "selectAll" },
+            ],
+        },
+    ]);
+}
 
 // ── BrowserWindow 生成 ────────────────────────────────
 const isWin = process.platform === "win32";
