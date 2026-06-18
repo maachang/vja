@@ -388,6 +388,22 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 }
             },
 
+            // ══ 汎用fetch（WebKitタイムアウト回避） ══════════════════════════
+
+            fetchRequest: async ({ url, method, headers, body }: { url: string; method?: string; headers?: Record<string, string>; body?: string }) => {
+                try {
+                    const res = await fetch(url, {
+                        method: method || "GET",
+                        headers: headers || {},
+                        body: body ?? undefined,
+                    });
+                    const text = await res.text();
+                    browserWindow.webview.rpc.send.fetchResult({ ok: res.ok, status: res.status, headers: Object.fromEntries(res.headers), body: text });
+                } catch (e: any) {
+                    browserWindow.webview.rpc.send.fetchResult({ ok: false, status: 0, headers: {}, body: "", error: e.message });
+                }
+            },
+
             // ══ ファイル操作 ══════════════════════════
 
             fileReadRequest: async ({ path }) => {

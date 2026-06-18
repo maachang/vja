@@ -42,6 +42,7 @@ const pending = {
     compileProject: null as Pending<{ ok: boolean; error?: string; distPath?: string }> | null,
     getVersion: null as Pending<{ version: string; runMode: string }> | null,
     loadUiConfig: null as Pending<{ uiFontSize: number; uiFontFamily: string }> | null,
+    fetch: null as Pending<{ ok: boolean; status: number; headers: Record<string, string>; body: string; error?: string }> | null,
 };
 
 const resolve = <K extends keyof typeof pending>(
@@ -113,6 +114,7 @@ const rpc = Electroview.defineRPC({
             sessionGetResult: (v: any) => resolve("sessionGet", v),
             sessionSetResult: (v: any) => resolve("sessionSet", v),
             clearProjectDbResult: (v: any) => resolve("clearProjectDb", v),
+            fetchResult: (v: any) => resolve("fetch", v),
         },
     },
 });
@@ -241,6 +243,21 @@ w.vja = {
                 .then((r: any) => r.ok),
     },
 };
+
+// vja.fetch（Bun経由の汎用fetch、WebKitタイムアウト回避）
+w.vja.fetch = (url: string, options: { method?: string; headers?: Record<string, string>; body?: string } = {}) =>
+    mkPromise("fetch", () => s.fetchRequest({ url, ...options }))
+        .then((r: any) => {
+            if (r.error) throw new Error(r.error);
+            return {
+                ok: r.ok,
+                status: r.status,
+                headers: r.headers,
+                _error: r.error,
+                text: () => Promise.resolve(r.body),
+                json: () => Promise.resolve(JSON.parse(r.body)),
+            };
+        });
 
 // vja.cloud
 w.vja.cloud = w.vja.cloud || {};

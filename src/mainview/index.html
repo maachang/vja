@@ -2975,7 +2975,7 @@
                 const fetchEp = apiKey ? "https://api.openai.com" : ep;
                 const headers = {"Content-Type": "application/json"};
                 if (apiKey) headers["Authorization"] = "Bearer " + apiKey;
-                const res = await fetch(fetchEp + "/v1/models", {headers, credentials: 'omit', mode: 'cors'});
+                const res = await window.vja.fetch(fetchEp + "/v1/models", {headers});
                 if (!res.ok) throw new Error("HTTP " + res.status);
                 const data = await res.json();
                 const models = (data.data || []).map(m => m.id || m).filter(Boolean).sort();
@@ -3395,32 +3395,24 @@
             try {
                 // リクエスト送信前ログ
                 window.vja?.log?.debug?.("[AI] request: endpoint=" + endpoint + " model=" + (modelName || "none") + " systemLen=" + systemPrompt.length + " userLen=" + userPrompt.length);
-                res = await fetch(endpoint + "/v1/chat/completions", {
-                    method: "POST", headers, body: JSON.stringify(body),
-                    signal: _aiAbortCtrl.signal,
-                    mode: 'cors',
-                    credentials: 'omit'
+                res = await window.vja.fetch(endpoint + "/v1/chat/completions", {
+                    method: "POST",
+                    headers,
+                    body: JSON.stringify(body),
                 });
                 if (!res.ok) {
                     const errText = await res.text().catch(() => "");
                     throw new Error("HTTP " + res.status + (errText ? " — " + errText.slice(0, 120) : ""));
                 }
                 const data = await res.json();
-                // レスポンス全体ログ
-                window.vja?.log?.debug?.("[AI] response data: " + JSON.stringify(data).slice(0, 500));
                 const msg = data.choices?.[0]?.message || {};
                 const raw = (msg.content || msg.reasoning_content || "");
-                // rawログ
-                window.vja?.log?.debug?.("[AI] raw: " + raw.slice(0, 300));
                 const generated = raw
                     .replace(/<think>[\s\S]*?<\/think>/gi, "")
                     .replace(/```(?:javascript|js|yaml)?\n?/gi, "")
                     .trim();
-                // 空チェック
                 if (!generated) {
                     window.vja?.log?.warn?.("[AI] generated is empty. raw=" + raw.slice(0, 200));
-                } else {
-                    window.vja?.log?.debug?.("[AI] generated ok: " + generated.slice(0, 200));
                 }
                 closeModal();
                 if (onSuccess) await onSuccess(generated);
@@ -3434,7 +3426,7 @@
                     // エラーログ
                     window.vja?.log?.error?.("[AI] error: " + e.message + " res.status=" + (res?.status ?? "null"));
                     // エラーデバッグ出力
-                    window.vja?.log?.debug?.("[AI] fetch-response: " + JSON.stringify(res));
+                    window.vja?.log?.debug?.("[AI] fetch-response: status=" + (res?.status ?? "null") + " _error=" + (res?._error ?? "none"));
                     if (onError) await onError(e);
                 }
             } finally {
