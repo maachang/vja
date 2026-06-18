@@ -1078,8 +1078,7 @@
   - 全ての vja.* 呼び出しは await を付ける
   - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
   - vja.db.* は、sqlite3用SQLで実装する
-  - 人間がメンテナンスしやすいコードで
-  - コメントは日本語で
+  - コメント等は日本語で
 `.trim()
             : // フロントエンド.
             `
@@ -1092,8 +1091,7 @@
   - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
   - window.confirm, window.alertは原則禁止(vja.app.showDialog, vja.app.showConfirmを利用)
   - vja.db.* は、sqlite3用SQLで実装する
-  - 人間がメンテナンスしやすいコードで
-  - コメントは日本語で
+  - コメント等は日本語で
 `.trim();
 
         return (
@@ -1168,8 +1166,7 @@ ${extRuntimeDoc}
   - Add "await" to all "vja.*" calls.
   - Use "vja.form.navigate('screen name')" for screen transitions (never use "location").
   - The vja.db.* files are implemented using SQL for sqlite3.
-  - Code that is easy for humans to maintain.
-  - Comments must be in Japanese.
+  - Please leave comments in Japanese.
 `.trim()
             : // フロントエンド.
             `
@@ -1182,8 +1179,7 @@ ${extRuntimeDoc}
   - Use "vja.form.navigate('screen name')" for screen transitions (※ "location" should never be used).
   - Using window.confirm and window.alert is generally prohibited (use vja.app.showDialog and vja.app.showConfirm instead).
   - The vja.db.* files are implemented using SQL for sqlite3.
-  - Code that is easy for humans to maintain.
-  - Comments must be in Japanese.
+  - Please leave comments in Japanese.
 `.trim();
 
         return (
