@@ -3358,7 +3358,7 @@
                 if (el) el.textContent = (++sec) + "秒";
             }, 1000);
         }
-        // AI生成をキャンセルする。AbortController を abort() してリクエストを中断する。
+        // AI生成をキャンセルする。vja.fetchAbort() でBun側のリクエストを中断する。
         function cancelAiGenerate() {
             if (_aiFetchId) { window.vja?.fetchAbort?.(_aiFetchId); _aiFetchId = null; }
         }
@@ -3429,7 +3429,7 @@
                     // エラーログ
                     window.vja?.log?.error?.("[AI] error: " + e.message + " res.status=" + (res?.status ?? "null"));
                     // エラーデバッグ出力
-                    window.vja?.log?.debug?.("[AI] fetch-response: status=" + (res?.status ?? "null") + " _error=" + (res?._error ?? "none"));
+                    window.vja?.log?.debug?.("[AI] fetch-response: status=" + (res?.status ?? "null"));
                     if (onError) await onError(e);
                 }
             } finally {
