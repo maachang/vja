@@ -82,6 +82,7 @@ export const _session = new Map<string, string>();
 // ── プロジェクトウィンドウ ────────────────────────────
 export let _projectWindow: BrowserWindow | null = null;
 let _projectRPC: ReturnType<typeof BrowserView.defineRPC> | null = null;
+let _fetchAbortMap = new Map<string, AbortController>();
 
 // ── フォームパス取得（外部から設定可能） ──────────────
 // デザイナー版・スタンドアロン版でパスが異なるため、外部から設定する
@@ -106,7 +107,7 @@ const _dbQuery = (sql: string, params?: any[]): any[] => {
 };
 const _dbExecute = (sql: string, params?: any[]): any => {
     try { return getProjectDb(_currentProjectDbDir).run(sql, ...(params || [])); }
-    catch { return null; }
+    catch (e: any) { console.error("[db] execute failed:", e.message); return null; }
 };
 
 const _runAppEventCode = async (name: string, code: string): Promise<void> => {
@@ -229,7 +230,7 @@ const _onProjectWindowClosed = (): void => {
         try { await runOnExit(); }
         catch (err: any) { console.error("[close] 終了トリガーエラー:", err); }
         finally {
-            try { closeProjectDb(); } catch { /* ignore */ }
+            try { closeProjectDb(); } catch (e: any) { console.debug("[close] closeProjectDb failed:", e.message); }
             _session.clear();
             _projectWindow = null;
             _projectRPC = null;
@@ -342,7 +343,8 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
                         } else {
                             _projectWindow?.webview.rpc.send.openFileResult({ content: null, path: null });
                         }
-                    } catch {
+                    } catch (e: any) {
+                        console.error("[project] openFileRequest failed:", e.message);
                         _projectWindow?.webview.rpc.send.openFileResult({ content: null, path: null });
                     }
                 },
@@ -457,6 +459,39 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
                 },
                 loadScriptRequest: async ({ url }) => {
                     _projectWindow?.webview.rpc.send.loadScriptResult({ url });
+                },
+
+                // ── 汎用fetch（WebKitタイムアウト回避） ──────────
+                fetchRequest: async ({ fetchId, url, method, headers, body }) => {
+                    const ctrl = new AbortController();
+                    _fetchAbortMap.set(fetchId, ctrl);
+                    try {
+                        const res = await fetch(url, {
+                            method: method || "GET",
+                            headers: headers || {},
+                            body: body ?? undefined,
+                            signal: ctrl.signal,
+                        });
+                        const text = await res.text();
+                        _projectWindow?.webview.rpc.send.fetchResult({ fetchId, ok: res.ok, status: res.status, headers: Object.fromEntries(res.headers), body: text });
+                    } catch (e: any) {
+                        if (e.name === "AbortError") {
+                            _projectWindow?.webview.rpc.send.fetchResult({ fetchId, ok: false, status: 0, headers: {}, body: "", error: "AbortError" });
+                        } else {
+                            _projectWindow?.webview.rpc.send.fetchResult({ fetchId, ok: false, status: 0, headers: {}, body: "", error: e.message });
+                        }
+                    } finally {
+                        _fetchAbortMap.delete(fetchId);
+                    }
+                },
+
+                fetchAbortRequest: async ({ fetchId }) => {
+                    const ctrl = _fetchAbortMap.get(fetchId);
+                    if (ctrl) {
+                        ctrl.abort();
+                        _fetchAbortMap.delete(fetchId);
+                    }
+                    _projectWindow?.webview.rpc.send.fetchAbortResult({ fetchId });
                 },
             },
         },

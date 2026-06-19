@@ -45,7 +45,7 @@ const getDb = (dbPath: string): Database => {
 // ── DBクローズ ────────────────────────────────────────
 export const closeProjectDb = (): void => {
     if (_db) {
-        try { _db.close(); } catch {}
+        try { _db.close(); } catch (e: any) { console.debug("[db] close failed:", e.message); }
         _db = null;
         _dbPath = "";
     }
@@ -63,7 +63,7 @@ export const initProjectDb = async (dbDir: string, tables: TableDef[]): Promise<
     // schema.json を読み込む（なければ空）
     let schema: SchemaRecord = {};
     if (existsSync(schemaPath)) {
-        try { schema = JSON.parse(await Bun.file(schemaPath).text()); } catch {}
+        try { schema = JSON.parse(await Bun.file(schemaPath).text()); } catch (e: any) { console.debug("[db] schema.json parse failed:", e.message); }
     }
 
     for (const tbl of tables) {
