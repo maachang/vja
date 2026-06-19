@@ -1082,11 +1082,17 @@
             ? VJA_USE_BACK_JS_INFO
             : VJA_USE_FRONT_JS_INFO;
 
+        // 出力ルール
+        const baseRule =
+            "- 出力は「" + (isAppEvent ? "TypeScript" : "JavaScript") + " の生コード」のみ。" +
+            "- 説明文、前置き、結びの言葉はすべて出力禁止。" +
+            "- コードブロック（```" + (isAppEvent ? "typescript" : "javascript") +
+            " ... ```）などのマークダウン装飾も完全に排除すること。";
+
         // ルールをバックエンド、フロントエンドで記載.
         const rule = isAppEvent
             ? // バックエンド.
             `
-  - Typescriptコードだけを返却（厳守：説明文・マークダウンは不要で絶対に返却しないでください）
   - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
   - 全ての vja.* 呼び出しは await を付ける
   - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
@@ -1095,7 +1101,6 @@
 `.trim()
             : // フロントエンド.
             `
-  - Javascriptコードだけ返却（厳守：説明文・マークダウンは不要で絶対に返却しないでください）
   - 生成するJavascriptコードは必ず "インライン" で記述。ヘルパー関数の記載は絶対禁止（例: handleXxx, doXxx, addEventListener 等の関数定義は絶対に禁止）
     - 悪い例: async function handleButtonClick() { ... }
     - 良い例: const result = await vja.app.showConfirm("...");
@@ -1111,6 +1116,9 @@
             `
 あなたは日本語を専門とするVJAフォームデザイナーのイベント処理コード生成AIです。
 ユーザーが書いたYAMLを元に、JavaScriptの実装コードを生成します。
+
+# 出力ルール
+${baseRule}
 
 ## コード生成ルール(原則)
 ${rule}
@@ -1170,11 +1178,16 @@ ${extRuntimeDoc}
             ? VJA_USE_BACK_JS_INFO_ENG
             : VJA_USE_FRONT_JS_INFO_ENG;
 
+        // Basic return rules
+        const baseRule =
+            "- Pure " + (isAppEvent ? "TypeScript" : "JavaScript") + " code only.\n" +
+            "- NO explanations, NO markdown code blocks (```), NO chat.\n" +
+            "- Start your response directly with the code."
+
         // ルールをバックエンド、フロントエンドで記載.
         const rule = isAppEvent
             ? // バックエンド.
             `
-  - Return only the Typescript code (strictly enforced: no explanations or Markdown are necessary, and absolutely do not return them).
   - Always use placeholders (?) in SQL queries (to prevent SQL injection).
   - Add "await" to all "vja.*" calls.
   - Use "vja.form.navigate('screen name')" for screen transitions (never use "location").
@@ -1183,7 +1196,6 @@ ${extRuntimeDoc}
 `.trim()
             : // フロントエンド.
             `
-  - Return only the Javascript code (strictly enforced: no explanations or Markdown are necessary, and absolutely do not return them).
   - The generated JavaScript code must be written "inline". Helper functions are strictly prohibited (e.g., function definitions such as handleXxx, doXxx, addEventListener, etc. are strictly prohibited).
     - Bad example: async function handleButtonClick() { ... }
     - Good example: const result = await vja.app.showConfirm("...");
@@ -1200,17 +1212,20 @@ ${extRuntimeDoc}
 You are a VJA form designer and event handling code generation AI specializing in Japanese.
 You generate JavaScript implementation code based on the YAML specification written by the user.
 
-## Code Generation Rules (Principles)
+[OUTPUT FORMAT]
+${baseRule}
+
+[Code Generation Rules (Principles)]
 ${rule}
 
-## vja Runtime(YAML).
+[vja Runtime(YAML)]
 ---
 ~~~yaml
 ${vjaUseJsInfo}
 ~~~
 ---
 
-### Extended Runtime(YAML)
+[Extended Runtime(YAML)]
 ---
 ~~~yaml
 ${extRuntimeDoc}
@@ -1583,10 +1598,10 @@ Include the function name, description, arguments, return value, and exceptions.
         return (
             `
 # --- YAML定義サンプル説明 ---
-# 処理:
-#  「YES, NO」の確認ダイアログ「テストです」と表示する:
-#    - 「YES」ダイアログ「OKです」と表示「トースト」にも同じ文字を出力.
-#    - 「NO」ダイアログ「NGです」と表示「トースト」にも同じ文字を出力.
+# アクション:
+#  -「YES, NO」の確認ダイアログ「テストです」と表示する:
+#    - YES: ダイアログ「OKです」と表示して「トースト」にも同じ文字を出力.
+#    - NO: ダイアログ「NGです」と表示して「トースト」にも同じ文字を出力.
 # 正常終了: 「正常に終了しました」とログを出す.
 #
 # --- 規定ワード ---

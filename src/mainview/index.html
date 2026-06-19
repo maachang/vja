@@ -782,7 +782,7 @@
         let _cloudDraft = [];
         let extRuntime = {js: "", doc: ""};
 
-        let _aiAbortCtrl = null;
+        let _aiFetchId = null;
         let _aiLoadingTimer = null;
         let aiConfig = {
             endpoint: "http://localhost:8080",
@@ -3360,7 +3360,7 @@
         }
         // AI生成をキャンセルする。AbortController を abort() してリクエストを中断する。
         function cancelAiGenerate() {
-            if (_aiAbortCtrl) {_aiAbortCtrl.abort(); _aiAbortCtrl = null;}
+            if (_aiFetchId) { window.vja?.fetchAbort?.(_aiFetchId); _aiFetchId = null; }
         }
 
         // AI生成共通実行関数。
@@ -3389,17 +3389,20 @@
             if (aiConfig.temperature !== "" && aiConfig.temperature !== undefined) body.temperature = aiConfig.temperature;
             if (aiConfig.maxTokens) body.max_tokens = aiConfig.maxTokens;
             if (modelName) body.model = modelName;
-            _aiAbortCtrl = new AbortController();
+            _aiFetchId = null;
             showLoadingModal(loadingMsg || "AI生成中…");
             let res = null;
             try {
                 // リクエスト送信前ログ
                 window.vja?.log?.debug?.("[AI] request: endpoint=" + endpoint + " model=" + (modelName || "none") + " systemLen=" + systemPrompt.length + " userLen=" + userPrompt.length);
-                res = await window.vja.fetch(endpoint + "/v1/chat/completions", {
+                const fetchReq = window.vja.fetch(endpoint + "/v1/chat/completions", {
                     method: "POST",
                     headers,
                     body: JSON.stringify(body),
                 });
+                _aiFetchId = fetchReq.fetchId;
+                res = await fetchReq;
+                _aiFetchId = null;
                 if (!res.ok) {
                     const errText = await res.text().catch(() => "");
                     throw new Error("HTTP " + res.status + (errText ? " — " + errText.slice(0, 120) : ""));
@@ -3430,7 +3433,7 @@
                     if (onError) await onError(e);
                 }
             } finally {
-                _aiAbortCtrl = null;
+                _aiFetchId = null;
             }
         }
         // オーバーレイクリック時の処理。

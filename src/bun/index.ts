@@ -117,6 +117,7 @@ const encryptCredential = async (plain: string): Promise<string> => {
 // 現在のプロジェクト拡張ランタイム
 let _currentProjectExtRuntime: string = "";
 let _devToolsOpen: boolean = false;
+let _fetchAbortMap = new Map<string, AbortController>();
 
 const loadLastDir = (): string => {
     try {
@@ -397,18 +398,36 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
 
             // ══ 汎用fetch（WebKitタイムアウト回避） ══════════════════════════
 
-            fetchRequest: async ({ url, method, headers, body }: { url: string; method?: string; headers?: Record<string, string>; body?: string }) => {
+            fetchRequest: async ({ fetchId, url, method, headers, body }: { fetchId: string; url: string; method?: string; headers?: Record<string, string>; body?: string }) => {
+                const ctrl = new AbortController();
+                _fetchAbortMap.set(fetchId, ctrl);
                 try {
                     const res = await fetch(url, {
                         method: method || "GET",
                         headers: headers || {},
                         body: body ?? undefined,
+                        signal: ctrl.signal,
                     });
                     const text = await res.text();
-                    browserWindow.webview.rpc.send.fetchResult({ ok: res.ok, status: res.status, headers: Object.fromEntries(res.headers), body: text });
+                    browserWindow.webview.rpc.send.fetchResult({ fetchId, ok: res.ok, status: res.status, headers: Object.fromEntries(res.headers), body: text });
                 } catch (e: any) {
-                    browserWindow.webview.rpc.send.fetchResult({ ok: false, status: 0, headers: {}, body: "", error: e.message });
+                    if (e.name === "AbortError") {
+                        browserWindow.webview.rpc.send.fetchResult({ fetchId, ok: false, status: 0, headers: {}, body: "", error: "AbortError" });
+                    } else {
+                        browserWindow.webview.rpc.send.fetchResult({ fetchId, ok: false, status: 0, headers: {}, body: "", error: e.message });
+                    }
+                } finally {
+                    _fetchAbortMap.delete(fetchId);
                 }
+            },
+
+            fetchAbortRequest: async ({ fetchId }: { fetchId: string }) => {
+                const ctrl = _fetchAbortMap.get(fetchId);
+                if (ctrl) {
+                    ctrl.abort();
+                    _fetchAbortMap.delete(fetchId);
+                }
+                browserWindow.webview.rpc.send.fetchAbortResult({ fetchId });
             },
 
             // ══ ファイル操作 ══════════════════════════

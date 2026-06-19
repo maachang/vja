@@ -157,6 +157,10 @@ export type VjaRPCType = {
             // ── UI設定 ───────────────────────────────────
             saveUiConfigRequest: { uiFontSize: number; uiFontFamily: string; editorFontSize: number; editorFontFamily: string; leftPanelW: number; rightPanelW: number };
             loadUiConfigRequest: { _?: never };
+
+            // ── 汎用fetch ─────────────────────────────────
+            fetchRequest: { fetchId: string; url: string; method?: string; headers?: Record<string, string>; body?: string };
+            fetchAbortRequest: { fetchId: string };
         };
     }>;
 
@@ -240,6 +244,10 @@ export type VjaRPCType = {
 
             // ── UI設定結果 ───────────────────────────────
             loadUiConfigResult: { uiFontSize: number; uiFontFamily: string; editorFontSize: number; editorFontFamily: string; leftPanelW: number; rightPanelW: number };
+
+            // ── 汎用fetch結果 ─────────────────────────────
+            fetchResult: { fetchId: string; ok: boolean; status: number; headers: Record<string, string>; body: string; error?: string };
+            fetchAbortResult: { fetchId: string };
         };
     }>;
 };
