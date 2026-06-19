@@ -32,8 +32,11 @@ const pending = {
     dirExists:    null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
     getCloudInfras:    null as Pending<{ infras: any[] }> | null,
     getDecryptedCred:  null as Pending<{ ok: boolean; value: string }> | null,
-    fetch:             null as Pending<{ ok: boolean; status: number; headers: Record<string, string>; body: string; error?: string }> | null,
 };
+
+// fetch は複数同時リクエスト対応のため fetchId ベースのMapで管理
+const _fetchPendingMap = new Map<string, Pending<{ ok: boolean; status: number; headers: Record<string, string>; body: string; error?: string }>>();
+const _fetchAbortPendingMap = new Map<string, Pending<{}>>();
 
 const resolve = <K extends keyof typeof pending>(
     key: K,
@@ -76,7 +79,14 @@ const rpc = Electroview.defineRPC<VjaRPCType>({
             dirExistsResult:     (v: any) => resolve("dirExists",      v),
             getCloudInfrasResult:        (v: any) => resolve("getCloudInfras",   v),
             getDecryptedCredentialResult:(v: any) => resolve("getDecryptedCred", v),
-            fetchResult:                 (v: any) => resolve("fetch",            v),
+            fetchResult: (v: any) => {
+                const p = _fetchPendingMap.get(v.fetchId);
+                if (p) { _fetchPendingMap.delete(v.fetchId); p.resolve(v); }
+            },
+            fetchAbortResult: (v: any) => {
+                const p = _fetchAbortPendingMap.get(v.fetchId);
+                if (p) { _fetchAbortPendingMap.delete(v.fetchId); p.resolve(v); }
+            },
             loadScriptResult:            () => {},
         },
     },
@@ -296,20 +306,33 @@ w.vja.dir = {
             .then((r: any) => r.value),
 };
 
-// クラウドインフラ
 // vja.fetch（Bun経由の汎用fetch、WebKitタイムアウト回避）
-w.vja.fetch = (url: string, options: { method?: string; headers?: Record<string, string>; body?: string } = {}) =>
-    mkPromise("fetch", () => s.fetchRequest({ url, ...options }))
-        .then((r: any) => {
-            if (r.error) throw new Error(r.error);
-            return {
-                ok: r.ok,
-                status: r.status,
-                headers: r.headers,
-                text: () => Promise.resolve(r.body),
-                json: () => Promise.resolve(JSON.parse(r.body)),
-            };
-        });
+w.vja.fetch = (url: string, options: { method?: string; headers?: Record<string, string>; body?: string } = {}) => {
+    const fetchId = crypto.randomUUID();
+    const promise = new Promise<any>((res, rej) => {
+        _fetchPendingMap.set(fetchId, { resolve: res, reject: rej });
+        s.fetchRequest({ fetchId, url, ...options });
+    }).then((r: any) => {
+        if (r.error === "AbortError") throw Object.assign(new Error("AbortError"), { name: "AbortError" });
+        if (r.error) throw new Error(r.error);
+        return {
+            ok: r.ok,
+            status: r.status,
+            headers: r.headers,
+            text: () => Promise.resolve(r.body),
+            json: () => Promise.resolve(JSON.parse(r.body)),
+        };
+    });
+    (promise as any).fetchId = fetchId;
+    return promise;
+};
+
+w.vja.fetchAbort = (fetchId: string) => {
+    return new Promise<any>((res, rej) => {
+        _fetchAbortPendingMap.set(fetchId, { resolve: res, reject: rej });
+        s.fetchAbortRequest({ fetchId });
+    });
+};
 
 w.vja.cloud = w.vja.cloud || {};
 w.vja.cloud.list = () =>
