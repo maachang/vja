@@ -5,6 +5,7 @@
 import { Electroview } from "electrobun/view";
 import "./vja-runtime.js";
 import type { VjaRPCType } from "../shared/types";
+import { makeFetchMaps, makeVjaFetch, makeFetchResultHandlers, Pending } from "./bridge-common";
 
 type Resolver<T> = (v: T) => void;
 type Rejecter = (e: Error) => void;
@@ -34,9 +35,8 @@ const pending = {
     getDecryptedCred:  null as Pending<{ ok: boolean; value: string }> | null,
 };
 
-// fetch は複数同時リクエスト対応のため fetchId ベースのMapで管理
-const _fetchPendingMap = new Map<string, Pending<{ ok: boolean; status: number; headers: Record<string, string>; body: string; error?: string }>>();
-const _fetchAbortPendingMap = new Map<string, Pending<{}>>();
+// fetch は複数同時リクエスト対応のため fetchId ベースのMapで管理（bridge-common）
+const { fetchPendingMap: _fetchPendingMap, fetchAbortPendingMap: _fetchAbortPendingMap } = makeFetchMaps();
 
 const resolve = <K extends keyof typeof pending>(
     key: K,
@@ -79,14 +79,7 @@ const rpc = Electroview.defineRPC<VjaRPCType>({
             dirExistsResult:     (v: any) => resolve("dirExists",      v),
             getCloudInfrasResult:        (v: any) => resolve("getCloudInfras",   v),
             getDecryptedCredentialResult:(v: any) => resolve("getDecryptedCred", v),
-            fetchResult: (v: any) => {
-                const p = _fetchPendingMap.get(v.fetchId);
-                if (p) { _fetchPendingMap.delete(v.fetchId); p.resolve(v); }
-            },
-            fetchAbortResult: (v: any) => {
-                const p = _fetchAbortPendingMap.get(v.fetchId);
-                if (p) { _fetchAbortPendingMap.delete(v.fetchId); p.resolve(v); }
-            },
+            ...makeFetchResultHandlers(_fetchPendingMap, _fetchAbortPendingMap),
             loadScriptResult:            () => {},
         },
     },
@@ -306,33 +299,10 @@ w.vja.dir = {
             .then((r: any) => r.value),
 };
 
-// vja.fetch（Bun経由の汎用fetch、WebKitタイムアウト回避）
-w.vja.fetch = (url: string, options: { method?: string; headers?: Record<string, string>; body?: string } = {}) => {
-    const fetchId = crypto.randomUUID();
-    const promise = new Promise<any>((res, rej) => {
-        _fetchPendingMap.set(fetchId, { resolve: res, reject: rej });
-        s.fetchRequest({ fetchId, url, ...options });
-    }).then((r: any) => {
-        if (r.error === "AbortError") throw Object.assign(new Error("AbortError"), { name: "AbortError" });
-        if (r.error) throw new Error(r.error);
-        return {
-            ok: r.ok,
-            status: r.status,
-            headers: r.headers,
-            text: () => Promise.resolve(r.body),
-            json: () => Promise.resolve(JSON.parse(r.body)),
-        };
-    });
-    (promise as any).fetchId = fetchId;
-    return promise;
-};
-
-w.vja.fetchAbort = (fetchId: string) => {
-    return new Promise<any>((res, rej) => {
-        _fetchAbortPendingMap.set(fetchId, { resolve: res, reject: rej });
-        s.fetchAbortRequest({ fetchId });
-    });
-};
+// vja.fetch / vja.fetchAbort（Bun経由の汎用fetch、WebKitタイムアウト回避）
+const _vjaFetch = makeVjaFetch(_fetchPendingMap, _fetchAbortPendingMap, s.fetchRequest, s.fetchAbortRequest);
+w.vja.fetch = _vjaFetch.fetch;
+w.vja.fetchAbort = _vjaFetch.fetchAbort;
 
 w.vja.cloud = w.vja.cloud || {};
 w.vja.cloud.list = () =>
