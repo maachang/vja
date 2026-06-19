@@ -5,11 +5,7 @@
 import { Electroview } from "electrobun/view";
 import "./vja-runtime.js";
 import type { VjaRPCType } from "../shared/types";
-import { makeFetchMaps, makeVjaFetch, makeFetchResultHandlers, Pending } from "./bridge-common";
-
-type Resolver<T> = (v: T) => void;
-type Rejecter = (e: Error) => void;
-interface Pending<T> { resolve: Resolver<T>; reject: Rejecter; }
+import { makeFetchMaps, makeVjaFetch, makeFetchResultHandlers, type Pending } from "./bridge-common";
 
 const pending = {
     navigateForm: null as Pending<{ ok: boolean; error?: string }> | null,

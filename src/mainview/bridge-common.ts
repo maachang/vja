@@ -61,22 +61,4 @@ export const makeFetchResultHandlers = (
     },
 });
 
-// ── vja.session 生成ヘルパー ──────────────────────────
-export const makeVjaSession = (
-    mkPromise: <K extends string, T>(key: K, send: () => void) => Promise<T>,
-    sendSessionGet: (args: { key: string }) => void,
-    sendSessionSet: (args: { key: string; value: string | null }) => void,
-) => ({
-    get: (key: string, defaultVal: any = null) =>
-        mkPromise<any, any>("sessionGet", () => sendSessionGet({ key }))
-            .then((r: any) => r.value !== null ? r.value : defaultVal),
-    set: (key: string, value: string | null) =>
-        mkPromise<any, any>("sessionSet", () => sendSessionSet({ key, value }))
-            .then((r: any) => r.ok),
-    delete: (key: string) =>
-        mkPromise<any, any>("sessionSet", () => sendSessionSet({ key, value: null }))
-            .then((r: any) => r.ok),
-    clear: () =>
-        mkPromise<any, any>("sessionSet", () => sendSessionSet({ key: "__clear_all__", value: "__clear__" }))
-            .then((r: any) => r.ok),
-});
+

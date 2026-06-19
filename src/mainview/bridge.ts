@@ -3,13 +3,7 @@
 
 import { Electroview } from "electrobun/view";
 import type { DbRow, DbResult } from "../shared/types";
-import { makeFetchMaps, makeVjaFetch, makeFetchResultHandlers } from "./bridge-common";
-
-// ── コールバック待機マップ ────────────────────────────
-type Resolver<T> = (v: T) => void;
-type Rejecter = (e: Error) => void;
-
-interface Pending<T> { resolve: Resolver<T>; reject: Rejecter; }
+import { makeFetchMaps, makeVjaFetch, makeFetchResultHandlers, type Pending } from "./bridge-common";
 
 const pending = {
     openFile: null as Pending<{ content: string | null; path: string | null }> | null,
@@ -108,7 +102,7 @@ const rpc = Electroview.defineRPC({
                     const stopBtn = document.getElementById("btn-stop-project") as HTMLButtonElement | null;
                     if (runBtn) { runBtn.style.display = ""; runBtn.disabled = false; }
                     if (stopBtn) stopBtn.style.display = "none";
-                } catch { }
+                } catch (e: any) { console.debug("[stopProjectResult] DOM update failed:", e.message); }
             },
             navigateFormResult: (v: any) => resolve("navigateForm", v),
             sessionGetResult: (v: any) => resolve("sessionGet", v),
