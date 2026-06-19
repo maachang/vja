@@ -116,6 +116,7 @@ const encryptCredential = async (plain: string): Promise<string> => {
 
 // 現在のプロジェクト拡張ランタイム
 let _currentProjectExtRuntime: string = "";
+let _devToolsOpen: boolean = false;
 
 const loadLastDir = (): string => {
     try {
@@ -192,7 +193,13 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
 
             // ── DevTools 開閉 ─────────────────────────
             toggleDevToolsRequest: async () => {
-                browserWindow.webview.toggleDevTools();
+                if (_devToolsOpen) {
+                    browserWindow.webview.closeDevTools();
+                    _devToolsOpen = false;
+                } else {
+                    browserWindow.webview.openDevTools();
+                    _devToolsOpen = true;
+                }
             },
 
             // ── プロジェクト停止（デザイナーウィンドウから） ──
