@@ -2,8 +2,8 @@
 // bridge.ts / project-bridge.ts 共通ユーティリティ
 
 // ── Pending 型 ───────────────────────────────────────
-export type Resolver<T> = (v: T) => void;
-export type Rejecter = (e: Error) => void;
+type Resolver<T> = (v: T) => void;
+type Rejecter = (e: Error) => void;
 export interface Pending<T> { resolve: Resolver<T>; reject: Rejecter; }
 
 // ── fetch Map 生成ヘルパー ────────────────────────────
