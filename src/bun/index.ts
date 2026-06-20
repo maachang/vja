@@ -1070,9 +1070,9 @@ const buildWidgetHtml = (w: any): string => {
         case "radio":
             return `<label ${id} style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};${font};cursor:pointer"><input type="radio" name="${esc2(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc2(p.text)}</label>`;
         case "listbox":
-            return `<select ${id} multiple style="${base}background:${p.bg};color:${p.fg};${font};${border}">${(p.items || "").split("\n").map((i: string) => `<option>${esc2(i)}</option>`).join("")}</select>`;
+            return `<select ${id} multiple style="${base}background:${p.bg};color:${p.fg};${font};${border}">${(p.items || "").split("\n").map((s: string) => { const idx = s.indexOf("="); const label = idx > 0 ? s.slice(0, idx).trim() : s.trim(); const val = idx > 0 ? s.slice(idx + 1).trim() : s.trim(); return `<option value="${esc2(val)}">${esc2(label)}</option>`; }).join("")}</select>`;
         case "selectBox":
-            return `<select ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border}">${(p.items || "").split("\n").map((i: string) => `<option>${esc2(i)}</option>`).join("")}</select>`;
+            return `<select ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border}">${(p.items || "").split("\n").map((s: string) => { const idx = s.indexOf("="); const label = idx > 0 ? s.slice(0, idx).trim() : s.trim(); const val = idx > 0 ? s.slice(idx + 1).trim() : s.trim(); return `<option value="${esc2(val)}">${esc2(label)}</option>`; }).join("")}</select>`;
         case "groupbox":
             return `<fieldset ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border}"><legend>${esc2(p.text)}</legend></fieldset>`;
         case "picture":
