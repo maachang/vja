@@ -1169,6 +1169,11 @@ const buildWidgetHtml = (w: any): string => {
                 <span style="font-size:9px;flex-shrink:0">▼</span>
             </div>`;
         }
+        case "datagrid": {
+            const bc = p.borderColor || "#cccccc";
+            const fs = p.fontSize || 12;
+            return `<div ${id} style="${base}overflow:auto;border:1px solid ${bc};box-sizing:border-box;font-size:${fs}px" data-columns="${esc2(p.columns || "ID:20\n名前:50\n値:30")}" data-row-bg="${p.rowBg || "#ffffff"}" data-row-alt-bg="${p.rowAltBg || "#f5f5f5"}" data-row-fg="${p.rowFg || "#000000"}" data-border-color="${bc}" data-max-rows="${p.maxRows || 0}" data-header-bg="${p.headerBg || "#4a4a6a"}" data-header-fg="${p.headerFg || "#ffffff"}"><table style="width:100%;border-collapse:collapse;table-layout:fixed"><thead></thead><tbody></tbody></table></div>`;
+        }
         default:
             return `<div ${id} style="${base}"></div>`;
     }
@@ -1180,6 +1185,99 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     // タイトルバーのクローズボタン用: vja.app.closeWindow のラッパー
     lines.push('window._vjaClose = function() { window.vja?.app?.closeWindow?.(); };');
     lines.push("document.addEventListener('DOMContentLoaded', function() {");
+    // datagrid共通HTML生成関数を定義（初期表示・setData共通）
+    const hasDatagrid = (form.widgets || []).some((w: any) => w.tag === "datagrid");
+    if (hasDatagrid) {
+        lines.push(`  // datagrid共通HTML生成関数`);
+        lines.push(`  window._buildDatagridHtml = function(el, rows) {`);
+        lines.push(`    const colDefs = (el.dataset.columns || "").split(/[\\n;]/).filter(function(s) { return s.trim(); }).map(function(c) {`);
+        lines.push(`      const parts = c.trim().split(":");`);
+        lines.push(`      return { label: parts[0] || "", width: parseInt(parts[1]) || 20 };`);
+        lines.push(`    });`);
+        lines.push(`    const bc = el.dataset.borderColor || "#cccccc";`);
+        lines.push(`    const hbg = el.dataset.headerBg || "#4a4a6a";`);
+        lines.push(`    const hfg = el.dataset.headerFg || "#ffffff";`);
+        lines.push(`    const rowBg = el.dataset.rowBg || "#ffffff";`);
+        lines.push(`    const rowAltBg = el.dataset.rowAltBg || "#f5f5f5";`);
+        lines.push(`    const rowFg = el.dataset.rowFg || "#000000";`);
+        lines.push(`    const maxRows = el.dataset.maxRows ? parseInt(el.dataset.maxRows) : 0;`);
+        lines.push(`    const displayRows = maxRows > 0 ? (rows || []).slice(0, maxRows) : (rows || []);`);
+        lines.push(`    const firstRow = displayRows[0] || null;`);
+        lines.push(`    const hasNo = firstRow ? Object.keys(firstRow).some(function(k) { return k.toLowerCase() === "no"; }) : colDefs.some(function(cd) { return cd.label.toLowerCase() === "no"; });`);
+        lines.push(`    const thStyle = "padding:3px 6px;border:1px solid " + bc + ";text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis";`);
+        lines.push(`    const tdStyle = "padding:2px 6px;border:1px solid " + bc + ";white-space:nowrap;overflow:hidden;text-overflow:ellipsis";`);
+        lines.push(`    // カラム名→幅のMapを生成`);
+        lines.push(`    const colWidthMap = {};`);
+        lines.push(`    colDefs.forEach(function(cd) { colWidthMap[cd.label.toLowerCase()] = cd.width; });`);
+        lines.push(`    // ── ヘッダー生成 ──`);
+        lines.push(`    const thead = el.querySelector("thead");`);
+        lines.push(`    if (thead) {`);
+        lines.push(`      const headerRow = document.createElement("tr");`);
+        lines.push(`      headerRow.style.cssText = "background:" + hbg + ";color:" + hfg;`);
+        lines.push(`      if (!hasNo) {`);
+        lines.push(`        const th = document.createElement("th");`);
+        lines.push(`        th.style.cssText = thStyle + ";width:5%";`);
+        lines.push(`        th.textContent = "No";`);
+        lines.push(`        headerRow.appendChild(th);`);
+        lines.push(`      }`);
+        lines.push(`      if (firstRow) {`);
+        lines.push(`        Object.keys(firstRow).forEach(function(key) {`);
+        lines.push(`          const th = document.createElement("th");`);
+        lines.push(`          const w = colWidthMap[key.toLowerCase()] || 20;`);
+        lines.push(`          th.style.cssText = thStyle + ";width:" + w + "%";`);
+        lines.push(`          th.textContent = key;`);
+        lines.push(`          headerRow.appendChild(th);`);
+        lines.push(`        });`);
+        lines.push(`      } else {`);
+        lines.push(`        colDefs.forEach(function(cd) {`);
+        lines.push(`          const th = document.createElement("th");`);
+        lines.push(`          th.style.cssText = thStyle + ";width:" + cd.width + "%";`);
+        lines.push(`          th.textContent = cd.label;`);
+        lines.push(`          headerRow.appendChild(th);`);
+        lines.push(`        });`);
+        lines.push(`      }`);
+        lines.push(`      thead.innerHTML = "";`);
+        lines.push(`      thead.appendChild(headerRow);`);
+        lines.push(`    }`);
+        lines.push(`    // ── ボディ生成 ──`);
+        lines.push(`    const tbody = el.querySelector("tbody");`);
+        lines.push(`    if (tbody) {`);
+        lines.push(`      tbody.innerHTML = "";`);
+        lines.push(`      displayRows.forEach(function(row, i) {`);
+        lines.push(`        const tr = document.createElement("tr");`);
+        lines.push(`        tr.style.background = i % 2 === 0 ? rowBg : rowAltBg;`);
+        lines.push(`        tr.style.color = rowFg;`);
+        lines.push(`        if (!hasNo) {`);
+        lines.push(`          const td = document.createElement("td");`);
+        lines.push(`          td.style.cssText = tdStyle;`);
+        lines.push(`          td.textContent = String(i + 1);`);
+        lines.push(`          tr.appendChild(td);`);
+        lines.push(`        }`);
+        lines.push(`        Object.values(row).forEach(function(val) {`);
+        lines.push(`          const td = document.createElement("td");`);
+        lines.push(`          td.style.cssText = tdStyle;`);
+        lines.push(`          td.textContent = val == null ? "" : String(val);`);
+        lines.push(`          tr.appendChild(td);`);
+        lines.push(`        });`);
+        lines.push(`        tbody.appendChild(tr);`);
+        lines.push(`      });`);
+        lines.push(`    }`);
+        lines.push(`  };`);
+        // 各datagridの初期表示とsetData登録
+        for (const w of (form.widgets || [])) {
+            if (w.tag !== "datagrid") continue;
+            lines.push(`  // ${w.name} 初期表示`);
+            lines.push(`  (function() {`);
+            lines.push(`    const el = document.getElementById(${JSON.stringify(w.name)});`);
+            lines.push(`    if (el) window._buildDatagridHtml(el, []);`);
+            lines.push(`  })();`);
+            lines.push(`  // ${w.name}.setData`);
+            lines.push(`  window[${JSON.stringify(w.name + "_setData")}] = function(rows) {`);
+            lines.push(`    const el = document.getElementById(${JSON.stringify(w.name)});`);
+            lines.push(`    if (el) window._buildDatagridHtml(el, rows);`);
+            lines.push(`  };`);
+        }
+    }
     for (const w of (form.widgets || [])) {
         const evs = w.events || {};
         const jsCode = w.jsCode || {};
