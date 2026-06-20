@@ -5719,6 +5719,21 @@
             }
         });
 
+        // ── ↑↓キーで入力要素間を移動（モーダル・プロパティパネル共通） ──
+        document.addEventListener("keydown", function _moveInputFocus(e) {
+            if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+            const tag = e.target.tagName;
+            if (tag !== "INPUT" && tag !== "TEXTAREA") return;
+            const scope = e.target.closest("#modal-root, #modal-layer-1, #modal-layer-2, #props-panel");
+            if (!scope) return;
+            const inputs = [...scope.querySelectorAll("input[type='text'],input[type='number'],textarea")];
+            const idx = inputs.indexOf(e.target);
+            if (idx < 0) return;
+            e.preventDefault();
+            const next = e.key === "ArrowDown" ? inputs[idx + 1] : inputs[idx - 1];
+            if (next) next.focus();
+        });
+
         document.addEventListener("mousedown", (e) => {
             if (!e.target.closest(".menu-item")) closeAllMenus();
             if (!e.target.closest("#ctx") && !e.target.closest(".widget"))
