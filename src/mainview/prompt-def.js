@@ -53,14 +53,23 @@
   - 使用例: "const name = vja.widget.getValue('txtName');"
   - 使用例説明: txtNameウィジェットの入力値を取得する
 
-- 関数名: vja.widget.setValue(name, value):
-  - 説明: 指定名のウィジェットに値をセットする
+- 関数名: vja.widget.setValue(name, value, options?):
+  - 説明: 指定名のウィジェットに値をセットする。ウィジェットの種類に応じて自動的に適切な処理を行う
   - 引数:
     - name: string - ウィジェット名
-    - value: string|number|boolean - セットする値
+    - value: string|number|boolean|array|object[] - セットする値
+      - テキスト系（text/label等）: string/number
+      - checkbox/radio: boolean
+      - selectBox/listBox（選択）: string（value値を指定）
+      - selectBox/listBox（項目更新）: array（例: ['項目1', '項目2'] または [{label:'表示名', value:'値'}]）
+      - datagrid（テーブル）: object[]（行データの配列）
+    - options?: object - オプション（datagrid時のみ有効）
+      - startNo?: number - No列の自動採番開始値（省略時は1）
   - 戻り値: なし
   - 使用例: "vja.widget.setValue('txtResult', '処理完了');"
-  - 使用例説明: txtResultウィジェットに「処理完了」をセットする
+  - 使用例（テーブル）: "vja.widget.setValue('tblUsers', rows, { startNo: 1 });"
+  - 使用例（選択肢更新）: "vja.widget.setValue('selCategory', ['食品', '電化製品', '衣類']);"
+  - 使用例説明: ウィジェットの種類に応じて値・データ・選択肢をセットする
 
 - 関数名: vja.widget.show(name):
   - 説明: 指定名のウィジェットを表示する
@@ -570,11 +579,12 @@
     - name: string - Widget name
   - Return value: "string | number | boolean | null - Widget value"
 
-- Function name: vja.widget.setValue(name, value):
-  - Description: Sets a value to the widget with the specified name.
+- Function name: vja.widget.setValue(name, value, options?):
+  - Description: Sets a value to the widget. Automatically handles each widget type.
   - Arguments:
     - name: string - Widget name
-    - value: string|number|boolean - Value to set
+    - value: string|number|boolean|array|object[] - Value to set (text/number for text widgets, boolean for checkbox, array for select items, object[] for datagrid)
+    - options?: object - For datagrid only. { startNo?: number }
   - Return value: None
 
 - Function name: vja.widget.show(name):
@@ -596,21 +606,6 @@
     - name: string - Widget name
   - visible: boolean - Show for true, hide for false
   - Return Value: None
-
-- Function name: vja.widget.setItems(name, items[]):
-  - Description: Sets items in a selectBox or listBox
-  - Arguments:
-    - name: string - Widget name
-    - items: string[] | { label: string, value: string }[] - Array of items
-  - Return value: None
-
-- Function name: vja.widget.setTableData(name, rows[], options?):
-  - Description: Sets data in a table widget.
-  - Arguments:
-  - name: string - Table widget name
-  - rows: Record<string, any>[] - Array of row data
-  - options?: object - Optional. { startNo?: number } startNo: Starting number for No column auto-numbering (default: 1). Use for paging.
-  - Return value: None
 
 - Function name: vja.widget.getAllInputs():
   - Description: Gets the values of all input widgets in a form.

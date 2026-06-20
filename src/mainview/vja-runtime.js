@@ -57,22 +57,47 @@
         },
 
         // 値のセット
-        setValue(name, value) {
+        setValue(name, value, options = {}) {
             const el = _getEl(name);
             if (!el) return;
             const tag = el.tagName.toLowerCase();
+            // datagrid: setTableDataと同等
+            if (el.dataset.columns !== undefined) {
+                const fn = global[`${name}_setData`];
+                if (typeof fn === "function") fn(value, options);
+                return;
+            }
             if (tag === "input") {
                 if (el.type === "checkbox" || el.type === "radio") {
                     el.checked = !!value;
                 } else {
                     el.value = value ?? "";
                 }
-            } else if (tag === "select" || tag === "textarea") {
+            } else if (tag === "select") {
+                // 配列が渡された場合はsetItemsと同等
+                if (Array.isArray(value)) {
+                    const cur = el.value;
+                    el.innerHTML = "";
+                    value.forEach(item => {
+                        const opt = document.createElement("option");
+                        if (typeof item === "object") {
+                            opt.value = item.value ?? item.label ?? item;
+                            opt.textContent = item.label ?? item.value ?? item;
+                        } else {
+                            opt.value = opt.textContent = String(item);
+                        }
+                        el.appendChild(opt);
+                    });
+                    el.value = cur;
+                } else {
+                    el.value = value ?? "";
+                }
+            } else if (tag === "textarea") {
                 el.value = value ?? "";
             } else if (tag === "span" || tag === "label") {
                 el.textContent = value ?? "";
             } else if (tag === "div") {
-                // progressbar: data-val/data-min/data-max から幅を計算
+                // progressbar: data-val/data-min/data-max で管理
                 if (el.dataset.val !== undefined) {
                     const min = Number(el.dataset.min ?? 0);
                     const max = Number(el.dataset.max ?? 100);
@@ -85,6 +110,14 @@
                 }
             }
             el.dispatchEvent(new Event("change", { bubbles: true }));
+        },
+        // setTableData: setValueのラッパー（後方互換）
+        setTableData(name, rows, options = {}) {
+            this.setValue(name, rows, options);
+        },
+        // setItems: setValueのラッパー（後方互換）
+        setItems(name, items) {
+            this.setValue(name, items);
         },
 
         // テキスト取得（label/text向け）
@@ -119,23 +152,7 @@
         },
 
         // listBox / selectBox のアイテム設定
-        setItems(name, items) {
-            const el = _getEl(name);
-            if (!el || el.tagName.toLowerCase() !== "select") return;
-            const cur = el.value;
-            el.innerHTML = "";
-            (items || []).forEach(item => {
-                const opt = document.createElement("option");
-                if (typeof item === "object") {
-                    opt.value = item.value ?? item.label ?? item;
-                    opt.textContent = item.label ?? item.value ?? item;
-                } else {
-                    opt.value = opt.textContent = String(item);
-                }
-                el.appendChild(opt);
-            });
-            el.value = cur;
-        },
+
 
         // 選択インデックス
         getSelectedIndex(name) {
@@ -158,11 +175,7 @@
         },
 
         // テーブル（datagrid）にデータをセット
-        setTableData(name, rows, options = {}) {
-            const fn = global[`${name}_setData`];
-            if (typeof fn === "function") fn(rows, options);
-            else console.warn(`[vja.widget.setTableData] ${name}_setData が見つかりません`);
-        },
+
 
         // フォーム内の全入力値を取得 { name: value, ... }
         getAllInputs() {
