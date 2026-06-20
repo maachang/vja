@@ -1218,7 +1218,7 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
         lines.push(`    const thead = el.querySelector("thead");`);
         lines.push(`    if (thead) {`);
         lines.push(`      const headerRow = document.createElement("tr");`);
-        lines.push(`      headerRow.style.cssText = "background:" + hbg + ";color:" + hfg;`);
+        lines.push(`      headerRow.style.cssText = "background:" + hbg + ";color:" + hfg + ";position:sticky;top:0;z-index:1";`);
         lines.push(`      colDefs.forEach(function(cd) {`);
         lines.push(`        const th = document.createElement("th");`);
         lines.push(`        th.style.cssText = thStyle + ";width:" + cd.width + "%";`);
