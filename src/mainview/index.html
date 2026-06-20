@@ -4325,7 +4325,7 @@
                     "<td><input class='col-check' type='checkbox' " + (c.index ? "checked" : "") + " " +
                     "onchange=\"" + oi_index + "\"></td>" +
                     "<td style='white-space:nowrap'>" + defCell + "</td>" +
-                    "<td><button class='tbl-action-btn del' onclick='tblColDelete(" + i + ")'>✕</button></td>" +
+                    "<td style='white-space:nowrap'><button class='tbl-action-btn' onclick='tblColInsert(" + i + ")' style='margin-right:2px'>＋</button><button class='tbl-action-btn del' onclick='tblColDelete(" + i + ")'>✕</button></td>" +
                     "</tr>";
             }).join("");
 
@@ -4643,6 +4643,14 @@
             // 現在のDOMから値を同期
             tblSyncFromDOM();
             _tblEdit.columns.push(defaultColumn());
+            renderTableEditModal();
+        }
+
+        // カラム挿入（指定行の前に追加）
+        function tblColInsert(idx) {
+            if (!_tblEdit) return;
+            tblSyncFromDOM();
+            _tblEdit.columns.splice(idx, 0, defaultColumn());
             renderTableEditModal();
         }
 
