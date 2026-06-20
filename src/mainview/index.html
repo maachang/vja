@@ -1452,6 +1452,14 @@
         ];
 
         const PDEFS = {
+            form: [
+                {k: "name", lb: "name", t: "text", sp: "formName"},
+                {k: "title", lb: "title", t: "text", sp: "formTitle"},
+                {k: "w", lb: "Width", t: "num", sp: "formW"},
+                {k: "h", lb: "Height", t: "num", sp: "formH"},
+                {k: "bg", lb: "背景色", t: "color", sp: "formBg"},
+                {k: "description", lb: "説明（任意）", t: "area", sp: "formDesc"},
+            ],
             button: [
                 ...PP_POS,
                 {sep: "外観"},
@@ -1672,7 +1680,19 @@
             }
 
             if (!selId) {
-                renderFormProps();
+                // フォームプロパティをPDEFS.formで共通描画
+                const defs = PDEFS.form || [];
+                defs.forEach((d) => {
+                    if (d.sep) { pl.appendChild(makeSec(d.sep)); return; }
+                    let val;
+                    if (d.sp === "formName") val = formCfg.name;
+                    else if (d.sp === "formTitle") val = formCfg.title;
+                    else if (d.sp === "formW") val = formCfg.w;
+                    else if (d.sp === "formH") val = formCfg.h;
+                    else if (d.sp === "formBg") val = formCfg.bg;
+                    else if (d.sp === "formDesc") val = formCfg.description;
+                    pl.appendChild(makeProw(d, val, null));
+                });
                 return;
             }
             const w = getWidget(selId);
@@ -1760,7 +1780,7 @@
                 case "itemsdef":
                     return `<button onmousedown="openItemsDefEditor(${w2})" class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ 項目編集…</button>`;
                 case "area":
-                    return `<textarea class="pv-textarea" style="height:56px" oninput="setProp('${d.k}','${d.sp || ""}',this.value,${w2})" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">${esc(val || "")}</textarea>`;
+                    return `<textarea class="pv-textarea" style="height:56px" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">${esc(val || "")}</textarea>`;
                 case "img": {
                     const hasImg = val && val.startsWith("data:");
                     const iid = "pvimg_" + w2;
@@ -1796,6 +1816,14 @@
         }
 
         function setProp(k, sp, val, wid) {
+            // フォームプロパティの処理
+            if (sp === "formName") { setFormCfg("name", val); return; }
+            if (sp === "formTitle") { setFormCfg("title", val); return; }
+            if (sp === "formW") { setFormCfg("w", +val); return; }
+            if (sp === "formH") { setFormCfg("h", +val); return; }
+            if (sp === "formBg") { setFormCfg("bg", val); return; }
+            if (sp === "formDesc") { setFormCfg("description", val); return; }
+            // ウィジェットプロパティの処理
             const w = getWidget(wid);
             if (!w) return;
             if (sp === "name") w.name = val;
@@ -1915,42 +1943,6 @@
         }
         function syncPropXY(w) {_syncPropValues({"Left": w.x, "Top": w.y});}
         function syncPropWH(w) {_syncPropValues({"Width": w.w, "Height": w.h});}
-
-        function renderFormProps() {
-            const pl = $("plist");
-            [
-                {lb: "name", k: "name", t: "text"},
-                {lb: "title", k: "title", t: "text"},
-                {lb: "Width", k: "w", t: "num"},
-                {lb: "Height", k: "h", t: "num"},
-                {lb: "背景色", k: "bg", t: "color"},
-                {lb: "説明（任意）", k: "description", t: "area"},
-            ].forEach((d) => {
-                const row = document.createElement("div");
-                row.className = "prow";
-                let inp = "";
-                if (d.t === "text")
-                    inp = `<input type="text" class="pv-input" value="${esc(formCfg[d.k] ?? "")}" onchange="setFormCfg('${d.k}',this.value)">`;
-                if (d.t === "num") {
-                    const fnid = "pfn_" + d.k;
-                    inp = `<div style="display:flex;align-items:center;gap:2px;width:100%">` +
-                        `<input type="number" id="${fnid}" class="pv-input" value="${formCfg[d.k] ?? 0}" ` +
-                        `style="flex:1;height:22px;text-align:right" ` +
-                        `onchange="setFormCfg('${d.k}',+this.value)">` +
-                        `<button onmousedown="pvFormNumStep('${fnid}',1,'${d.k}')" ` +
-                        `style="width:18px;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:10px;cursor:pointer;padding:0;flex-shrink:0">▲</button>` +
-                        `<button onmousedown="pvFormNumStep('${fnid}',-1,'${d.k}')" ` +
-                        `style="width:18px;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:10px;cursor:pointer;padding:0;flex-shrink:0">▼</button>` +
-                        `</div>`;
-                }
-                if (d.t === "color")
-                    inp = `<input type="color" class="pv-color" value="${formCfg[d.k] || "#ececec"}" oninput="setFormCfg('${d.k}',this.value)" onchange="setFormCfg('${d.k}',this.value)">`;
-                if (d.t === "area")
-                    inp = `<textarea class="pv-textarea" style="height:60px;resize:vertical;font-size:13px" oninput="setFormCfg('${d.k}',this.value)" onchange="setFormCfg('${d.k}',this.value)">${esc(formCfg[d.k] || "")}</textarea>`;
-                row.innerHTML = `<div class="pk">${d.lb}</div><div class="pv">${inp}</div>`;
-                pl.appendChild(row);
-            });
-        }
 
         function setFormCfg(k, v) {
             if (k === "name") {
