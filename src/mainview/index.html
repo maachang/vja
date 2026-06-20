@@ -1012,7 +1012,8 @@
                         const parts = c.trim().split(":");
                         const label = parts[0] || ("列" + (ci + 1));
                         const width = parseInt(parts[1]) || 20;
-                        return {key: "col" + ci, label, width};
+                        const displayName = parts[2] || "";
+                        return {key: "col" + ci, label, width, displayName};
                     });
                     const maxR = p.maxRows || 5;
                     const hbg = p.headerBg || "#4a4a6a";
@@ -1027,7 +1028,7 @@
                     html += `<table style="width:100%;border-collapse:collapse;table-layout:fixed">`;
                     html += `<thead><tr style="background:${hbg};color:${hfg}">`;
                     cols.forEach(c => {
-                        html += `<th style="width:${c.width}%;padding:3px 6px;border:1px solid ${bc};text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.label)}</th>`;
+                        html += `<th style="width:${c.width}%;padding:3px 6px;border:1px solid ${bc};text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.displayName || c.label)}</th>`;
                     });
                     html += `</tr></thead><tbody>`;
                     for (let r = 0; r < Math.min(maxR, 5); r++) {
@@ -5474,9 +5475,9 @@
             if (!w) return;
             const rows = (w.props.columns || "").split(/[;\n]/).filter(s => s.trim()).map((c) => {
                 const parts = c.trim().split(":");
-                return {label: parts[0] || "", width: parts[1] || "80"};
+                return {label: parts[0] || "", width: parts[1] || "20", displayName: parts[2] || ""};
             });
-            if (rows.length === 0) rows.push({label: "", width: "80"});
+            if (rows.length === 0) rows.push({label: "", width: "20", displayName: ""});
             _coldefWid = wid;
             _coldefRows = rows;
             renderColDefModal();
@@ -5488,6 +5489,7 @@
                 tbody += "<tr>"
                     + "<td>" + (i + 1) + "</td>"
                     + "<td><input type='text' value='" + esc(r.label) + "' oninput=\"coldefUpdate(" + i + ",'label',this.value)\" placeholder='カラム名'></td>"
+                    + "<td><input type='text' value='" + esc(r.displayName || "") + "' oninput=\"coldefUpdate(" + i + ",'displayName',this.value)\" placeholder='表示名（省略可）'></td>"
                     + "<td><input type='number' value='" + esc(r.width) + "' oninput=\"coldefUpdate(" + i + ",'width',this.value)\" style='width:70px' min='1' max='100'></td>"
                     + "<td style='white-space:nowrap'>"
                     + "<button class='del-btn' onclick='coldefInsertRow(" + i + ")' title='この行の前に挿入' style='margin-right:2px'>＋</button>"
@@ -5501,7 +5503,7 @@
                 + "<div class='infobox'>カラム名と幅(%)を定義します。Noは自動採番。</div>"
                 + "<div class='coldef-scroll'>"
                 + "<table class='coldef-table'>"
-                + "<thead><tr><th style='width:36px'>No</th><th>カラム名</th><th style='width:80px'>幅(%)</th><th style='width:56px'></th></tr></thead>"
+                + "<thead><tr><th style='width:36px'>No</th><th>カラム名</th><th>表示名</th><th style='width:80px'>幅(%)</th><th style='width:56px'></th></tr></thead>"
                 + "<tbody>" + tbody + "</tbody>"
                 + "</table>"
                 + "</div>"
@@ -5518,12 +5520,12 @@
         }
         function coldefAddRow() {
             if (!_coldefRows || _coldefRows.length >= 100) return;
-            _coldefRows.push({label: "", width: "80"});
+            _coldefRows.push({label: "", width: "20", displayName: ""});
             renderColDefModal();
         }
         function coldefInsertRow(idx) {
             if (!_coldefRows || _coldefRows.length >= 100) return;
-            _coldefRows.splice(idx, 0, {label: "", width: "80"});
+            _coldefRows.splice(idx, 0, {label: "", width: "20", displayName: ""});
             renderColDefModal();
         }
         function coldefDelRow(idx) {
@@ -5538,7 +5540,7 @@
             if (!w) return;
             const valid = (_coldefRows || []).filter(r => r.label.trim());
             if (valid.length === 0) {showVjaAlert("カラム名を1つ以上入力してください"); return;}
-            w.props.columns = valid.map(r => r.label.trim() + ":" + (parseInt(r.width) || 80)).join("\n");
+            w.props.columns = valid.map(r => r.label.trim() + ":" + (parseInt(r.width) || 20) + (r.displayName?.trim() ? ":" + r.displayName.trim() : "")).join("\n");
             closeModal();
             pushUndo();
             renderWidget(w, false);
