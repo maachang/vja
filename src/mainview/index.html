@@ -819,6 +819,7 @@
         let _tblEditIdx = -1;
         let _coldefWid = null;
         let _coldefRows = [];
+        let _coldefMaxRows = 0;
         let undoStack = [];
         let redoStack = [];
         let activeTool = "pointer";
@@ -5482,6 +5483,7 @@
             if (rows.length === 0) rows.push({label: "", width: "20", displayName: ""});
             _coldefWid = wid;
             _coldefRows = rows;
+            _coldefMaxRows = w.props.maxRows || 0;
             renderColDefModal();
         }
         function renderColDefModal() {
@@ -5503,6 +5505,10 @@
                 + mhdrHTML("📊 カラム定義エディタ")
                 + "<div class='mbody' style='gap:6px'>"
                 + "<div class='infobox'>カラム名と幅(%)を定義します。Noは自動採番。</div>"
+                + "<div style='display:flex;align-items:center;gap:8px;padding:4px 0'>"
+                + "<label style='font-size:12px;color:var(--text2);white-space:nowrap'>最大表示件数（0=無制限）:</label>"
+                + "<input type='number' id='coldef-maxrows' value='" + (_coldefMaxRows || 0) + "' min='0' class='pv-input' style='width:80px'>"
+                + "</div>"
                 + "<div class='coldef-scroll'>"
                 + "<table class='coldef-table'>"
                 + "<thead><tr><th style='width:36px'>No</th><th>カラム名</th><th>表示名</th><th style='width:80px'>幅(%)</th><th style='width:56px'></th></tr></thead>"
@@ -5543,6 +5549,7 @@
             const valid = (_coldefRows || []).filter(r => r.label.trim());
             if (valid.length === 0) {showVjaAlert("カラム名を1つ以上入力してください"); return;}
             w.props.columns = valid.map(r => r.label.trim() + ":" + (parseInt(r.width) || 20) + (r.displayName?.trim() ? ":" + r.displayName.trim() : "")).join("\n");
+            w.props.maxRows = parseInt($("coldef-maxrows")?.value) || 0;
             closeModal();
             pushUndo();
             renderWidget(w, false);
