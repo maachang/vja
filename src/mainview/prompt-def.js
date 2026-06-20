@@ -1094,10 +1094,11 @@
         const rule = isAppEvent
             ? // バックエンド.
             `
-  - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
   - 全ての vja.* 呼び出しは await を付ける
-  - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
+  - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
   - vja.db.* は、sqlite3用SQLで実装する
+  - テーブルのI/Oはsqlのwhereを利用して実施する
+  - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
   - 変数は if/else ブロックの外で宣言する（ブロックスコープによる参照エラーを防ぐ）
     - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params); // エラー
     - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
@@ -1108,11 +1109,12 @@
   - 生成するJavascriptコードは必ず "インライン" で記述。ヘルパー関数の記載は絶対禁止（例: handleXxx, doXxx, addEventListener 等の関数定義は絶対に禁止）
     - 悪い例: async function handleButtonClick() { ... }
     - 良い例: const result = await vja.app.showConfirm("...");
-  - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
   - 全ての vja.* 呼び出しは await を付ける
+  - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
+  - vja.db.* は、sqlite3用SQLで実装する
+  - テーブルのI/Oはsqlのwhereを利用して実施する
   - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
   - window.confirm, window.alertは原則禁止(vja.app.showDialog, vja.app.showConfirmを利用)
-  - vja.db.* は、sqlite3用SQLで実装する
   - 変数は if/else ブロックの外で宣言することを厳守する（ブロックスコープによる参照エラーを防ぐ）
     - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params); // エラー
     - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
@@ -1195,10 +1197,11 @@ ${extRuntimeDoc}
         const rule = isAppEvent
             ? // バックエンド.
             `
-  - Always use placeholders (?) in SQL queries (to prevent SQL injection).
-  - Add "await" to all "vja.*" calls.
+  - Prefix all "vja.*" calls with "await".
+  - Always use placeholders ("?") for SQL (to prevent SQL injection).
+  - Implement "vja.db.*" using SQL compatible with "sqlite3".
+  - Perform table I/O operations using SQL "WHERE" clauses.
   - Use "vja.form.navigate('screen name')" for screen transitions (never use "location").
-  - The vja.db.* files are implemented using SQL for sqlite3.
   - Strictly adhere to declaring variables outside of if/else blocks (to prevent reference errors caused by block scope).
   - Please leave comments in Japanese.
 `.trim()
@@ -1207,11 +1210,12 @@ ${extRuntimeDoc}
   - The generated JavaScript code must be written "inline". Helper functions are strictly prohibited (e.g., function definitions such as handleXxx, doXxx, addEventListener, etc. are strictly prohibited).
     - Bad example: async function handleButtonClick() { ... }
     - Good example: const result = await vja.app.showConfirm("...");
-  - Always use placeholders (?) in SQL (to prevent SQL injection).
-  - Add "await" to all "vja.*" calls.
+  - Prefix all "vja.*" calls with "await".
+  - Always use placeholders ("?") for SQL (to prevent SQL injection).
+  - Implement "vja.db.*" using SQL compatible with "sqlite3".
+  - Perform table I/O operations using SQL "WHERE" clauses.
   - Use "vja.form.navigate('screen name')" for screen transitions (※ "location" should never be used).
   - Using window.confirm and window.alert is generally prohibited (use vja.app.showDialog and vja.app.showConfirm instead).
-  - The vja.db.* files are implemented using SQL for sqlite3.
   - Strictly adhere to declaring variables outside of if/else blocks (to prevent reference errors caused by block scope).
   - Please leave comments in Japanese.
 `.trim();
