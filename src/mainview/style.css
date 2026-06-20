@@ -4,6 +4,13 @@
     padding: 0;
 }
 
+/* ── フォーカス時の枠線（全入力要素で統一） ── */
+input:focus, textarea:focus, select:focus {
+    border-color: var(--accent) !important;
+    outline: 1px solid var(--accent) !important;
+    box-shadow: 0 0 0 2px rgba(91, 123, 250, 0.25) !important;
+}
+
 html {
     height: 100%;
     width: 100%;
@@ -595,13 +602,6 @@ body {
     outline: none;
 }
 
-.pv input:focus,
-.pv select:focus {
-    background: var(--bg4);
-    border-color: var(--accent);
-    outline: none;
-}
-
 .pv select option {
     background: var(--bg2);
     color: var(--text);
@@ -625,10 +625,6 @@ body {
     outline: none;
     padding: 3px 4px;
     width: 100%;
-}
-
-.pv textarea:focus {
-    border-color: var(--accent);
 }
 
 .psec {
@@ -2465,10 +2461,6 @@ input[type=number] {
     font-family: var(--font);
 }
 
-.pv-input:focus {
-    border-color: var(--accent);
-}
-
 select.pv-input {
     appearance: auto;
     -webkit-appearance: auto;
@@ -2478,11 +2470,6 @@ select.pv-input {
 select.pv-input option {
     background: var(--bg2);
     color: var(--text);
-}
-
-select.pv-input:focus {
-    background: var(--bg3);
-    border-color: var(--accent);
 }
 
 .pv-textarea {

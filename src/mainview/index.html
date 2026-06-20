@@ -1718,8 +1718,8 @@
                     const nMin = d.min ?? -9999;
                     const nMax = d.max ?? 9999;
                     return `<div style="display:flex;align-items:center;gap:2px;width:100%">` +
-                        `<input type="number" id="${nid}" value="${val ?? 0}" min="${nMin}" max="${nMax}" ` +
-                        `style="flex:1;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:13px;padding:0 4px;outline:none;-webkit-appearance:none;appearance:none;text-align:right" ` +
+                        `<input type="number" id="${nid}" class="pv-input" value="${val ?? 0}" min="${nMin}" max="${nMax}" ` +
+                        `style="flex:1;height:22px;-webkit-appearance:none;appearance:none;text-align:right" ` +
                         `onchange="setProp('${d.k}','${d.sp || ""}',+this.value,${w2})">` +
                         `<button onmousedown="pvNumStep('${nid}',1,'${d.k}','${d.sp || ""}',${w2},${nMin},${nMax})" ` +
                         `style="width:18px;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:10px;cursor:pointer;padding:0;flex-shrink:0">▲</button>` +
@@ -1932,8 +1932,8 @@
                 if (d.t === "num") {
                     const fnid = "pfn_" + d.k;
                     inp = `<div style="display:flex;align-items:center;gap:2px;width:100%">` +
-                        `<input type="number" id="${fnid}" value="${formCfg[d.k] ?? 0}" ` +
-                        `style="flex:1;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:13px;padding:0 4px;outline:none;text-align:right" ` +
+                        `<input type="number" id="${fnid}" class="pv-input" value="${formCfg[d.k] ?? 0}" ` +
+                        `style="flex:1;height:22px;text-align:right" ` +
                         `onchange="setFormCfg('${d.k}',+this.value)">` +
                         `<button onmousedown="pvFormNumStep('${fnid}',1,'${d.k}')" ` +
                         `style="width:18px;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:10px;cursor:pointer;padding:0;flex-shrink:0">▲</button>` +
@@ -5132,7 +5132,7 @@
                 ? (baseUrl
                     ? `<div style="display:flex;align-items:center;flex:1;min-width:160px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;overflow:hidden">
                         <span style="padding:0 4px;font-size:11px;color:var(--text3);white-space:nowrap;border-right:1px solid var(--border)">${esc(baseUrl)}</span>
-                        <input class="pv-input" style="border:none;flex:1;min-width:80px" placeholder="続きを入力"
+                        <input class="pv-input" style="flex:1;min-width:80px" placeholder="続きを入力"
                             value="${esc(editVal)}"
                             oninput="updateCloudField(${i},'sdkUrl','${esc(baseUrl)}'+this.value)">
                        </div>`
