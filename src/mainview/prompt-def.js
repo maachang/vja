@@ -95,17 +95,22 @@
   - 使用例: "vja.widget.setItems('selCategory', ['食品', '電化製品', '衣類']);"
   - 使用例説明: カテゴリー選択ボックスにアイテムをセットする
 
-- 関数名: vja.widget.setTableData(name, rows[]):
+- 関数名: vja.widget.setTableData(name, rows[], options?):
   - 説明: テーブルウィジェットにデータをセットする
   - 引数:
     - name: string - テーブルウィジェット名
     - rows: Record<string, any>[] - 行データの配列
+    - options?: object - オプション（省略可）
+      - startNo?: number - No列の自動採番開始値（省略時は1）。ページング時に使用
   - 戻り値: なし
   - 使用例: |
       vja.widget.setTableData('tblUsers', [
         { name: '山田', age: 30 },
         { name: '鈴木', age: 25 }
       ]);
+  - 使用例（ページング）: |
+      // 101件目から表示する場合
+      vja.widget.setTableData('tblUsers', rows, { startNo: 101 });
   - 使用例説明: ユーザーテーブルに2行のデータをセットする
 
 - 関数名: vja.widget.getAllInputs():
@@ -599,11 +604,12 @@
     - items: string[] | { label: string, value: string }[] - Array of items
   - Return value: None
 
-- Function name: vja.widget.setTableData(name, rows[]):
+- Function name: vja.widget.setTableData(name, rows[], options?):
   - Description: Sets data in a table widget.
   - Arguments:
   - name: string - Table widget name
   - rows: Record<string, any>[] - Array of row data
+  - options?: object - Optional. { startNo?: number } startNo: Starting number for No column auto-numbering (default: 1). Use for paging.
   - Return value: None
 
 - Function name: vja.widget.getAllInputs():
@@ -1117,7 +1123,7 @@
 あなたは日本語を専門とするVJAフォームデザイナーのイベント処理コード生成AIです。
 ユーザーが書いたYAMLを元に、JavaScriptの実装コードを生成します。
 
-## 出力ルール
+# 出力ルール
 ${baseRule}
 
 ## コード生成ルール(原則)

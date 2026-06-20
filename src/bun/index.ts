@@ -1198,7 +1198,8 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
         lines.push(`  // 5. 表示名が設定されている場合はヘッダーに表示名を使用、`);
         lines.push(`  //    省略時はカラム名を使用`);
         lines.push(`  // ────────────────────────────────────────────────────────`);
-        lines.push(`  window._buildDatagridHtml = function(el, rows) {`);
+        lines.push(`  window._buildDatagridHtml = function(el, rows, options) {`);
+        lines.push(`    options = options || {};`);
         lines.push(`    const colDefs = (el.dataset.columns || "").split(/[\\n;]/).filter(function(s) { return s.trim(); }).map(function(c) {`);
         lines.push(`      const parts = c.trim().split(":");`);
         lines.push(`      return { label: parts[0] || "", width: parseInt(parts[1]) || 20, displayName: parts[2] || "" };`);
@@ -1239,9 +1240,10 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
         lines.push(`          const td = document.createElement("td");`);
         lines.push(`          td.style.cssText = tdStyle;`);
         lines.push(`          if (cd.label.toLowerCase() === "no") {`);
-        lines.push(`            // No列: DBに同名キーがあればその値、なければ自動採番`);
+        lines.push(`            // No列: DBに同名キーがあればその値、なければ自動採番（options.startNoで開始値指定可）`);
         lines.push(`            const dbKey = Object.keys(row).find(function(k) { return k.toLowerCase() === "no"; });`);
-        lines.push(`            td.textContent = dbKey != null ? String(row[dbKey]) : String(i + 1);`);
+        lines.push(`            const startNo = (options.startNo != null ? parseInt(options.startNo) : 1);`);
+        lines.push(`            td.textContent = dbKey != null ? String(row[dbKey]) : String(startNo + i);`);
         lines.push(`          } else {`);
         lines.push(`            // 通常列: 大文字小文字を区別しないでキー検索`);
         lines.push(`            const dbKey = Object.keys(row).find(function(k) { return k.toLowerCase() === cd.label.toLowerCase(); });`);
@@ -1263,9 +1265,9 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
             lines.push(`    if (el) window._buildDatagridHtml(el, []);`);
             lines.push(`  })();`);
             lines.push(`  // ${w.name}.setData`);
-            lines.push(`  window[${JSON.stringify(w.name + "_setData")}] = function(rows) {`);
+            lines.push(`  window[${JSON.stringify(w.name + "_setData")}] = function(rows, options) {`);
             lines.push(`    const el = document.getElementById(${JSON.stringify(w.name)});`);
-            lines.push(`    if (el) window._buildDatagridHtml(el, rows);`);
+            lines.push(`    if (el) window._buildDatagridHtml(el, rows, options);`);
             lines.push(`  };`);
         }
     }

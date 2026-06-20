@@ -158,9 +158,9 @@
         },
 
         // テーブル（datagrid）にデータをセット
-        setTableData(name, rows) {
+        setTableData(name, rows, options = {}) {
             const fn = global[`${name}_setData`];
-            if (typeof fn === "function") fn(rows);
+            if (typeof fn === "function") fn(rows, options);
             else console.warn(`[vja.widget.setTableData] ${name}_setData が見つかりません`);
         },
 
