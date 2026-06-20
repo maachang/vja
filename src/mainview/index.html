@@ -754,6 +754,14 @@
             company: "",
             appEvents: {onStart: "", onExit: "", onStart_yaml: "", onExit_yaml: ""},
         };
+        function _clearProjectInfo() {
+            projectInfo.name = "";
+            projectInfo.description = "";
+            projectInfo.version = "1.0.0";
+            projectInfo.author = "";
+            projectInfo.company = "";
+            projectInfo.appEvents = { onStart: "", onExit: "", onStart_yaml: "", onExit_yaml: "" };
+        }
 
         // エディタ設定（一時保持のみ・保存はuiConfig経由）
         // UIフォント設定（vja自身に保存）
@@ -3631,7 +3639,12 @@
             selId = null;
             undoStack = [];
             redoStack = [];
+            _lastSavePath = null;
+            _lastOpenPath = null;
+            _clearProjectInfo();
+            applyProjectData({});
             refreshAll();
+            applyProjectInfo();
             pushUndo();
             _savedSnapshot = JSON.stringify(snapshot());
         }
