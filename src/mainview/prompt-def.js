@@ -1566,7 +1566,8 @@ ${extRuntimeDoc}
             "# Execution Task\n" +
             "[Strict Rule: Output ONLY the raw " + targetScript + " code.Do not wrap in ```. No explanations.]\n" +
             //"Based on the <target_yaml> above, generate and output the final " + targetScript + " code immediately."
-            "Based on the above <target_yaml>, immediately generate and output only one final " + targetScript + " code."
+            "- Based on the above <target_yaml>, immediately generate and output only one final " + targetScript + " code.\n" +
+            "- All vja.* calls must use await."
         );
     };
 
