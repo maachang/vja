@@ -1034,10 +1034,10 @@
 `.trim();
 
     // 英語promptの最後に日本語で表記としてつける文字
-    const ENG_TO_LAST_PHRASE_JP = "\nRespond in Japanese.\n";
+    const ENG_TO_LAST_PHRASE_JP = "\n<out_language>\nRespond in Japanese.\n</out_language>\n";
 
     // 英語promptの最後に英語で表記としてつける文字
-    const ENG_TO_LAST_PHRASE_ENG = "\nRespond in English.\n";
+    const ENG_TO_LAST_PHRASE_ENG = "\n<out_language>\nRespond in English.\n</out_language>\n";
 
     // YAMLからjsに変換する場合のシステムプロンプトを生成.
     // - isAppEvent: [必須]定義されている場合はアプリイベント(bunネイティブ実行)で、存在しない場合はイベント系(js)で実行.
@@ -1196,15 +1196,21 @@ ${vjaUseJsInfo}
             ? VJA_USE_BACK_JS_INFO_ENG
             : VJA_USE_FRONT_JS_INFO_ENG;
 
+        // 対象スクリプト名.
+        const targetScript = isAppEvent ? "TypeScript" : "JavaScript";
+
         // Basic return rules
         const baseRule =
-            "- The output must strictly consist solely of raw " + (isAppEvent ? "TypeScript" : "JavaScript") + " code.\n" +
+            "- The output must strictly consist solely of raw " + targetScript + " code.\n" +
             "- NO explanations, NO markdown code blocks (```), NO chat.\n" +
             "- Start your response directly with the code."
 
         // ルールをバックエンド、フロントエンドで記載.
         const rule = isAppEvent
-            ? // バックエンド.
+            ?
+            ////////////////
+            // バックエンド.
+            ////////////////
             `
 ### Structure
 - Code must always be written inline.
@@ -1227,7 +1233,10 @@ ${vjaUseJsInfo}
 ### Other
 - All comments must be written in Japanese.
 `.trim()
-            : // フロントエンド.
+            :
+            //////////////////
+            // フロントエンド.
+            //////////////////
             `
 ### Structure
 - All generated code must be written "inline." The use of helper functions is strictly prohibited (e.g., defining functions such as "handleXxx", "doXxx", "addEventListener", etc., is absolutely forbidden).
@@ -1256,20 +1265,24 @@ ${vjaUseJsInfo}
         return (
             `
 You are a VJA form designer and event handling code generation AI specializing in Japanese.
-You generate JavaScript implementation code based on the YAML specification written by the user.
+You generate ${targetScript} implementation code based on the YAML specification written by the user.
 
 [OUTPUT FORMAT]
+<output_rule>
 ${baseRule}
+</output_rule>
 
 [Code Generation Rules]
+<coding_rules>
 ${rule}
+</coding_rules>
 
 [vja Runtime(YAML)]
----
+<internal_runtime_specifications>
 ~~~yaml
 ${vjaUseJsInfo}
 ~~~
----
+</internal_runtime_specifications>
 `.trim() + "\n\n" + ENG_TO_LAST_PHRASE_JP);
 
     }
@@ -1450,49 +1463,54 @@ ${extRuntimeDoc}
     ) {
         let ret;
 
+        // 対象スクリプト名.
+        const targetScript = isAppEvent ? "TypeScript" : "JavaScript";
+
+        ////////////////
         // フロント条件.
+        ////////////////
         const frontInfo = isAppEvent
-            ? ""
+            ? "" // バックエンドは空.
             : `
 ### Project Information
   - Current Form: ${formName}
 
 ### All Widgets in the Form
----
+<current_form_widgets>
 ${allWidgetsCtx}
----
+</current_form_widgets>
 
 ### Form Constants (${formName})
----
+<form_constants>
 ${formConstCtx}
----
+</form_constants>
 
 ### Input Parameters in the Form
----
+<input_params>
 ${inputParamsCtx}
----
+</input_params>
 
 ### Screen List
----
+<forms_list>
 ${formsCtx}
----
+</forms_list>
 
 ### Global Constants
----
+<global_constants>
 ${globalConstCtx}
----
+</global_constants>
 
 ### Table Definitions
----
+<database_schema>
 ${tablesCtx}
----
+</database_schema>
 
 [Extended Runtime(YAML)]
----
+<extended_runtime_specifications>
 ~~~yaml
 ${extRuntimeDoc}
 ~~~
----
+</extended_runtime_specifications>
 `.trim();
 
         // yaml定義が設定されている場合.
@@ -1509,13 +1527,14 @@ ${extRuntimeDoc}
                     frontInfo +
                     "\n\n\nGenerate JavaScript code for inline implementation of event handling based on the following YAML specification.";
             }
-            // [共通]テーブル定義.
+            // yaml実行命令
             ret =
                 ret +
-                "\n---" +
+                "\n<target_yaml>" +
                 "~~~yaml\n" +
                 _removeYamlShComments(yamlDef) + // yamlのコメントを除去.
-                "\n~~~\n---";
+                "\n~~~" +
+                "\n</target_yaml > ";
         }
         // 「利用テーブル」定義が存在しない場合.
         else {
@@ -1535,11 +1554,18 @@ ${extRuntimeDoc}
         // 追加指示がある場合はセット.
         return (
             ret +
-            "\n\n" +
+            "\n<add-prompt>\n" +
             (addPrompt
-                ? "\nAdditional instructions: " + addPrompt + "\n\n"
+                ? "\nAdditional instructions: " + addPrompt
                 : "") +
-            ENG_TO_LAST_PHRASE_JP
+            "\n</add-prompt>\n\n" +
+            ENG_TO_LAST_PHRASE_JP +
+            "\n\n---\n" +
+
+            // コードのスクリプトのみを出力する説明をセット.
+            "# Execution Task\n" +
+            "[Strict Rule: Output ONLY the raw " + targetScript + " code.Do not wrap in ```. No explanations.]\n" +
+            "Based on the <target_yaml> above, generate and output the final " + targetScript + " code immediately."
         );
     };
 
@@ -1596,10 +1622,7 @@ Please create a list of available functions for the target JavaScript, following
 ## YAML Generation Rules (Principles)
 - Explanation in English
 - Return only YAML (no explanation, Markdown, or source code required)
-`.trim() +
-            "\n\n" +
-            ENG_TO_LAST_PHRASE_ENG
-        );
+`.trim() + "\n\n" + ENG_TO_LAST_PHRASE_ENG);
     };
 
     // 拡張ランタイム用ユーザプロンプト.
@@ -1641,8 +1664,7 @@ Include the function name, description, arguments, return value, and exceptions.
   -
 
 正常終了: なし
-`.trim() + "\n\n\n\n\n"
-        );
+`.trim() + "\n\n\n\n\n");
     };
 
     //////////////////
