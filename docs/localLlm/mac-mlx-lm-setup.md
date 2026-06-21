@@ -69,8 +69,8 @@ mlx-community/gemma-4-e4b-it-qat-OptiQ-4bit
 基本的に現時点(202606時点)では、`qwen3.5` か `gemma4` が コーディング生成に適しているモデルであると思います。その中で `gemma4` が vja でのコーディングと相性が良さそうです（特に `gemma-4-E4B-4bit系` だと速度的にも正確性など、問題なくコーディングができる）。
 
 - 現時点(202606時点)のおすすめモデル
-  - `mlx-community/gemma-4-e4b-it-qat-OptiQ-4bit` : メモリが8GB の場合
   - `mlx-community/Qwen3.5-4B-4bit` : メモリが8GB の場合
+  - `mlx-community/gemma-4-e4b-it-qat-OptiQ-4bit` : メモリが16GB の場合
 
 あと `Qwen3.5-9B-4bit` は、比較的新しいAppleシリコンだと動くと思う(M1だと、普通にfetchがタイムアウトしてしまうレベル)ので 16GB の場合 `gemma-4-E4B-4bit系` が妥当で堅実な選択であると言えます。
 
