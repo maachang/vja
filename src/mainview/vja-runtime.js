@@ -963,18 +963,7 @@
     // ════════════════════════════════════════════════
     // グローバルエラーハンドラ（AIコード向け）
     // ════════════════════════════════════════════════
-    global._vjaRun = async function (fn) {
-        try {
-            await fn();
-        } catch (e) {
-            const msg = e?.message || String(e);
-            console.error("[vja] イベントエラー:", msg, e);
-            await vja.log?.error?.("イベントエラー: " + msg).catch(() => { });
-            await vja.app?.showDialog?.("エラーが発生しました:\n" + msg).catch(
-                () => alert("エラー: " + msg)
-            );
-        }
-    };
+    // _vjaRun はフォームHTMLのbuildEventsJsで定義される
 
     // ════════════════════════════════════════════════
     // アプリライフサイクルフック

@@ -1184,6 +1184,37 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     const lines: string[] = ["// ── ウィジェットイベント ──"];
     // タイトルバーのクローズボタン用: vja.app.closeWindow のラッパー
     lines.push('window._vjaClose = function() { window.vja?.app?.closeWindow?.(); };');
+
+    // ── _vjaB64: イベントコードをBase64で定義（デコードはしない） ──
+    lines.push('const _vjaB64 = {};');
+    // ── _vjaCache: 初回呼び出し時のみAsyncFunction化してキャッシュ ──
+    lines.push('const _vjaCache = {};');
+    // ── _vjaRun: 共通実行関数（遅延初期化・キャッシュ・ログ・エラー補足） ──
+    lines.push('const _vjaRun = async function(widgetName, eventName) {');
+    lines.push('  const key = widgetName + "_" + eventName;');
+    lines.push('  const label = "[" + widgetName + "." + eventName + "]";');
+    lines.push('  try {');
+    lines.push('    if (!_vjaCache[key]) {');
+    lines.push('      const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;');
+    lines.push('      const code = decodeURIComponent(escape(atob(_vjaB64[key])));');
+    lines.push('      _vjaCache[key] = new AsyncFunction("vja", code);');
+    lines.push('    }');
+    lines.push('    window.vja?.log?.debug?.(label + " 実行開始");');
+    lines.push('    await _vjaCache[key](window.vja);');
+    lines.push('    window.vja?.log?.info?.(label + " 実行成功");');
+    lines.push('  } catch(e) {');
+    lines.push('    const msg = e?.message || String(e);');
+    lines.push('    window.vja?.log?.error?.(label + " 実行エラー: " + msg);');
+    lines.push('    window.vja?.log?.error?.(label + " スタックトレース: " + (e?.stack || "なし"));');
+    lines.push('    try {');
+    lines.push('      const decoded = decodeURIComponent(escape(atob(_vjaB64[key])));');
+    lines.push('      const numbered = decoded.split("\\n").map(function(l, i) { return (i+1) + ": " + l; }).join("\\n");');
+    lines.push('      window.vja?.log?.error?.(label + " ソースコード:\\n" + numbered);');
+    lines.push('    } catch(_) {}');
+    lines.push('    await window.vja?.app?.showDialog?.("イベントエラー:\\n" + msg)?.catch(() => {});');
+    lines.push('  }');
+    lines.push('};');
+
     lines.push("document.addEventListener('DOMContentLoaded', function() {");
     // datagrid共通HTML生成関数を定義（初期表示・setData共通）
     const hasDatagrid = (form.widgets || []).some((w: any) => w.tag === "datagrid");
@@ -1279,15 +1310,14 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
             const js = (jsCode[evName] || "").trim();
             if (!js) continue;
             const domEv = evNameToDom(evName);
+            const b64 = Buffer.from(js, "utf-8").toString("base64");
+            const key = `${w.name}_${evName}`;
             lines.push(`  // ${w.name}.${evName}`);
             lines.push(`  (function() {`);
             lines.push(`    var el = document.getElementById(${JSON.stringify(w.name)});`);
             lines.push(`    if (!el) return;`);
-            lines.push(`    el.addEventListener(${JSON.stringify(domEv)}, function(event) {`);
-            lines.push(`      _vjaRun(async function() {`);
-            lines.push(`        ${js.split("\n").join("\n        ")}`);
-            lines.push(`      });`);
-            lines.push(`    });`);
+            lines.push(`    _vjaB64[${JSON.stringify(key)}] = ${JSON.stringify(b64)};`);
+            lines.push(`    el.addEventListener(${JSON.stringify(domEv)}, function(event) { _vjaRun(${JSON.stringify(w.name)}, ${JSON.stringify(evName)}); });`);
             lines.push(`  })();`);
         }
     }
@@ -1297,12 +1327,11 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
         if (evName.startsWith("_js_") || !js || !(js as string).trim()) continue;
         const domEv = evNameToDom(evName);
         if (!domEv) continue;
+        const b64Form = Buffer.from((js as string).trim(), "utf-8").toString("base64");
+        const keyForm = `form_${evName}`;
         lines.push(`  // form.${evName}`);
-        lines.push(`  document.addEventListener(${JSON.stringify(domEv)}, function(event) {`);
-        lines.push(`    _vjaRun(async function() {`);
-        lines.push(`      ${(js as string).split("\n").join("\n      ")}`);
-        lines.push(`    });`);
-        lines.push(`  });`);
+        lines.push(`  _vjaB64[${JSON.stringify(keyForm)}] = ${JSON.stringify(b64Form)};`);
+        lines.push(`  document.addEventListener(${JSON.stringify(domEv)}, function(event) { _vjaRun("form", ${JSON.stringify(evName)}); });`);
     }
     lines.push("});");
     return lines.join("\n");

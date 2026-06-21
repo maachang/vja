@@ -1090,7 +1090,7 @@
             `
 ### 構造
 - コードは必ずインラインで記述。
-- 変数は if/else ブロックの外で宣言する
+- 変数は if/else・try/catch・その他あらゆるブロック（{ }）の外で宣言することを厳守する
   - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
 
@@ -1206,7 +1206,7 @@ ${vjaUseJsInfo}
             `
 ### Structure
 - Code must always be written inline.
-- Variables must be declared outside if/else blocks.
+- Strictly adhere to the rule of declaring variables outside of if/else, try/catch, and any other blocks ({ }).
     - Bad: if (cond) { const params = [...]; } vja.db.query(sql, params);
     - Good: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
 
