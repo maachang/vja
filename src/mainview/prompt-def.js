@@ -45,6 +45,7 @@
 
 ## ウィジェット操作 (vja.widget.*)
 
+- 関数名: vja.widget.get(name):
 - 関数名: vja.widget.getValue(name):
   - 説明: 指定名のウィジェットの現在値を取得する
   - 引数:
@@ -53,6 +54,7 @@
   - 使用例: "const name = vja.widget.getValue('txtName');"
   - 使用例説明: txtNameウィジェットの入力値を取得する
 
+- 関数名: vja.widget.set(name, value, options?):
 - 関数名: vja.widget.setValue(name, value, options?):
   - 説明: 指定名のウィジェットに値をセットする。ウィジェットの種類に応じて自動的に適切な処理を行う
   - 引数:
@@ -70,30 +72,6 @@
   - 使用例（テーブル）: "vja.widget.setValue('tblUsers', rows, { startNo: 1 });"
   - 使用例（選択肢更新）: "vja.widget.setValue('selCategory', ['食品', '電化製品', '衣類']);"
   - 使用例説明: ウィジェットの種類に応じて値・データ・選択肢をセットする
-
-- 関数名: vja.widget.show(name):
-  - 説明: 指定名のウィジェットを表示する
-  - 引数:
-    - name: string - ウィジェット名
-  - 戻り値: なし
-  - 使用例: "vja.widget.show('btnSubmit');"
-  - 使用例説明: btnSubmitを表示する
-  - 類似関数:
-    - vja.widget.hide(name):
-      - 説明: 指定名のウィジェットを非表示にする
-    - vja.widget.enable(name):
-      - 説明: 指定名のウィジェットを有効にする
-    - vja.widget.disable(name):
-      - 説明: 指定名のウィジェットを無効にする
-
-- 関数名: vja.widget.setVisible(name, visible):
-  - 説明: 指定名のウィジェットの表示/非表示を切り替える
-  - 引数:
-    - name: string - ウィジェット名
-    - visible: boolean - trueで表示、falseで非表示
-  - 戻り値: なし
-  - 使用例: "vja.widget.setVisible('btnDelete', isAdmin);"
-  - 使用例説明: isAdminがtrueの場合のみ削除ボタンを表示する
 
 - 関数名: vja.widget.setItems(name, items[]):
   - 説明: selectBoxまたはlistBoxのアイテムをセットする
@@ -128,6 +106,24 @@
   - 戻り値: "Record<string, any> - { ウィジェット名: 値 } の形式"
   - 使用例: "const inputs = vja.widget.getAllInputs();"
   - 使用例説明: フォーム内の全入力値を一括取得する
+
+  - 関数名: vja.widget.setVisible(name, visible):
+    - 説明: 指定名のウィジェットの表示/非表示を切り替える
+    - 引数:
+      - name: string - ウィジェット名
+      - visible: boolean - trueで表示、falseで非表示
+    - 戻り値: なし
+    - 使用例: "vja.widget.setVisible('btnDelete', isAdmin);"
+    - 使用例説明: isAdminがtrueの場合のみ削除ボタンを表示する
+
+  - 関数名: vja.widget.show(name):
+    - 説明: 指定名のウィジェットを表示する
+  - 関数名: vja.widget.hide(name):
+    - 説明: 指定名のウィジェットを非表示にする
+  - 関数名: vja.widget.enable(name):
+    - 説明: 指定名のウィジェットを有効にする
+  - 関数名: vja.widget.disable(name):
+    - 説明: 指定名のウィジェットを無効にする
 
 ## 定数 (vja.const.*)
 
@@ -574,12 +570,13 @@
 
 ## Widget operations (vja.widget.*)
 
+- Function name: vja.widget.get(name):
   - Description: Gets the current value of the widget with the specified name
   - Arguments:
     - name: string - Widget name
   - Return value: "string | number | boolean | null - Widget value"
 
-- Function name: vja.widget.setValue(name, value, options?):
+- Function name: vja.widget.set(name, value, options?):
   - Description: Sets a value to the widget. Automatically handles each widget type.
   - Arguments:
     - name: string - Widget name
@@ -587,18 +584,10 @@
     - options?: object - For datagrid only. { startNo?: number }
   - Return value: None
 
-- Function name: vja.widget.show(name):
-  - Description: Displays the widget with the specified name.
-  - Arguments:
-    - name: string - Widget name
-  - Return value: None
-  - Similar functions:
-    - vja.widget.hide(name):
-      - Description: Hides the widget with the specified name.
-    - vja.widget.enable(name):
-      - Description: Enables the widget with the specified name.
-    - vja.widget.disable(name):
-      - Description: Disables the widget with the specified name.
+- Function name: vja.widget.getAllInputs():
+  - Description: Gets the values of all input widgets in a form.
+  - Arguments: None
+  - Return value: "Record<string, any> - in the format { Widget name: Value }"
 
 - Function Name: vja.widget.setVisible(name, visible):
   - Description: Toggles the display/hide of the widget with the specified name
@@ -607,10 +596,14 @@
   - visible: boolean - Show for true, hide for false
   - Return Value: None
 
-- Function name: vja.widget.getAllInputs():
-  - Description: Gets the values of all input widgets in a form.
-  - Arguments: None
-  - Return value: "Record<string, any> - in the format { Widget name: Value }"
+- Function name: vja.widget.show(name):
+    - Description: Displays the widget with the specified name.
+- Function name: vja.widget.hide(name):
+    - Description: Hides the widget with the specified name.
+- Function name: vja.widget.enable(name):
+    - Description: Enables the widget with the specified name.
+- Function name: vja.widget.disable(name):
+    - Description: Disables the widget with the specified name.
 
 ## Constants (vja.const.*)
 
@@ -814,6 +807,7 @@
 - Function name: console.info(message)
 - Function name: console.warn(message)
 - Function name: console.error(message)
+
 `.trim();
 
     // ### [AIP説明で利用]
@@ -1650,29 +1644,13 @@ Include the function name, description, arguments, return value, and exceptions.
     const DEFAULT_YAML_VALUE = function (eventName, wname) {
         return (
             `
-# --- YAML定義サンプル説明 ---
-# アクション:
-#  -「YES, NO」の確認ダイアログ「テストです」と表示する:
-#    - YES: ダイアログ「OKです」と表示して「トースト」にも同じ文字を出力.
-#    - NO: ダイアログ「NGです」と表示して「トースト」にも同じ文字を出力.
-# 正常終了: 「正常に終了しました」とログを出す.
-#
-# --- 規定ワード ---
-# 利用テーブル:
-#   - table1
-#   データベーステーブル名を設定することで、AIがテーブル内容を理解してくれる。
-# 説明: 処理に対する概要説明
-#   これを行う事で、AIに処理全体の意図を伝えることができる。
-イベント: ${eventName} (${wname})
+# イベント: ${eventName} (${wname})
 説明:
 #利用テーブル:
 アクション:
   -
 
-
-
-
-
+正常終了: なし
 `.trim() + "\n\n\n\n\n"
         );
     };

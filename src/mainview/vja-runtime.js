@@ -55,6 +55,10 @@
             }
             return el.value ?? el.textContent ?? null;
         },
+        // 値の取得(getValueと同じ)
+        get(name) {
+            return this.getValue(name);
+        },
 
         // 値のセット
         setValue(name, value, options = {}) {
@@ -111,6 +115,10 @@
             }
             el.dispatchEvent(new Event("change", { bubbles: true }));
         },
+        // 値のセット(setValueと同じ)
+        set(name, value, options = {}) {
+            this.setValue(name, value, options);
+        },
         // setTableData: setValueのラッパー（後方互換）
         setTableData(name, rows, options = {}) {
             this.setValue(name, rows, options);
@@ -119,10 +127,13 @@
         setItems(name, items) {
             this.setValue(name, items);
         },
-
         // テキスト取得（label/text向け）
-        getText(name) { return this.getValue(name); },
-        setText(name, text) { this.setValue(name, text); },
+        getText(name) {
+            return this.getValue(name);
+        },
+        setText(name, text) {
+            this.setValue(name, text);
+        },
 
         // 表示・非表示
         show(name) {
@@ -151,9 +162,9 @@
             if (el) el.disabled = true;
         },
 
+        //////////////////////////////////////
         // listBox / selectBox のアイテム設定
-
-
+        //////////////////////////////////////
         // 選択インデックス
         getSelectedIndex(name) {
             const el = _getEl(name);
@@ -174,8 +185,9 @@
             return (el && el.tagName.toLowerCase() === "img") ? el.src : null;
         },
 
+        ///////////////////////////////////////
         // テーブル（datagrid）にデータをセット
-
+        ///////////////////////////////////////
 
         // フォーム内の全入力値を取得 { name: value, ... }
         getAllInputs() {
