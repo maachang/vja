@@ -2152,7 +2152,7 @@
             // ── 画面一覧 ──
             const formBody = "<div>" + forms.map((f, fi) => {
                 const isCur = fi === curFormIdx;
-                const ft = esc(f.cfg.title);
+                const ft = esc(f.cfg.name);
                 const wids = (f.widgets || []).map(ww => {
                     const wn = esc(ww.name);
                     return "<tr class='rp-insert' data-insert='" + wn + "'>"
@@ -2389,7 +2389,7 @@
             // ── ③ 画面一覧 ──
             const formsCtx = forms.map((f, i) => {
                 const star = f.id === startFormId ? "★" : "";
-                return "  - " + f.cfg.title + (star ? " [初期画面]" : "") + (f.cfg.description ? " // " + f.cfg.description : "");
+                return "  - " + f.cfg.name + (star ? " [初期画面]" : "") + (f.cfg.description ? " // " + f.cfg.description : "");
             }).join("\n");
 
             // ── ④ 定数（グローバル＋フォーム単位） ──
@@ -2439,7 +2439,7 @@
             const sysPrompt = _PROMPT_DEF.YAML_TO_JS_SYS_PROMPT(
                 isAppEvent,
                 {
-                    formName: curForm?.cfg?.title, eventName: evName,
+                    formName: curForm?.cfg?.name, eventName: evName,
                     wname: w.name, wtag: w.tag, wdescription: w.props?.description,
                     inputParamsCtx: inputParamsCtx, allWidgetsCtx: allWidgetsCtx,
                     formsCtx: formsCtx, globalConstCtx: globalConstCtx,
@@ -2451,7 +2451,7 @@
             const userPrompt = _PROMPT_DEF.YAML_TO_JS_USER_PROMPT(
                 isAppEvent, yamlCur, addPrompt,
                 {
-                    formName: curForm?.cfg?.title, eventName: evName,
+                    formName: curForm?.cfg?.name, eventName: evName,
                     wname: w.name, wtag: w.tag, wdescription: w.props?.description,
                     inputParamsCtx: inputParamsCtx, allWidgetsCtx: allWidgetsCtx,
                     formsCtx: formsCtx, globalConstCtx: globalConstCtx,
