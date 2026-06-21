@@ -150,7 +150,7 @@
 ## 画面遷移 (vja.form.*)
 
 - 関数名: vja.form.navigate(formName, options?):
-  - 説明: 指定した画面に遷移する。デフォルトで現在の入力値を保存する。遷移先フォームが初期化されるため、現在のフォーム画面の更新では利用しないでください。
+  - 説明: 指定した画面に遷移する。デフォルトで現在の入力値を保存する
   - 引数:
     - formName: string - 遷移先のフォーム名
     - options?: { save?: boolean } - save=falseで入力値を保存しない（省略時はtrue）
@@ -629,7 +629,7 @@
 ## Screen Transitions (vja.form.*)
 
 - Function name: vja.form.navigate(formName, options?):
-  - Description: Navigates to the specified screen. By default, it saves the current input values. Since the destination form is initialized, do not use this for refreshing the current form screen.
+  - Description: Navigates to the specified screen. Saves current input values by default
   - Arguments:
     - formName: string - Name of the destination form
     - "options?: { save?: boolean } - save=false to not save input values (defaults to true)"
@@ -1094,33 +1094,51 @@
         const rule = isAppEvent
             ? // バックエンド.
             `
-  - 全ての vja.* 呼び出しは await を付ける
-  - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
-  - vja.db.* は、sqlite3用SQLで実装する
-  - sql文は「必ず実行可能なSQL文」を定義する
-  - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
-  - 変数は if/else ブロックの外で宣言する（ブロックスコープによる参照エラーを防ぐ）
-    - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params); // エラー
-    - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
-  - YAMLに記載されていない処理（画面遷移・setVisible・show/hide等）は絶対に追加禁止。YAMLの指示内容のみを厳密に実装すること。
-  - コメント等は日本語で
+### 構造
+- コードは必ずインラインで記述。
+- 変数は if/else ブロックの外で宣言する
+  - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params);
+  - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
+
+### vja API
+- 全ての vja.* 呼び出しは await を付ける
+- 画面遷移は vja.form.navigate('画面name') のみ使用（location禁止）
+- navigate() は別画面移動専用。現在画面の更新目的での使用は絶対禁止
+
+### SQL
+- プレースホルダー(?)必須（SQLインジェクション対策）
+- sqlite3用SQLで実装。必ず実行可能なSQL文で定義する
+
+### YAMLへの忠実性
+- YAMLの指示内容のみを厳密に実装する
+
+### その他
+- コメントは日本語で記述
 `.trim()
             : // フロントエンド.
             `
-  - 生成するJavascriptコードは必ず "インライン" で記述。ヘルパー関数の記載は絶対禁止（例: handleXxx, doXxx, addEventListener 等の関数定義は絶対に禁止）
-    - 悪い例: async function handleButtonClick() { ... }
-    - 良い例: const result = await vja.app.showConfirm("...");
-  - 全ての vja.* 呼び出しは await を付ける
-  - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
-  - vja.db.* は、sqlite3用SQLで実装する
-  - sql文は「必ず実行可能なSQL文」を定義する
-  - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
-  - window.confirm, window.alertは原則禁止(vja.app.showDialog, vja.app.showConfirmを利用)
-  - 変数は if/else ブロックの外で宣言することを厳守する（ブロックスコープによる参照エラーを防ぐ）
-    - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params); // エラー
-    - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
-  - YAMLに記載されていない処理（画面遷移・setVisible・show/hide等）は絶対に追加禁止。YAMLの指示内容のみを厳密に実装すること。
-  - コメント等は日本語で
+### 構造
+- コードは必ずインラインで記述。関数定義（handleXxx, doXxx, addEventListener等）は絶対禁止
+- 変数は if/else ブロックの外で宣言する
+  - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params);
+  - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
+
+### vja API
+- 全ての vja.* 呼び出しは await を付ける
+- 画面遷移は vja.form.navigate('画面name') のみ使用（location禁止）
+- navigate() は別画面移動専用。現在画面の更新目的での使用は絶対禁止
+- window.confirm/alert禁止（vja.app.showDialog/showConfirmを使用）
+
+### SQL
+- プレースホルダー(?)必須（SQLインジェクション対策）
+- sqlite3用SQLで実装。必ず実行可能なSQL文で定義する
+
+### YAMLへの忠実性
+- YAMLに記載のない処理（navigate・setVisible・show/hide等）の追加は絶対禁止
+- YAMLの指示内容のみを厳密に実装する
+
+### その他
+- コメントは日本語で記述
 `.trim();
 
         return (
@@ -1131,7 +1149,7 @@
 # 出力ルール
 ${baseRule}
 
-## コード生成ルール(原則)
+## コード生成ルール
 ${rule}
 
 ## vjaランタイムYAML.
@@ -1199,29 +1217,51 @@ ${extRuntimeDoc}
         const rule = isAppEvent
             ? // バックエンド.
             `
-  - Prefix all "vja.*" calls with "await".
-  - Always use placeholders ("?") for SQL (to prevent SQL injection).
-  - Implement "vja.db.*" using SQL compatible with "sqlite3".
-  - The SQL statement defines an SQL statement that is guaranteed to be executable.
-  - Use "vja.form.navigate('screen name')" for screen transitions (never use "location").
-  - STRICTLY adhere to declaring variables outside of if/else blocks (to prevent reference errors caused by block scope).
-  - STRICTLY implement only what is described in the YAML. Adding any unlisted operations (navigation, setVisible, show/hide, etc.) is absolutely prohibited.
-  - Please leave comments in Japanese.
+### Structure
+- Code must always be written inline.
+- Variables must be declared outside if/else blocks.
+    - Bad: if (cond) { const params = [...]; } vja.db.query(sql, params);
+    - Good: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
+
+### vja API
+- All vja.* calls must use await.
+- Screen navigation must use vja.form.navigate('screen name') only. (location is prohibited)
+- navigate() is exclusively for navigating to a different screen. Using it to refresh or update the current screen is absolutely prohibited.
+
+### SQL
+- Placeholders (?) are mandatory. (SQL injection prevention)
+- Implement using SQLite3-compatible SQL. Always define executable SQL statements.
+
+### YAML Compliance
+- Implement strictly and only what is specified in the YAML.
+
+### Other
+- All comments must be written in Japanese.
 `.trim()
             : // フロントエンド.
             `
-  - The generated JavaScript code must be written "inline". Helper functions are strictly prohibited (e.g., function definitions such as handleXxx, doXxx, addEventListener, etc. are strictly prohibited).
-    - Bad example: async function handleButtonClick() { ... }
-    - Good example: const result = await vja.app.showConfirm("...");
-  - Prefix all "vja.*" calls with "await".
-  - Always use placeholders ("?") for SQL (to prevent SQL injection).
-  - Implement "vja.db.*" using SQL compatible with "sqlite3".
-  - The SQL statement defines an SQL statement that is guaranteed to be executable.
-  - Use "vja.form.navigate('screen name')" for screen transitions (※ "location" should never be used).
-  - Using window.confirm and window.alert is generally prohibited (use vja.app.showDialog and vja.app.showConfirm instead).
-  - STRICTLY adhere to declaring variables outside of if/else blocks (to prevent reference errors caused by block scope).
-  - STRICTLY implement only what is described in the YAML. Adding any unlisted operations (navigation, setVisible, show/hide, etc.) is absolutely prohibited.
-  - Please leave comments in Japanese.
+### Structure
+- Code must always be written inline. Function definitions (handleXxx, doXxx, addEventListener, etc.) are strictly prohibited.
+- Variables must be declared outside if/else blocks.
+  - Bad: if (cond) { const params = [...]; } vja.db.query(sql, params);
+  - Good: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
+
+### vja API
+- All vja.* calls must use await.
+- Screen navigation must use vja.form.navigate('screen name') only. (location is prohibited)
+- navigate() is exclusively for navigating to a different screen. Using it to refresh or update the current screen is absolutely prohibited.
+- window.confirm/alert are prohibited. Use vja.app.showDialog/showConfirm instead.
+
+### SQL
+- Placeholders (?) are mandatory. (SQL injection prevention)
+- Implement using SQLite3-compatible SQL. Always define executable SQL statements.
+
+### YAML Compliance
+- Adding any operations not described in the YAML (navigate, setVisible, show/hide, etc.) is absolutely prohibited.
+- Implement strictly and only what is specified in the YAML.
+
+### Other
+- All comments must be written in Japanese.
 `.trim();
 
         return (
@@ -1232,7 +1272,7 @@ You generate JavaScript implementation code based on the YAML specification writ
 [OUTPUT FORMAT]
 ${baseRule}
 
-[Code Generation Rules (Principles)]
+[Code Generation Rules]
 ${rule}
 
 [vja Runtime(YAML)]
