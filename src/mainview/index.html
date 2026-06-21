@@ -2936,9 +2936,9 @@
 
                 // max tokens
                 "<div class='ai-cfg-row'><label>Max Tokens</label>" +
-                "<input id='ai-max-tokens' value='" + esc(String(aiConfig.maxTokens || "")) + "' placeholder='空の場合はサーバー側に依存' style='width:160px'></div>" +
+                "<input id='ai-max-tokens' value='" + esc(String(aiConfig.maxTokens || "")) + "' placeholder='空の場合はサーバー側に依存' style='width:100%'></div>" +
                 "<div class='ai-cfg-row'><label>temperature</label>" +
-                "<input id='ai-temperature' class='pv-input' value='" + esc(String(aiConfig.temperature || "")) + "' placeholder='空の場合はサーバー側に依存' style='width:160px'></div>" +
+                "<input id='ai-temperature' class='pv-input' value='" + esc(aiConfig.temperature !== "" && aiConfig.temperature != null ? String(aiConfig.temperature) : "") + "' placeholder='空の場合はサーバー側に依存' style='width:100%'></div>" +
 
                 "</div>" +
                 "<div class='mfoot'>" +
@@ -3011,7 +3011,7 @@
             const maxTokensRaw = $("ai-max-tokens")?.value?.trim() || "";
             const maxTokens = maxTokensRaw !== "" ? parseInt(maxTokensRaw, 10) || "" : "";
             const temperatureRaw = $("ai-temperature")?.value?.trim() || "";
-            const temperature = temperatureRaw !== "" ? parseFloat(temperatureRaw) || "" : "";
+            const temperature = temperatureRaw !== "" ? parseFloat(temperatureRaw) : "";
             aiConfig = {
                 endpoint: ep,
                 apiKey,
@@ -3558,7 +3558,7 @@
                 enabled: !!_ac.enabled,
                 routerMode: !!_ac.routerMode,
                 maxTokens: _ac.maxTokens || "",
-                temperature: _ac.temperature ?? "",
+                temperature: _ac.temperature !== "" && _ac.temperature != null ? _ac.temperature : "",
             };
         }
 
