@@ -2828,11 +2828,20 @@
                 "onscroll='jsHlSync();editorSyncGutter(\"js-ta\",\"js-gutter\")' " +
                 "placeholder='// AIでJavaScriptを生成、または直接編集できます'>" + esc(curJs) + "</textarea>" +
                 "</div></div></div></div>" +
-                "<div class='yaml-ai-bar' style='padding-bottom:8px'>" +
-                "<input id='ai-prompt-in' placeholder='AIへの追加指示（任意）'>" +
+                "<div class='yaml-ai-bar' style='padding-bottom:8px;flex-direction:column;align-items:stretch;gap:4px'>" +
+                "<div style='display:flex;align-items:center;gap:4px'>" +
+                "<input id='ai-prompt-in' placeholder='AIへの追加指示（任意）' style='flex:1'>" +
                 "<button class='yaml-ai-btn' id='ai-gen-btn' onmousedown='pvCall(\"yamlAiGen\")'>" +
                 (aiEnabled ? "🤖 AI生成" : "🤖 AI生成（設定要）") + "</button>" +
                 "<span class='yaml-ai-status' id='ai-status'></span>" +
+                "</div>" +
+                "<div style='display:flex;align-items:center;gap:4px'>" +
+                "<input id='editor-search-in' placeholder='検索ワード（Ctrl+F）' style='flex:1' " +
+                "onkeydown='if(event.key===\"Enter\"){event.preventDefault();editorSearch();}' " +
+                "oninput='_editorSearchLast={taId:null,word:\"\",pos:0}'>" +
+                "<button class='yaml-ai-btn' onmousedown='event.preventDefault();$(\"editor-search-in\").value=\"\";_editorSearchLast={taId:null,word:\"\",pos:0}'>✕</button>" +
+                "<button class='yaml-ai-btn' onmousedown='event.preventDefault();editorSearch()'>🔍 検索</button>" +
+                "</div>" +
                 "</div>" +
                 "</div>" +
                 "<div class='yaml-resize-handle' id='yaml-rhandle'></div>" +
@@ -3027,7 +3036,59 @@
             showToast("AI設定を保存しました");
         }
 
-        /* ── YAML シンタックスハイライト ── */
+        // ── エディタ内検索 ────────────────────────────────────
+        // 現在アクティブなエディタ（yaml-ta / js-ta）から検索ワードを探す。
+        // 現在のカーソル位置から次の一致箇所へ移動し、末尾まで行ったら先頭から再検索。
+        let _editorSearchLast = { taId: null, word: "", pos: 0 };
+        function editorSearch() {
+            const word = $("editor-search-in")?.value || "";
+            if (!word) return;
+
+            // 現在表示中のタブ（YAML/JS）でエディタを判定
+            const isJs = $("pane-js")?.classList.contains("active");
+            const ta = isJs ? $("js-ta") : $("yaml-ta");
+            if (!ta) { showToast("エディタが見つかりません"); return; }
+
+            const text = ta.value;
+            const lower = text.toLowerCase();
+            const lword = word.toLowerCase();
+
+            // 検索開始位置：前回と同じエディタ・同じワードなら前回の終端から、それ以外はカーソル位置から
+            let startPos = 0;
+            if (_editorSearchLast.taId === ta.id && _editorSearchLast.word === word) {
+                startPos = _editorSearchLast.pos;
+            } else {
+                startPos = ta.selectionEnd || 0;
+            }
+
+            // 現在位置から前方検索
+            let idx = lower.indexOf(lword, startPos);
+            let wrapped = false;
+
+            // 末尾まで行ったら先頭から再検索（ループ）
+            if (idx < 0 && startPos > 0) {
+                idx = lower.indexOf(lword, 0);
+                wrapped = true;
+            }
+
+            if (idx < 0) {
+                showToast("「" + word + "」は見つかりません");
+                _editorSearchLast = { taId: ta.id, word, pos: 0 };
+                return;
+            }
+
+            if (wrapped) showToast("先頭に戻りました");
+
+            // カーソルを一致箇所に移動してフォーカス
+            ta.focus();
+            ta.selectionStart = idx;
+            ta.selectionEnd = idx + word.length;
+            _ensureCursorVisible(ta);
+            editorHlUpdate(ta.id);
+
+            // 次回検索のために終端位置を記録
+            _editorSearchLast = { taId: ta.id, word, pos: idx + word.length };
+        }
 
         /* ── JavaScript シンタックスハイライト ── */
         function jsHlUpdate() {_hlUpdate("js-ta", "js-hl", jsTokenize);}
@@ -5777,7 +5838,10 @@
             if (e.ctrlKey && e.key === "s") {e.preventDefault(); actSave();}
             if (navigator.platform.startsWith("Mac") && e.metaKey && e.key === "s") {e.preventDefault(); actSave();} // Mac: Cmd+S
             if (e.ctrlKey && e.key === "w") {e.preventDefault(); showCloseConfirm();}
-            if (e.ctrlKey && e.key === "n") {e.preventDefault(); actNew();}
+            if (e.ctrlKey && e.key === "f") {
+                const searchIn = $("editor-search-in");
+                if (searchIn) { e.preventDefault(); searchIn.focus(); searchIn.select(); }
+            }
             if (e.ctrlKey && e.key === "d") {e.preventDefault(); actDuplicate();}
             if (e.key === "F4" && e.altKey) {e.preventDefault(); showCloseConfirm();}
             if ((e.key === "Delete" || e.key === "Backspace") && selId) {e.preventDefault(); actDelete();}
