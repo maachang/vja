@@ -1097,11 +1097,12 @@
   - 全ての vja.* 呼び出しは await を付ける
   - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
   - vja.db.* は、sqlite3用SQLで実装する
-  - テーブルのI/Oはsqlのwhereを利用して実施する
+  - sql文は「必ず実行可能なSQL文」を定義する
   - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
   - 変数は if/else ブロックの外で宣言する（ブロックスコープによる参照エラーを防ぐ）
     - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params); // エラー
     - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
+  - yaml定義の指示に必ず従い、定義されていない画面遷移やウィジェットの visible 設定は不要で
   - コメント等は日本語で
 `.trim()
             : // フロントエンド.
@@ -1112,12 +1113,13 @@
   - 全ての vja.* 呼び出しは await を付ける
   - SQLはプレースホルダー (?) を必ず使用する（SQLインジェクション対策）
   - vja.db.* は、sqlite3用SQLで実装する
-  - テーブルのI/Oはsqlのwhereを利用して実施する
+  - sql文は「必ず実行可能なSQL文」を定義する
   - 画面遷移は vja.form.navigate('画面名') を使う(※ location は絶対に使っては駄目)
   - window.confirm, window.alertは原則禁止(vja.app.showDialog, vja.app.showConfirmを利用)
   - 変数は if/else ブロックの外で宣言することを厳守する（ブロックスコープによる参照エラーを防ぐ）
     - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params); // エラー
     - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
+  - yaml定義の指示に必ず従い、定義されていない画面遷移やウィジェットの visible 設定は不要で
   - コメント等は日本語で
 `.trim();
 
@@ -1200,9 +1202,10 @@ ${extRuntimeDoc}
   - Prefix all "vja.*" calls with "await".
   - Always use placeholders ("?") for SQL (to prevent SQL injection).
   - Implement "vja.db.*" using SQL compatible with "sqlite3".
-  - Perform table I/O operations using SQL "WHERE" clauses.
+  - The SQL statement defines an SQL statement that is guaranteed to be executable.
   - Use "vja.form.navigate('screen name')" for screen transitions (never use "location").
   - Strictly adhere to declaring variables outside of if/else blocks (to prevent reference errors caused by block scope).
+  - Be sure to strictly follow the instructions in the YAML definition; screen transitions and widget "visible" settings that are not defined are unnecessary.
   - Please leave comments in Japanese.
 `.trim()
             : // フロントエンド.
@@ -1213,10 +1216,11 @@ ${extRuntimeDoc}
   - Prefix all "vja.*" calls with "await".
   - Always use placeholders ("?") for SQL (to prevent SQL injection).
   - Implement "vja.db.*" using SQL compatible with "sqlite3".
-  - Perform table I/O operations using SQL "WHERE" clauses.
+  - The SQL statement defines an SQL statement that is guaranteed to be executable.
   - Use "vja.form.navigate('screen name')" for screen transitions (※ "location" should never be used).
   - Using window.confirm and window.alert is generally prohibited (use vja.app.showDialog and vja.app.showConfirm instead).
   - Strictly adhere to declaring variables outside of if/else blocks (to prevent reference errors caused by block scope).
+  - Be sure to strictly follow the instructions in the YAML definition; screen transitions and widget "visible" settings that are not defined are unnecessary.
   - Please leave comments in Japanese.
 `.trim();
 
