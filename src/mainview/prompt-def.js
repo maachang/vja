@@ -1231,8 +1231,6 @@ ${vjaUseJsInfo}
             `
 ### Structure
 - All generated code must be written "inline." The use of helper functions is strictly prohibited (e.g., defining functions such as "handleXxx", "doXxx", "addEventListener", etc., is absolutely forbidden).
-  - Bad example: async function handleButtonClick() { ... }
-  - Good example: const result = await vja.app.showConfirm("...");
 - Strictly adhere to the rule of declaring variables outside of if/else, try/catch, and any other blocks ({ }).
   - Bad: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - Good: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
