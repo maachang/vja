@@ -1112,8 +1112,10 @@
             : // フロントエンド.
             `
 ### 構造
-- コードは必ずインラインで記述。関数定義（handleXxx, doXxx, addEventListener等）は絶対禁止
-- 変数は if/else ブロックの外で宣言する
+- 生成するコードは必ず "インライン" で記述。ヘルパー関数の記載は絶対禁止で（例: handleXxx, doXxx, addEventListener 等の関数定義は絶対に禁止）
+  - 悪い例: async function handleButtonClick() { ... }
+  - 良い例: const result = await vja.app.showConfirm("...");
+- 変数は if/else・try/catch・その他あらゆるブロック（{ }）の外で宣言することを厳守する
   - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
 
@@ -1207,8 +1209,8 @@ ${vjaUseJsInfo}
 ### Structure
 - Code must always be written inline.
 - Strictly adhere to the rule of declaring variables outside of if/else, try/catch, and any other blocks ({ }).
-    - Bad: if (cond) { const params = [...]; } vja.db.query(sql, params);
-    - Good: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
+  - Bad: if (cond) { const params = [...]; } vja.db.query(sql, params);
+  - Good: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
 
 ### vja API
 - All vja.* calls must use await.
@@ -1228,8 +1230,10 @@ ${vjaUseJsInfo}
             : // フロントエンド.
             `
 ### Structure
-- Code must always be written inline. Function definitions (handleXxx, doXxx, addEventListener, etc.) are strictly prohibited.
-- Variables must be declared outside if/else blocks.
+- All generated code must be written "inline." The use of helper functions is strictly prohibited (e.g., defining functions such as "handleXxx", "doXxx", "addEventListener", etc., is absolutely forbidden).
+  - Bad example: async function handleButtonClick() { ... }
+  - Good example: const result = await vja.app.showConfirm("...");
+- Strictly adhere to the rule of declaring variables outside of if/else, try/catch, and any other blocks ({ }).
   - Bad: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - Good: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
 
