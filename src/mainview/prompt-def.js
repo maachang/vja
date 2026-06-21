@@ -1102,7 +1102,7 @@
   - 変数は if/else ブロックの外で宣言する（ブロックスコープによる参照エラーを防ぐ）
     - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params); // エラー
     - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
-  - yaml定義の指示に必ず従い、定義されていない画面遷移やウィジェットの visible 設定は不要で
+  - YAMLに記載されていない処理（画面遷移・setVisible・show/hide等）は絶対に追加禁止。YAMLの指示内容のみを厳密に実装すること。
   - コメント等は日本語で
 `.trim()
             : // フロントエンド.
@@ -1119,7 +1119,7 @@
   - 変数は if/else ブロックの外で宣言することを厳守する（ブロックスコープによる参照エラーを防ぐ）
     - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params); // エラー
     - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
-  - yaml定義の指示に必ず従い、定義されていない画面遷移やウィジェットの visible 設定は不要で
+  - YAMLに記載されていない処理（画面遷移・setVisible・show/hide等）は絶対に追加禁止。YAMLの指示内容のみを厳密に実装すること。
   - コメント等は日本語で
 `.trim();
 
@@ -1204,8 +1204,8 @@ ${extRuntimeDoc}
   - Implement "vja.db.*" using SQL compatible with "sqlite3".
   - The SQL statement defines an SQL statement that is guaranteed to be executable.
   - Use "vja.form.navigate('screen name')" for screen transitions (never use "location").
-  - Strictly adhere to declaring variables outside of if/else blocks (to prevent reference errors caused by block scope).
-  - Be sure to strictly follow the instructions in the YAML definition; screen transitions and widget "visible" settings that are not defined are unnecessary.
+  - STRICTLY adhere to declaring variables outside of if/else blocks (to prevent reference errors caused by block scope).
+  - STRICTLY implement only what is described in the YAML. Adding any unlisted operations (navigation, setVisible, show/hide, etc.) is absolutely prohibited.
   - Please leave comments in Japanese.
 `.trim()
             : // フロントエンド.
@@ -1219,8 +1219,8 @@ ${extRuntimeDoc}
   - The SQL statement defines an SQL statement that is guaranteed to be executable.
   - Use "vja.form.navigate('screen name')" for screen transitions (※ "location" should never be used).
   - Using window.confirm and window.alert is generally prohibited (use vja.app.showDialog and vja.app.showConfirm instead).
-  - Strictly adhere to declaring variables outside of if/else blocks (to prevent reference errors caused by block scope).
-  - Be sure to strictly follow the instructions in the YAML definition; screen transitions and widget "visible" settings that are not defined are unnecessary.
+  - STRICTLY adhere to declaring variables outside of if/else blocks (to prevent reference errors caused by block scope).
+  - STRICTLY implement only what is described in the YAML. Adding any unlisted operations (navigation, setVisible, show/hide, etc.) is absolutely prohibited.
   - Please leave comments in Japanese.
 `.trim();
 
