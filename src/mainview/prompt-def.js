@@ -1330,8 +1330,6 @@ ${vjaUseJsInfo}
             : `
 ### プロジェクト情報
   - 現在のフォーム: ${formName}
-  - 対象ウィジェット: ${wname} ${wtag}) ${wdescription ? "//" + wdescription : ""}
-  - 対象イベント: ${eventName}
 
 ### フォーム内の全ウィジェット
 ---
@@ -1377,9 +1375,7 @@ ${extRuntimeDoc}
             if (isAppEvent) {
                 // アプリイベント: bun(rpc実行先）の生成処理(ts).
                 ret =
-                    "アプリイベント「" +
-                    eventName +
-                    "」をBun.jsで実行するTypeScriptコードとして、以下のYAML仕様に基づいて生成してください。\n" +
+                    "アプリイベントをBun.jsで実行するTypeScriptコードとして、以下のYAML仕様に基づいて生成してください。\n" +
                     "vja.db.query() / vja.session.get()等のAPIが利用可能です。";
             } else {
                 // ウィジットイベント(js).
@@ -1395,15 +1391,13 @@ ${extRuntimeDoc}
                 _removeYamlShComments(yamlDef) + // yamlのコメントを除去.
                 "\n~~~\n---";
         }
-        // 「利用テーブル」定義が存在しない場合.
+        // yaml定義が存在しない場合.
         else {
             // isAppEvent: true の場合、アプリイベント(bunネイティブ実行).
             if (isAppEvent) {
                 // アプリイベント: bun(rpc実行先）の生成処理.(ts).
                 ret =
-                    "アプリイベント「" +
-                    eventName +
-                    "」をBun.jsで実行されるTypeScriptコードとして生成してください。\n" +
+                    "アプリイベントをBun.jsで実行されるTypeScriptコードとして生成してください。\n" +
                     "vja.db.query() / vja.session.get()等のAPIが利用可能です。";
             } else {
                 // ウィジットイベント(js).
@@ -1460,8 +1454,6 @@ ${extRuntimeDoc}
             : `
 ### Project Information
   - Current Form: ${formName}
-  - Target Widget: ${wname} ${wtag}) ${wdescription ? "//" + wdescription : ""}
-  - Target Event: ${eventName}
 
 ### All Widgets in the Form
 ---
@@ -1507,9 +1499,7 @@ ${extRuntimeDoc}
             if (isAppEvent) {
                 // アプリイベント: bun(rpc実行先）の生成処理(ts).
                 ret =
-                    "Please generate the following YAML specification as TypeScript code to execute the app event " +
-                    eventName +
-                    " using Bun.js.\n" +
+                    "Please generate TypeScript code to execute the app event using Bun.js, based on the following YAML specification.\n" +
                     "APIs such as vja.db.query() / vja.session.get() are available.";
             } else {
                 // ウィジットイベント(js).
@@ -1531,9 +1521,7 @@ ${extRuntimeDoc}
             if (isAppEvent) {
                 // アプリイベント: bun(rpc実行先）の生成処理.(ts).
                 ret =
-                    "Please generate the app event " +
-                    eventName +
-                    " as TypeScript code that will be executed by Bun.js.\n" +
+                    "Please generate the app event as TypeScript code to be executed with Bun.js.\n" +
                     "APIs such as vja.db.query() / vja.session.get() are available.";
             } else {
                 // ウィジットイベント(js).
