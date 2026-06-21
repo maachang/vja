@@ -61,6 +61,7 @@ mlx-community/Qwen2.5-7B-Instruct-4bit
 |--------|----------------|
 | 8GB    | `Qwen3.5-4B-4bit` |
 | 16GB   | `Qwen3.5-9B-4bit` |
+| 16GB   | `gemma-4-E4B-4bit` |
 
 ---
 

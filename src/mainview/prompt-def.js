@@ -150,10 +150,10 @@
 ## 画面遷移 (vja.form.*)
 
 - 関数名: vja.form.navigate(formName, options?):
-  - 説明: 指定した画面に遷移する。デフォルトで現在の入力値を保存する
+  - 説明: 指定した画面に遷移する。デフォルトで現在の入力値を保存する。遷移先フォームが初期化されるため、現在のフォーム画面の更新では利用しないでください。
   - 引数:
     - formName: string - 遷移先のフォーム名
-    - "options?: { save?: boolean } - save=falseで入力値を保存しない（省略時はtrue）"
+    - options?: { save?: boolean } - save=falseで入力値を保存しない（省略時はtrue）
   - 戻り値: なし
   - 例外: showFormが未定義の場合は警告を出力
   - 使用例: "vja.form.navigate('Form2');"
@@ -629,7 +629,7 @@
 ## Screen Transitions (vja.form.*)
 
 - Function name: vja.form.navigate(formName, options?):
-  - Description: Navigates to the specified screen. Saves current input values by default
+  - Description: Navigates to the specified screen. By default, it saves the current input values. Since the destination form is initialized, do not use this for refreshing the current form screen.
   - Arguments:
     - formName: string - Name of the destination form
     - "options?: { save?: boolean } - save=false to not save input values (defaults to true)"
