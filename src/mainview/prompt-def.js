@@ -1473,7 +1473,7 @@ ${extRuntimeDoc}
             ? "" // バックエンドは空.
             : `
 ### Project Information
-  - Current Form: ${formName}
+- Current Form: ${formName}
 
 ### All Widgets in the Form
 <current_form_widgets>
