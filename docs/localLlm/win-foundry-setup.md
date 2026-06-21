@@ -93,6 +93,8 @@ foundry model load qwen2.5-7b
 foundry service stop
 ```
 
+※ 補足として `foundry service start` の単体実行で、サーバ自身は起動するようです。この状態で「vja 側でルーターモードONで、モデル選択で実行」する事ができます（つまり別に１度 model をrun か load で取得した場合、これらは service start で利用ができる」ってことです)。
+
 ---
 
 ## 6. サーバーのURLを確認する
