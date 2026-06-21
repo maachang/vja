@@ -1158,13 +1158,6 @@ ${rule}
 ${vjaUseJsInfo}
 ~~~
 ---
-
-### 拡張ランタイムYAML
----
-~~~yaml
-${extRuntimeDoc}
-~~~
----
 `.trim() + "\n"
         );
     };
@@ -1281,18 +1274,9 @@ ${rule}
 ${vjaUseJsInfo}
 ~~~
 ---
+`.trim() + "\n\n" + ENG_TO_LAST_PHRASE_JP);
 
-[Extended Runtime(YAML)]
----
-~~~yaml
-${extRuntimeDoc}
-~~~
----
-`.trim() +
-            "\n\n" +
-            ENG_TO_LAST_PHRASE_JP
-        );
-    };
+    }
 
     // yamlのコメントを削除(AIによっては、コメントが逆に影響を及ぼす事になるため)
     const _removeYamlShComments = function (sourceCode) {
@@ -1350,41 +1334,47 @@ ${extRuntimeDoc}
         const frontInfo = isAppEvent
             ? ""
             : `
-## プロジェクト情報
+### プロジェクト情報
   - 現在のフォーム: ${formName}
   - 対象ウィジェット: ${wname} ${wtag}) ${wdescription ? "//" + wdescription : ""}
   - 対象イベント: ${eventName}
 
-  ### フォーム内の全ウィジェット
-  ---
-  ${allWidgetsCtx}
-  ---
+### フォーム内の全ウィジェット
+---
+${allWidgetsCtx}
+---
 
-  ### フォーム定数（${formName}）
-  ---
-  ${formConstCtx}
-  ---
+### フォーム定数（${formName}）
+---
+${formConstCtx}
+---
 
-  ### フォーム内の入力パラメータ
-  ---
-  ${inputParamsCtx}
-  ---
+### フォーム内の入力パラメータ
+---
+${inputParamsCtx}
+---
 
-  ### 画面一覧
-  ---
-  ${formsCtx}
-  ---
+### 画面一覧
+---
+${formsCtx}
+---
 
-  ### グローバル定数
-  ---
-  ${globalConstCtx}
-  ---
+### グローバル定数
+---
+${globalConstCtx}
+---
 
-  ### テーブル定義
-  ---
-  ${tablesCtx}
-  ---
+### テーブル定義
+---
+${tablesCtx}
+---
 
+### 拡張ランタイムYAML
+---
+~~~yaml
+${extRuntimeDoc}
+~~~
+---
   `.trim();
 
         // yaml定義が設定されている場合.
@@ -1474,42 +1464,48 @@ ${extRuntimeDoc}
         const frontInfo = isAppEvent
             ? ""
             : `
-## Project Information
+### Project Information
   - Current Form: ${formName}
   - Target Widget: ${wname} ${wtag}) ${wdescription ? "//" + wdescription : ""}
   - Target Event: ${eventName}
 
-  ### All Widgets in the Form
-  ---
-  ${allWidgetsCtx}
-  ---
+### All Widgets in the Form
+---
+${allWidgetsCtx}
+---
 
-  ### Form Constants (${formName})
-  ---
-  ${formConstCtx}
-  ---
+### Form Constants (${formName})
+---
+${formConstCtx}
+---
 
-  ### Input Parameters in the Form
-  ---
-  ${inputParamsCtx}
-  ---
+### Input Parameters in the Form
+---
+${inputParamsCtx}
+---
 
-  ### Screen List
-  ---
-  ${formsCtx}
-  ---
+### Screen List
+---
+${formsCtx}
+---
 
-  ### Global Constants
-  ---
-  ${globalConstCtx}
-  ---
+### Global Constants
+---
+${globalConstCtx}
+---
 
-  ### Table Definitions
-  ---
-  ${tablesCtx}
-  ---
+### Table Definitions
+---
+${tablesCtx}
+---
 
-  `.trim();
+[Extended Runtime(YAML)]
+---
+~~~yaml
+${extRuntimeDoc}
+~~~
+---
+`.trim();
 
         // yaml定義が設定されている場合.
         if (yamlDef.trim()) {
