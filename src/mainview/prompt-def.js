@@ -675,27 +675,6 @@
     - default?: any - Default value if not present (optional)
   - Return Value: any - Session value or default value
 
-## Validation (vja.validate.*)
-
-- Function Name: vja.validate.check(rules):
-  - Description: Validates the input values of multiple widgets according to the rules.
-  - Arguments:
-    - "rules: Record<string, { required?: boolean, maxLength?: number, ... }> - Validation rules"
-  - Return Value: "{ valid: boolean, errors: Record<string, string> } - Error message in errors if valid is false"
-
-- Function Name: vja.validate.required(value):
-  - Description: Checks if the value is not empty.
-  - Arguments:
-    - value: any - The value to check.
-  - Return Value: boolean - Returns true if not empty.
-  - Similar Functions:
-    - vja.validate.isEmail(value):
-      - Description: Checks if the value is in email address format.
-    - vja.validate.isNumber(value):
-      - Description: Checks if the value is a number.
-    - vja.validate.isInteger(value):
-      - Description: Checks if the value is in integer format.
-
 ## Utilities (vja.util.*)
 
 - Function Name: vja.util.today():
@@ -1655,6 +1634,7 @@ Include the function name, description, arguments, return value, and exceptions.
 # イベント: ${eventName} (${wname})
 説明:
 #利用テーブル:
+#検証:
 アクション:
   -
 
