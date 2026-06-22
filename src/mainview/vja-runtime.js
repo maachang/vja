@@ -192,8 +192,8 @@
         // フォーム内の全入力値を取得 { name: value, ... }
         getAllInputs() {
             const result = {};
-            document.querySelectorAll("[data-name]").forEach(el => {
-                const name = el.dataset.name;
+            document.querySelectorAll("[data-vja-name]").forEach(el => {
+                const name = el.dataset.vjaName;
                 if (!name) return;
                 const tag = el.tagName.toLowerCase();
                 if (tag === "input") {
