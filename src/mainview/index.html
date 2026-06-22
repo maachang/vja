@@ -89,6 +89,9 @@
                     <div class="dd-item" onmousedown="openFormConstEditor()">
                         フォーム定数の編集…
                     </div>
+                    <div class="dd-item" onmousedown="openValidationEditor()">
+                        バリデーション定義…
+                    </div>
                     <div class="dd-item" onmousedown="openAiConfig()">
                         AI接続設定…
                     </div>
@@ -182,6 +185,12 @@
                 <line x1="10" y1="10" x2="8" y2="22" />
                 <line x1="16" y1="10" x2="14" y2="22" />
             </svg>定数(F)
+        </button>
+        <button class="tb-btn" onmousedown="openValidationEditor()" title="バリデーション定義（現在のフォームに紐づくバリデーション）">
+            <svg viewBox="0 0 24 24">
+                <polyline points="9 11 12 14 22 4" />
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+            </svg>検証(V)
         </button>
         <button class="tb-btn" onmousedown="openAiConfig()" title="AI接続設定">
             <svg viewBox="0 0 24 24">
@@ -737,6 +746,18 @@
                 idCnt: 1,
                 constants: [], // フォーム単位の定数
                 events: {},    // フォームイベント
+                // ── バリデーション定義 ──────────────────────────────
+                // テーブル管理と同じ構成。validationsは定義の配列。
+                // 各定義: { name, toastDuration, rules: [{ name, type, arg1, arg2, arg3, message }] }
+                //   name: 定義名（_vjaRunValidation('定義名') で呼び出す）
+                //   toastDuration: トースト表示時間（ms）省略時5000ms
+                //   rules[].name: 対象ウィジェット名
+                //   rules[].type: required/maxLength/minLength/range/numeric/integer/
+                //                 email/tel/zipcode/url/date/alphanumeric/alpha/
+                //                 hiragana/katakana/pattern
+                //   rules[].arg1〜arg3: バリデーションタイプに応じた引数
+                //   rules[].message: エラー時のトースト表示メッセージ
+                validations: [],
             };
         }
 
@@ -1749,19 +1770,11 @@
                         `</div>`;
                 }
                 case "bool": {
-                    const bTrue = val ? "active" : "";
-                    const bFalse = !val ? "active" : "";
-                    const bLabel = val ? "True" : "False";
                     const bid = "pvs_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
-                    return `<div class="pv-sel" id="${bid}">` +
-                        `<div class="pv-sel-btn" onmousedown="pvSelOpen('${bid}',event)">` +
-                        `<span>${bLabel}</span><span class="arr">▼</span>` +
-                        `</div>` +
-                        `<div class="pv-sel-list">` +
-                        `<div class="pv-sel-opt ${bTrue}" onmousedown="pvSelPick('${bid}',true,event);setProp('${d.k}','${d.sp || ""}',true,${w2})">True</div>` +
-                        `<div class="pv-sel-opt ${bFalse}" onmousedown="pvSelPick('${bid}',false,event);setProp('${d.k}','${d.sp || ""}',false,${w2})">False</div>` +
-                        `</div>` +
-                        `</div>`;
+                    return makePvSel(bid,
+                        [{value: "true", label: "True"}, {value: "false", label: "False"}],
+                        val ? "true" : "false",
+                        "setProp('" + d.k + "','" + (d.sp || "") + "',{value}==='true'," + w2 + ")");
                 }
                 case "color":
                     return `<input type="color" value="${val || "#000000"}" style="width:100%;height:22px;padding:1px 2px;cursor:pointer;border:1px solid var(--border);border-radius:2px;background:var(--bg3)" oninput="setProp('${d.k}','${d.sp || ""}',this.value,${w2})" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">`;
@@ -1769,14 +1782,8 @@
                 case "select": {
                     const sid = "pvs_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
                     const opts = d.opts || [];
-                    const sLabel = val ?? (opts[0] || "");
-                    const sOpts = opts.map(o => `<div class="pv-sel-opt ${val === o ? "active" : ""}" onmousedown="pvSelPick('${sid}','${o}',event);setProp('${d.k}','${d.sp || ""}','${o}',${w2})">${o}</div>`).join("");
-                    return `<div class="pv-sel" id="${sid}">` +
-                        `<div class="pv-sel-btn" onmousedown="pvSelOpen('${sid}',event)">` +
-                        `<span>${sLabel}</span><span class="arr">▼</span>` +
-                        `</div>` +
-                        `<div class="pv-sel-list">${sOpts}</div>` +
-                        `</div>`;
+                    return makePvSel(sid, opts, val ?? (opts[0] || ""),
+                        "setProp('" + d.k + "','" + (d.sp || "") + "',{value}," + w2 + ")");
                 }
                 case "itemsdef":
                     return `<button onmousedown="openItemsDefEditor(${w2})" class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ 項目編集…</button>`;
@@ -2905,13 +2912,8 @@
 
                 // AI生成を有効
                 "<div class='ai-cfg-row'><label>AI生成を有効</label>" +
-                "<div class='pv-sel' id='ai-ena-sel'>" +
-                "<div class='pv-sel-btn' onmousedown=\"pvSelOpen('ai-ena-sel',event)\">" +
-                "<span>" + (isEnabled ? "ON" : "OFF") + "</span><span class='arr'>▼</span></div>" +
-                "<div class='pv-sel-list'>" +
-                "<div class='pv-sel-opt " + (isEnabled ? "active" : "") + "' onmousedown=\"pvSelPick('ai-ena-sel','ON',event);aiCfgToggleEnabled('ON')\">ON</div>" +
-                "<div class='pv-sel-opt " + (!isEnabled ? "active" : "") + "' onmousedown=\"pvSelPick('ai-ena-sel','OFF',event);aiCfgToggleEnabled('OFF')\">OFF</div>" +
-                "</div></div></div>" +
+                makePvSel("ai-ena-sel", ["ON","OFF"], isEnabled ? "ON" : "OFF", "aiCfgToggleEnabled({value})") +
+                "</div>" +
 
                 // エンドポイント
                 "<div class='ai-cfg-row'><label>エンドポイント</label>" +
@@ -2923,13 +2925,8 @@
 
                 // ルーターモード
                 "<div class='ai-cfg-row'><label>ルーターモード</label>" +
-                "<div class='pv-sel' id='ai-router-sel'>" +
-                "<div class='pv-sel-btn' onmousedown=\"pvSelOpen('ai-router-sel',event)\">" +
-                "<span>" + (isRouter ? "ON" : "OFF") + "</span><span class='arr'>▼</span></div>" +
-                "<div class='pv-sel-list'>" +
-                "<div class='pv-sel-opt " + (isRouter ? "active" : "") + "' onmousedown=\"pvSelPick('ai-router-sel','ON',event);aiCfgToggleRouter('ON')\">ON</div>" +
-                "<div class='pv-sel-opt " + (!isRouter ? "active" : "") + "' onmousedown=\"pvSelPick('ai-router-sel','OFF',event);aiCfgToggleRouter('OFF')\">OFF</div>" +
-                "</div></div></div>" +
+                makePvSel("ai-router-sel", ["ON","OFF"], isRouter ? "ON" : "OFF", "aiCfgToggleRouter({value})") +
+                "</div>" +
 
                 // モデル名（ルーターモードONのみ）
                 "<div class='ai-cfg-row' id='ai-model-row' style='" + (!isRouter ? "opacity:.4;pointer-events:none" : "") + "'>" +
@@ -3628,6 +3625,12 @@
         function restoreSnap(s) {
             const d = JSON.parse(s);
             forms = d.forms;
+            // 古いプロジェクトファイルにはvalidationsがないため補完
+            forms.forEach(f => {
+                if (!f.validations) f.validations = [];
+                // 旧形式（オブジェクト）の場合は配列に変換
+                if (!Array.isArray(f.validations)) f.validations = [];
+            });
             curFormIdx = d.curFormIdx;
             applyProjectData(d);
             selId = null;
@@ -4233,6 +4236,34 @@
         }
 
         /* ── プロパティパネル カスタムセレクト ── */
+        // ── pv-sel 生成共通ヘルパー ─────────────────────────────
+        // id: 要素ID
+        // options: string[] または {value, label}[] の選択肢
+        // currentVal: 現在の選択値
+        // onPickCode: 選択時に実行するJSコード。{value}でプレースホルダー置換
+        //   例: "setProp('key','',{value},123)"
+        function makePvSel(id, options, currentVal, onPickCode) {
+            const opts = options.map(o => {
+                const val = typeof o === "object" ? o.value : o;
+                const lbl = typeof o === "object" ? (o.label || o.value) : o;
+                const code = onPickCode.replace(/\{value\}/g, "'" + String(val).replace(/'/g, "\\'") + "'");
+                const isActive = currentVal === val;
+                return "<div class='pv-sel-opt" + (isActive ? " active" : "") + "' " +
+                    "onmousedown=\"pvSelPick('" + id + "','" + String(val).replace(/'/g, "\\'") + "',event);" + code + "\">" + esc(lbl) + "</div>";
+            }).join("");
+            const curLabel = (() => {
+                const found = options.find(o => (typeof o === "object" ? o.value : o) === currentVal);
+                if (found) return typeof found === "object" ? (found.label || found.value) : found;
+                return currentVal || (options.length > 0 ? (typeof options[0] === "object" ? options[0].label : options[0]) : "");
+            })();
+            return "<div class='pv-sel' id='" + id + "'>" +
+                "<div class='pv-sel-btn' onmousedown=\"pvSelOpen('" + id + "',event)\">" +
+                "<span>" + esc(curLabel) + "</span><span class='arr'>▼</span>" +
+                "</div>" +
+                "<div class='pv-sel-list'>" + opts + "</div>" +
+                "</div>";
+        }
+
         function pvSelOpen(id, e) {
             if (e) e.stopPropagation();
             const wrap = document.getElementById(id);
@@ -4878,6 +4909,183 @@
         }
 
         /* ── フォーム定数エディタ ── */
+        /* ── バリデーション定義エディタ（テーブル管理と同じ構成） ── */
+        // バリデーションタイプ一覧
+        // 基本系: required/maxLength/minLength/range/numeric/integer
+        // パターン系: email/tel/zipcode/url/date/alphanumeric/alpha/hiragana/katakana
+        // 上級系: pattern（arg1=正規表現）
+        const VALIDATION_TYPES = [
+            "required", "maxLength", "minLength", "range",
+            "numeric", "integer", "email", "tel", "zipcode",
+            "url", "date", "alphanumeric", "alpha", "hiragana", "katakana", "pattern"
+        ];
+        let _validEdit = null; // 編集中のバリデーション定義 { name, toastDuration, rules }
+
+        function openValidationEditor() {
+            const f = forms[curFormIdx];
+            if (!f) return;
+            if (!Array.isArray(f.validations)) f.validations = [];
+            renderValidationListModal();
+        }
+
+        // ── バリデーション一覧モーダル（テーブル管理の一覧と同じ構成） ──
+        function renderValidationListModal() {
+            const f = forms[curFormIdx];
+            const list = f.validations || [];
+            let rows = "";
+            list.forEach((v, i) => {
+                rows += "<tr>" +
+                    "<td style='text-align:center'>" + (i + 1) + "</td>" +
+                    "<td>" + esc(v.name || "") + "</td>" +
+                    "<td style='text-align:center'>" + (v.rules?.length || 0) + "</td>" +
+                    "<td style='text-align:center'>" +
+                    "<button class='tbl-action-btn' onclick='openValidationEdit(" + i + ")'>編集</button>" +
+                    "</td>" +
+                    "<td style='text-align:center'>" +
+                    "<button class='tbl-action-btn del' onclick='deleteValidation(" + i + ")'>削除</button>" +
+                    "</td>" +
+                    "</tr>";
+            });
+            showModal("<div id='valid-list-modal'>" +
+                mhdrHTML("✅ バリデーション管理") +
+                "<div class='mbody' style='gap:6px'>" +
+                "<span style='font-size:12px;color:var(--text2)'>バリデーション定義（全" + list.length + "件）</span>" +
+                "<div style='overflow:auto'>" +
+                "<table style='width:100%;border-collapse:collapse'>" +
+                "<thead><tr style='background:var(--bg4)'>" +
+                "<th style='width:40px;padding:4px 6px'>No</th>" +
+                "<th style='padding:4px 6px;text-align:left'>定義名</th>" +
+                "<th style='width:80px;padding:4px 6px'>ルール数</th>" +
+                "<th style='width:60px;padding:4px 6px'>編集</th>" +
+                "<th style='width:60px;padding:4px 6px'>削除</th>" +
+                "</tr></thead>" +
+                "<tbody>" + rows + "</tbody>" +
+                "</table>" +
+                "</div>" +
+                "<button class='tbl-add-btn' onclick='openValidationEdit(-1)'>＋ バリデーション追加</button>" +
+                "</div>" +
+                "<div class='mfoot'>" +
+                "<button class='sec' onmousedown='closeModal()'>閉じる</button>" +
+                "</div>" +
+                "</div>");
+        }
+
+        // ── バリデーション編集モーダル ──
+        function openValidationEdit(idx) {
+            const f = forms[curFormIdx];
+            if (!Array.isArray(f.validations)) f.validations = [];
+            _validEdit = idx < 0
+                ? { name: "", toastDuration: 5000, rules: [] }
+                : JSON.parse(JSON.stringify(f.validations[idx]));
+            _validEdit._idx = idx;
+            // 初期表示で3件の空ルールを用意（既存ルールが3件未満の場合）
+            while (_validEdit.rules.length < 3) {
+                _validEdit.rules.push({name: "", type: "required", arg1: "", arg2: "", arg3: "", message: ""});
+            }
+            renderValidationEditModal();
+        }
+
+        function renderValidationEditModal() {
+            const v = _validEdit;
+            const rules = v.rules || [];
+            let tbody = "";
+            rules.forEach((r, i) => {
+                const sid = "valid-type-" + i;
+                const nid = "valid-name-" + i;
+                const widgetNames = (forms[curFormIdx]?.widgets || []).map(w => w.name).filter(Boolean);
+                tbody += "<tr>" +
+                    "<td>" + (i + 1) + "</td>" +
+                    "<td>" + (widgetNames.length > 0
+                        ? makePvSel(nid, widgetNames, r.name || "", "_validEdit.rules[" + i + "].name={value}")
+                        : "<input type='text' class='pv-input' value='" + esc(r.name || "") + "' oninput=\"_validEdit.rules[" + i + "].name=this.value\" placeholder='ウィジェット名'>") + "</td>" +
+                    "<td>" + makePvSel(sid, VALIDATION_TYPES, r.type || "required", "_validEdit.rules[" + i + "].type={value}") + "</td>" +
+                    "<td><input type='text' class='pv-input' value='" + esc(r.arg1 || "") + "' oninput=\"_validEdit.rules[" + i + "].arg1=this.value\" placeholder='arg1'></td>" +
+                    "<td><input type='text' class='pv-input' value='" + esc(r.arg2 || "") + "' oninput=\"_validEdit.rules[" + i + "].arg2=this.value\" placeholder='arg2'></td>" +
+                    "<td><input type='text' class='pv-input' value='" + esc(r.arg3 || "") + "' oninput=\"_validEdit.rules[" + i + "].arg3=this.value\" placeholder='arg3'></td>" +
+                    "<td><input type='text' class='pv-input' value='" + esc(r.message || "") + "' oninput=\"_validEdit.rules[" + i + "].message=this.value\" placeholder='エラーメッセージ'></td>" +
+                    "<td style='white-space:nowrap'>" +
+                    "<button class='del-btn' onclick='validInsertRow(" + i + ")' title='この行の前に挿入' style='margin-right:2px'>＋</button>" +
+                    "<button class='del-btn' onclick='validDelRow(" + i + ")' title='削除'>✕</button>" +
+                    "</td>" +
+                    "</tr>";
+            });
+            showModal("<div id='valid-edit-modal'>" +
+                mhdrHTML("✅ バリデーション編集") +
+                "<div class='mbody tbl-edit-wrap' style='gap:6px'>" +
+                "<div class='tbl-name-row'><label>定義名</label>" +
+                "<input id='valid-name' class='pv-input' value='" + esc(v.name || "") + "' placeholder='定義名'></div>" +
+                "<div style='display:flex;align-items:center;gap:8px;padding:4px 0'>" +
+                "<label style='font-size:12px;color:var(--text2);white-space:nowrap'>トースト表示時間（ms）:</label>" +
+                "<input type='number' id='valid-toast-dur' class='pv-input' value='" + (v.toastDuration || 5000) + "' min='1000' max='30000' style='width:100px'>" +
+                "</div>" +
+                "<div style='display:flex;justify-content:space-between;align-items:center'>" +
+                "<span style='font-size:12px;color:var(--text2)'>ルール定義（" + rules.length + "件）</span>" +
+                "<button class='col-add-btn' onclick='validAddRow()'>＋ ルール追加</button>" +
+                "</div>" +
+                "<div class='coldef-scroll'>" +
+                "<table class='coldef-table'>" +
+                "<thead><tr>" +
+                "<th style='width:36px'>No</th>" +
+                "<th>ウィジェット名</th>" +
+                "<th style='width:130px'>タイプ</th>" +
+                "<th style='width:65px'>arg1</th>" +
+                "<th style='width:65px'>arg2</th>" +
+                "<th style='width:65px'>arg3</th>" +
+                "<th>メッセージ</th>" +
+                "<th style='width:56px'></th>" +
+                "</tr></thead>" +
+                "<tbody>" + tbody + "</tbody>" +
+                "</table>" +
+                "</div>" +
+                "</div>" +
+                "<div class='mfoot'>" +
+                mfootHTML([{label: "← 一覧に戻る", action: "renderValidationListModal()"}]) +
+                "<button class='pri' onclick='validSave()'>保存</button>" +
+                "</div>" +
+                "</div>", "", "modal-root");
+        }
+
+        function validAddRow() {
+            if (!_validEdit) return;
+            _validEdit.rules.push({name: "", type: "required", arg1: "", arg2: "", arg3: "", message: ""});
+            renderValidationEditModal();
+        }
+        function validInsertRow(idx) {
+            if (!_validEdit) return;
+            _validEdit.rules.splice(idx, 0, {name: "", type: "required", arg1: "", arg2: "", arg3: "", message: ""});
+            renderValidationEditModal();
+        }
+        function validDelRow(idx) {
+            if (!_validEdit) return;
+            _validEdit.rules.splice(idx, 1);
+            renderValidationEditModal();
+        }
+        function deleteValidation(idx) {
+            const f = forms[curFormIdx];
+            if (!f || !f.validations) return;
+            f.validations.splice(idx, 1);
+            pushUndo();
+            renderValidationListModal();
+        }
+        function validSave() {
+            const f = forms[curFormIdx];
+            if (!f || !_validEdit) return;
+            const name = $("valid-name")?.value?.trim();
+            if (!name) { showVjaAlert("定義名を入力してください"); return; }
+            _validEdit.name = name;
+            _validEdit.toastDuration = parseInt($("valid-toast-dur")?.value) || 5000;
+            _validEdit.rules = (_validEdit.rules || []).filter(r => r.name.trim() && r.type);
+            if (!Array.isArray(f.validations)) f.validations = [];
+            if (_validEdit._idx < 0) {
+                f.validations.push({name: _validEdit.name, toastDuration: _validEdit.toastDuration, rules: _validEdit.rules});
+            } else {
+                f.validations[_validEdit._idx] = {name: _validEdit.name, toastDuration: _validEdit.toastDuration, rules: _validEdit.rules};
+            }
+            pushUndo();
+            showToast("バリデーション定義を保存しました");
+            renderValidationListModal();
+        }
+
         function openFormConstEditor() {
             const f = forms[curFormIdx];
             if (!f) return;

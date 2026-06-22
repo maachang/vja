@@ -1132,7 +1132,7 @@
 
 ## YAMLへの忠実性
 - YAMLに記載のない処理（navigate・setVisible・show/hide等）の追加は絶対禁止
-- YAMLの指示内容に従い実装を厳守
+- 「YAML仕様」の指示内容に従い実装を厳守
 
 ## その他
 - コメントは日本語で記述
@@ -1231,7 +1231,7 @@ ${vjaUseJsInfo}
 
 ## Fidelity to YAML
 - Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.
-- Implementation must strictly adhere to the instructions provided in the YAML.
+- Strictly adhere to the implementation requirements specified in "the YAML specification".
 
 ## Other
 - All comments must be written in Japanese.
@@ -1258,7 +1258,7 @@ ${vjaUseJsInfo}
 
 ## Fidelity to YAML
 - Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.
-- Implementation must strictly adhere to the instructions provided in the YAML.
+- Implementation must strictly adhere to the instructions provided in the "the following YAML".
 
 ## Other
 - All comments must be written in Japanese.
@@ -1401,7 +1401,7 @@ ${extRuntimeDoc}
                     frontInfo +
                     "\n\n\nイベント処理に対するインライン実装を、以下の `YAML仕様` に基づいてJavaScriptコードを生成してください。";
             }
-            // [共通]テーブル定義.
+            // yaml仕様をセット
             ret =
                 ret +
                 "\n[YAML仕様]" +
@@ -1527,7 +1527,7 @@ ${extRuntimeDoc}
                     frontInfo +
                     "\n\n\nGenerate JavaScript code for inline implementation of event handling based on `the following YAML` specification.";
             }
-            // [共通]テーブル定義.
+            // yaml仕様をセット
             ret =
                 ret +
                 "\n[The Following YAML]\n" +

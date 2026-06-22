@@ -1185,6 +1185,18 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     // タイトルバーのクローズボタン用: vja.app.closeWindow のラッパー
     lines.push('window._vjaClose = function() { window.vja?.app?.closeWindow?.(); };');
 
+    // ── バリデーション定義を静的埋め込み ──────────────────────────
+    // フォームに定義されたバリデーションルールをJSに静的に埋め込む。
+    // 実行時にAIが生成するのではなく、VJA側で自動的に挿入する。
+    // 呼び出し: _vjaRunValidation('定義名') → true=合格 / false=エラー
+    const validations = Array.isArray(form.validations) ? form.validations : [];
+    lines.push(`window._vjaValidations = ${JSON.stringify(validations)};`);
+    lines.push('window._vjaRunValidation = function(name) {');
+    lines.push('  const def = (window._vjaValidations || []).find(function(v) { return v.name === name; });');
+    lines.push('  if (!def || !def.rules || !def.rules.length) return true;');
+    lines.push('  return window.vja?.validate?.runRules?.(def.rules, def.toastDuration) ?? true;');
+    lines.push('};');
+
     // ── _vjaB64: イベントコードをBase64で定義（デコードはしない） ──
     lines.push('const _vjaB64 = {};');
     // ── _vjaCache: 初回呼び出し時のみAsyncFunction化してキャッシュ ──

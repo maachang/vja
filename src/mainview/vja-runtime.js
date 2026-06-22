@@ -427,6 +427,49 @@
             });
             return { valid: Object.keys(errors).length === 0, errors };
         },
+
+        // ── runRules: バリデーション定義を実行する共通関数 ──────────
+        // rules: [{ name, type, arg1, arg2, arg3, message }]
+        // toastDuration: トースト表示時間（ms）省略時5000ms
+        // 戻り値: true=全て合格, false=エラーあり（トースト表示）
+        runRules(rules, toastDuration) {
+            const dur = toastDuration ?? 5000;
+            const PATTERNS = {
+                email:       /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                tel:         /^[0-9+\-() ]{7,20}$/,
+                zipcode:     /^\d{3}-?\d{4}$/,
+                url:         /^https?:\/\/.+/,
+                date:        /^\d{4}-\d{2}-\d{2}$/,
+                alphanumeric:/^[a-zA-Z0-9]+$/,
+                alpha:       /^[a-zA-Z]+$/,
+                hiragana:    /^[぀-ゟ]+$/,
+                katakana:    /^[゠-ヿ]+$/,
+            };
+            for (const r of (rules || [])) {
+                const el = document.getElementById(r.name) || document.querySelector(`[data-vja-name="${r.name}"]`);
+                const val = el ? (el.type === "checkbox" ? el.checked : el.value) : "";
+                const str = String(val ?? "").trim();
+                let ok = true;
+                switch (r.type) {
+                    case "required":     ok = str.length > 0; break;
+                    case "maxLength":    ok = str.length <= Number(r.arg1 || 0); break;
+                    case "minLength":    ok = str.length >= Number(r.arg1 || 0); break;
+                    case "range":        ok = Number(str) >= Number(r.arg1 || 0) && Number(str) <= Number(r.arg2 || 0); break;
+                    case "numeric":      ok = str !== "" && !isNaN(parseFloat(str)) && isFinite(str); break;
+                    case "integer":      ok = str !== "" && Number.isInteger(Number(str)); break;
+                    case "pattern":      ok = new RegExp(r.arg1 || "").test(str); break;
+                    default:
+                        if (PATTERNS[r.type]) ok = str === "" || PATTERNS[r.type].test(str);
+                        break;
+                }
+                if (!ok) {
+                    const msg = r.message || `[${r.name}] ${r.type} チェックに失敗しました`;
+                    vja.notify?.toast?.(msg, dur);
+                    return false;
+                }
+            }
+            return true;
+        },
     };
 
     // ════════════════════════════════════════════════
