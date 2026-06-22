@@ -2250,11 +2250,37 @@
                 }).join("") + "</div>"
                 : "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>\u30c6\u30fc\u30d6\u30eb\u306a\u3057</div>";
 
+            // ── 検証（バリデーション定義）一覧 ──
+            // ヘッダー: 定義名クリックで「検証: 定義名」をYAMLエディタの現在位置に挿入。
+            // 展開: ルールのウィジェット名・バリデーション条件をテーブル形式で表示。
+            const validations = curForm?.validations || [];
+            const validBody = validations.length > 0
+                ? "<div>" + validations.map(v => {
+                    const vn = esc(v.name);
+                    const rules = (v.rules || []).filter(r => r.name && r.type);
+                    const ruleRows = rules.map(r => {
+                        const typeLabel = (VALIDATION_TYPES.find(t => t.value === r.type)?.label) || r.type;
+                        return "<tr><td class='col-name'>" + esc(r.name) + "</td>"
+                            + "<td class='col-type'>" + esc(typeLabel) + "</td>"
+                            + "<td class='col-flag'>" + (r.not ? "NOT" : "") + "</td></tr>";
+                    }).join("");
+                    return "<div class='rp-tbl-row'>"
+                        + "<div class='rp-tbl-header'>"
+                        + "<span class='rp-tbl-name rp-insert' data-insert='検証: " + vn + "'>" + vn + "</span>"
+                        + (v.description ? "<span class='rp-tbl-desc'>" + esc(v.description) + "</span>" : "")
+                        + (ruleRows ? "<button class='rp-tbl-expand' onclick='event.stopPropagation();yamlToggleTblCols(this)'>▶</button>" : "")
+                        + "</div>"
+                        + (ruleRows ? "<div class='rp-tbl-cols'><table>" + ruleRows + "</table></div>" : "")
+                        + "</div>";
+                }).join("") + "</div>"
+                : "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>検証定義なし</div>";
+
             return [
                 yamlRpSection("📌 定数", constBody, true),
                 yamlRpSection("📋 画面一覧", formBody, true),
                 showWidgets ? yamlRpSection("🔲 現在フォームのウィジェット", widBody, true) : "",
                 yamlRpSection("🗄 テーブル一覧", tblBody, true),
+                yamlRpSection("✅ 検証", validBody, true),
             ].join("");
         }
 
