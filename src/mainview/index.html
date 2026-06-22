@@ -4249,7 +4249,7 @@
                 const code = onPickCode.replace(/\{value\}/g, "'" + String(val).replace(/'/g, "\\'") + "'");
                 const isActive = currentVal === val;
                 return "<div class='pv-sel-opt" + (isActive ? " active" : "") + "' " +
-                    "onmousedown=\"pvSelPick('" + id + "','" + String(val).replace(/'/g, "\\'") + "',event);" + code + "\">" + esc(lbl) + "</div>";
+                    "onmousedown=\"pvSelPick('" + id + "','" + String(val).replace(/'/g, "\\'") + "','" + String(lbl).replace(/'/g, "\\'") + "',event);" + code + "\">" + esc(lbl) + "</div>";
             }).join("");
             const curLabel = (() => {
                 const found = options.find(o => (typeof o === "object" ? o.value : o) === currentVal);
@@ -4937,6 +4937,7 @@
                 rows += "<tr>" +
                     "<td style='text-align:center'>" + (i + 1) + "</td>" +
                     "<td>" + esc(v.name || "") + "</td>" +
+                    "<td style='max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>" + esc(v.description || "") + "</td>" +
                     "<td style='text-align:center'>" + (v.rules?.length || 0) + "</td>" +
                     "<td style='text-align:center'>" +
                     "<button class='tbl-action-btn' onclick='openValidationEdit(" + i + ")'>編集</button>" +
@@ -4955,6 +4956,7 @@
                 "<thead><tr style='background:var(--bg4)'>" +
                 "<th style='width:40px;padding:4px 6px'>No</th>" +
                 "<th style='padding:4px 6px;text-align:left'>定義名</th>" +
+                "<th style='padding:4px 6px;text-align:left'>説明</th>" +
                 "<th style='width:80px;padding:4px 6px'>ルール数</th>" +
                 "<th style='width:60px;padding:4px 6px'>編集</th>" +
                 "<th style='width:60px;padding:4px 6px'>削除</th>" +
@@ -4992,12 +4994,15 @@
             rules.forEach((r, i) => {
                 const sid = "valid-type-" + i;
                 const nid = "valid-name-" + i;
-                const widgetNames = (forms[curFormIdx]?.widgets || []).map(w => w.name).filter(Boolean);
+                const INPUT_TAGS = ["inputtype", "textarea", "checkbox", "radiobutton", "selectBox", "listbox", "slider"];
+                const widgetNames = ["", ...(forms[curFormIdx]?.widgets || [])
+                    .filter(w => INPUT_TAGS.includes(w.tag))
+                    .map(w => w.name)
+                    .filter(Boolean)];
+                const nameOpts = widgetNames.map(n => ({value: n, label: n === "" ? "（未選択）" : n}));
                 tbody += "<tr>" +
                     "<td>" + (i + 1) + "</td>" +
-                    "<td>" + (widgetNames.length > 0
-                        ? makePvSel(nid, widgetNames, r.name || "", "_validEdit.rules[" + i + "].name={value}")
-                        : "<input type='text' class='pv-input' value='" + esc(r.name || "") + "' oninput=\"_validEdit.rules[" + i + "].name=this.value\" placeholder='ウィジェット名'>") + "</td>" +
+                    "<td>" + makePvSel(nid, nameOpts, r.name || "", "_validEdit.rules[" + i + "].name={value}") + "</td>" +
                     "<td>" + makePvSel(sid, VALIDATION_TYPES, r.type || "required", "_validEdit.rules[" + i + "].type={value}") + "</td>" +
                     "<td><input type='text' class='pv-input' value='" + esc(r.arg1 || "") + "' oninput=\"_validEdit.rules[" + i + "].arg1=this.value\" placeholder='arg1'></td>" +
                     "<td><input type='text' class='pv-input' value='" + esc(r.arg2 || "") + "' oninput=\"_validEdit.rules[" + i + "].arg2=this.value\" placeholder='arg2'></td>" +
@@ -5014,6 +5019,8 @@
                 "<div class='mbody tbl-edit-wrap' style='gap:6px'>" +
                 "<div class='tbl-name-row'><label>定義名</label>" +
                 "<input id='valid-name' class='pv-input' value='" + esc(v.name || "") + "' placeholder='定義名'></div>" +
+                "<div class='tbl-name-row'><label>説明（任意）</label>" +
+                "<input id='valid-desc' class='pv-input' value='" + esc(v.description || "") + "' placeholder='バリデーションの説明（任意）'></div>" +
                 "<div style='display:flex;align-items:center;gap:8px;padding:4px 0'>" +
                 "<label style='font-size:12px;color:var(--text2);white-space:nowrap'>トースト表示時間（ms）:</label>" +
                 "<input type='number' id='valid-toast-dur' class='pv-input' value='" + (v.toastDuration || 5000) + "' min='1000' max='30000' style='width:100px'>" +
@@ -5073,13 +5080,14 @@
             const name = $("valid-name")?.value?.trim();
             if (!name) { showVjaAlert("定義名を入力してください"); return; }
             _validEdit.name = name;
+            _validEdit.description = $("valid-desc")?.value?.trim() || "";
             _validEdit.toastDuration = parseInt($("valid-toast-dur")?.value) || 5000;
             _validEdit.rules = (_validEdit.rules || []).filter(r => r.name.trim() && r.type);
             if (!Array.isArray(f.validations)) f.validations = [];
             if (_validEdit._idx < 0) {
-                f.validations.push({name: _validEdit.name, toastDuration: _validEdit.toastDuration, rules: _validEdit.rules});
+                f.validations.push({name: _validEdit.name, description: _validEdit.description, toastDuration: _validEdit.toastDuration, rules: _validEdit.rules});
             } else {
-                f.validations[_validEdit._idx] = {name: _validEdit.name, toastDuration: _validEdit.toastDuration, rules: _validEdit.rules};
+                f.validations[_validEdit._idx] = {name: _validEdit.name, description: _validEdit.description, toastDuration: _validEdit.toastDuration, rules: _validEdit.rules};
             }
             pushUndo();
             showToast("バリデーション定義を保存しました");
