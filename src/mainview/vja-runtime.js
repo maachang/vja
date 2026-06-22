@@ -472,6 +472,14 @@
             }
             return true;
         },
+
+        // ── run: GUIで定義したバリデーションを実行する ──────────────
+        // YAMLに「検証: 定義名」と記載するとJSコードの先頭に自動挿入される。
+        // _vjaRunValidation は VJA が Form.html 生成時に静的埋め込みする内部関数。
+        // 戻り値: true=合格 / false=エラー（エラー時はトーストを表示して処理中断）
+        run(name) {
+            return window._vjaRunValidation?.(name) ?? true;
+        },
     };
 
     // ════════════════════════════════════════════════

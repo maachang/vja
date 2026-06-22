@@ -749,7 +749,7 @@
                 // ── バリデーション定義 ──────────────────────────────
                 // テーブル管理と同じ構成。validationsは定義の配列。
                 // 各定義: { name, toastDuration, rules: [{ name, type, arg1, arg2, arg3, message }] }
-                //   name: 定義名（_vjaRunValidation('定義名') で呼び出す）
+                //   name: 定義名（vja.validate.run('定義名') で呼び出す）
                 //   toastDuration: トースト表示時間（ms）省略時5000ms
                 //   rules[].name: 対象ウィジェット名
                 //   rules[].type: required/maxLength/minLength/range/numeric/integer/
@@ -2405,7 +2405,7 @@
 
             // ── ⓪ バリデーション定義の抽出とYAMLからの削除 ──
             // キー「バリデーション:」「バリデート:」「検証:」が設定されていたら先頭の1つを抽出し、
-            // AIに渡すYAMLから該当行を削除する。_vjaRunValidation('定義名') はonSuccess時に先頭挿入。
+            // AIに渡すYAMLから該当行を削除する。vja.validate.run('定義名') はonSuccess時に先頭挿入。
             let validationName = null;
             const yamlForAi = yamlCur.replace(/^(バリデーション|バリデート|検証)\s*:\s*(.+)$/mg, (_, _key, val) => {
                 if (!validationName) validationName = val.trim(); // 先頭のみ取得
@@ -2526,9 +2526,9 @@
                 userPrompt: userPrompt,
                 onSuccess: async (clean) => {
                     // バリデーション定義がある場合、JSの先頭に呼び出しを挿入
-                    // _vjaRunValidation('定義名') → false=エラー時はreturnで処理中断
+                    // vja.validate.run('定義名') → false=エラー時はreturnで処理中断
                     const finalCode = validationName
-                        ? `if (!await _vjaRunValidation(${JSON.stringify(validationName)})) return;\n${clean}`
+                        ? `if (!await vja.validate.run(${JSON.stringify(validationName)})) return;\n${clean}`
                         : clean;
                     // モーダルを再表示してJSタブに切り替え
                     const w2 = getWidget(wid);

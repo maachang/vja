@@ -1188,7 +1188,8 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     // ── バリデーション定義を静的埋め込み ──────────────────────────
     // フォームに定義されたバリデーションルールをJSに静的に埋め込む。
     // 実行時にAIが生成するのではなく、VJA側で自動的に挿入する。
-    // 呼び出し: _vjaRunValidation('定義名') → true=合格 / false=エラー
+    // 公開API: vja.validate.run('定義名') → _vjaRunValidation('定義名') を内部で呼び出す。
+    // 呼び出し: vja.validate.run('定義名') → true=合格 / false=エラー
     const validations = Array.isArray(form.validations) ? form.validations : [];
     lines.push(`window._vjaValidations = ${JSON.stringify(validations)};`);
     lines.push('window._vjaRunValidation = function(name) {');

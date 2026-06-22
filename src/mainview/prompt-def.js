@@ -219,18 +219,13 @@
 
 ## バリデーション (vja.validate.*)
 
-- 関数名: vja.validate.check(rules):
-  - 説明: 複数ウィジェットの入力値をルールに従って一括バリデーションする
+- 関数名: vja.validate.run(name):
+  - 説明: GUIで定義したバリデーションルールを実行する。YAMLに「検証: 定義名」と記載すると、AIコード生成時にJSの先頭へ自動挿入される。AIが直接呼び出すことは不要。
   - 引数:
-    - "rules: Record<string, { required?: boolean, maxLength?: number, ... }> - バリデーションルール"
-  - 戻り値: "{ valid: boolean, errors: Record<string, string> } - validがfalseの場合errorsにエラーメッセージ"
-  - 使用例: |
-      const { valid, errors } = vja.validate.check({
-        txtName: { required: true },
-        txtEmail: { required: true, isEmail: true }
-      });
-      if (!valid) { vja.widget.setValue('lblError', Object.values(errors).join('\\n')); return; }
-  - 使用例説明: 名前とメールアドレスの入力チェックを行い、エラーがあれば表示する
+    - name: string - バリデーション定義名（GUIのバリデーション管理で設定した名前）
+  - 戻り値: boolean - true=合格 / false=エラー（エラー時はトーストメッセージを表示）
+  - 使用例: "if (!await vja.validate.run('入力チェック')) return;"
+  - 使用例説明: 「入力チェック」定義のバリデーションを実行し、エラーなら処理を中断する
 
 - 関数名: vja.validate.required(value):
   - 説明: 値が空でないかチェックする
@@ -674,6 +669,27 @@
     - key: string - Session key
     - default?: any - Default value if not present (optional)
   - Return Value: any - Session value or default value
+
+## Validation (vja.validate.*)
+
+- Function Name: vja.validate.check(rules):
+  - Description: Validates the input values of multiple widgets according to the rules.
+  - Arguments:
+    - "rules: Record<string, { required?: boolean, maxLength?: number, ... }> - Validation rules"
+  - Return Value: "{ valid: boolean, errors: Record<string, string> } - Error message in errors if valid is false"
+
+- Function Name: vja.validate.required(value):
+  - Description: Checks if the value is not empty.
+  - Arguments:
+    - value: any - The value to check.
+  - Return Value: boolean - Returns true if not empty.
+  - Similar Functions:
+    - vja.validate.isEmail(value):
+      - Description: Checks if the value is in email address format.
+    - vja.validate.isNumber(value):
+      - Description: Checks if the value is a number.
+    - vja.validate.isInteger(value):
+      - Description: Checks if the value is in integer format.
 
 ## Utilities (vja.util.*)
 
@@ -1634,7 +1650,6 @@ Include the function name, description, arguments, return value, and exceptions.
 # イベント: ${eventName} (${wname})
 説明:
 #利用テーブル:
-#検証:
 アクション:
   -
 
