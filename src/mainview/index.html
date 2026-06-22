@@ -4915,9 +4915,22 @@
         // パターン系: email/tel/zipcode/url/date/alphanumeric/alpha/hiragana/katakana
         // 上級系: pattern（arg1=正規表現）
         const VALIDATION_TYPES = [
-            "required", "maxLength", "minLength", "range",
-            "numeric", "integer", "email", "tel", "zipcode",
-            "url", "date", "alphanumeric", "alpha", "hiragana", "katakana", "pattern"
+            {value: "required",     label: "必須"},
+            {value: "maxLength",    label: "最大文字数"},
+            {value: "minLength",    label: "最小文字数"},
+            {value: "range",        label: "数値範囲"},
+            {value: "numeric",      label: "数値のみ"},
+            {value: "integer",      label: "整数のみ"},
+            {value: "email",        label: "メール形式"},
+            {value: "tel",          label: "電話番号"},
+            {value: "zipcode",      label: "郵便番号"},
+            {value: "url",          label: "URL形式"},
+            {value: "date",         label: "日付形式"},
+            {value: "alphanumeric", label: "英数字のみ"},
+            {value: "alpha",        label: "英字のみ"},
+            {value: "hiragana",     label: "ひらがなのみ"},
+            {value: "katakana",     label: "カタカナのみ"},
+            {value: "pattern",      label: "正規表現"},
         ];
         let _validEdit = null; // 編集中のバリデーション定義 { name, toastDuration, rules }
 
@@ -4982,7 +4995,7 @@
             _validEdit._idx = idx;
             // 初期表示で3件の空ルールを用意（既存ルールが3件未満の場合）
             while (_validEdit.rules.length < 3) {
-                _validEdit.rules.push({name: "", type: "required", arg1: "", arg2: "", arg3: "", message: ""});
+                _validEdit.rules.push({name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: ""});
             }
             renderValidationEditModal();
         }
@@ -4994,6 +5007,7 @@
             rules.forEach((r, i) => {
                 const sid = "valid-type-" + i;
                 const nid = "valid-name-" + i;
+                const notid = "valid-not-" + i;
                 const INPUT_TAGS = ["inputtype", "textarea", "checkbox", "radiobutton", "selectBox", "listbox", "slider"];
                 const widgetNames = ["", ...(forms[curFormIdx]?.widgets || [])
                     .filter(w => INPUT_TAGS.includes(w.tag))
@@ -5004,6 +5018,7 @@
                     "<td>" + (i + 1) + "</td>" +
                     "<td>" + makePvSel(nid, nameOpts, r.name || "", "_validEdit.rules[" + i + "].name={value}") + "</td>" +
                     "<td>" + makePvSel(sid, VALIDATION_TYPES, r.type || "required", "_validEdit.rules[" + i + "].type={value}") + "</td>" +
+                    "<td>" + makePvSel(notid, [{value:"false",label:"OFF"},{value:"true",label:"ON"}], r.not ? "true" : "false", "_validEdit.rules[" + i + "].not=({value}==='true')") + "</td>" +
                     "<td><input type='text' class='pv-input' value='" + esc(r.arg1 || "") + "' oninput=\"_validEdit.rules[" + i + "].arg1=this.value\" placeholder='arg1'></td>" +
                     "<td><input type='text' class='pv-input' value='" + esc(r.arg2 || "") + "' oninput=\"_validEdit.rules[" + i + "].arg2=this.value\" placeholder='arg2'></td>" +
                     "<td><input type='text' class='pv-input' value='" + esc(r.arg3 || "") + "' oninput=\"_validEdit.rules[" + i + "].arg3=this.value\" placeholder='arg3'></td>" +
@@ -5035,6 +5050,7 @@
                 "<th style='width:36px'>No</th>" +
                 "<th>ウィジェット名</th>" +
                 "<th style='width:130px'>タイプ</th>" +
+                "<th style='width:60px'>NOT</th>" +
                 "<th style='width:65px'>arg1</th>" +
                 "<th style='width:65px'>arg2</th>" +
                 "<th style='width:65px'>arg3</th>" +
@@ -5054,12 +5070,12 @@
 
         function validAddRow() {
             if (!_validEdit) return;
-            _validEdit.rules.push({name: "", type: "required", arg1: "", arg2: "", arg3: "", message: ""});
+            _validEdit.rules.push({name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: ""});
             renderValidationEditModal();
         }
         function validInsertRow(idx) {
             if (!_validEdit) return;
-            _validEdit.rules.splice(idx, 0, {name: "", type: "required", arg1: "", arg2: "", arg3: "", message: ""});
+            _validEdit.rules.splice(idx, 0, {name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: ""});
             renderValidationEditModal();
         }
         function validDelRow(idx) {

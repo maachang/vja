@@ -462,6 +462,8 @@
                         if (PATTERNS[r.type]) ok = str === "" || PATTERNS[r.type].test(str);
                         break;
                 }
+                // NOT フラグが true の場合は結果を反転
+                if (r.not) ok = !ok;
                 if (!ok) {
                     const msg = r.message || `[${r.name}] ${r.type} チェックに失敗しました`;
                     vja.notify?.toast?.(msg, dur);
