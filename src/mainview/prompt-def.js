@@ -1073,7 +1073,7 @@
 - 変数は if/else・try/catch・その他あらゆるブロック（{ }）の外で宣言することを厳守する
   - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
-- スクリプトのインデントは 4スペースで。
+- スクリプトのインデントを4スペースを厳守する
 
 ## vja API
 - 全ての vja.* 呼び出しは await を付ける
@@ -1200,7 +1200,7 @@ ${vjaUseJsInfo}
 - Strictly adhere to the rule of declaring variables outside of if/else, try/catch, and any other blocks ({ }).
   - Bad: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - Good: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
-- Use 4 spaces for script indentation.
+- Strictly adhere to a 4-space indentation for scripts.
 
 ## vja API
 - All vja.* calls must use await.
