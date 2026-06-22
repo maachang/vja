@@ -1077,7 +1077,7 @@
             ? VJA_USE_BACK_JS_INFO
             : VJA_USE_FRONT_JS_INFO;
 
-        // 出力ルール
+        // 出力基本ルール
         const baseRule =
             "- 出力は「" + (isAppEvent ? "TypeScript" : "JavaScript") + " の生コード」のみを厳守。" +
             "- 説明文、前置き、結びの言葉はすべて出力禁止。" +
@@ -1088,30 +1088,31 @@
         const rule = isAppEvent
             ? // バックエンド.
             `
-### 構造
+## 構造
 - コードは必ずインラインで記述。
 - 変数は if/else・try/catch・その他あらゆるブロック（{ }）の外で宣言することを厳守する
   - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
 
-### vja API
+## vja API
 - 全ての vja.* 呼び出しは await を付ける
 - 画面遷移は vja.form.navigate('画面name') のみ使用（location禁止）
 - navigate() は別画面移動専用。現在画面の更新目的での使用は絶対禁止
 
-### SQL
-- プレースホルダー(?)必須（SQLインジェクション対策）
-- sqlite3用SQLで実装。必ず実行可能なSQL文で定義する
+## SQL
+- プレースホルダー(?) 必須（SQLインジェクション対策）
+- sqlite3専用のSQLで実装。必ず実行可能なSQL文で定義する
 
-### YAMLへの忠実性
-- YAMLの指示内容のみを厳密に実装する
+## YAMLへの忠実性
+- YAMLに記載のない処理（navigate・setVisible・show/hide等）の追加は絶対禁止
+- YAMLの指示内容に従い実装を厳守
 
-### その他
+## その他
 - コメントは日本語で記述
 `.trim()
             : // フロントエンド.
             `
-### 構造
+## 構造
 - 生成するコードは必ず "インライン" で記述。ヘルパー関数の記載は絶対禁止で（例: handleXxx, doXxx, addEventListener 等の関数定義は絶対に禁止）
   - 悪い例: async function handleButtonClick() { ... }
   - 良い例: const result = await vja.app.showConfirm("...");
@@ -1119,21 +1120,21 @@
   - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
 
-### vja API
+## vja API
 - 全ての vja.* 呼び出しは await を付ける
 - 画面遷移は vja.form.navigate('画面name') のみ使用（location禁止）
 - navigate() は別画面移動専用。現在画面の更新目的での使用は絶対禁止
 - window.confirm/alert禁止（vja.app.showDialog/showConfirmを使用）
 
-### SQL
-- プレースホルダー(?)必須（SQLインジェクション対策）
-- sqlite3用SQLで実装。必ず実行可能なSQL文で定義する
+## SQL
+- プレースホルダー(?) 必須（SQLインジェクション対策）
+- sqlite3専用のSQLで実装。必ず実行可能なSQL文で定義する
 
-### YAMLへの忠実性
+## YAMLへの忠実性
 - YAMLに記載のない処理（navigate・setVisible・show/hide等）の追加は絶対禁止
-- YAMLの指示内容のみを厳密に実装する
+- YAMLの指示内容に従い実装を厳守
 
-### その他
+## その他
 - コメントは日本語で記述
 `.trim();
 
@@ -1142,18 +1143,22 @@
 あなたは日本語を専門とするVJAフォームデザイナーのイベント処理コード生成AIです。
 ユーザーが書いたYAMLを元に、JavaScriptの実装コードを生成します。
 
-## vjaランタイムYAML.
+[コード生成ルール]
+---
+${rule}
+---
+
+[出力基本ルール]
+---
+${baseRule}
+---
+
+[vjaランタイム(yaml)]
 ---
 ~~~yaml
 ${vjaUseJsInfo}
 ~~~
 ---
-
-## コード生成ルール
-${rule}
-
-# 出力ルール
-${baseRule}
 `.trim() + "\n"
         );
     };
@@ -1199,7 +1204,7 @@ ${baseRule}
         // コードタイプ.
         const codeType = isAppEvent ? "TypeScript" : "JavaScript";
 
-        // Basic return rules
+        // 出力基本ルール
         const baseRule =
             "- The output must strictly consist solely of raw " + codeType + " code.\n" +
             "- NO explanations, NO markdown code blocks (```), NO chat.\n" +
@@ -1209,30 +1214,31 @@ ${baseRule}
         const rule = isAppEvent
             ? // バックエンド.
             `
-### Structure
+## Structure
 - Code must always be written inline.
 - Strictly adhere to the rule of declaring variables outside of if/else, try/catch, and any other blocks ({ }).
   - Bad: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - Good: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
 
-### vja API
+## vja API
 - All vja.* calls must use await.
 - Screen navigation must use vja.form.navigate('screen name') only. (location is prohibited)
 - navigate() is exclusively for navigating to a different screen. Using it to refresh or update the current screen is absolutely prohibited.
 
-### SQL
+## SQL
 - Placeholders (?) are mandatory. (SQL injection prevention)
-- Implement using SQLite3-compatible SQL. Always define executable SQL statements.
+- Implemented using SQL specific to sqlite3. Must be defined using executable SQL statements.
 
-### YAML Compliance
-- Implement strictly and only what is specified in the YAML.
+## Fidelity to YAML
+- Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.
+- Implementation must strictly adhere to the instructions provided in the YAML.
 
-### Other
+## Other
 - All comments must be written in Japanese.
 `.trim()
             : // フロントエンド.
             `
-### Structure
+## Structure
 - All generated code must be written "inline." The use of helper functions is strictly prohibited (e.g., defining functions such as "handleXxx", "doXxx", "addEventListener", etc., is absolutely forbidden).
   - Bad example: async function handleButtonClick() { ... }
   - Good example: const result = await vja.app.showConfirm("...");
@@ -1240,21 +1246,21 @@ ${baseRule}
   - Bad: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - Good: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
 
-### vja API
+## vja API
 - All vja.* calls must use await.
 - Screen navigation must use vja.form.navigate('screen name') only. (location is prohibited)
 - navigate() is exclusively for navigating to a different screen. Using it to refresh or update the current screen is absolutely prohibited.
 - window.confirm/alert are prohibited. Use vja.app.showDialog/showConfirm instead.
 
-### SQL
+## SQL
 - Placeholders (?) are mandatory. (SQL injection prevention)
-- Implement using SQLite3-compatible SQL. Always define executable SQL statements.
+- Implemented using SQL specific to sqlite3. Must be defined using executable SQL statements.
 
-### YAML Compliance
-- Adding any operations not described in the YAML (navigate, setVisible, show/hide, etc.) is absolutely prohibited.
-- Implement strictly and only what is specified in the YAML.
+## Fidelity to YAML
+- Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.
+- Implementation must strictly adhere to the instructions provided in the YAML.
 
-### Other
+## Other
 - All comments must be written in Japanese.
 `.trim();
 
@@ -1263,18 +1269,22 @@ ${baseRule}
 You are a VJA form designer and event handling code generation AI specializing in Japanese.
 You generate ${codeType} implementation code based on the YAML specification written by the user.
 
-[vja Runtime(YAML)]
+[Code Generation Rules]
+---
+${rule}
+---
+
+[Basic Output Rules]
+---
+${baseRule}
+---
+
+[vja Runtime(yaml)]
 ---
 ~~~yaml
 ${vjaUseJsInfo}
 ~~~
 ---
-
-[Code Generation Rules]
-${rule}
-
-[OUTPUT FORMAT]
-${baseRule}
 `.trim() + "\n\n" + ENG_TO_LAST_PHRASE_JP);
     }
 
@@ -1335,7 +1345,9 @@ ${baseRule}
             ? ""
             : `
 ### プロジェクト情報
-  - 現在のフォーム: ${formName}
+---
+- 現在のフォーム: ${formName}
+---
 
 ### フォーム内の全ウィジェット
 ---
@@ -1367,7 +1379,7 @@ ${globalConstCtx}
 ${tablesCtx}
 ---
 
-### 拡張ランタイムYAML
+### 拡張ランタイム(yaml)
 ---
 ~~~yaml
 ${extRuntimeDoc}
@@ -1381,21 +1393,21 @@ ${extRuntimeDoc}
             if (isAppEvent) {
                 // アプリイベント: bun(rpc実行先）の生成処理(ts).
                 ret =
-                    "アプリイベントをBun.jsで実行するTypeScriptコードとして、以下のYAML仕様に基づいて生成してください。\n" +
+                    "アプリイベントをBun.jsで実行するTypeScriptコードとして、以下の `YAML仕様` に基づいて生成してください。\n" +
                     "vja.db.query() / vja.session.get()等のAPIが利用可能です。";
             } else {
                 // ウィジットイベント(js).
                 ret =
                     frontInfo +
-                    "\n\n\nイベント処理に対するインライン実装を、以下のYAML仕様に基づいてJavaScriptコードを生成してください。";
+                    "\n\n\nイベント処理に対するインライン実装を、以下の `YAML仕様` に基づいてJavaScriptコードを生成してください。";
             }
             // [共通]テーブル定義.
             ret =
                 ret +
-                "\n---" +
-                "~~~yaml\n" +
+                "\n[YAML仕様]" +
+                "---\n~~~yaml\n" +
                 _removeYamlShComments(yamlDef) + // yamlのコメントを除去.
-                "\n~~~\n---";
+                "\n~~~\n---\n";
         }
         // yaml定義が存在しない場合.
         else {
@@ -1459,7 +1471,9 @@ ${extRuntimeDoc}
             ? ""
             : `
 ### Project Information
-  - Current Form: ${formName}
+---
+- Current Form: ${formName}
+---
 
 ### All Widgets in the Form
 ---
@@ -1491,7 +1505,7 @@ ${globalConstCtx}
 ${tablesCtx}
 ---
 
-[Extended Runtime(YAML)]
+### Extended Runtime(yaml)
 ---
 ~~~yaml
 ${extRuntimeDoc}
@@ -1505,21 +1519,21 @@ ${extRuntimeDoc}
             if (isAppEvent) {
                 // アプリイベント: bun(rpc実行先）の生成処理(ts).
                 ret =
-                    "Please generate TypeScript code to execute the app event using Bun.js, based on the following YAML specification.\n" +
+                    "Please generate TypeScript code to execute the app event using Bun.js, based on `the following YAML` specification.\n" +
                     "APIs such as vja.db.query() / vja.session.get() are available.";
             } else {
                 // ウィジットイベント(js).
                 ret =
                     frontInfo +
-                    "\n\n\nGenerate JavaScript code for inline implementation of event handling based on the following YAML specification.";
+                    "\n\n\nGenerate JavaScript code for inline implementation of event handling based on `the following YAML` specification.";
             }
             // [共通]テーブル定義.
             ret =
                 ret +
-                "\n---" +
-                "~~~yaml\n" +
+                "\n[The Following YAML]\n" +
+                "---\n~~~yaml\n" +
                 _removeYamlShComments(yamlDef) + // yamlのコメントを除去.
-                "\n~~~\n---";
+                "\n~~~\n---\n";
         }
         // 「利用テーブル」定義が存在しない場合.
         else {
