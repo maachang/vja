@@ -2376,6 +2376,16 @@
                 return;
             }
             const yamlCur = $("yaml-ta")?.value || "";
+
+            // ── ⓪ バリデーション定義の抽出とYAMLからの削除 ──
+            // キー「バリデーション:」「バリデート:」「検証:」が設定されていたら先頭の1つを抽出し、
+            // AIに渡すYAMLから該当行を削除する。_vjaRunValidation('定義名') はonSuccess時に先頭挿入。
+            let validationName = null;
+            const yamlForAi = yamlCur.replace(/^(バリデーション|バリデート|検証)\s*:\s*(.+)$/mg, (_, _key, val) => {
+                if (!validationName) validationName = val.trim(); // 先頭のみ取得
+                return ""; // 全該当行を削除（先頭以外も残さない）
+            }).replace(/\n{3,}/g, "\n\n"); // 連続空行の整理
+
             const addPrompt = $("ai-prompt-in")?.value || "";
             const btn = $("ai-gen-btn");
             const status = $("ai-status");
@@ -2456,7 +2466,7 @@
 
             // ── ⑦ ユーザープロンプト ──
             const userPrompt = _PROMPT_DEF.YAML_TO_JS_USER_PROMPT(
-                isAppEvent, yamlCur, addPrompt,
+                isAppEvent, yamlForAi, addPrompt,
                 {
                     formName: curForm?.cfg?.name, eventName: evName,
                     wname: w.name, wtag: w.tag, wdescription: w.props?.description,
@@ -2489,13 +2499,18 @@
                 systemPrompt: sysPrompt,
                 userPrompt: userPrompt,
                 onSuccess: async (clean) => {
+                    // バリデーション定義がある場合、JSの先頭に呼び出しを挿入
+                    // _vjaRunValidation('定義名') → false=エラー時はreturnで処理中断
+                    const finalCode = validationName
+                        ? `if (!await _vjaRunValidation(${JSON.stringify(validationName)})) return;\n${clean}`
+                        : clean;
                     // モーダルを再表示してJSタブに切り替え
                     const w2 = getWidget(wid);
                     if (!w2) return;
                     openYaml(wid, evName);
                     requestAnimationFrame(() => requestAnimationFrame(() => {
                         const jsTa = $("js-ta");
-                        if (jsTa) jsTa.value = clean;
+                        if (jsTa) jsTa.value = finalCode;
                         yamlTabSwitch("js");
                         jsHlUpdate();
                         if (status) status.textContent = "✅ 生成完了 (JavaScriptタブを確認)";
