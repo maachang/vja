@@ -1854,7 +1854,7 @@ textarea.yaml:focus {
     cursor: not-allowed
 }
 
-.yaml-ai-status {
+.yaml-ai-right-spacer {
     font-size: var(--ui-font-size);
     color: var(--text2)
 }

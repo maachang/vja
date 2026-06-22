@@ -2833,7 +2833,7 @@
                 "<input id='ai-prompt-in' placeholder='AIへの追加指示（任意）' style='flex:1'>" +
                 "<button class='yaml-ai-btn' id='ai-gen-btn' onmousedown='pvCall(\"yamlAiGen\")'>" +
                 (aiEnabled ? "🤖 AI生成" : "🤖 AI生成（設定要）") + "</button>" +
-                "<span class='yaml-ai-status' id='ai-status'></span>" +
+                "<span class='yaml-ai-right-spacer' id='ai-status'></span>" +
                 "</div>" +
                 "<div style='display:flex;align-items:center;gap:4px'>" +
                 "<input id='editor-search-in' placeholder='検索ワード（Ctrl+F）' style='flex:1' " +
@@ -2841,6 +2841,7 @@
                 "oninput='_editorSearchLast={taId:null,word:\"\",pos:0}'>" +
                 "<button class='yaml-ai-btn' onmousedown='event.preventDefault();$(\"editor-search-in\").value=\"\";_editorSearchLast={taId:null,word:\"\",pos:0}'>✕</button>" +
                 "<button class='yaml-ai-btn' onmousedown='event.preventDefault();editorSearch()'>🔍 検索</button>" +
+                "<span class='yaml-ai-right-spacer'></span>" +
                 "</div>" +
                 "</div>" +
                 "</div>" +
