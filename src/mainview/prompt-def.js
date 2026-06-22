@@ -227,21 +227,6 @@
   - 使用例: "if (!await vja.validate.run('入力チェック')) return;"
   - 使用例説明: 「入力チェック」定義のバリデーションを実行し、エラーなら処理を中断する
 
-- 関数名: vja.validate.required(value):
-  - 説明: 値が空でないかチェックする
-  - 引数:
-    - value: any - チェックする値
-  - 戻り値: boolean - 空でなければtrue
-  - 使用例: "if (!vja.validate.required(vja.widget.getValue('txtName'))) return;"
-  - 使用例説明: 名前が未入力の場合は処理を中断する
-  - 類似関数:
-    - vja.validate.isEmail(value):
-      - 説明: 値がメールアドレス形式かチェックする
-    - vja.validate.isNumber(value):
-      - 説明: 値が数値形式かチェックする
-    - vja.validate.isInteger(value):
-      - 説明: 値が整数形式かチェックする
-
 ## ユーティリティ (vja.util.*)
 
 - 関数名: vja.util.uuid():
@@ -1088,6 +1073,7 @@
 - 変数は if/else・try/catch・その他あらゆるブロック（{ }）の外で宣言することを厳守する
   - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
+- スクリプトのインデントは 4スペースで。
 
 ## vja API
 - 全ての vja.* 呼び出しは await を付ける
@@ -1214,6 +1200,7 @@ ${vjaUseJsInfo}
 - Strictly adhere to the rule of declaring variables outside of if/else, try/catch, and any other blocks ({ }).
   - Bad: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - Good: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
+- Use 4 spaces for script indentation.
 
 ## vja API
 - All vja.* calls must use await.
