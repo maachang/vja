@@ -2267,7 +2267,6 @@
                     return "<div class='rp-tbl-row'>"
                         + "<div class='rp-tbl-header'>"
                         + "<span class='rp-tbl-name rp-insert' data-insert='検証: " + vn + "'>" + vn + "</span>"
-                        + (v.description ? "<span class='rp-tbl-desc'>" + esc(v.description) + "</span>" : "")
                         + (ruleRows ? "<button class='rp-tbl-expand' onclick='event.stopPropagation();yamlToggleTblCols(this)'>▶</button>" : "")
                         + "</div>"
                         + (ruleRows ? "<div class='rp-tbl-cols'><table>" + ruleRows + "</table></div>" : "")
@@ -2279,8 +2278,8 @@
                 yamlRpSection("📌 定数", constBody, true),
                 yamlRpSection("📋 画面一覧", formBody, true),
                 showWidgets ? yamlRpSection("🔲 現在フォームのウィジェット", widBody, true) : "",
-                yamlRpSection("🗄 テーブル一覧", tblBody, true),
                 yamlRpSection("✅ 検証", validBody, true),
+                yamlRpSection("🗄 テーブル一覧", tblBody, true),
             ].join("");
         }
 
