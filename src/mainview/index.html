@@ -5084,20 +5084,41 @@
                 "</div>", "", "modal-root");
         }
 
+        // ── 行操作共通ヘルパー ────────────────────────────────────
+        // AddRow/InsertRow/DelRow の push/splice+render パターンを共通化。
+        // getRows: 対象配列を返す関数、defaultRow: 新規行オブジェクトを返す関数
+        // fallback: DelRow時に配列が空になった場合の補填行（nullなら補填しない）
+        function _rowAdd(getRows, defaultRow, renderFn, maxLen = Infinity) {
+            const rows = getRows();
+            if (!rows || rows.length >= maxLen) return;
+            rows.push(defaultRow());
+            renderFn();
+        }
+        function _rowInsert(getRows, idx, defaultRow, renderFn, maxLen = Infinity) {
+            const rows = getRows();
+            if (!rows || rows.length >= maxLen) return;
+            rows.splice(idx, 0, defaultRow());
+            renderFn();
+        }
+        function _rowDel(getRows, idx, fallback, renderFn) {
+            const rows = getRows();
+            if (!rows) return;
+            rows.splice(idx, 1);
+            if (rows.length === 0 && fallback) rows.push(fallback());
+            renderFn();
+        }
+
         function validAddRow() {
             if (!_validEdit) return;
-            _validEdit.rules.push({name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: ""});
-            renderValidationEditModal();
+            _rowAdd(() => _validEdit.rules, () => ({name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: ""}), renderValidationEditModal);
         }
         function validInsertRow(idx) {
             if (!_validEdit) return;
-            _validEdit.rules.splice(idx, 0, {name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: ""});
-            renderValidationEditModal();
+            _rowInsert(() => _validEdit.rules, idx, () => ({name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: ""}), renderValidationEditModal);
         }
         function validDelRow(idx) {
             if (!_validEdit) return;
-            _validEdit.rules.splice(idx, 1);
-            renderValidationEditModal();
+            _rowDel(() => _validEdit.rules, idx, null, renderValidationEditModal);
         }
         function deleteValidation(idx) {
             const f = forms[curFormIdx];
@@ -5841,20 +5862,13 @@
             if (_coldefRows) _coldefRows[idx][key] = val;
         }
         function coldefAddRow() {
-            if (!_coldefRows || _coldefRows.length >= 100) return;
-            _coldefRows.push({label: "", width: "20", displayName: ""});
-            renderColDefModal();
+            _rowAdd(() => _coldefRows, () => ({label: "", width: "20", displayName: ""}), renderColDefModal, 100);
         }
         function coldefInsertRow(idx) {
-            if (!_coldefRows || _coldefRows.length >= 100) return;
-            _coldefRows.splice(idx, 0, {label: "", width: "20", displayName: ""});
-            renderColDefModal();
+            _rowInsert(() => _coldefRows, idx, () => ({label: "", width: "20", displayName: ""}), renderColDefModal, 100);
         }
         function coldefDelRow(idx) {
-            if (!_coldefRows) return;
-            _coldefRows.splice(idx, 1);
-            if (_coldefRows.length === 0) _coldefRows.push({label: "", width: "80"});
-            renderColDefModal();
+            _rowDel(() => _coldefRows, idx, () => ({label: "", width: "80"}), renderColDefModal);
         }
         function coldefSave() {
             const wid = _coldefWid;
@@ -5921,20 +5935,13 @@
                 + "</div>");
         }
         function itemsdefAddRow() {
-            if (!_itemsdefRows) return;
-            _itemsdefRows.push({label: "", value: ""});
-            renderItemsDefModal();
+            _rowAdd(() => _itemsdefRows, () => ({label: "", value: ""}), renderItemsDefModal);
         }
         function itemsdefInsertRow(idx) {
-            if (!_itemsdefRows) return;
-            _itemsdefRows.splice(idx, 0, {label: "", value: ""});
-            renderItemsDefModal();
+            _rowInsert(() => _itemsdefRows, idx, () => ({label: "", value: ""}), renderItemsDefModal);
         }
         function itemsdefDelRow(idx) {
-            if (!_itemsdefRows) return;
-            _itemsdefRows.splice(idx, 1);
-            if (_itemsdefRows.length === 0) _itemsdefRows.push({label: "", value: ""});
-            renderItemsDefModal();
+            _rowDel(() => _itemsdefRows, idx, () => ({label: "", value: ""}), renderItemsDefModal);
         }
         function itemsdefSave() {
             const wid = _itemsdefWid;
