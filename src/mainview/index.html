@@ -4238,17 +4238,25 @@
             renderConstModal();
         }
 
-        function constSave() {
-            syncConstFromDOM(); // 保存前に DOM から最新値を取得
+        // ── 定数保存共通ヘルパー ──────────────────────────────────
+        // target=null → グローバル定数、target=フォームオブジェクト → フォーム定数
+        function _constSaveBase(target) {
+            syncConstFromDOM();
             const valid = (_constRows || []).filter(r => r.name.trim());
-            // 重複チェック
             const names = valid.map(r => r.name.trim());
             const dup = names.find((n, i) => names.indexOf(n) !== i);
-            if (dup) {showVjaAlert("定数名「" + dup + "」が重複しています"); return;}
-            constants = valid.map(r => ({name: r.name.trim(), value: r.value}));
+            if (dup) { showVjaAlert("定数名「" + dup + "」が重複しています"); return; }
+            const saved = valid.map(r => ({name: r.name.trim(), value: r.value}));
+            if (target === null) {
+                constants = saved;
+            } else {
+                target.constants = saved;
+                showToast("フォーム定数を保存しました（" + saved.length + "件）");
+            }
             closeModal();
             pushUndo();
         }
+        function constSave() { _constSaveBase(null); }
 
         /* ── プロパティパネル カスタムセレクト ── */
         // ── pv-sel 生成共通ヘルパー ─────────────────────────────
@@ -5176,17 +5184,9 @@
         }
 
         function saveFormConst() {
-            syncConstFromDOM();
-            const valid = (_constRows || []).filter(r => r.name.trim());
-            const names = valid.map(r => r.name.trim());
-            const dup = names.find((n, i) => names.indexOf(n) !== i);
-            if (dup) {showVjaAlert("定数名「" + dup + "」が重複しています"); return;}
             const f = forms[curFormIdx];
             if (!f) return;
-            f.constants = valid.map(r => ({name: r.name.trim(), value: r.value}));
-            closeModal();
-            pushUndo();
-            showToast("フォーム定数を保存しました（" + f.constants.length + "件）");
+            _constSaveBase(f);
         }
 
 
