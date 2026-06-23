@@ -435,16 +435,19 @@
 ## UI (vja.ui.*)
 
 - 関数名: vja.ui.loading(show, message?):
-  - 説明: ローディングオーバーレイを表示/非表示にする
+  - 説明: ローディングオーバーレイを表示/非表示にする。エラー対策のため、使用例のように実装する。
   - 引数:
     - show: boolean - trueで表示、falseで非表示
     - message?: string - 表示するメッセージ（デフォルト: 「処理中…」）
   - 戻り値: なし
   - 使用例: |
       vja.ui.loading(true, 'データを取得中...');
-      const rows = await vja.db.query('SELECT * FROM users');
-      vja.ui.loading(false);
-  - 使用例説明: DB取得中にローディングを表示し、完了後に非表示にする
+      try {
+        const rows = await vja.db.query('SELECT * FROM users');
+      } finally {
+        vja.ui.loading(false);
+      }
+  - 使用例説明: DB取得中にローディングを表示し try/finally で確実に完了後に非表示にする
 
 ## 暗号化 (vja.crypto.*)
 
@@ -746,6 +749,23 @@
 
 - Function Name: await vja.fetch(url, options?):
   - Description: Use this instead of window.fetch.
+
+## UI (vja.ui.*)
+
+- Function name: vja.ui.loading(show, message?):
+  - Description: Show or hide the loading overlay. To handle potential errors, implement it as shown in the usage example.
+  - Arguments:
+    - show: boolean - true to show, false to hide
+    - message?: string - Message to display (default: "Processing...")
+  - Return value: None
+  - Usage example: |
+    vja.ui.loading(true, 'Fetching data...');
+    try {
+      const rows = await vja.db.query('SELECT * FROM users');
+    } finally {
+      vja.ui.loading(false);
+    }
+  - Usage example explanation: Displays the loading overlay while fetching data from the DB and ensures it is hidden after completion using a try/finally block.
 
 ## Dialog (vja.app.*)
 
