@@ -3436,7 +3436,7 @@
                 ? html.replace(/^\s*<div class=["']modal-yaml["']>/, "").replace(/<\/div>\s*$/, "")
                 : html;
             $(layer).innerHTML =
-                `<div class="ov" onclick="ovClick(event)"><div class="modal${cls}">${inner}</div></div>`;
+                `<div class="ov"><div class="modal${cls}">${inner}</div></div>`;
         }
         // ── vja.app ダイアログ（#dialog-root, z-index:8000）────────────────
         // showVjaDialog / showVjaAlert / showVjaPrompt / _onVjaDialog* は
@@ -3543,19 +3543,6 @@
                 _aiFetchId = null;
             }
         }
-        // オーバーレイクリック時の処理。
-        // yaml/loading 系モーダルは誤操作防止のため外クリックでは閉じない。
-        function ovClick(e) {
-            if (!e.target.classList.contains("ov")) return;
-            const modal = e.target.querySelector(".modal");
-            if (modal && modal.classList.contains("modal-yaml")) return;
-            if (modal && modal.classList.contains("modal-loading")) return;
-            if (modal && modal.classList.contains("modal-cloud")) return;
-            // クリックされたovが属するlayerを特定して閉じる
-            const root = e.target.closest("#modal-root, #modal-layer-1, #modal-layer-2");
-            closeModal(root ? root.id : "modal-root");
-        }
-
         /* ═══════════════════════════════════════════
           CONTEXT MENU
         ═══════════════════════════════════════════ */
