@@ -31,18 +31,28 @@ foundry model list
 
 Snapdragon X 環境でのNPU対応モデル例（環境・更新状況により変わります）：
 
-| Alias | Device | Model ID |
-|-------|--------|----------|
-| qwen2.5-1.5b | NPU | qwen2.5-1.5b-instruct-qnn-npu:2 |
-| qwen2.5-7b | NPU | qwen2.5-7b-instruct-qnn-npu:2 |
-| phi-3-mini-128k | NPU | phi-3-mini-128k-instruct-qnn-npu:3 |
-| phi-3.5-mini | NPU | phi-3.5-mini-instruct-qnn-npu:2 |
-| deepseek-r1-7b | NPU | deepseek-r1-distill-qwen-7b-qnn-npu:2 |
-| phi-3-mini-4k | NPU | phi-3-mini-4k-instruct-qnn-npu:3 |
-| deepseek-r1-14b | NPU | deepseek-r1-distill-qwen-14b-qnn-npu:2 |
+| Alias            | Device | Model ID                               |
+| ---------------- | ------ | -------------------------------------- |
+| qwen2.5-1.5b     | NPU    | qwen2.5-1.5b-instruct-qnn-npu:2        |
+| qwen2.5-7b       | NPU    | qwen2.5-7b-instruct-qnn-npu:2          |
+| phi-3-mini-128k  | NPU    | phi-3-mini-128k-instruct-qnn-npu:3     |
+| phi-3.5-mini     | NPU    | phi-3.5-mini-instruct-qnn-npu:2        |
+| deepseek-r1-7b   | NPU    | deepseek-r1-distill-qwen-7b-qnn-npu:2  |
+| phi-3-mini-4k    | NPU    | phi-3-mini-4k-instruct-qnn-npu:3       |
+| deepseek-r1-14b  | NPU    | deepseek-r1-distill-qwen-14b-qnn-npu:2 |
+| qwen2.5-coder-7b | NPU    | qwen2.5-coder-7b-instruct-qnn-npu:1    |
 
 VJAでのYAMLからJSソースコード生成には **qwen2.5-7b** が適しています。
 今後 qwen系・gemma系などの新しいモデルが追加されることが予想されるため、最新状況に合わせて選択してください。
+
+2026/06現在: qwen2.5-coder-7b-instruct-qnn-npu:1 これが追加されているので、現状利用した限りでは、これが良さそう。
+
+それ以外に設定しておくと良さそうな定義（vja の AI設定で行う)
+
+- max-token: 8192
+    - 途中でjs生成コードが切れてしまうことがある。
+- temperature: 0
+    - 0 が一番正解のコードを書いてくれるので、この値にする。
 
 ---
 
@@ -116,12 +126,12 @@ EP autoregistration status: Successfully downloaded and registered the following
 
 ## 7. その他のサービス管理コマンド
 
-| コマンド | 説明 |
-|---------|------|
-| `foundry service start` | サービスを起動する |
-| `foundry service stop` | サービスを停止する |
-| `foundry service status` | サービスの状態・URLを確認する |
-| `foundry service set --port 8080` | ポートを固定する |
+| コマンド                          | 説明                          |
+| --------------------------------- | ----------------------------- |
+| `foundry service start`           | サービスを起動する            |
+| `foundry service stop`            | サービスを停止する            |
+| `foundry service status`          | サービスの状態・URLを確認する |
+| `foundry service set --port 8080` | ポートを固定する              |
 
 ---
 
