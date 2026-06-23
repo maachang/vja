@@ -102,6 +102,11 @@ YAML でやりたいことを書くだけで、AI が SQLite3 アクセスコー
 - プロジェクト固有の JavaScript ライブラリを定義
 - AI がその API を理解してコード生成に活用
 
+### ✅ バリデーション定義
+- 入力チェックルールを GUI でフォーム単位に定義・管理
+- YAML に `検証: 定義名` と記載するだけで AI 生成コードの先頭に自動挿入
+- AI がバリデーションロジックを書く必要がなく、ローカル LLM でも安定動作
+
 ---
 
 ## 🛠️ ウィジェット一覧
@@ -246,6 +251,9 @@ const data = await res.json();
 
 // クラウド認証情報
 const cred = await vja.getCloudInfraCredential('AWS', 's3');
+
+// バリデーション（GUI定義を実行）
+if (!await vja.validate.run('入力チェック')) return;
 ```
 
 ---
