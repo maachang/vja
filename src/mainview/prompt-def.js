@@ -1616,6 +1616,7 @@ Include the function name, description, arguments, return value, and exceptions.
 # イベント: ${eventName} (${wname})
 説明:
 #利用テーブル:
+#検証:
 アクション:
   -
 
