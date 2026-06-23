@@ -5135,12 +5135,14 @@
             _validEdit.name = name;
             _validEdit.description = $("valid-desc")?.value?.trim() || "";
             _validEdit.toastDuration = parseInt($("valid-toast-dur")?.value) || 5000;
-            _validEdit.rules = (_validEdit.rules || []).filter(r => r.name.trim() && r.type);
+            // 空ルールを除去（バリデーション用。_validEdit.rulesはまだ書き換えない）
+            const validRules = (_validEdit.rules || []).filter(r => r.name.trim() && r.type);
             if (!Array.isArray(f.validations)) f.validations = [];
+            const saveData = {name: _validEdit.name, description: _validEdit.description, toastDuration: _validEdit.toastDuration, rules: validRules};
             if (_validEdit._idx < 0) {
-                f.validations.push({name: _validEdit.name, description: _validEdit.description, toastDuration: _validEdit.toastDuration, rules: _validEdit.rules});
+                f.validations.push(saveData);
             } else {
-                f.validations[_validEdit._idx] = {name: _validEdit.name, description: _validEdit.description, toastDuration: _validEdit.toastDuration, rules: _validEdit.rules};
+                f.validations[_validEdit._idx] = saveData;
             }
             pushUndo();
             showToast("バリデーション定義を保存しました");
