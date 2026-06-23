@@ -781,7 +781,7 @@
             projectInfo.version = "1.0.0";
             projectInfo.author = "";
             projectInfo.company = "";
-            projectInfo.appEvents = { onStart: "", onExit: "", onStart_yaml: "", onExit_yaml: "" };
+            projectInfo.appEvents = {onStart: "", onExit: "", onStart_yaml: "", onExit_yaml: ""};
         }
 
         // エディタ設定（一時保持のみ・保存はuiConfig経由）
@@ -1016,14 +1016,14 @@
                         p.items || ""
                     )
                         .split("\n")
-                        .map((s) => { const idx = s.indexOf("="); const label = idx > 0 ? s.slice(0, idx).trim() : s.trim(); const val = idx > 0 ? s.slice(idx + 1).trim() : s.trim(); return `<option value="${esc(val)}">${esc(label)}</option>`; })
+                        .map((s) => {const idx = s.indexOf("="); const label = idx > 0 ? s.slice(0, idx).trim() : s.trim(); const val = idx > 0 ? s.slice(idx + 1).trim() : s.trim(); return `<option value="${esc(val)}">${esc(label)}</option>`;})
                         .join("")}</select>`;
                 case "selectBox":
                     return `<select style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};pointer-events:none;${vis}">${(
                         p.items || ""
                     )
                         .split("\n")
-                        .map((s) => { const idx = s.indexOf("="); const label = idx > 0 ? s.slice(0, idx).trim() : s.trim(); const val = idx > 0 ? s.slice(idx + 1).trim() : s.trim(); return `<option value="${esc(val)}">${esc(label)}</option>`; })
+                        .map((s) => {const idx = s.indexOf("="); const label = idx > 0 ? s.slice(0, idx).trim() : s.trim(); const val = idx > 0 ? s.slice(idx + 1).trim() : s.trim(); return `<option value="${esc(val)}">${esc(label)}</option>`;})
                         .join("")}</select>`;
                 case "groupbox":
                     return `<fieldset style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};${vis}"><legend style="padding:0 4px;font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"}">${esc(p.text)}</legend></fieldset>`;
@@ -1705,7 +1705,7 @@
                 // フォームプロパティをPDEFS.formで共通描画
                 const defs = PDEFS.form || [];
                 defs.forEach((d) => {
-                    if (d.sep) { pl.appendChild(makeSec(d.sep)); return; }
+                    if (d.sep) {pl.appendChild(makeSec(d.sep)); return;}
                     let val;
                     if (d.sp === "formName") val = formCfg.name;
                     else if (d.sp === "formTitle") val = formCfg.title;
@@ -1825,12 +1825,12 @@
 
         function setProp(k, sp, val, wid) {
             // フォームプロパティの処理
-            if (sp === "formName") { setFormCfg("name", val); return; }
-            if (sp === "formTitle") { setFormCfg("title", val); return; }
-            if (sp === "formW") { setFormCfg("w", +val); return; }
-            if (sp === "formH") { setFormCfg("h", +val); return; }
-            if (sp === "formBg") { setFormCfg("bg", val); return; }
-            if (sp === "formDesc") { setFormCfg("description", val); return; }
+            if (sp === "formName") {setFormCfg("name", val); return;}
+            if (sp === "formTitle") {setFormCfg("title", val); return;}
+            if (sp === "formW") {setFormCfg("w", +val); return;}
+            if (sp === "formH") {setFormCfg("h", +val); return;}
+            if (sp === "formBg") {setFormCfg("bg", val); return;}
+            if (sp === "formDesc") {setFormCfg("description", val); return;}
             // ウィジェットプロパティの処理
             const w = getWidget(wid);
             if (!w) return;
@@ -2515,7 +2515,8 @@
                     // バリデーション定義がある場合、JSの先頭に呼び出しを挿入
                     // vja.validate.run('定義名') → false=エラー時はreturnで処理中断
                     const finalCode = validationName
-                        ? `if (!await vja.validate.run(${JSON.stringify(validationName)})) return;\n${clean}`
+                        ? "// 検証チェック処理(自動追加).\n" +
+                        `if (!await vja.validate.run(${JSON.stringify(validationName)})) return;\n\n${clean}`
                         : clean;
                     // モーダルを再表示してJSタブに切り替え
                     const w2 = getWidget(wid);
@@ -2940,7 +2941,7 @@
 
                 // AI生成を有効
                 "<div class='ai-cfg-row'><label>AI生成を有効</label>" +
-                makePvSel("ai-ena-sel", ["ON","OFF"], isEnabled ? "ON" : "OFF", "aiCfgToggleEnabled({value})") +
+                makePvSel("ai-ena-sel", ["ON", "OFF"], isEnabled ? "ON" : "OFF", "aiCfgToggleEnabled({value})") +
                 "</div>" +
 
                 // エンドポイント
@@ -2953,7 +2954,7 @@
 
                 // ルーターモード
                 "<div class='ai-cfg-row'><label>ルーターモード</label>" +
-                makePvSel("ai-router-sel", ["ON","OFF"], isRouter ? "ON" : "OFF", "aiCfgToggleRouter({value})") +
+                makePvSel("ai-router-sel", ["ON", "OFF"], isRouter ? "ON" : "OFF", "aiCfgToggleRouter({value})") +
                 "</div>" +
 
                 // モデル名（ルーターモードONのみ）
@@ -3065,7 +3066,7 @@
         // ── エディタ内検索 ────────────────────────────────────
         // 現在アクティブなエディタ（yaml-ta / js-ta）から検索ワードを探す。
         // 現在のカーソル位置から次の一致箇所へ移動し、末尾まで行ったら先頭から再検索。
-        let _editorSearchLast = { taId: null, word: "", pos: 0 };
+        let _editorSearchLast = {taId: null, word: "", pos: 0};
         function editorSearch() {
             const word = $("editor-search-in")?.value || "";
             if (!word) return;
@@ -3073,7 +3074,7 @@
             // 現在表示中のタブ（YAML/JS）でエディタを判定
             const isJs = $("pane-js")?.classList.contains("active");
             const ta = isJs ? $("js-ta") : $("yaml-ta");
-            if (!ta) { showToast("エディタが見つかりません"); return; }
+            if (!ta) {showToast("エディタが見つかりません"); return;}
 
             const text = ta.value;
             const lower = text.toLowerCase();
@@ -3099,7 +3100,7 @@
 
             if (idx < 0) {
                 showToast("「" + word + "」は見つかりません");
-                _editorSearchLast = { taId: ta.id, word, pos: 0 };
+                _editorSearchLast = {taId: ta.id, word, pos: 0};
                 return;
             }
 
@@ -3113,7 +3114,7 @@
             editorHlUpdate(ta.id);
 
             // 次回検索のために終端位置を記録
-            _editorSearchLast = { taId: ta.id, word, pos: idx + word.length };
+            _editorSearchLast = {taId: ta.id, word, pos: idx + word.length};
         }
 
         /* ── JavaScript シンタックスハイライト ── */
@@ -3455,7 +3456,7 @@
         }
         // AI生成をキャンセルする。vja.fetchAbort() でBun側のリクエストを中断する。
         function cancelAiGenerate() {
-            if (_aiFetchId) { window.vja?.fetchAbort?.(_aiFetchId); _aiFetchId = null; }
+            if (_aiFetchId) {window.vja?.fetchAbort?.(_aiFetchId); _aiFetchId = null;}
         }
 
         // AI生成共通実行関数。
@@ -4245,7 +4246,7 @@
             const valid = (_constRows || []).filter(r => r.name.trim());
             const names = valid.map(r => r.name.trim());
             const dup = names.find((n, i) => names.indexOf(n) !== i);
-            if (dup) { showVjaAlert("定数名「" + dup + "」が重複しています"); return; }
+            if (dup) {showVjaAlert("定数名「" + dup + "」が重複しています"); return;}
             const saved = valid.map(r => ({name: r.name.trim(), value: r.value}));
             if (target === null) {
                 constants = saved;
@@ -4256,7 +4257,7 @@
             closeModal();
             pushUndo();
         }
-        function constSave() { _constSaveBase(null); }
+        function constSave() {_constSaveBase(null);}
 
         /* ── プロパティパネル カスタムセレクト ── */
         // ── pv-sel 生成共通ヘルパー ─────────────────────────────
@@ -4939,22 +4940,22 @@
         // パターン系: email/tel/zipcode/url/date/alphanumeric/alpha/hiragana/katakana
         // 上級系: pattern（arg1=正規表現）
         const VALIDATION_TYPES = [
-            {value: "required",     label: "必須"},
-            {value: "maxLength",    label: "最大文字数"},
-            {value: "minLength",    label: "最小文字数"},
-            {value: "range",        label: "数値範囲"},
-            {value: "numeric",      label: "数値のみ"},
-            {value: "integer",      label: "整数のみ"},
-            {value: "email",        label: "メール形式"},
-            {value: "tel",          label: "電話番号"},
-            {value: "zipcode",      label: "郵便番号"},
-            {value: "url",          label: "URL形式"},
-            {value: "date",         label: "日付形式"},
+            {value: "required", label: "必須"},
+            {value: "maxLength", label: "最大文字数"},
+            {value: "minLength", label: "最小文字数"},
+            {value: "range", label: "数値範囲"},
+            {value: "numeric", label: "数値のみ"},
+            {value: "integer", label: "整数のみ"},
+            {value: "email", label: "メール形式"},
+            {value: "tel", label: "電話番号"},
+            {value: "zipcode", label: "郵便番号"},
+            {value: "url", label: "URL形式"},
+            {value: "date", label: "日付形式"},
             {value: "alphanumeric", label: "英数字のみ"},
-            {value: "alpha",        label: "英字のみ"},
-            {value: "hiragana",     label: "ひらがなのみ"},
-            {value: "katakana",     label: "カタカナのみ"},
-            {value: "pattern",      label: "正規表現"},
+            {value: "alpha", label: "英字のみ"},
+            {value: "hiragana", label: "ひらがなのみ"},
+            {value: "katakana", label: "カタカナのみ"},
+            {value: "pattern", label: "正規表現"},
         ];
         let _validEdit = null; // 編集中のバリデーション定義 { name, toastDuration, rules }
 
@@ -5014,7 +5015,7 @@
             const f = forms[curFormIdx];
             if (!Array.isArray(f.validations)) f.validations = [];
             _validEdit = idx < 0
-                ? { name: "", toastDuration: 5000, rules: [] }
+                ? {name: "", toastDuration: 5000, rules: []}
                 : JSON.parse(JSON.stringify(f.validations[idx]));
             _validEdit._idx = idx;
             // 初期表示で3件の空ルールを用意（既存ルールが3件未満の場合）
@@ -5042,7 +5043,7 @@
                     "<td>" + (i + 1) + "</td>" +
                     "<td>" + makePvSel(nid, nameOpts, r.name || "", "_validEdit.rules[" + i + "].name={value}") + "</td>" +
                     "<td>" + makePvSel(sid, VALIDATION_TYPES, r.type || "required", "_validEdit.rules[" + i + "].type={value}") + "</td>" +
-                    "<td>" + makePvSel(notid, [{value:"false",label:"OFF"},{value:"true",label:"ON"}], r.not ? "true" : "false", "_validEdit.rules[" + i + "].not=({value}==='true')") + "</td>" +
+                    "<td>" + makePvSel(notid, [{value: "false", label: "OFF"}, {value: "true", label: "ON"}], r.not ? "true" : "false", "_validEdit.rules[" + i + "].not=({value}==='true')") + "</td>" +
                     "<td><input type='text' class='pv-input' value='" + esc(r.arg1 || "") + "' oninput=\"_validEdit.rules[" + i + "].arg1=this.value\" placeholder='arg1'></td>" +
                     "<td><input type='text' class='pv-input' value='" + esc(r.arg2 || "") + "' oninput=\"_validEdit.rules[" + i + "].arg2=this.value\" placeholder='arg2'></td>" +
                     "<td><input type='text' class='pv-input' value='" + esc(r.arg3 || "") + "' oninput=\"_validEdit.rules[" + i + "].arg3=this.value\" placeholder='arg3'></td>" +
@@ -5139,7 +5140,7 @@
             const f = forms[curFormIdx];
             if (!f || !_validEdit) return;
             const name = $("valid-name")?.value?.trim();
-            if (!name) { showVjaAlert("定義名を入力してください"); return; }
+            if (!name) {showVjaAlert("定義名を入力してください"); return;}
             _validEdit.name = name;
             _validEdit.description = $("valid-desc")?.value?.trim() || "";
             _validEdit.toastDuration = parseInt($("valid-toast-dur")?.value) || 5000;
@@ -6098,7 +6099,7 @@
             if (e.ctrlKey && e.key === "w") {e.preventDefault(); showCloseConfirm();}
             if (e.ctrlKey && e.key === "f") {
                 const searchIn = $("editor-search-in");
-                if (searchIn) { e.preventDefault(); searchIn.focus(); searchIn.select(); }
+                if (searchIn) {e.preventDefault(); searchIn.focus(); searchIn.select();}
             }
             if (e.ctrlKey && e.key === "d") {e.preventDefault(); actDuplicate();}
             if (e.key === "F4" && e.altKey) {e.preventDefault(); showCloseConfirm();}
