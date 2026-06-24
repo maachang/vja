@@ -2402,6 +2402,7 @@
             const addPrompt = $("ai-prompt-in")?.value || "";
             const btn = $("ai-gen-btn");
             const status = $("ai-status");
+            const aiStartTime = Date.now(); // AI実行開始時刻を記録
 
             // ── ① 入力系ウィジェット一覧（フォームの入力パラメータ） ──
             const INPUT_TAGS = ["inputtype", "checkbox", "radiobutton", "listbox", "selectbox"];
@@ -2528,6 +2529,8 @@
                         yamlTabSwitch("js");
                         jsHlUpdate();
                         if (status) status.textContent = "✅ 生成完了 (JavaScriptタブを確認)";
+                        const elapsed = Math.round((Date.now() - aiStartTime) / 1000);
+                        showToast("✅ AI生成完了（" + elapsed + "秒）", 5000);
                     }));
                 },
                 onCancel: async () => {
@@ -3838,7 +3841,7 @@
         }
 
         // トースト通知（#toast-root で管理、z-index:9000）
-        function showToast(msg) {
+        function showToast(msg, duration = 2500) {
             const root = $("toast-root");
             if (!root) return;
             const t = document.createElement("div");
@@ -3850,7 +3853,7 @@
             setTimeout(() => {
                 t.classList.remove("show");
                 setTimeout(() => t.remove(), 200);
-            }, 2500);
+            }, duration);
         }
 
         /* ── プロジェクト実行 ── */
