@@ -1017,21 +1017,19 @@
             : "JavaScript";
     }
 
-    // プログラムルールを出力.
+    // プログラム出力ルールを出力.
     const _program_rule = function (eng, isAppEvent) {
         const programType = _program_type(isAppEvent);
         if (eng == true) {
-            // 日本語.
-            return "- AIの結果出力は「" + programType + " の生コード」のみを厳守。" +
-                "- 説明文、前置き、結びの言葉はすべて出力禁止。" +
-                "- コードブロック（```" + programType +
-                " ... ```）などのマークダウン装飾も完全に排除すること。";
+            // 英語.
+            return "- The AI's output must strictly consist solely of the `raw code` for " + programType + ".\n" +
+                "- Explanatory text, introductory remarks, and concluding statements are all prohibited.\n" +
+                "- Completely exclude any Markdown formatting, such as code blocks (```" + programType.toLowerCase() + " ... ```).";
         }
-        // 英語.
-        return "- The AI ​​output must consist strictly of the raw code for " + programType + "." +
-            "- Explanatory text, introductory remarks, and concluding statements are all prohibited." +
-            "- Completely exclude any Markdown formatting, such as code blocks (```" + programType +
-            " ... ```).";
+        // 日本語.
+        return "- AIの出力結果は「" + programType + " の生コードのみ」を厳守。\n" +
+            "- 説明文、前置き、結びの言葉はすべて出力禁止。\n" +
+            "- コードブロック（```" + programType.toLowerCase() + " ... ```）などのマークダウン装飾も完全に排除すること。";
     }
 
     // YAMLからjsに変換する場合のシステムプロンプトを生成.
