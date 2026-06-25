@@ -822,6 +822,7 @@
             routerMode: false,
             maxTokens: "",
             temperature: "",
+            thinking: true,
         };
 
         // 現在フォームへのショートカット（参照）
@@ -2932,9 +2933,11 @@
             if (!aiConfig.apiKey) aiConfig.apiKey = "";
             if (!aiConfig.models) aiConfig.models = [];
             if (!aiConfig.endpoint) aiConfig.endpoint = "http://localhost:8080";
+            if (aiConfig.thinking === undefined) aiConfig.thinking = true;
 
             const isEnabled = aiConfig.enabled === true;
             const isRouter = aiConfig.routerMode === true;
+            const isThinking = aiConfig.thinking !== false;
             const modelListHtml = aiCfgModelListHtml(aiConfig.models, aiConfig.model, isRouter);
 
             showModal(
@@ -2978,6 +2981,12 @@
                 "<input id='ai-max-tokens' value='" + esc(String(aiConfig.maxTokens || "")) + "' placeholder='空の場合はサーバー側に依存' style='width:100%'></div>" +
                 "<div class='ai-cfg-row'><label>temperature</label>" +
                 "<input id='ai-temperature' class='pv-input' value='" + esc(aiConfig.temperature !== "" && aiConfig.temperature != null ? String(aiConfig.temperature) : "") + "' placeholder='空の場合はサーバー側に依存' style='width:100%'></div>" +
+
+                // 推論モード
+                "<div class='ai-cfg-row'><label>推論モード</label>" +
+                makePvSel("ai-thinking-sel", ["ON", "OFF"], isThinking ? "ON" : "OFF", "") +
+                "</div>" +
+                "<div class='infobox' style='font-size:11px'>推論モードOFFは llama.cpp / mlx-lm / Ollama / vLLM に対応。Foundry Local は非対応。</div>" +
 
                 "</div>" +
                 "<div class='mfoot'>" +
@@ -3043,9 +3052,11 @@
             const apiKey = $("ai-apikey")?.value?.trim() || "";
             const enaSel = document.querySelector("#ai-ena-sel    .pv-sel-btn span:first-child");
             const rtrSel = document.querySelector("#ai-router-sel .pv-sel-btn span:first-child");
+            const thnSel = document.querySelector("#ai-thinking-sel .pv-sel-btn span:first-child");
             const modSel = document.querySelector("#ai-model-label");
             const enabled = enaSel?.textContent === "ON";
             const routerMode = rtrSel?.textContent === "ON";
+            const thinking = thnSel?.textContent !== "OFF";
             const model = modSel?.textContent || aiConfig.model || "";
             const maxTokensRaw = $("ai-max-tokens")?.value?.trim() || "";
             const maxTokens = maxTokensRaw !== "" ? parseInt(maxTokensRaw, 10) || "" : "";
@@ -3056,6 +3067,7 @@
                 apiKey,
                 enabled,
                 routerMode,
+                thinking,
                 model: routerMode ? model : "",
                 models: aiConfig.models || [],
                 maxTokens,
@@ -3488,6 +3500,13 @@
             if (aiConfig.temperature !== "" && aiConfig.temperature !== undefined) body.temperature = aiConfig.temperature;
             if (aiConfig.maxTokens) body.max_tokens = aiConfig.maxTokens;
             if (modelName) body.model = modelName;
+            // 推論モードOFFの場合、各サーバー向けのパラメータを付与
+            // llama.cpp / mlx-lm: chat_template_kwargs, Ollama: think, vLLM: reasoning_effort
+            if (aiConfig.thinking === false) {
+                body.think = false;
+                body.reasoning_effort = "none";
+                body.chat_template_kwargs = { enable_thinking: false };
+            }
             _aiFetchId = null;
             showLoadingModal(loadingMsg || "AI生成中…");
             let startTime;
