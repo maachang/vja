@@ -2799,7 +2799,7 @@
                         `<div class='editor-main'>` +
                         `<div class='${hlWrap}'>` +
                         `<div class='${hlBg}' id='hl-${t.id}'></div>` +
-                        `<textarea class='yaml' id='ta-${t.id}' spellcheck='false' style='height:100%;min-height:300px'` +
+                        `<textarea class='yaml' id='ta-${t.id}' autocorrect='off' autocapitalize='off' spellcheck='false' style='height:100%;min-height:300px'` +
                         ` oninput='editorHlUpdate("ta-${t.id}")'` +
                         ` onscroll='_hlSync("ta-${t.id}","hl-${t.id}");editorSyncGutter("ta-${t.id}","gutter-${t.id}")'` +
                         (t.ph ? ` placeholder='${esc(t.ph)}'` : "") + `>` + esc(t.val || "") + `</textarea>` +
@@ -2851,7 +2851,7 @@
                 "<div class='editor-main'>" +
                 "<div class='yaml-hl-wrap'>" +
                 "<div class='yaml-hl-bg' id='yaml-hl'></div>" +
-                "<textarea class='yaml' id='yaml-ta' " +
+                "<textarea class='yaml' id='yaml-ta' autocorrect='off' autocapitalize='off' spellcheck='false' " +
                 "oninput='yamlHlUpdate();editorUpdateGutter(\"yaml-ta\",\"yaml-gutter\")' " +
                 "onscroll='yamlHlSync();editorSyncGutter(\"yaml-ta\",\"yaml-gutter\")' " +
                 ">" + esc(cur) + "</textarea>" +
@@ -2862,7 +2862,7 @@
                 "<div class='editor-main'>" +
                 "<div class='js-hl-wrap'>" +
                 "<div class='js-hl-bg' id='js-hl'></div>" +
-                "<textarea class='yaml' id='js-ta' " +
+                "<textarea class='yaml' id='js-ta' autocorrect='off' autocapitalize='off' spellcheck='false' " +
                 "oninput='jsHlUpdate();editorUpdateGutter(\"js-ta\",\"js-gutter\")' " +
                 "onscroll='jsHlSync();editorSyncGutter(\"js-ta\",\"js-gutter\")' " +
                 "placeholder='// AIでJavaScriptを生成、または直接編集できます'>" + esc(curJs) + "</textarea>" +
