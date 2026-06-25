@@ -1010,6 +1010,30 @@
     // 英語promptの最後に英語で表記としてつける文字
     const ENG_TO_LAST_PHRASE_ENG = "\nRespond in English.\n";
 
+    // プログラムタイプを取得.
+    const _program_type = function (isAppEvent) {
+        return isAppEvent
+            ? "TypeScript"
+            : "JavaScript";
+    }
+
+    // プログラムルールを出力.
+    const _program_rule = function (eng, isAppEvent) {
+        const programType = _program_type(isAppEvent);
+        if (eng == true) {
+            // 日本語.
+            return "- AIの結果出力は「" + programType + " の生コード」のみを厳守。" +
+                "- 説明文、前置き、結びの言葉はすべて出力禁止。" +
+                "- コードブロック（```" + programType +
+                " ... ```）などのマークダウン装飾も完全に排除すること。";
+        }
+        // 英語.
+        return "- The AI ​​output must consist strictly of the raw code for " + programType + "." +
+            "- Explanatory text, introductory remarks, and concluding statements are all prohibited." +
+            "- Completely exclude any Markdown formatting, such as code blocks (```" + programType +
+            " ... ```).";
+    }
+
     // YAMLからjsに変換する場合のシステムプロンプトを生成.
     // - isAppEvent: [必須]定義されている場合はアプリイベント(bunネイティブ実行)で、存在しない場合はイベント系(js)で実行.
     // - formName: [任意]form名を設定します.
@@ -1049,11 +1073,7 @@
             : VJA_USE_FRONT_JS_INFO;
 
         // 出力基本ルール
-        const baseRule =
-            "- 出力は「" + (isAppEvent ? "TypeScript" : "JavaScript") + " の生コード」のみを厳守。" +
-            "- 説明文、前置き、結びの言葉はすべて出力禁止。" +
-            "- コードブロック（```" + (isAppEvent ? "typescript" : "javascript") +
-            " ... ```）などのマークダウン装飾も完全に排除すること。";
+        const baseRule = _program_rule(false, isAppEvent);
 
         // ルールをバックエンド、フロントエンドで記載.
         const rule = isAppEvent
@@ -1110,8 +1130,7 @@
 - コメントは日本語で記述
 `.trim();
 
-        return (
-            `
+        return (`
 あなたは日本語を専門とするVJAフォームデザイナーのイベント処理コード生成AIです。
 ユーザーが書いたYAMLを元に、JavaScriptの実装コードを生成します。
 
@@ -1131,8 +1150,7 @@ ${baseRule}
 ${vjaUseJsInfo}
 ~~~
 ---
-`.trim() + "\n"
-        );
+`.trim() + "\n");
     };
 
     // [英語]YAMLからjsに変換する場合のシステムプロンプトを生成.
@@ -1177,10 +1195,7 @@ ${vjaUseJsInfo}
         const codeType = isAppEvent ? "TypeScript" : "JavaScript";
 
         // 出力基本ルール
-        const baseRule =
-            "- The output must strictly consist solely of raw " + codeType + " code.\n" +
-            "- NO explanations, NO markdown code blocks (```), NO chat.\n" +
-            "- Start your response directly with the code."
+        const baseRule = _program_rule(true, isAppEvent);
 
         // ルールをバックエンド、フロントエンドで記載.
         const rule = isAppEvent
@@ -1237,8 +1252,7 @@ ${vjaUseJsInfo}
 - All comments must be written in Japanese.
 `.trim();
 
-        return (
-            `
+        return (`
 You are a VJA form designer and event handling code generation AI specializing in Japanese.
 You generate ${codeType} implementation code based on the YAML specification written by the user.
 
@@ -1258,7 +1272,7 @@ ${baseRule}
 ${vjaUseJsInfo}
 ~~~
 ---
-`.trim() + "\n\n" + ENG_TO_LAST_PHRASE_JP);
+`.trim() + "\n");
     }
 
     // yamlのコメントを削除(AIによっては、コメントが逆に影響を及ぼす事になるため)
@@ -1398,7 +1412,12 @@ ${extRuntimeDoc}
             }
         }
         // 追加指示がある場合はセット.
-        return ret + "\n\n" + (addPrompt ? "\n追加指示: " + addPrompt : "");
+        return ret +
+            // 一旦最後にもAI出力厳守条件をセット.
+            (addPrompt ? "\n\n追加指示: " + addPrompt : "") +
+            "\n\n[AI出力厳守]\n---\n" +
+            _program_rule(false, isAppEvent) +
+            "\n---";
     };
 
     // [英語]YAMLからjsに変換する場合のユーザプロンプトを生成.
@@ -1526,11 +1545,14 @@ ${extRuntimeDoc}
         // 追加指示がある場合はセット.
         return (
             ret +
-            "\n\n" +
+            // 一旦最後にもAI出力厳守条件をセット.
             (addPrompt
-                ? "\nAdditional instructions: " + addPrompt + "\n\n"
+                ? "\n\nAdditional instructions: " + addPrompt + "\n\n"
                 : "") +
-            ENG_TO_LAST_PHRASE_JP
+            "\n\n[Strict adherence to AI output]\n---\n" +
+            _program_rule(true, isAppEvent) +
+            "- " + ENG_TO_LAST_PHRASE_JP +
+            "\n---\n"
         );
     };
 
