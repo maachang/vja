@@ -1071,7 +1071,7 @@
             : VJA_USE_FRONT_JS_INFO;
 
         // 出力基本ルール
-        const baseRule = _program_rule(false, isAppEvent);
+        //const baseRule = _program_rule(false, isAppEvent);
 
         // ルールをバックエンド、フロントエンドで記載.
         const rule = isAppEvent
@@ -1137,11 +1137,6 @@
 ${rule}
 ---
 
-[出力基本ルール]
----
-${baseRule}
----
-
 [vjaランタイム(yaml)]
 ---
 ~~~yaml
@@ -1193,7 +1188,7 @@ ${vjaUseJsInfo}
         const codeType = isAppEvent ? "TypeScript" : "JavaScript";
 
         // 出力基本ルール
-        const baseRule = _program_rule(true, isAppEvent);
+        //const baseRule = _program_rule(true, isAppEvent);
 
         // ルールをバックエンド、フロントエンドで記載.
         const rule = isAppEvent
@@ -1257,11 +1252,6 @@ You generate ${codeType} implementation code based on the YAML specification wri
 [Code Generation Rules]
 ---
 ${rule}
----
-
-[Basic Output Rules]
----
-${baseRule}
 ---
 
 [vja Runtime(yaml)]
