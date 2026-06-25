@@ -1070,9 +1070,6 @@
             ? VJA_USE_BACK_JS_INFO
             : VJA_USE_FRONT_JS_INFO;
 
-        // 出力基本ルール
-        //const baseRule = _program_rule(false, isAppEvent);
-
         // ルールをバックエンド、フロントエンドで記載.
         const rule = isAppEvent
             ? // バックエンド.
@@ -1131,6 +1128,11 @@
         return (`
 あなたは日本語を専門とするVJAフォームデザイナーのイベント処理コード生成AIです。
 ユーザーが書いたYAMLを元に、JavaScriptの実装コードを生成します。
+
+[AI出力ルール]
+---
+${_program_rule(false, isAppEvent)}
+---
 
 [コード生成ルール]
 ---
@@ -1248,6 +1250,11 @@ ${vjaUseJsInfo}
         return (`
 You are a VJA form designer and event handling code generation AI specializing in Japanese.
 You generate ${codeType} implementation code based on the YAML specification written by the user.
+
+[AI Output Rules]
+---
+${_program_rule(true, isAppEvent)}
+---
 
 [Code Generation Rules]
 ---
@@ -1402,10 +1409,11 @@ ${extRuntimeDoc}
         // 追加指示がある場合はセット.
         return ret +
             // 一旦最後にもAI出力厳守条件をセット.
-            (addPrompt ? "\n\n追加指示: " + addPrompt : "") +
-            "\n\n[AI出力厳守]\n---\n" +
-            _program_rule(false, isAppEvent) +
-            "\n---";
+            (addPrompt ? "\n\n追加指示: " + addPrompt + "\n" : "") +
+            //"\n\n[AI出力厳守]\n---\n" +
+            //_program_rule(false, isAppEvent) +
+            //"\n---";
+            "";
     };
 
     // [英語]YAMLからjsに変換する場合のユーザプロンプトを生成.
@@ -1535,12 +1543,13 @@ ${extRuntimeDoc}
             ret +
             // 一旦最後にもAI出力厳守条件をセット.
             (addPrompt
-                ? "\n\nAdditional instructions: " + addPrompt + "\n\n"
+                ? "\n\nAdditional instructions: " + addPrompt + "\n"
                 : "") +
-            "\n\n[Strict adherence to AI output]\n---\n" +
-            _program_rule(true, isAppEvent) +
-            "- " + ENG_TO_LAST_PHRASE_JP +
-            "\n---\n"
+            //"\n\n[Strict adherence to AI output]\n---\n" +
+            //_program_rule(true, isAppEvent) +
+            //"- " + ENG_TO_LAST_PHRASE_JP +
+            //"\n---\n"
+            "\n" + ENG_TO_LAST_PHRASE_JP
         );
     };
 
