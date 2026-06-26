@@ -1068,7 +1068,8 @@
   - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
 - 原則 "const" 利用禁止で "let" のみを利用する
-- インデントは4スペースを厳守する
+- ソースコードの1インデントは4スペース
+- ソースコードは "見やすく改行を入れる"
 
 ## vja API
 - 全ての vja.* 呼び出しは await を付ける
@@ -1097,7 +1098,8 @@
   - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
 - 原則 "const" や "let" の利用禁止。"var" のみを利用する
-- インデントは4スペースを厳守する
+- ソースコードの1インデントは4スペース
+- ソースコードは "見やすく改行を入れる"
 
 ## vja API
 - 全ての vja.* 呼び出しは await を付ける
@@ -1195,7 +1197,8 @@ ${vjaUseJsInfo}
   - Bad: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - Good: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
 - As a general rule, do not use "const"; use only "let".
-- Strictly use 4-space indentation.
+- One indentation level in the source code is four spaces.
+- Insert line breaks in the source code to make it easier to read.
 
 ## vja API
 - All vja.* calls must use await.
@@ -1224,7 +1227,8 @@ ${vjaUseJsInfo}
   - Bad: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - Good: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
 - As a general rule, the use of "const" and "let" is prohibited; use only "var".
-- Strictly use 4-space indentation.
+- One indentation level in the source code is four spaces.
+- Insert line breaks in the source code to make it easier to read.
 
 ## vja API
 - All vja.* calls must use await.
@@ -1329,7 +1333,7 @@ ${vjaUseJsInfo}
 - 現在のフォーム: ${formName}
 ---
 
-### フォーム内の全ウィジェット
+### ウィジェット一覧（${formName}）
 ---
 ${allWidgetsCtx}
 ---
@@ -1339,7 +1343,7 @@ ${allWidgetsCtx}
 ${formConstCtx}
 ---
 
-### フォーム内の入力パラメータ
+### 入力パラメータ（${formName}）
 ---
 ${inputParamsCtx}
 ---
@@ -1461,7 +1465,7 @@ ${extRuntimeDoc}
 - Current Form: ${formName}
 ---
 
-### All Widgets in the Form
+### Widget List (${formName})
 ---
 ${allWidgetsCtx}
 ---
@@ -1471,7 +1475,7 @@ ${allWidgetsCtx}
 ${formConstCtx}
 ---
 
-### Input Parameters in the Form
+### Input Parameters (${formName})
 ---
 ${inputParamsCtx}
 ---
