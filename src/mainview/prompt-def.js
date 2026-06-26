@@ -535,20 +535,20 @@
   - Description: Executes an SQL "SELECT" statement and returns the result rows
   - Arguments:
     - sql: string - The SQL statement to execute (use the placeholder ?)
-    - params?: (string|number|boolean|null)[] - Array of values to pass to the placeholder (optional)
+    - params?: "(string|number|boolean|null)[]" - Array of values to pass to the placeholder (optional)
   - Return Value: Record<string, any>[] - Array of result rows (throws an exception on error)
 
 - Function name: await vja.db.execute(sql, params?):
   - Description: Executes an SQL "INSERT/UPDATE/DELETE" statement
   - Arguments:
     - sql: string - The SQL statement to execute (using the placeholder ?)
-    - params?: (string|number|boolean|null)[] - An array of values to pass to the placeholder (optional)
-  - Return value: "{ changes: number, lastInsertRowid: number } | null - Execution result. null on failure"
+    - params?: "(string|number|boolean|null)[]" - An array of values to pass to the placeholder (optional)
+  - Return value: "{ changes: number, lastInsertRowid: number } | null" - Execution result. null on failure
 
 - Function name: await vja.db.transaction(statements[]):
   - Explanation: Executes multiple SQL statements as a transaction. This can be used to speed up the execution of multiple SQL statements.
   - Arguments:
-    - statements: "{ sql: string, params?: any[] }[] - Array of pairs of SQL statements and arguments to execute"
+    - statements: "{ sql: string, params?: any[] }[]" - Array of pairs of SQL statements and arguments to execute
   - Return Value: boolean - true if all statements executed successfully, rollback and false on failure
 
 ## Widget operations (vja.widget.*)
@@ -557,20 +557,20 @@
   - Description: Gets the current value of the widget with the specified name
   - Arguments:
     - name: string - Widget name
-  - Return value: "string | number | boolean | null - Widget value"
+  - Return value: "string | number | boolean | null" - Widget value
 
 - Function name: vja.widget.set(name, value, options?):
   - Description: Sets a value to the widget. Automatically handles each widget type.
   - Arguments:
     - name: string - Widget name
-    - value: string|number|boolean|array|object[] - Value to set (text/number for text widgets, boolean for checkbox, array for select items, object[] for datagrid)
+    - value: "string|number|boolean|array|object[]" - Value to set (text/number for text widgets, boolean for checkbox, array for select items, object[] for datagrid)
     - options?: object - For datagrid only. { startNo?: number }
   - Return value: None
 
 - Function name: vja.widget.getAllInputs():
   - Description: Gets the values of all input widgets in a form.
   - Arguments: None
-  - Return value: "Record<string, any> - in the format { Widget name: Value }"
+  - Return value: "Record<string, any>" - in the format { Widget name: Value }
 
 - Function Name: vja.widget.setVisible(name, visible):
   - Description: Toggles the display/hide of the widget with the specified name
@@ -599,8 +599,7 @@
 
 - Function name: vja.const.getAll():
   - Description: Retrieves all constants (form constants override global constants)
-  - Arguments: None
-  - Return value: "Record<string, any> - in the format { constant name: value }"
+  - Return value: "Record<string, any>" - in the format { constant name: value }
 
 ## Screen Transitions (vja.form.*)
 
@@ -608,21 +607,17 @@
   - Description: Navigates to the specified screen. Saves current input values by default
   - Arguments:
     - formName: string - Name of the destination form
-    - "options?: { save?: boolean } - save=false to not save input values (defaults to true)"
-  - Return value: None
+    - options?: "{ save?: boolean }" - save=false to not save input values (defaults to true)
   - Exception: Outputs a warning if showForm is undefined
 
 - Function name: vja.form.back():
   - Description: Returns to the previous screen and restores the input content
-  - Arguments: None
-  - Return value: None
 
 - Function name: vja.form.setParam(key, value):
   - Description: Sets the parameters to pass to the next screen
   - Arguments:
     - key: string - Parameter name
     - value: any - Parameter value
-  - Return Value: None
 
 - Function Name: vja.form.getParam(key, default?):
   - Description: Retrieves the parameter passed from the previous screen.
@@ -648,7 +643,6 @@
 
 - Function Name: await vja.session.clear():
   - Description: Deletes all session data
-  - Arguments: None
   - Return Value: boolean - true on success
 
 - Function Name: await vja.session.get(key, default?):
@@ -661,15 +655,14 @@
 ## Utilities (vja.util.*)
 
 - Function Name: vja.util.today():
-  - Description: Returns today's date in YYYY-MM-DD format.
-  - Arguments: None
+  - Description: Returns today's date in "YYYY-MM-DD" format.
   - Return Value: string - A string in "YYYY-MM-DD" format.
 
 - Function Name: vja.util.formatDate(date, format?):
   - Description: Formats the date and returns it as a string.
   - Arguments:
     - date: Date|string - Date string and Date object.
-    - "format?: string - Format string (default: 'YYYY-MM-DD')
+    - format?: string - Format string (default: 'YYYY-MM-DD')
   - Return Value: string - Formatted date string
 
 - Function name: vja.util.formatNumber(n, decimals?):
@@ -683,14 +676,12 @@
 
 - Function Name: await vja.io.openCsv():
   - Description: Selects and reads a CSV file using a file selection dialog.
-  - Arguments: None
-  - Return Value: "Record<string, string>[] | null - An array where each row of the CSV is an object"
+  - Return Value: "Record<string, string>[] | null" - An array where each row of the CSV is an object
   - Exception: Returns null if file selection is canceled.
 
 - Function Name: await vja.io.openJson():
   - Description: Selects and reads a JSON file using a file selection dialog.
-  - Arguments: None
-  - Return Value: "any | null - Parsed JSON data
+  - Return Value: "any | null" - Parsed JSON data
   - Exception: Throws an error if JSON parsing fails
 
 - Function Name: await vja.io.saveCsv(csvRows, filename)
@@ -720,7 +711,6 @@
   - Arguments:
     - message: string - The message to display.
     - duration?: number - Display time in milliseconds (default: 2500)
-  - Return Value: None
 
 ## External APIs (vja.http.*)
 
@@ -757,7 +747,6 @@
   - Arguments:
     - show: boolean - true to show, false to hide
     - message?: string - Message to display (default: "Processing...")
-  - Return value: None
 
 ## Dialog (vja.app.*)
 
@@ -765,7 +754,6 @@
   - Description: Displays an alert dialog
   - Arguments:
     - message: string - Message to display
-  - Return value: none
 
 - Function name: await vja.app.showConfirm(message):
   - Description: Displays a confirmation dialog
@@ -1089,6 +1077,7 @@
 ## SQL
 - プレースホルダー(?) 必須（SQLインジェクション対策）
 - sqlite3専用のSQLで実装。必ず実行可能なSQL文で定義する
+- SQLの LIKE 検索では「部分一致: %カラム名%」「前方一致: カラム名%」「後方一致: %カラム名」で定義する
 
 ## YAMLへの忠実性
 - YAMLに記載のない処理（navigate・setVisible・show/hide等）の追加は絶対禁止
@@ -1116,6 +1105,7 @@
 ## SQL
 - プレースホルダー(?) 必須（SQLインジェクション対策）
 - sqlite3専用のSQLで実装。必ず実行可能なSQL文で定義する
+- SQLの LIKE 検索では「部分一致: %カラム名%」「前方一致: カラム名%」「後方一致: %カラム名」で定義する
 
 ## YAMLへの忠実性
 - YAMLに記載のない処理（navigate・setVisible・show/hide等）の追加は絶対禁止
@@ -1211,6 +1201,7 @@ ${vjaUseJsInfo}
 ## SQL
 - Placeholders (?) are mandatory. (SQL injection prevention)
 - Implemented using SQL specific to sqlite3. Must be defined using executable SQL statements.
+- In SQL LIKE searches, patterns are defined as follows: "partial match: %column_name%", "prefix match: column_name%", and "suffix match: %column_name".
 
 ## Fidelity to YAML
 - Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.
@@ -1238,6 +1229,7 @@ ${vjaUseJsInfo}
 ## SQL
 - Placeholders (?) are mandatory. (SQL injection prevention)
 - Implemented using SQL specific to sqlite3. Must be defined using executable SQL statements.
+- In SQL LIKE searches, patterns are defined as follows: "partial match: %column_name%", "prefix match: column_name%", and "suffix match: %column_name".
 
 ## Fidelity to YAML
 - Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.

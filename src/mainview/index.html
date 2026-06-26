@@ -3662,6 +3662,7 @@
                 models: _ac.models || [],
                 enabled: !!_ac.enabled,
                 routerMode: !!_ac.routerMode,
+                thinking: _ac.thinking !== false, // falseのみOFF、未定義はON
                 maxTokens: _ac.maxTokens || "",
                 temperature: _ac.temperature !== "" && _ac.temperature != null ? _ac.temperature : "",
             };
