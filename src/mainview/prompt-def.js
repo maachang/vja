@@ -1096,7 +1096,7 @@
 - 変数は if/else・try/catch・その他あらゆるブロック（{ }）の外で宣言することを厳守する
   - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
-- 原則 "const" も "let" 利用禁止で "var" のみを利用する
+- 原則 "const" や "let" の利用禁止。"var" のみを利用する
 - インデントは4スペースを厳守する
 
 ## vja API
@@ -1223,7 +1223,7 @@ ${vjaUseJsInfo}
 - Strictly adhere to the rule of declaring variables outside of if/else, try/catch, and any other blocks ({ }).
   - Bad: if (cond) { const params = [...]; } vja.db.query(sql, params);
   - Good: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
-- As a general rule, the use of "const" and "let" is prohibited; only "var" is to be used.
+- As a general rule, the use of "const" and "let" is prohibited; use only "var".
 - Strictly use 4-space indentation.
 
 ## vja API
