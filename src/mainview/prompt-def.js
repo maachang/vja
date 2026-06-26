@@ -1012,12 +1012,14 @@
             // 英語.
             return "- The AI's output must strictly consist solely of the `raw code` for " + programType + ".\n" +
                 "- Explanatory text, introductory remarks, and concluding statements are all prohibited.\n" +
-                "- Completely exclude any Markdown formatting, such as code blocks (```" + programType.toLowerCase() + " ... ```).";
+                "- Completely exclude any Markdown formatting, such as code blocks (```" + programType.toLowerCase() + " ... ```).\n" +
+                "- Just before outputting the code, mentally verify edge cases, type definitions, and exception handling in a single step, and output bug-free, complete code on the first attempt."
         }
         // 日本語.
         return "- AIの出力結果は「" + programType + " の生コードのみ」を厳守。\n" +
             "- 説明文、前置き、結びの言葉はすべて出力禁止。\n" +
-            "- コードブロック（```" + programType.toLowerCase() + " ... ```）などのマークダウン装飾も完全に排除すること。";
+            "- コードブロック（```" + programType.toLowerCase() + " ... ```）などのマークダウン装飾も完全に排除すること。\n" +
+            "- コードを出力する直前に、頭の中で「エッジケース」「型定義」「例外処理」を1ステップで検証し、バグのない完成されたコードを一発で出力してください。"
     }
 
     // YAMLからjsに変換する場合のシステムプロンプトを生成.
@@ -1122,6 +1124,7 @@
 
         return (`
 あなたは日本語を専門とするVJAフォームデザイナーのイベント処理コード生成AIです。
+あなたは超高速かつ正確なシニアソフトウェアエンジニアです。
 ユーザーが書いたYAMLを元に、JavaScriptの実装コードを生成します。
 
 [AI出力ルール]
@@ -1251,6 +1254,7 @@ ${vjaUseJsInfo}
 
         return (`
 You are a VJA form designer and event handling code generation AI specializing in Japanese.
+You are a lightning-fast and accurate senior software engineer.
 You generate ${codeType} implementation code based on the YAML specification written by the user.
 
 [AI Output Rules]
