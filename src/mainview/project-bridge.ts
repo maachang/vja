@@ -115,7 +115,11 @@ const _logOut = (mode: string, args: any[]) => {
     const message: string = args.map(a => {
         if (a === null) return "null";
         if (a === undefined) return "undefined";
-        if (a instanceof Error) return `${a.name}: ${a.message}${a.stack ? "\n" + a.stack : ""}`;
+        if (a instanceof Error) {
+            // mode === "error" の場合、Errorオブジェクトを保存（_vjaRun側で詳細出力に使用）
+            if (mode === "error") w._vjaLastError = a;
+            return `${a.name}: ${a.message}${a.stack ? "\n" + a.stack : ""}`;
+        }
         if (typeof a === "object") { try { return JSON.stringify(a); } catch { return String(a); } }
         return String(a);
     }).join(" ");

@@ -114,18 +114,18 @@ const _runAppEventCode = async (name: string, code: string): Promise<void> => {
     try {
         const vja = {
             session: {
-                get:    (key: string) => _session.get(key) ?? null,
-                set:    (key: string, val: string) => { _session.set(key, val); },
+                get: (key: string) => _session.get(key) ?? null,
+                set: (key: string, val: string) => { _session.set(key, val); },
                 delete: (key: string) => { _session.delete(key); },
             },
             db: {
-                query:      (sql: string, params?: any[]) => _dbQuery(sql, params),
-                execute:    (sql: string, params?: any[]) => _dbExecute(sql, params),
+                query: (sql: string, params?: any[]) => _dbQuery(sql, params),
+                execute: (sql: string, params?: any[]) => _dbExecute(sql, params),
                 clearTable: (tableName: string) => _dbExecute(`DELETE FROM ${tableName}`),
             },
             log: {
-                info:  (msg: string) => console.info("[app]", msg),
-                warn:  (msg: string) => console.warn("[app]", msg),
+                info: (msg: string) => console.info("[app]", msg),
+                warn: (msg: string) => console.warn("[app]", msg),
                 error: (msg: string) => console.error("[app]", msg),
             },
         };
