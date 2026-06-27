@@ -3534,10 +3534,14 @@
                 // AI返却結果をデバッグ出力.
                 vja.log.debug("# AI返却結果:\n" + raw + "\n---EOF");
 
-                const generated = raw
-                    .replace(/<think>[\s\S]*?<\/think>/gi, "")
-                    .replace(/```(?:javascript|js|yaml)?\n?/gi, "")
-                    .trim();
+                const generated = (() => {
+                    // <think>ブロックを除去
+                    const text = raw.replace(/<think>[\s\S]*?<\/think>/gi, "");
+                    // コードブロック(```js等)が存在すればその中身を抽出
+                    // 存在しない場合はそのままtrimして使用
+                    const m = text.match(/```(?:javascript|js|yaml)?\n?([\s\S]*?)```/i);
+                    return m ? m[1].trim() : text.trim();
+                })();
                 if (!generated) {
                     window.vja?.log?.warn?.("[AI] generated is empty. raw=" + raw.slice(0, 200));
                 }
