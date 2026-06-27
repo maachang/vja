@@ -9,26 +9,26 @@ import { makeFetchMaps, makeVjaFetch, makeFetchResultHandlers, type Pending } fr
 
 const pending = {
     navigateForm: null as Pending<{ ok: boolean; error?: string }> | null,
-    openFile:     null as Pending<{ content: string | null; path: string | null }> | null,
-    dbInit:       null as Pending<{ ok: boolean; error?: string }> | null,
-    sessionGet:   null as Pending<{ ok: boolean; value: string | null }> | null,
-    sessionSet:   null as Pending<{ ok: boolean }> | null,
-    dbQuery:      null as Pending<{ ok: boolean; rows: any[]; error?: string }> | null,
-    dbExecute:    null as Pending<{ ok: boolean; result: any; error?: string }> | null,
-    dbTransaction:null as Pending<{ ok: boolean; error?: string }> | null,
-    fileRead:      null as Pending<{ ok: boolean; content: string | null; error?: string }> | null,
-    fileWrite:     null as Pending<{ ok: boolean; error?: string }> | null,
+    openFile: null as Pending<{ content: string | null; path: string | null }> | null,
+    dbInit: null as Pending<{ ok: boolean; error?: string }> | null,
+    sessionGet: null as Pending<{ ok: boolean; value: string | null }> | null,
+    sessionSet: null as Pending<{ ok: boolean }> | null,
+    dbQuery: null as Pending<{ ok: boolean; rows: any[]; error?: string }> | null,
+    dbExecute: null as Pending<{ ok: boolean; result: any; error?: string }> | null,
+    dbTransaction: null as Pending<{ ok: boolean; error?: string }> | null,
+    fileRead: null as Pending<{ ok: boolean; content: string | null; error?: string }> | null,
+    fileWrite: null as Pending<{ ok: boolean; error?: string }> | null,
     fileReadBytes: null as Pending<{ ok: boolean; data: number[] | null; error?: string }> | null,
-    fileWriteBytes:null as Pending<{ ok: boolean; error?: string }> | null,
-    fileExists:    null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
-    fileDelete:   null as Pending<{ ok: boolean; error?: string }> | null,
-    fileCopy:     null as Pending<{ ok: boolean; error?: string }> | null,
-    dirCreate:    null as Pending<{ ok: boolean; error?: string }> | null,
-    dirDelete:    null as Pending<{ ok: boolean; error?: string }> | null,
-    dirList:      null as Pending<{ ok: boolean; entries: string[]; error?: string }> | null,
-    dirExists:    null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
-    getCloudInfras:    null as Pending<{ infras: any[] }> | null,
-    getDecryptedCred:  null as Pending<{ ok: boolean; value: string }> | null,
+    fileWriteBytes: null as Pending<{ ok: boolean; error?: string }> | null,
+    fileExists: null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
+    fileDelete: null as Pending<{ ok: boolean; error?: string }> | null,
+    fileCopy: null as Pending<{ ok: boolean; error?: string }> | null,
+    dirCreate: null as Pending<{ ok: boolean; error?: string }> | null,
+    dirDelete: null as Pending<{ ok: boolean; error?: string }> | null,
+    dirList: null as Pending<{ ok: boolean; entries: string[]; error?: string }> | null,
+    dirExists: null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
+    getCloudInfras: null as Pending<{ infras: any[] }> | null,
+    getDecryptedCred: null as Pending<{ ok: boolean; value: string }> | null,
 };
 
 // fetch は複数同時リクエスト対応のため fetchId ベースのMapで管理（bridge-common）
@@ -55,28 +55,28 @@ const rpc = Electroview.defineRPC<VjaRPCType>({
         requests: {},
         messages: {
             navigateFormResult: (v: any) => resolve("navigateForm", v),
-            openFileResult:     (v: any) => resolve("openFile",     v),
-            dbInitResult:       (v: any) => resolve("dbInit",       v),
-            sessionGetResult:   (v: any) => resolve("sessionGet",   v),
-            sessionSetResult:   (v: any) => resolve("sessionSet",   v),
-            dbQueryResult:       (v: any) => resolve("dbQuery",       v),
-            dbExecuteResult:     (v: any) => resolve("dbExecute",     v),
-            dbTransactionResult: (v: any) => resolve("dbTransaction",  v),
-            fileReadResult:       (v: any) => resolve("fileRead",       v),
-            fileWriteResult:      (v: any) => resolve("fileWrite",      v),
-            fileReadBytesResult:  (v: any) => resolve("fileReadBytes",  v),
+            openFileResult: (v: any) => resolve("openFile", v),
+            dbInitResult: (v: any) => resolve("dbInit", v),
+            sessionGetResult: (v: any) => resolve("sessionGet", v),
+            sessionSetResult: (v: any) => resolve("sessionSet", v),
+            dbQueryResult: (v: any) => resolve("dbQuery", v),
+            dbExecuteResult: (v: any) => resolve("dbExecute", v),
+            dbTransactionResult: (v: any) => resolve("dbTransaction", v),
+            fileReadResult: (v: any) => resolve("fileRead", v),
+            fileWriteResult: (v: any) => resolve("fileWrite", v),
+            fileReadBytesResult: (v: any) => resolve("fileReadBytes", v),
             fileWriteBytesResult: (v: any) => resolve("fileWriteBytes", v),
-            fileExistsResult:    (v: any) => resolve("fileExists",     v),
-            fileDeleteResult:    (v: any) => resolve("fileDelete",     v),
-            fileCopyResult:      (v: any) => resolve("fileCopy",       v),
-            dirCreateResult:     (v: any) => resolve("dirCreate",      v),
-            dirDeleteResult:     (v: any) => resolve("dirDelete",      v),
-            dirListResult:       (v: any) => resolve("dirList",        v),
-            dirExistsResult:     (v: any) => resolve("dirExists",      v),
-            getCloudInfrasResult:        (v: any) => resolve("getCloudInfras",   v),
-            getDecryptedCredentialResult:(v: any) => resolve("getDecryptedCred", v),
+            fileExistsResult: (v: any) => resolve("fileExists", v),
+            fileDeleteResult: (v: any) => resolve("fileDelete", v),
+            fileCopyResult: (v: any) => resolve("fileCopy", v),
+            dirCreateResult: (v: any) => resolve("dirCreate", v),
+            dirDeleteResult: (v: any) => resolve("dirDelete", v),
+            dirListResult: (v: any) => resolve("dirList", v),
+            dirExistsResult: (v: any) => resolve("dirExists", v),
+            getCloudInfrasResult: (v: any) => resolve("getCloudInfras", v),
+            getDecryptedCredentialResult: (v: any) => resolve("getDecryptedCred", v),
             ...makeFetchResultHandlers(_fetchPendingMap, _fetchAbortPendingMap),
-            loadScriptResult:            () => {},
+            loadScriptResult: () => { },
         },
     },
 });
@@ -92,7 +92,7 @@ const _parseCsvLine = (line: string): string[] => {
     for (let i = 0; i < line.length; i++) {
         const c = line[i];
         if (inQ) {
-            if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
+            if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
             else if (c === '"') inQ = false;
             else cur += c;
         } else {
@@ -109,13 +109,29 @@ const _parseCsvLine = (line: string): string[] => {
 w.vja = w.vja || {};
 
 // ログ（fire-and-forget: 結果を待たない）
+// スタックトレースからファイル名と行番号を抽出する
+const _extractTraceInfo = (stack: string | undefined): { file: string; line: number } | null => {
+    if (!stack) return null;
+    const m = stack.match(/@?(file:\/\/\/[^\s):]+\.html):(\d+):\d+/);
+    if (!m) return null;
+    const line = parseInt(m[2]);
+    const file = m[1].replace("file:///", "/");
+    return { file, line };
+};
+
+// ログ出力処理.
+const _logOut = (mode: string, msg: string | Error, err?: Error) => {
+    const message = msg instanceof Error ? `${msg.name}: ${msg.message}` : msg;
+    s.logRequest({ level: mode as "info" | "warn" | "error" | "debug" | "trace" | "log", message });
+}
+
 w.vja.log = {
-    trace: (msg: string) => { s.logRequest({ level: "trace", message: msg }); },
-    debug: (msg: string) => { s.logRequest({ level: "debug", message: msg }); },
-    info:  (msg: string) => { s.logRequest({ level: "info",  message: msg }); },
-    warn:  (msg: string) => { s.logRequest({ level: "warn",  message: msg }); },
-    error: (msg: string) => { s.logRequest({ level: "error", message: msg }); },
-    log:   (msg: string) => { s.logRequest({ level: "log",   message: msg }); },
+    trace: (msg: string | Error, err?: Error) => { _logOut({ level: "trace", msg: msg }); },
+    debug: (msg: string | Error, err?: Error) => { _logOut({ level: "debug", msg: msg }); },
+    info: (msg: string | Error, err?: Error) => { _logOut({ level: "info", msg: msg }); },
+    warn: (msg: string | Error, err?: Error) => { _logOut({ level: "warn", msg: msg }); },
+    error: (msg: string | Error, err?: Error) => { _logOut({ level: "error", msg: msg }); },
+    log: (msg: string) => { _logOut({ level: "log", msg: msg }); },
 };
 
 // ダイアログ・ウィンドウ操作
@@ -143,7 +159,7 @@ w.vja.app = {
         }),
 };
 // ショートハンド
-w.vja.dialog  = (message: string) => w.vja.app.showDialog(message);
+w.vja.dialog = (message: string) => w.vja.app.showDialog(message);
 w.vja.confirm = (message: string) => w.vja.app.showConfirm(message);
 
 // DB操作
@@ -161,7 +177,7 @@ w.vja.db = {
     // テーブル全行削除
     clearTable: (tableName: string) =>
         mkPromise("dbExecute", () => s.dbExecuteRequest({ sql: `DELETE FROM ${tableName}` }))
-            .then(() => {}),
+            .then(() => { }),
 
     // テーブル一覧取得
     tables: async (): Promise<string[]> => {
@@ -188,7 +204,7 @@ w.vja.db = {
         return lines.join("\n");
     },
 
-        // JSON取得（where句省略可）
+    // JSON取得（where句省略可）
     exportJson: async (tableName: string, where?: string): Promise<any[]> => {
         const sql = where ? `SELECT * FROM ${tableName} WHERE ${where}` : `SELECT * FROM ${tableName}`;
         return mkPromise<any>("dbQuery", () => s.dbQueryRequest({ sql })).then((r: any) => r.rows);
@@ -209,7 +225,7 @@ w.vja.db = {
         await mkPromise("dbTransaction", () => s.dbTransactionRequest({ statements }));
     },
 
-        // JSONインポート（既存データに追記）
+    // JSONインポート（既存データに追記）
     importJson: async (tableName: string, data: Record<string, any>[]): Promise<void> => {
         if (!data || data.length === 0) return;
         const headers = Object.keys(data[0]);
@@ -225,7 +241,7 @@ w.vja.db = {
 w.vja.project = {
     navigate: (formName: string) =>
         mkPromise("navigateForm", () => s.navigateFormRequest({ formName }))
-            .then(() => {}),
+            .then(() => { }),
 };
 
 // セッション
@@ -256,11 +272,11 @@ w.vja.db.init = (ddlStatements: string[]) =>
 
 // ファイル操作
 w.vja.file = {
-    read:   (path: string) =>
-        mkPromise("fileRead",   () => s.fileReadRequest({ path }))
+    read: (path: string) =>
+        mkPromise("fileRead", () => s.fileReadRequest({ path }))
             .then((r: any) => r.ok ? r.content : null),
-    write:  (path: string, content: string) =>
-        mkPromise("fileWrite",  () => s.fileWriteRequest({ path, content }))
+    write: (path: string, content: string) =>
+        mkPromise("fileWrite", () => s.fileWriteRequest({ path, content }))
             .then((r: any) => r.ok),
     exists: (path: string) =>
         mkPromise("fileExists", () => s.fileExistsRequest({ path }))
@@ -274,8 +290,8 @@ w.vja.file = {
     delete: (path: string) =>
         mkPromise("fileDelete", () => s.fileDeleteRequest({ path }))
             .then((r: any) => r.ok),
-    copy:   (src: string, dest: string) =>
-        mkPromise("fileCopy",   () => s.fileCopyRequest({ src, dest }))
+    copy: (src: string, dest: string) =>
+        mkPromise("fileCopy", () => s.fileCopyRequest({ src, dest }))
             .then((r: any) => r.ok),
 };
 
@@ -287,8 +303,8 @@ w.vja.dir = {
     delete: (path: string) =>
         mkPromise("dirDelete", () => s.dirDeleteRequest({ path }))
             .then((r: any) => r.ok),
-    list:   (path: string) =>
-        mkPromise("dirList",   () => s.dirListRequest({ path }))
+    list: (path: string) =>
+        mkPromise("dirList", () => s.dirListRequest({ path }))
             .then((r: any) => r.entries),
     exists: (path: string) =>
         mkPromise("dirExists", () => s.dirExistsRequest({ path }))
@@ -310,22 +326,27 @@ w.vja.cloud.getCredential = (infraId: string, key: string) =>
 
 // console.* を vja.log.* (RPC経由) に差し替え
 const _origConsole = {
-    log:   console.log.bind(console),
-    info:  console.info.bind(console),
-    warn:  console.warn.bind(console),
+    log: console.log.bind(console),
+    info: console.info.bind(console),
+    warn: console.warn.bind(console),
     error: console.error.bind(console),
     debug: console.debug.bind(console),
 };
 const _fmtArgs = (...args: any[]) => args.map(a => {
     if (a === null) return "null";
     if (a === undefined) return "undefined";
+    if (a instanceof Error) return `${a.name}: ${a.message}${a.stack ? "\n" + a.stack : ""}`;
     if (typeof a === "object") { try { return JSON.stringify(a); } catch { return String(a); } }
     return String(a);
 }).join(" ");
-console.log   = (...a: any[]) => { _origConsole.log(...a);   w.vja.log?.log?.(  _fmtArgs(...a)); };
-console.info  = (...a: any[]) => { _origConsole.info(...a);  w.vja.log?.info?.( _fmtArgs(...a)); };
-console.warn  = (...a: any[]) => { _origConsole.warn(...a);  w.vja.log?.warn?.( _fmtArgs(...a)); };
-console.error = (...a: any[]) => { _origConsole.error(...a); w.vja.log?.error?.(_fmtArgs(...a)); };
+console.log = (...a: any[]) => { _origConsole.log(...a); w.vja.log?.log?.(_fmtArgs(...a)); };
+console.info = (...a: any[]) => { _origConsole.info(...a); w.vja.log?.info?.(_fmtArgs(...a)); };
+console.warn = (...a: any[]) => { _origConsole.warn(...a); w.vja.log?.warn?.(_fmtArgs(...a)); };
+console.error = (...a: any[]) => {
+    _origConsole.error(...a);
+    const err = a.find(x => x instanceof Error) ?? null;
+    s.logRequest({ level: "error", message: _fmtArgs(...a) });
+};
 console.debug = (...a: any[]) => { _origConsole.debug(...a); w.vja.log?.debug?.(_fmtArgs(...a)); };
 
 // ページ読み込み完了をBun側に通知（Bun側でnavigationをロックする）
