@@ -1210,7 +1210,7 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     lines.push('    if (!_vjaCache[key]) {');
     lines.push('      const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;');
     lines.push('      const code = decodeURIComponent(escape(atob(_vjaB64[key])));');
-    lines.push('      _vjaCache[key] = new AsyncFunction("vja", code);');
+    lines.push('      _vjaCache[key] = new AsyncFunction("vja", code + "\\n//# sourceURL=vja://" + key);');
     lines.push('    }');
     lines.push('    window.vja?.log?.debug?.(label + " 実行開始");');
     lines.push('    await _vjaCache[key](window.vja);');

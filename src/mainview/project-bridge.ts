@@ -108,30 +108,27 @@ const _parseCsvLine = (line: string): string[] => {
 // ── vja.* API をプロジェクトウィンドウ用に上書き ─────
 w.vja = w.vja || {};
 
-// ログ（fire-and-forget: 結果を待たない）
-// スタックトレースからファイル名と行番号を抽出する
-const _extractTraceInfo = (stack: string | undefined): { file: string; line: number } | null => {
-    if (!stack) return null;
-    const m = stack.match(/@?(file:\/\/\/[^\s):]+\.html):(\d+):\d+/);
-    if (!m) return null;
-    const line = parseInt(m[2]);
-    const file = m[1].replace("file:///", "/");
-    return { file, line };
-};
-
 // ログ出力処理.
-const _logOut = (mode: string, msg: string | Error, err?: Error) => {
-    const message = msg instanceof Error ? `${msg.name}: ${msg.message}` : msg;
+// msgがErrorの場合はvja://sourceURLからユーザーJSの行番号を抽出して周辺行を表示する。
+const _logOut = (mode: string, args: any[]) => {
+    // ここで一旦複数パラメータ設定されたログ出力情報を整理する.
+    const message: string = args.map(a => {
+        if (a === null) return "null";
+        if (a === undefined) return "undefined";
+        if (a instanceof Error) return `${a.name}: ${a.message}${a.stack ? "\n" + a.stack : ""}`;
+        if (typeof a === "object") { try { return JSON.stringify(a); } catch { return String(a); } }
+        return String(a);
+    }).join(" ");
     s.logRequest({ level: mode as "info" | "warn" | "error" | "debug" | "trace" | "log", message });
 }
 
 w.vja.log = {
-    trace: (msg: string | Error, err?: Error) => { _logOut({ level: "trace", msg: msg }); },
-    debug: (msg: string | Error, err?: Error) => { _logOut({ level: "debug", msg: msg }); },
-    info: (msg: string | Error, err?: Error) => { _logOut({ level: "info", msg: msg }); },
-    warn: (msg: string | Error, err?: Error) => { _logOut({ level: "warn", msg: msg }); },
-    error: (msg: string | Error, err?: Error) => { _logOut({ level: "error", msg: msg }); },
-    log: (msg: string) => { _logOut({ level: "log", msg: msg }); },
+    trace: (...a: any[]) => { _logOut("trace", a); },
+    debug: (...a: any[]) => { _logOut("debug", a); },
+    info: (...a: any[]) => { _logOut("info", a); },
+    warn: (...a: any[]) => { _logOut("warn", a); },
+    error: (...a: any[]) => { _logOut("error", a); },
+    log: (...a: any[]) => { _logOut("log", a); },
 };
 
 // ダイアログ・ウィンドウ操作
@@ -332,22 +329,11 @@ const _origConsole = {
     error: console.error.bind(console),
     debug: console.debug.bind(console),
 };
-const _fmtArgs = (...args: any[]) => args.map(a => {
-    if (a === null) return "null";
-    if (a === undefined) return "undefined";
-    if (a instanceof Error) return `${a.name}: ${a.message}${a.stack ? "\n" + a.stack : ""}`;
-    if (typeof a === "object") { try { return JSON.stringify(a); } catch { return String(a); } }
-    return String(a);
-}).join(" ");
-console.log = (...a: any[]) => { _origConsole.log(...a); w.vja.log?.log?.(_fmtArgs(...a)); };
-console.info = (...a: any[]) => { _origConsole.info(...a); w.vja.log?.info?.(_fmtArgs(...a)); };
-console.warn = (...a: any[]) => { _origConsole.warn(...a); w.vja.log?.warn?.(_fmtArgs(...a)); };
-console.error = (...a: any[]) => {
-    _origConsole.error(...a);
-    const err = a.find(x => x instanceof Error) ?? null;
-    s.logRequest({ level: "error", message: _fmtArgs(...a) });
-};
-console.debug = (...a: any[]) => { _origConsole.debug(...a); w.vja.log?.debug?.(_fmtArgs(...a)); };
+console.log = (...a: any[]) => { _origConsole.log(...a); w.vja.log?.log?.(...a); };
+console.info = (...a: any[]) => { _origConsole.info(...a); w.vja.log?.info?.(...a); };
+console.warn = (...a: any[]) => { _origConsole.warn(...a); w.vja.log?.warn?.(...a); };
+console.error = (...a: any[]) => { _origConsole.error(...a); w.vja.log?.error?.(...a); };
+console.debug = (...a: any[]) => { _origConsole.debug(...a); w.vja.log?.debug?.(...a); };
 
 // ページ読み込み完了をBun側に通知（Bun側でnavigationをロックする）
 document.addEventListener("DOMContentLoaded", () => {
