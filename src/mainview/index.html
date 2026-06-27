@@ -1047,18 +1047,21 @@
                     const bc = p.borderColor || "#cccccc";
                     const fs = p.fontSize || 12;
                     const vis2 = p.visible === false ? "visibility:hidden" : "";
-                    let html = `<div style="width:100%;height:100%;overflow:auto;border:1px solid ${bc};box-sizing:border-box;font-size:${fs}px;${vis2}">`;
+                    const ff = p.fontFamily || "";
+                    const fw = p.fontBold ? "bold" : "normal";
+                    const fontStyle = (ff ? `font-family:${ff};` : "") + `font-weight:${fw};`;
+                    let html = `<div style="width:100%;height:100%;overflow:auto;border:1px solid ${bc};box-sizing:border-box;font-size:${fs}px;${fontStyle}${vis2}">`;
                     html += `<table style="width:100%;border-collapse:collapse;table-layout:fixed">`;
                     html += `<thead><tr style="background:${hbg};color:${hfg}">`;
                     cols.forEach(c => {
-                        html += `<th style="width:${c.width}%;padding:3px 6px;border:1px solid ${bc};text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.displayName || c.label)}</th>`;
+                        html += `<th style="width:${c.width}%;padding:3px 6px;border:1px solid ${bc};text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${fontStyle}">${esc(c.displayName || c.label)}</th>`;
                     });
                     html += `</tr></thead><tbody>`;
                     for (let r = 0; r < Math.min(maxR, 5); r++) {
                         const bg2 = r % 2 === 0 ? rbg : rabg;
                         html += `<tr style="background:${bg2};color:${rfg}">`;
                         cols.forEach(c => {
-                            html += `<td style="padding:2px 6px;border:1px solid ${bc};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r === 0 ? "(データ)" : ""}</td>`;
+                            html += `<td style="padding:2px 6px;border:1px solid ${bc};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${fontStyle}">${r === 0 ? "(データ)" : ""}</td>`;
                         });
                         html += `</tr>`;
                     }

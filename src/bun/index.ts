@@ -1172,7 +1172,7 @@ const buildWidgetHtml = (w: any): string => {
         case "datagrid": {
             const bc = p.borderColor || "#cccccc";
             const fs = p.fontSize || 12;
-            return `<div ${id} style="${base}overflow:auto;border:1px solid ${bc};box-sizing:border-box;font-size:${fs}px" data-columns="${esc2(p.columns || "ID:20\n名前:50\n値:30")}" data-row-bg="${p.rowBg || "#ffffff"}" data-row-alt-bg="${p.rowAltBg || "#f5f5f5"}" data-row-fg="${p.rowFg || "#000000"}" data-border-color="${bc}" data-max-rows="${p.maxRows || 0}" data-header-bg="${p.headerBg || "#4a4a6a"}" data-header-fg="${p.headerFg || "#ffffff"}"><table style="width:100%;border-collapse:collapse;table-layout:fixed"><thead></thead><tbody></tbody></table></div>`;
+            return `<div ${id} style="${base}overflow:auto;border:1px solid ${bc};box-sizing:border-box;font-size:${fs}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"}" data-columns="${esc2(p.columns || "ID:20\n名前:50\n値:30")}" data-row-bg="${p.rowBg || "#ffffff"}" data-row-alt-bg="${p.rowAltBg || "#f5f5f5"}" data-row-fg="${p.rowFg || "#000000"}" data-border-color="${bc}" data-max-rows="${p.maxRows || 0}" data-header-bg="${p.headerBg || "#4a4a6a"}" data-header-fg="${p.headerFg || "#ffffff"}" data-font-family="${esc2(p.fontFamily || "")}" data-font-bold="${p.fontBold ? "bold" : "normal"}"><table style="width:100%;border-collapse:collapse;table-layout:fixed"><thead></thead><tbody></tbody></table></div>`;
         }
         default:
             return `<div ${id} style="${base}"></div>`;
@@ -1256,8 +1256,11 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
         lines.push(`    const rowFg = el.dataset.rowFg || "#000000";`);
         lines.push(`    const maxRows = el.dataset.maxRows ? parseInt(el.dataset.maxRows) : 0;`);
         lines.push(`    const displayRows = maxRows > 0 ? (rows || []).slice(0, maxRows) : (rows || []);`);
-        lines.push(`    const thStyle = "padding:3px 6px;border:1px solid " + bc + ";text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis";`);
-        lines.push(`    const tdStyle = "padding:2px 6px;border:1px solid " + bc + ";white-space:nowrap;overflow:hidden;text-overflow:ellipsis";`);
+        lines.push(`    const fontFamily = el.dataset.fontFamily || "";`);
+        lines.push(`    const fontWeight = el.dataset.fontBold || "normal";`);
+        lines.push(`    const fontStyle = (fontFamily ? "font-family:" + fontFamily + ";" : "") + "font-weight:" + fontWeight + ";";`);
+        lines.push(`    const thStyle = "padding:3px 6px;border:1px solid " + bc + ";text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" + fontStyle;`);
+        lines.push(`    const tdStyle = "padding:2px 6px;border:1px solid " + bc + ";white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" + fontStyle;`);
         lines.push(`    // ── ヘッダー生成（colDefsの定義順） ──`);
         lines.push(`    const thead = el.querySelector("thead");`);
         lines.push(`    if (thead) {`);
