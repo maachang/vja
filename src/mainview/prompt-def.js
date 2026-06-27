@@ -1117,6 +1117,7 @@
 ## YAMLへの忠実性
 - YAMLに記載のない処理（navigate・setVisible・show/hide等）の追加は絶対禁止
 - 「YAML仕様」の指示内容に従い実装を厳守
+- 「エラー終了」などで "エラーログ出力を行う" 指示がある場合「try {} catch(e)」のErrorオブジェクトのmessageを出力する実装を行うが、この時必ず「第２引数にErrorオブジェクトを設定= console.error(e.message, e)」としてください。
 
 ## その他
 - コメントは日本語で記述
@@ -1246,7 +1247,7 @@ ${vjaUseJsInfo}
 
 ## Fidelity to YAML
 - Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.
-- Implementation must strictly adhere to the instructions provided in the "the following YAML".
+- When implementing logic to output an error log upon "error termination" (or similar events) using the "message" property of an "Error" object from a "try { } catch (e)" block, you must always set the "Error" object itself as the second argument—specifically, "console.error(e.message, e)".
 
 ## Other
 - All comments must be written in Japanese.
