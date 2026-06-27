@@ -212,6 +212,10 @@ VJA では複数の「フォーム（画面）」を1つのプロジェクトで
 
 ### YAML タブ
 
+※具体的な yaml 定義方法については、以下のガイドを参照して下さい.
+- [VJA YAML プログラム命令ガイド(startup)](yaml-guide-startup.md)
+- [VJA YAML プログラム命令ガイド(Engineer)](yaml-guide-engineer.md)
+
 AI への指示を YAML 形式で記述します。
 
 ```yaml

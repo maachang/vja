@@ -345,6 +345,8 @@ vja/
 ## 📖 ドキュメント
 
 - [ユーザーガイド](docs/user-guide.md)
+- [VJA YAML プログラム命令ガイド(startup)](docs/yaml-guide-startup.md)
+- [VJA YAML プログラム命令ガイド(Engineer)](docs/yaml-guide-engineer.md)
 - [Mac ローカル LLM セットアップ（mlx-lm）](docs/mac-mlx-lm-setup.md)
 - [Windows ローカル LLM セットアップ（Foundry Local）](docs/windows-foundry-local-setup.md)
 

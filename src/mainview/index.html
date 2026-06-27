@@ -2448,7 +2448,7 @@
             }
             const targetTables = mentionedTables.length > 0
                 ? tables.filter(t => mentionedTables.includes(t.name))
-                : tables;
+                : []; // 未指定の場合は何も渡さない
             const tablesCtx = targetTables.length > 0
                 ? targetTables.map(t => {
                     const cols = (t.columns || []).map(c => {
