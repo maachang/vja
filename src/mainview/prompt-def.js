@@ -639,15 +639,7 @@ await vja.dir.exists: { scope: LOCAL_DIR_IO, args: [path:string], return: "boole
 
 vja.notify.toast: { scope: UI_NOTIFICATION, args: [message:string, duration?:number], return: "void", desc: "Displays a bottom toast notification." }
 
-vja.trigger.click: { scope: UI_TRIGGER, args: [name:string], return: "void", desc: "Triggers click event on specified widget." }
-vja.trigger.focus: { scope: UI_TRIGGER, args: [name:string], return: "void", desc: "Focuses specified widget." }
-vja.trigger.blur: { scope: UI_TRIGGER, args: [name:string], return: "void", desc: "Removes focus from specified widget." }
-vja.trigger.change: { scope: UI_TRIGGER, args: [name:string], return: "void", desc: "Triggers change event on specified widget." }
-vja.trigger.mouseDown: { scope: UI_TRIGGER, args: [name:string], return: "void" }
-vja.trigger.mouseUp: { scope: UI_TRIGGER, args: [name:string], return: "void" }
-vja.trigger.mouseEnter: { scope: UI_TRIGGER, args: [name:string], return: "void" }
-vja.trigger.mouseLeave: { scope: UI_TRIGGER, args: [name:string], return: "void" }
-vja.trigger.scroll: { scope: UI_TRIGGER, args: [name:string], return: "void" }
+vja.trigger.click: { scope: UI_TRIGGER, args: [name:string], return: "void", desc: "Triggers click on widget. For other events use same pattern: vja.trigger.focus(name), vja.trigger.blur(name), vja.trigger.change(name), vja.trigger.mouseDown(name), vja.trigger.mouseUp(name), vja.trigger.mouseEnter(name), vja.trigger.mouseLeave(name), vja.trigger.scroll(name)" }
 
 vja.event.getKey: { scope: EVENT_KEY, args: [], return: "string|null", desc: "KeyDown/KeyUp event ONLY. Returns key name ('Enter','Escape','ArrowUp' etc). Returns null in other events." }
 vja.event.isEnter: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Enter key." }
