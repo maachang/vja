@@ -369,6 +369,49 @@
     };
 
     // ════════════════════════════════════════════════
+    // vja.event.* — イベント情報取得
+    // KeyDown/KeyUp イベント時のみ有効。それ以外では null を返す。
+    // ════════════════════════════════════════════════
+    vja.event = {
+
+        // キー名を取得（例: "Enter", "Escape", "ArrowUp"）
+        getKey() {
+            const e = window._vjaCurrentEvent;
+            return (e && e.key) ? e.key : null;
+        },
+
+        // キーコードを取得（例: 13, 27, 38）
+        getKeyCode() {
+            const e = window._vjaCurrentEvent;
+            return (e && e.keyCode) ? e.keyCode : null;
+        },
+
+        // Enterキーか
+        isEnter() {
+            const e = window._vjaCurrentEvent;
+            return !!(e && e.key === "Enter");
+        },
+
+        // Escapeキーか
+        isEscape() {
+            const e = window._vjaCurrentEvent;
+            return !!(e && (e.key === "Escape" || e.key === "Esc"));
+        },
+
+        // Shiftキーが押されているか
+        isShift() {
+            const e = window._vjaCurrentEvent;
+            return !!(e && e.shiftKey);
+        },
+
+        // Ctrlキーが押されているか
+        isCtrl() {
+            const e = window._vjaCurrentEvent;
+            return !!(e && e.ctrlKey);
+        },
+    };
+
+    // ════════════════════════════════════════════════
     // vja.validate.* — バリデーション
     // ════════════════════════════════════════════════
     vja.validate = {
@@ -435,15 +478,15 @@
         runRules(rules, toastDuration) {
             const dur = toastDuration ?? 5000;
             const PATTERNS = {
-                email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                tel: /^[0-9+\-() ]{7,20}$/,
-                zipcode: /^\d{3}-?\d{4}$/,
-                url: /^https?:\/\/.+/,
-                date: /^\d{4}-\d{2}-\d{2}$/,
-                alphanumeric: /^[a-zA-Z0-9]+$/,
-                alpha: /^[a-zA-Z]+$/,
-                hiragana: /^[぀-ゟ]+$/,
-                katakana: /^[゠-ヿ]+$/,
+                email:       /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                tel:         /^[0-9+\-() ]{7,20}$/,
+                zipcode:     /^\d{3}-?\d{4}$/,
+                url:         /^https?:\/\/.+/,
+                date:        /^\d{4}-\d{2}-\d{2}$/,
+                alphanumeric:/^[a-zA-Z0-9]+$/,
+                alpha:       /^[a-zA-Z]+$/,
+                hiragana:    /^[぀-ゟ]+$/,
+                katakana:    /^[゠-ヿ]+$/,
             };
             for (const r of (rules || [])) {
                 const el = document.getElementById(r.name) || document.querySelector(`[data-vja-name="${r.name}"]`);
@@ -451,13 +494,13 @@
                 const str = String(val ?? "").trim();
                 let ok = true;
                 switch (r.type) {
-                    case "required": ok = str.length > 0; break;
-                    case "maxLength": ok = str.length <= Number(r.arg1 || 0); break;
-                    case "minLength": ok = str.length >= Number(r.arg1 || 0); break;
-                    case "range": ok = Number(str) >= Number(r.arg1 || 0) && Number(str) <= Number(r.arg2 || 0); break;
-                    case "numeric": ok = str !== "" && !isNaN(parseFloat(str)) && isFinite(str); break;
-                    case "integer": ok = str !== "" && Number.isInteger(Number(str)); break;
-                    case "pattern": ok = new RegExp(r.arg1 || "").test(str); break;
+                    case "required":     ok = str.length > 0; break;
+                    case "maxLength":    ok = str.length <= Number(r.arg1 || 0); break;
+                    case "minLength":    ok = str.length >= Number(r.arg1 || 0); break;
+                    case "range":        ok = Number(str) >= Number(r.arg1 || 0) && Number(str) <= Number(r.arg2 || 0); break;
+                    case "numeric":      ok = str !== "" && !isNaN(parseFloat(str)) && isFinite(str); break;
+                    case "integer":      ok = str !== "" && Number.isInteger(Number(str)); break;
+                    case "pattern":      ok = new RegExp(r.arg1 || "").test(str); break;
                     default:
                         if (PATTERNS[r.type]) ok = str === "" || PATTERNS[r.type].test(str);
                         break;

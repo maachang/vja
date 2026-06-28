@@ -1203,18 +1203,19 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     // ── _vjaCache: 初回呼び出し時のみAsyncFunction化してキャッシュ ──
     lines.push('const _vjaCache = {};');
     // ── _vjaRun: 共通実行関数（遅延初期化・キャッシュ・ログ・エラー補足） ──
-    lines.push('const _vjaRun = async function(widgetName, eventName) {');
+    lines.push('const _vjaRun = async function(widgetName, eventName, event) {');
     lines.push('  const key = widgetName + "_" + eventName;');
     lines.push('  const label = "[" + widgetName + "." + eventName + "]";');
     lines.push('  window._vjaLastError = null;');
+    lines.push('  window._vjaCurrentEvent = event || null; // vja.event.*で参照するイベントオブジェクト');
     lines.push('  try {');
     lines.push('    if (!_vjaCache[key]) {');
     lines.push('      const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;');
     lines.push('      const code = decodeURIComponent(escape(atob(_vjaB64[key])));');
-    lines.push('      _vjaCache[key] = new AsyncFunction("vja", code + "\\n//# sourceURL=vja://" + key);');
+    lines.push('      _vjaCache[key] = new AsyncFunction("vja", "event", code + "\\n//# sourceURL=vja://" + key);');
     lines.push('    }');
     lines.push('    window.vja?.log?.debug?.(label + " 実行開始");');
-    lines.push('    await _vjaCache[key](window.vja);');
+    lines.push('    await _vjaCache[key](window.vja, event || null);');
     lines.push('    // 正常終了時: 握りつぶされたエラーがあればdebugで詳細出力');
     lines.push('    if (window._vjaLastError) {');
     lines.push('      window.vja?.log?.debug?.(_vjaErrDetail(label, key, window._vjaLastError));');
@@ -1354,7 +1355,7 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
             lines.push(`    var el = document.getElementById(${JSON.stringify(w.name)});`);
             lines.push(`    if (!el) return;`);
             lines.push(`    _vjaB64[${JSON.stringify(key)}] = ${JSON.stringify(b64)};`);
-            lines.push(`    el.addEventListener(${JSON.stringify(domEv)}, function(event) { _vjaRun(${JSON.stringify(w.name)}, ${JSON.stringify(evName)}); });`);
+            lines.push(`    el.addEventListener(${JSON.stringify(domEv)}, function(event) { _vjaRun(${JSON.stringify(w.name)}, ${JSON.stringify(evName)}, event); });`);
             lines.push(`  })();`);
         }
     }
@@ -1368,7 +1369,7 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
         const keyForm = `form_${evName}`;
         lines.push(`  // form.${evName}`);
         lines.push(`  _vjaB64[${JSON.stringify(keyForm)}] = ${JSON.stringify(b64Form)};`);
-        lines.push(`  document.addEventListener(${JSON.stringify(domEv)}, function(event) { _vjaRun("form", ${JSON.stringify(evName)}); });`);
+        lines.push(`  document.addEventListener(${JSON.stringify(domEv)}, function(event) { _vjaRun("form", ${JSON.stringify(evName)}, event); });`);
     }
     lines.push("});");
     return lines.join("\n");

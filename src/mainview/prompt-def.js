@@ -382,6 +382,32 @@
     - path: string - 対象ディレクトリパス
   - 戻り値: boolean
 
+## イベント情報 (vja.event.*)
+
+KeyDown / KeyUp イベント専用。それ以外のイベントでは null を返す。
+
+- 関数名: vja.event.getKey():
+  - 説明: 押されたキー名を返す（例: "Enter", "Escape", "ArrowUp"）
+  - 戻り値: string | null
+  - 使用例: "if (vja.event.getKey() === 'Enter') { /* 処理 */ }"
+
+- 関数名: vja.event.isEnter():
+  - 説明: Enterキーが押されたか
+  - 戻り値: boolean
+  - 使用例: "if (vja.event.isEnter()) { /* 処理 */ }"
+
+- 関数名: vja.event.isEscape():
+  - 説明: Escapeキーが押されたか
+  - 戻り値: boolean
+
+- 関数名: vja.event.isShift():
+  - 説明: Shiftキーが押されているか
+  - 戻り値: boolean
+
+- 関数名: vja.event.isCtrl():
+  - 説明: Ctrlキーが押されているか
+  - 戻り値: boolean
+
 ## 通知 (vja.notify.*)
 
 - 関数名: vja.notify.toast(message, duration?):
@@ -580,6 +606,12 @@ await vja.dir.list: { scope: LOCAL_DIR_IO, args: [path:string], return: "string[
 await vja.dir.exists: { scope: LOCAL_DIR_IO, args: [path:string], return: "boolean" }
 
 vja.notify.toast: { scope: UI_NOTIFICATION, args: [message:string, duration?:number], return: "void", desc: "Displays a bottom toast notification." }
+
+vja.event.getKey: { scope: EVENT_KEY, args: [], return: "string|null", desc: "KeyDown/KeyUp event ONLY. Returns key name ('Enter','Escape','ArrowUp' etc). Returns null in other events." }
+vja.event.isEnter: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Enter key." }
+vja.event.isEscape: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Escape key." }
+vja.event.isShift: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Shift key is held." }
+vja.event.isCtrl: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Ctrl key is held." }
 
 await vja.http.get: { scope: NETWORK_REST_API, args: [url:string, headers?:object], return: "any", desc: "HTTP GET request. Alias: delete" }
 await vja.http.delete: { scope: NETWORK_REST_API, args: [url:string, headers?:object], return: "any" }
