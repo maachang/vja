@@ -369,6 +369,38 @@
     };
 
     // ════════════════════════════════════════════════
+    // vja.trigger.* — イベントトリガー実行
+    // 指定ウィジェットのDOMイベントを発火させる。
+    // ════════════════════════════════════════════════
+    vja.trigger = {
+
+        _fire(name, eventName, options) {
+            const el = document.getElementById(name);
+            if (!el) return;
+            el.dispatchEvent(new Event(eventName, options || { bubbles: true }));
+        },
+
+        // クリックを発火
+        click(name) { const el = document.getElementById(name); if (el) el.click(); },
+
+        // マウス操作を発火
+        mouseDown(name)  { vja.trigger._fire(name, "mousedown"); },
+        mouseUp(name)    { vja.trigger._fire(name, "mouseup"); },
+        mouseEnter(name) { vja.trigger._fire(name, "mouseenter"); },
+        mouseLeave(name) { vja.trigger._fire(name, "mouseleave"); },
+
+        // フォーカス操作
+        focus(name) { const el = document.getElementById(name); if (el) el.focus(); },
+        blur(name)  { const el = document.getElementById(name); if (el) el.blur(); },
+
+        // 値変更イベントを発火
+        change(name) { vja.trigger._fire(name, "change"); },
+
+        // スクロールイベントを発火
+        scroll(name) { vja.trigger._fire(name, "scroll"); },
+    };
+
+    // ════════════════════════════════════════════════
     // vja.event.* — イベント情報取得
     // KeyDown/KeyUp イベント時のみ有効。それ以外では null を返す。
     // ════════════════════════════════════════════════

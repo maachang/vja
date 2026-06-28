@@ -382,6 +382,38 @@
     - path: string - 対象ディレクトリパス
   - 戻り値: boolean
 
+## イベントトリガー実行 (vja.trigger.*)
+
+指定したウィジェットのイベントを発火させる。
+
+- 関数名: vja.trigger.click(name):
+  - 説明: 指定ウィジェットのクリックイベントを発火する
+  - 使用例: "vja.trigger.click('btnSearch');"
+
+- 関数名: vja.trigger.focus(name):
+  - 説明: 指定ウィジェットにフォーカスを当てる
+
+- 関数名: vja.trigger.blur(name):
+  - 説明: 指定ウィジェットのフォーカスを外す
+
+- 関数名: vja.trigger.change(name):
+  - 説明: 指定ウィジェットの値変更イベントを発火する
+
+- 関数名: vja.trigger.mouseDown(name):
+  - 説明: マウス押下イベントを発火する
+
+- 関数名: vja.trigger.mouseUp(name):
+  - 説明: マウス離すイベントを発火する
+
+- 関数名: vja.trigger.mouseEnter(name):
+  - 説明: マウス進入イベントを発火する
+
+- 関数名: vja.trigger.mouseLeave(name):
+  - 説明: マウス離脱イベントを発火する
+
+- 関数名: vja.trigger.scroll(name):
+  - 説明: スクロールイベントを発火する
+
 ## イベント情報 (vja.event.*)
 
 KeyDown / KeyUp イベント専用。それ以外のイベントでは null を返す。
@@ -606,6 +638,16 @@ await vja.dir.list: { scope: LOCAL_DIR_IO, args: [path:string], return: "string[
 await vja.dir.exists: { scope: LOCAL_DIR_IO, args: [path:string], return: "boolean" }
 
 vja.notify.toast: { scope: UI_NOTIFICATION, args: [message:string, duration?:number], return: "void", desc: "Displays a bottom toast notification." }
+
+vja.trigger.click: { scope: UI_TRIGGER, args: [name:string], return: "void", desc: "Triggers click event on specified widget." }
+vja.trigger.focus: { scope: UI_TRIGGER, args: [name:string], return: "void", desc: "Focuses specified widget." }
+vja.trigger.blur: { scope: UI_TRIGGER, args: [name:string], return: "void", desc: "Removes focus from specified widget." }
+vja.trigger.change: { scope: UI_TRIGGER, args: [name:string], return: "void", desc: "Triggers change event on specified widget." }
+vja.trigger.mouseDown: { scope: UI_TRIGGER, args: [name:string], return: "void" }
+vja.trigger.mouseUp: { scope: UI_TRIGGER, args: [name:string], return: "void" }
+vja.trigger.mouseEnter: { scope: UI_TRIGGER, args: [name:string], return: "void" }
+vja.trigger.mouseLeave: { scope: UI_TRIGGER, args: [name:string], return: "void" }
+vja.trigger.scroll: { scope: UI_TRIGGER, args: [name:string], return: "void" }
 
 vja.event.getKey: { scope: EVENT_KEY, args: [], return: "string|null", desc: "KeyDown/KeyUp event ONLY. Returns key name ('Enter','Escape','ArrowUp' etc). Returns null in other events." }
 vja.event.isEnter: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Enter key." }
