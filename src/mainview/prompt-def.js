@@ -528,6 +528,8 @@
     // ※使わなそうなものは削除.
     // 「vja ランタイムの追加・変更・削除がある場合は、反映が必要」
     // ※必須条件: 英語版は使用例、使用例説明は不要.
+
+/*
     const VJA_USE_FRONT_JS_INFO_ENG = `
 ## DB Operations (vja.db.*)
 
@@ -768,6 +770,76 @@
 - Function name: console.error(message)
 
 `.trim();
+*/
+    const VJA_USE_FRONT_JS_INFO_ENG = `
+# VJA API Flat Matrix Spec (Strict Data for 7B LLM)
+vja.db.query: { scope: DB_SELECT, args: [sql:string, params?:any[]], return: "Promise<Record<string,any>[]>", desc: "Executes SQL SELECT statement. Throws on error. Use ? placeholder." }
+vja.db.execute: { scope: DB_WRITE, args: [sql:string, params?:any[]], return: "Promise<{changes:number, lastInsertRowid:number}|null>", desc: "Executes SQL INSERT/UPDATE/DELETE. Returns null on failure." }
+vja.db.transaction: { scope: DB_TRANSACTION, args: [statements:object[]], return: "Promise<boolean>", desc: "Executes multiple SQL statements as a transaction. Rollback and returns false on failure." }
+
+vja.widget.get: { scope: UI_WIDGET_GET, args: [name:string], return: "string|number|boolean|null", desc: "Gets current value from UI Screen Widget. Alias: getValue" }
+vja.widget.getValue: { scope: UI_WIDGET_GET, args: [name:string], return: "string|number|boolean|null", desc: "Gets current value from UI Screen Widget." }
+vja.widget.set: { scope: UI_WIDGET_SET, args: [name:string, value:any, options?:object], return: "void", desc: "Sets value to UI Screen Widget. text/label:string, checkbox/radio:bool, select/list:array, datagrid:object[]. Alias: setValue" }
+vja.widget.setValue: { scope: UI_WIDGET_SET, args: [name:string, value:any, options?:object], return: "void", desc: "Sets value to UI Screen Widget." }
+vja.widget.getAllInputs: { scope: UI_WIDGET_ALL, args: [], return: "Record<string,any>", desc: "Gets all active UI input widget values in a form as {name: value}." }
+vja.widget.setVisible: { scope: UI_WIDGET_VISIBILITY, args: [name:string, visible:boolean], return: "void", desc: "Toggles UI display. true=show, false=hide." }
+vja.widget.show: { scope: UI_WIDGET_STATE, args: [name:string], return: "void", desc: "Displays the specified widget." }
+vja.widget.hide: { scope: UI_WIDGET_STATE, args: [name:string], return: "void", desc: "Hides the specified widget." }
+vja.widget.enable: { scope: UI_WIDGET_STATE, args: [name:string], return: "void", desc: "Enables the specified widget." }
+vja.widget.disable: { scope: UI_WIDGET_STATE, args: [name:string], return: "void", desc: "Disables the specified widget." }
+
+vja.const.get: { scope: CONFIG_CONSTANT, args: [key:string, default?:any], return: "any", desc: "Retrieves constant value. Form constants take precedence; if none exist, global is returned." }
+vja.const.getAll: { scope: CONFIG_CONSTANT, args: [], return: "Record<string,any>", desc: "Retrieves all active config constants. Form overrides global." }
+
+vja.form.navigate: { scope: SCREEN_TRANSITION, args: [formName:string, options?:object], return: "void", desc: "Navigates to specified form. options.save defaults to true. Outputs warning if destination undefined." }
+vja.form.back: { scope: SCREEN_TRANSITION, args: [], return: "void", desc: "Returns to previous screen and restores the input content." }
+vja.form.setParam: { scope: SCREEN_PARAMETER, args: [key:string, value:any], return: "void", desc: "Sets key-value parameter to pass to the next screen." }
+vja.form.getParam: { scope: SCREEN_PARAMETER, args: [key:string, default?:any], return: "any", desc: "Retrieves parameter passed from previous screen. Returns default if not present." }
+
+vja.session.get: { scope: SESSION_STORAGE, args: [key:string, default?:any], return: "Promise<any>", desc: "Retrieves session value corresponding to the key from persistent storage." }
+vja.session.set: { scope: SESSION_STORAGE, args: [key:string, value:any], return: "Promise<boolean>", desc: "Saves key and value to persistent session storage (converted to JSON)." }
+vja.session.delete: { scope: SESSION_STORAGE, args: [key:string], return: "Promise<boolean>", desc: "Deletes specified key from persistent session storage." }
+vja.session.clear: { scope: SESSION_STORAGE, args: [], return: "Promise<boolean>", desc: "Deletes all persistent session storage data." }
+
+vja.util.today: { scope: UTIL_DATE, args: [], return: "string", desc: "Returns current system date in YYYY-MM-DD format." }
+vja.util.formatDate: { scope: UTIL_DATE, args: [date:any, format?:string], return: "string", desc: "Formats Date object or string into specified format string (default: YYYY-MM-DD)." }
+vja.util.formatNumber: { scope: UTIL_NUMBER, args: [n:number, decimals?:number], return: "string", desc: "Formats a number into a string with thousands separators and optional decimals." }
+
+vja.io.openCsv: { scope: FILE_DIALOG_READ, args: [], return: "Promise<Record<string,string>[]|null>", desc: "Opens file selection dialog and reads CSV. Returns null if canceled." }
+vja.io.openJson: { scope: FILE_DIALOG_READ, args: [], return: "Promise<any|null>", desc: "Opens file selection dialog and reads JSON. Throws error if JSON parsing fails." }
+vja.io.saveCsv: { scope: FILE_DIALOG_WRITE, args: [csvRows:object[], filename:string], return: "Promise<void>", desc: "Downloads data array as CSV file." }
+vja.io.saveJson: { scope: FILE_DIALOG_WRITE, args: [json:any, filename:string], return: "Promise<void>", desc: "Downloads data object as JSON file." }
+
+vja.file.read: { scope: LOCAL_FILE_IO, args: [path:string], return: "Promise<string|null>", desc: "Reads local file content as text string. Returns null on failure." }
+vja.file.write: { scope: LOCAL_FILE_IO, args: [path:string, content:string], return: "Promise<boolean>", desc: "Writes text content to specified local file path. Creates file if missing." }
+vja.file.readBytes: { scope: LOCAL_FILE_IO, args: [path:string], return: "Promise<Uint8Array|null>", desc: "Reads local file as binary data (Uint8Array). Returns null on failure." }
+vja.file.writeBytes: { scope: LOCAL_FILE_IO, args: [path:string, data:Uint8Array], return: "Promise<boolean>", desc: "Writes binary data (Uint8Array) to specified local file path." }
+vja.file.exists: { scope: LOCAL_FILE_IO, args: [path:string], return: "Promise<boolean>", desc: "Checks if file exists at the specified absolute local path." }
+vja.file.delete: { scope: LOCAL_FILE_IO, args: [path:string], return: "Promise<boolean>", desc: "Deletes local file at the specified absolute path." }
+vja.file.copy: { scope: LOCAL_FILE_IO, args: [src:string, dest:string], return: "Promise<boolean>", desc: "Copies local file from source path to destination path." }
+
+vja.dir.create: { scope: LOCAL_DIR_IO, args: [path:string], return: "Promise<boolean>", desc: "Creates local directory recursively at the specified path." }
+vja.dir.delete: { scope: LOCAL_DIR_IO, args: [path:string], return: "Promise<boolean>", desc: "Deletes local directory recursively at the specified path." }
+vja.dir.list: { scope: LOCAL_DIR_IO, args: [path:string], return: "Promise<string[]>", desc: "Retrieves list of file/folder names inside the specified directory path." }
+vja.dir.exists: { scope: LOCAL_DIR_IO, args: [path:string], return: "Promise<boolean>", desc: "Checks if directory exists at the specified absolute local path." }
+
+vja.notify.toast: { scope: UI_NOTIFICATION, args: [message:string, duration?:number], return: "void", desc: "Displays a bottom toast notification (default duration: 2500ms)." }
+
+vja.http.get: { scope: NETWORK_REST_API, args: [url:string, headers?:object], return: "Promise<any>", desc: "Sends HTTP GET request. Throws on HTTP errors. Alias: delete" }
+vja.http.delete: { scope: NETWORK_REST_API, args: [url:string, headers?:object], return: "Promise<any>", desc: "Sends HTTP DELETE request. Throws on HTTP errors." }
+vja.http.post: { scope: NETWORK_REST_API, args: [url:string, body:any, headers?:object], return: "Promise<any>", desc: "Sends HTTP POST request. Object body automatically converted to JSON. Alias: put" }
+vja.http.put: { scope: NETWORK_REST_API, args: [url:string, body:any, headers?:object], return: "Promise<any>", desc: "Sends HTTP PUT request. Object body automatically converted to JSON." }
+vja.fetch: { scope: NETWORK_LOW_LEVEL, args: [url:string, options?:object], return: "Promise<any>", desc: "Low-level fetch alternative経由でHTTPリクエスト送信. Use when custom headers/options are required." }
+
+vja.ui.loading: { scope: UI_OVERLAY, args: [show:boolean, message?:string], return: "void", desc: "Toggles loading overlay screen. MUST implement try...finally structure to ensure turn off on errors." }
+
+vja.app.showDialog: { scope: UI_DIALOG, args: [message:string], return: "Promise<void>", desc: "Displays native alert modal dialog with specified message." }
+vja.app.showConfirm: { scope: UI_DIALOG, args: [message:string], return: "Promise<boolean>", desc: "Displays native confirmation modal dialog. OK=true, Cancel=false." }
+
+console.info: { scope: LOG_SYSTEM, args: [message:any], return: "void", desc: "Outputs INFO-level log to file and terminal via Bun." }
+console.warn: { scope: LOG_SYSTEM, args: [message:any], return: "void", desc: "Outputs WARN-level log to file and terminal via Bun." }
+console.error: { scope: LOG_SYSTEM, args: [message:any], return: "void", desc: "Outputs ERROR-level log to file and terminal via Bun." }
+`.trim();
 
     // ### [AIP説明で利用]
     // [バックエンド]利用可能なjavascript関数の説明.
@@ -913,6 +985,7 @@
     // [英語版][バックエンド]利用可能なjavascript関数の説明.
     // ※必須条件: 英語版は使用例、使用例説明は不要.
     // 「vja ランタイムの追加・変更・削除がある場合は、反映が必要」
+/*
     const VJA_USE_BACK_JS_INFO_ENG = `
 ## DB Operations (vja.db.*)
 
@@ -990,6 +1063,24 @@
       - Description: Outputs a WARN-level log to a file and terminal.
     - vja.log.error(message):
       - Description: Outputs an ERROR-level log to a file and terminal.
+`.trim();
+*/
+    const VJA_USE_BACK_JS_INFO_ENG = `
+# VJA App API Flat Matrix Spec (Strict Data for 7B LLM - Backend)
+vja.db.query: { scope: DB_BACK_SELECT, args: [sql:string, params?:any[]], return: "Record<string,any>[]", desc: "Executes SQL SELECT statement. Returns empty array on error. Use ? placeholder." }
+vja.db.execute: { scope: DB_BACK_WRITE, args: [sql:string, params?:any[]], return: "{changes:number, lastInsertRowid:number}|null", desc: "Executes SQL INSERT/UPDATE/DELETE. Returns null on error." }
+vja.db.clearTable: { scope: DB_BACK_CLEAR, args: [tableName:string], return: "void", desc: "Deletes all data in the specified local SQLite table." }
+vja.db.importCsv: { scope: DB_BACK_IMPORT, args: [tableName:string, filePath:string], return: "Promise<void>", desc: "Reads CSV file and imports to table in bulk using first row as header. Throws error on failure." }
+vja.db.importJson: { scope: DB_BACK_IMPORT, args: [tableName:string, filePath:string], return: "Promise<void>", desc: "Reads JSON array file and imports to table in bulk. Throws error on failure." }
+
+vja.session.get: { scope: SESSION_BACK_STORAGE, args: [key:string], return: "string|null", desc: "Retrieves string value corresponding to the key from session storage. Returns null if missing." }
+vja.session.set: { scope: SESSION_BACK_STORAGE, args: [key:string, value:string], return: "boolean", desc: "Saves key and string value to session storage. Returns true on success." }
+vja.session.delete: { scope: SESSION_BACK_STORAGE, args: [key:string], return: "boolean", desc: "Deletes specified key from session storage. Returns true on success." }
+vja.session.clear: { scope: SESSION_BACK_STORAGE, args: [], return: "boolean", desc: "Deletes all session storage data. Returns true on success." }
+
+vja.log.info: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void", desc: "Outputs INFO-level log to file and terminal via Bun native process." }
+vja.log.warn: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void", desc: "Outputs WARN-level log to file and terminal via Bun native process." }
+vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void", desc: "Outputs ERROR-level log to file and terminal via Bun native process." }
 `.trim();
 
     // 英語promptの最後に日本語で表記としてつける文字
@@ -1693,3 +1784,4 @@ Include the function name, description, arguments, return value, and exceptions.
     // イベント用yamlエディタ初期値.
     o.DEFAULT_YAML_VALUE = DEFAULT_YAML_VALUE;
 })();
+
