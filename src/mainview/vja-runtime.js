@@ -1109,27 +1109,22 @@
     // アプリライフサイクルフック
     // ════════════════════════════════════════════════
 
-    // 起動時イベント実行（vja-runtime ロード完了後に呼ばれる）
-    global._vjaOnStart = async function (code) {
+    // ライフサイクルイベント実行共通処理（OnStart/OnExit共用）
+    async function _vjaRunLifecycle(code, label) {
         if (!code || !code.trim()) return;
         try {
             const fn = new Function("vja", "return (async()=>{" + code + "})()");
             await fn(vja);
         } catch (e) {
-            console.error("[vja] OnStartエラー:", e?.message || e);
+            console.error("[vja] " + label + "エラー:", e?.message || e);
         }
-    };
+    }
+
+    // 起動時イベント実行（vja-runtime ロード完了後に呼ばれる）
+    global._vjaOnStart = function (code) { return _vjaRunLifecycle(code, "OnStart"); };
 
     // 終了時イベント実行（beforeunload で呼ばれる）
-    global._vjaOnExit = async function (code) {
-        if (!code || !code.trim()) return;
-        try {
-            const fn = new Function("vja", "return (async()=>{" + code + "})()");
-            await fn(vja);
-        } catch (e) {
-            console.error("[vja] OnExitエラー:", e?.message || e);
-        }
-    };
+    global._vjaOnExit  = function (code) { return _vjaRunLifecycle(code, "OnExit"); };
 
     // beforeunload フック登録
     window.addEventListener("beforeunload", (e) => {
