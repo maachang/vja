@@ -860,6 +860,30 @@
         function getAiContext()     { return _CTX._ai;       }
         function getUiConfig()      { return _CTX._ui.config;}
 
+        /* ═══════════════════════════════════════════
+           機能別ローカル状態オブジェクト
+           _CTX とは別に、特定の1モーダル・1エディタの中でしか
+           使わない局所的な一時状態をここにまとめる。
+        ═══════════════════════════════════════════ */
+        // クラウドインフラ設定モーダル専用の一時状態
+        var _CLOUD_MODAL = {
+            draft: [],
+        };
+        // アプリイベント編集モーダル専用の一時状態
+        var _APPEVENT_MODAL = {
+            curKey: "onStart",
+        };
+        // 拡張ランタイムエディタ専用のUndo状態
+        var _EXTRT_EDITOR = {
+            jsUndo:  {stack: [], idx: -1, busy: false},
+            docUndo: {stack: [], idx: -1, busy: false},
+        };
+        // 項目定義エディタ専用の一時状態
+        var _ITEMSDEF_EDITOR = {
+            wid:  null,
+            rows: [],
+        };
+
         // _CTX._project の初期データを設定
         getProjectData().forms = [makeFormData("Form1")];
         getProjectData().startFormId = getProjectData().forms[0]?.id ?? "";
@@ -874,9 +898,6 @@
             {label: "sans-serif", value: "sans-serif"},
             {label: "serif", value: "serif"},
         ];
-
-        // ── クラウドインフラ設定 ──────────────────────────
-        let _cloudDraft = [];
 
         // 現在フォームへのショートカット（参照）
         let widgets = getProjectData().forms[0].widgets;
@@ -2580,8 +2601,8 @@
             const ctrl = e.ctrlKey || e.metaKey;
             const isJs = ta.id === "js-ta" || ta.id === "ta-extrt-js";
             const state = ta.id === "js-ta" ? getEditorContext().ju
-                : ta.id === "ta-extrt-js" ? _extRtJuState
-                    : ta.id === "ta-extrt-doc" ? _extRtYuState
+                : ta.id === "ta-extrt-js" ? _EXTRT_EDITOR.jsUndo
+                    : ta.id === "ta-extrt-doc" ? _EXTRT_EDITOR.docUndo
                         : getEditorContext().yu;
 
             // ── Mac: Ctrl+C / Ctrl+V を無効化（OS側のEmacsキーバインド干渉防止）──
@@ -5257,11 +5278,10 @@
             {key: "onStart", label: "🚀 起動時（OnStart）"},
             {key: "onExit", label: "🔚 終了時（OnExit）"},
         ];
-        let _curAppEvKey = "onStart";
 
         function openAppEvents(evKey) {
             evKey = evKey || "onStart";
-            _curAppEvKey = evKey;
+            _APPEVENT_MODAL.curKey = evKey;
             const ae = getProjectData().projectInfo.appEvents || {};
             const cur = ae[evKey + "_yaml"] || "# アプリイベント: " + evKey + "\n# YAML形式でAIへの指示を記述します\n";
             // OnStart/OnExitはBun側でTypeScriptとして実行される
@@ -5294,8 +5314,8 @@
 
         function saveAppEvent() {
             if (!getProjectData().projectInfo.appEvents) getProjectData().projectInfo.appEvents = {};
-            getProjectData().projectInfo.appEvents[_curAppEvKey + "_yaml"] = $("yaml-ta")?.value || "";
-            getProjectData().projectInfo.appEvents[_curAppEvKey] = $("js-ta")?.value || "";
+            getProjectData().projectInfo.appEvents[_APPEVENT_MODAL.curKey + "_yaml"] = $("yaml-ta")?.value || "";
+            getProjectData().projectInfo.appEvents[_APPEVENT_MODAL.curKey] = $("js-ta")?.value || "";
             closeModal();
             pushUndo();
             showToast("アプリイベントを保存しました");
@@ -5362,8 +5382,6 @@
         // vja ランタイムに追加する JavaScript コードと AI向け説明（YAML）を管理する。
         // getProjectData().extRuntime.js  : 実行時に注入されるカスタム JS コード
         // getProjectData().extRuntime.doc : AI向けの関数説明（YAML形式）。runAiGenerate で自動生成可能。
-        let _extRtYuState = {stack: [], idx: -1, busy: false};
-        let _extRtJuState = {stack: [], idx: -1, busy: false};
 
         // 拡張ランタイムダイアログを開く。
         // JavaScript タブと AI向け説明タブの2タブ構成。
@@ -5380,8 +5398,8 @@
             requestAnimationFrame(() => {
                 applyEditorConfig();
                 [
-                    {id: "ta-extrt-js", hlId: "hl-extrt-js", gutId: "gutter-extrt-js", tokenFn: jsTokenize, state: _extRtJuState},
-                    {id: "ta-extrt-doc", hlId: "hl-extrt-doc", gutId: "gutter-extrt-doc", tokenFn: yamlTokenize, state: _extRtYuState},
+                    {id: "ta-extrt-js", hlId: "hl-extrt-js", gutId: "gutter-extrt-js", tokenFn: jsTokenize, state: _EXTRT_EDITOR.jsUndo},
+                    {id: "ta-extrt-doc", hlId: "hl-extrt-doc", gutId: "gutter-extrt-doc", tokenFn: yamlTokenize, state: _EXTRT_EDITOR.docUndo},
                 ].forEach(({id, hlId, gutId, tokenFn, state}) => {
                     const ta = $(id);
                     if (!ta) return;
@@ -5464,14 +5482,14 @@
 
         function openCloudInfraConfig() {
             closeAllMenus();
-            _cloudDraft = getProjectData().cloudInfras.map(c => JSON.parse(JSON.stringify(c)));
+            _CLOUD_MODAL.draft = getProjectData().cloudInfras.map(c => JSON.parse(JSON.stringify(c)));
             _renderCloudModal();
         }
 
         // クラウドインフラ設定モーダルの内容を再描画する。
-        // _cloudDraft（編集中の一時データ）を元に表示を構築する。
+        // _CLOUD_MODAL.draft（編集中の一時データ）を元に表示を構築する。
         function _renderCloudModal() {
-            const rows = _cloudDraft.map((inf, i) => _cloudInfraRow(inf, i)).join("") ||
+            const rows = _CLOUD_MODAL.draft.map((inf, i) => _cloudInfraRow(inf, i)).join("") ||
                 "<div style='color:var(--text3);font-size:12px;padding:8px'>登録なし</div>";
             showModal(
                 mhdrHTML("☁️ クラウドインフラ設定") +
@@ -5631,7 +5649,7 @@
 
         function addCloudInfra() {
             const preset = CLOUD_PRESETS[0] || {name: "カスタム", services: [{label: "カスタム", url: "", input: true}], creds: []};
-            _cloudDraft.push({
+            _CLOUD_MODAL.draft.push({
                 id: "ci_" + Date.now(), name: preset.name,
                 service: preset.services[0].label, sdkUrl: preset.services[0].url,
                 enabled: true, credDefs: preset.creds, credentials: {}, appInput: {},
@@ -5639,59 +5657,59 @@
             _refreshCloudList();
         }
         function removeCloudInfra(i) {
-            _cloudDraft.splice(i, 1);
+            _CLOUD_MODAL.draft.splice(i, 1);
             _refreshCloudList();
         }
         function updateCloudField(i, key, val) {
-            if (_cloudDraft[i]) _cloudDraft[i][key] = val;
+            if (_CLOUD_MODAL.draft[i]) _CLOUD_MODAL.draft[i][key] = val;
         }
         function updateCloudCred(i, key, val) {
-            if (!_cloudDraft[i]) return;
-            if (!_cloudDraft[i].credentials) _cloudDraft[i].credentials = {};
-            _cloudDraft[i].credentials[key] = val;
+            if (!_CLOUD_MODAL.draft[i]) return;
+            if (!_CLOUD_MODAL.draft[i].credentials) _CLOUD_MODAL.draft[i].credentials = {};
+            _CLOUD_MODAL.draft[i].credentials[key] = val;
         }
         function updateCloudCredsJson(i, jsonStr) {
-            if (!_cloudDraft[i]) return;
-            _cloudDraft[i].credentialsJson = jsonStr;
+            if (!_CLOUD_MODAL.draft[i]) return;
+            _CLOUD_MODAL.draft[i].credentialsJson = jsonStr;
             try {
-                _cloudDraft[i].credentials = JSON.parse(jsonStr);
+                _CLOUD_MODAL.draft[i].credentials = JSON.parse(jsonStr);
             } catch (e) {
                 console.debug("[vja] credentialsJson parse pending:", e.message);
             }
         }
         function updateCloudAppInput(i, key, checked) {
-            if (!_cloudDraft[i]) return;
-            if (!_cloudDraft[i].appInput) _cloudDraft[i].appInput = {};
-            _cloudDraft[i].appInput[key] = checked;
+            if (!_CLOUD_MODAL.draft[i]) return;
+            if (!_CLOUD_MODAL.draft[i].appInput) _CLOUD_MODAL.draft[i].appInput = {};
+            _CLOUD_MODAL.draft[i].appInput[key] = checked;
             _refreshCloudList();
         }
         // インフラプリセット（AWS/GCP等）を選択し、サービス・クレデンシャル欄を更新する。
         function selectCloudPreset(i, name) {
-            if (!_cloudDraft[i]) return;
+            if (!_CLOUD_MODAL.draft[i]) return;
             const preset = CLOUD_PRESETS.find(p => p.name === name);
             if (!preset) return;
-            _cloudDraft[i].name = name;
-            _cloudDraft[i].service = preset.services[0].label;
-            _cloudDraft[i].sdkUrl = preset.services[0].url;
-            _cloudDraft[i].credDefs = preset.creds;
-            _cloudDraft[i].credentials = {};
-            _cloudDraft[i].appInput = {};
+            _CLOUD_MODAL.draft[i].name = name;
+            _CLOUD_MODAL.draft[i].service = preset.services[0].label;
+            _CLOUD_MODAL.draft[i].sdkUrl = preset.services[0].url;
+            _CLOUD_MODAL.draft[i].credDefs = preset.creds;
+            _CLOUD_MODAL.draft[i].credentials = {};
+            _CLOUD_MODAL.draft[i].appInput = {};
             _refreshCloudList();
         }
         function selectCloudService(i, label) {
-            if (!_cloudDraft[i]) return;
-            const preset = CLOUD_PRESETS.find(p => p.name === _cloudDraft[i].name);
+            if (!_CLOUD_MODAL.draft[i]) return;
+            const preset = CLOUD_PRESETS.find(p => p.name === _CLOUD_MODAL.draft[i].name);
             if (!preset) return;
             const svc = preset.services.find(s => s.label === label);
             if (!svc) return;
-            _cloudDraft[i].service = label;
-            if (svc.url) _cloudDraft[i].sdkUrl = svc.url;
+            _CLOUD_MODAL.draft[i].service = label;
+            if (svc.url) _CLOUD_MODAL.draft[i].sdkUrl = svc.url;
             _refreshCloudList();
         }
         function _refreshCloudList() {
             const el = $("cloud-list");
             if (!el) return;
-            el.innerHTML = _cloudDraft.map((inf, i) => _cloudInfraRow(inf, i)).join("") ||
+            el.innerHTML = _CLOUD_MODAL.draft.map((inf, i) => _cloudInfraRow(inf, i)).join("") ||
                 "<div style='color:var(--text3);font-size:12px;padding:8px'>登録なし</div>";
         }
         // クラウドインフラ設定を Bun 側に送信して暗号化保存する。
@@ -5699,10 +5717,10 @@
         async function saveCloudInfraConfig() {
             try {
                 // Bun側で暗号化して保存
-                const result = await window.bunSaveCloudInfras(_cloudDraft);
+                const result = await window.bunSaveCloudInfras(_CLOUD_MODAL.draft);
                 if (!result?.ok) throw new Error(result?.error || "保存失敗");
                 // フロント側にも反映（次回モーダルオープン時のベースになる）
-                getProjectData().cloudInfras = _cloudDraft.map(c => JSON.parse(JSON.stringify(c)));
+                getProjectData().cloudInfras = _CLOUD_MODAL.draft.map(c => JSON.parse(JSON.stringify(c)));
                 closeModal();
                 showToast("クラウドインフラ設定を保存しました");
                 pushUndo();
@@ -5943,8 +5961,6 @@
         }
 
         /* ── 項目定義エディタ（SelectBox / ListBox） ── */
-        let _itemsdefWid = null;
-        let _itemsdefRows = [];
 
         function openItemsDefEditor(wid) {
             const w = getWidget(wid);
@@ -5955,18 +5971,18 @@
                 return {label: s.trim(), value: ""};
             });
             if (rows.length === 0) rows.push({label: "", value: ""});
-            _itemsdefWid = wid;
-            _itemsdefRows = rows;
+            _ITEMSDEF_EDITOR.wid = wid;
+            _ITEMSDEF_EDITOR.rows = rows;
             renderItemsDefModal();
         }
         function renderItemsDefModal() {
-            const rows = _itemsdefRows || [];
+            const rows = _ITEMSDEF_EDITOR.rows || [];
             let tbody = "";
             rows.forEach((r, i) => {
                 tbody += "<tr>"
                     + "<td>" + (i + 1) + "</td>"
-                    + "<td><input type='text' class='pv-input' value='" + esc(r.label) + "' oninput=\"_itemsdefRows[" + i + "].label=this.value\" placeholder='表示名'></td>"
-                    + "<td><input type='text' class='pv-input' value='" + esc(r.value || "") + "' oninput=\"_itemsdefRows[" + i + "].value=this.value\" placeholder='Value（省略可）'></td>"
+                    + "<td><input type='text' class='pv-input' value='" + esc(r.label) + "' oninput=\"_ITEMSDEF_EDITOR.rows[" + i + "].label=this.value\" placeholder='表示名'></td>"
+                    + "<td><input type='text' class='pv-input' value='" + esc(r.value || "") + "' oninput=\"_ITEMSDEF_EDITOR.rows[" + i + "].value=this.value\" placeholder='Value（省略可）'></td>"
                     + "<td style='white-space:nowrap'>"
                     + "<button class='del-btn' onmousedown='itemsdefInsertRow(" + i + ")' title='この行の前に挿入' style='margin-right:2px'>＋</button>"
                     + "<button class='del-btn' onmousedown='itemsdefDelRow(" + i + ")' title='削除'>✕</button>"
@@ -5992,19 +6008,19 @@
                 + "</div>");
         }
         function itemsdefAddRow() {
-            _rowAdd(() => _itemsdefRows, () => ({label: "", value: ""}), renderItemsDefModal);
+            _rowAdd(() => _ITEMSDEF_EDITOR.rows, () => ({label: "", value: ""}), renderItemsDefModal);
         }
         function itemsdefInsertRow(idx) {
-            _rowInsert(() => _itemsdefRows, idx, () => ({label: "", value: ""}), renderItemsDefModal);
+            _rowInsert(() => _ITEMSDEF_EDITOR.rows, idx, () => ({label: "", value: ""}), renderItemsDefModal);
         }
         function itemsdefDelRow(idx) {
-            _rowDel(() => _itemsdefRows, idx, () => ({label: "", value: ""}), renderItemsDefModal);
+            _rowDel(() => _ITEMSDEF_EDITOR.rows, idx, () => ({label: "", value: ""}), renderItemsDefModal);
         }
         function itemsdefSave() {
-            const wid = _itemsdefWid;
+            const wid = _ITEMSDEF_EDITOR.wid;
             const w = getWidget(wid);
             if (!w) return;
-            const valid = (_itemsdefRows || []).filter(r => r.label.trim());
+            const valid = (_ITEMSDEF_EDITOR.rows || []).filter(r => r.label.trim());
             if (valid.length === 0) {showVjaAlert("表示名を1つ以上入力してください"); return;}
             w.props.items = valid.map(r => r.value?.trim() ? r.label.trim() + "=" + r.value.trim() : r.label.trim()).join("\n");
             closeModal();
