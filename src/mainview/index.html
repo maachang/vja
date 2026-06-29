@@ -927,7 +927,6 @@
         let formCfg = forms[0].cfg;
         let idCnt = forms[0].idCnt;
 
-        let selId = null;
         // 定数リスト [{name, value}]
         let constants = [];
         // SQLiteテーブル定義リスト
@@ -941,11 +940,6 @@
         let _coldefMaxRows = 0;
         let undoStack = [];
         let redoStack = [];
-        let activeTool = "pointer";
-        let snapOn = true;  // スナップON/OFF
-        let showGrid = false; // グリッド表示ON/OFF
-        let ctxId = null;
-        let curTab = "p";
         const SNAP = 8;
 
         // 現在フォームの参照を更新する
@@ -973,7 +967,7 @@
         /* ═══════════════════════════════════════════
           SNAP / HELPERS
         ═══════════════════════════════════════════ */
-        const sn = (v) => (snapOn ? Math.round(v / SNAP) * SNAP : v);
+        const sn = (v) => (getDesignerState().snapOn ? Math.round(v / SNAP) * SNAP : v);
         /* ═══════════════════════════════════════════
            共通ユーティリティ
         ═══════════════════════════════════════════ */
@@ -1023,7 +1017,7 @@
         }
 
         function setTool(id) {
-            activeTool = id;
+            getDesignerState().activeTool = id;
             document
                 .querySelectorAll(".tool-item")
                 .forEach((el) =>
@@ -1230,7 +1224,7 @@
 
         function applyWPos(el, w) {
             el.style.cssText = `left:${w.x}px;top:${w.y}px;width:${w.w}px;height:${w.h}px;z-index:${w.z || 0}`;
-            el.className = "widget" + (w.id === selId ? " sel" : "");
+            el.className = "widget" + (w.id === getDesignerState().selId ? " sel" : "");
         }
 
         function fullRedraw() {
@@ -1246,7 +1240,7 @@
             document.querySelectorAll(".widget").forEach((el) => {
                 el.classList.toggle(
                     "sel",
-                    parseInt(el.id.slice(1)) === selId,
+                    parseInt(el.id.slice(1)) === getDesignerState().selId,
                 );
             });
         }
@@ -1255,7 +1249,7 @@
           SELECT / DESELECT
         ═══════════════════════════════════════════ */
         function select(id) {
-            selId = id;
+            getDesignerState().selId = id;
             updateSelVisual();
             const w = getWidget(id);
             $("prop-obj").textContent = w ? (TOOLS.find(t => t.tag === w.tag)?.label ?? w.tag) : formCfg.title;
@@ -1264,7 +1258,7 @@
         }
 
         function deselect() {
-            selId = null;
+            getDesignerState().selId = null;
             updateSelVisual();
             $("prop-obj").textContent = formCfg.title;
             $("st-size").innerHTML = `W:<b>-</b> H:<b>-</b>`;
@@ -1292,7 +1286,7 @@
                 // ウィジェット・ハンドルは対象外
                 if (e.target !== body && e.target.id !== "rubber") return;
 
-                if (activeTool === "pointer") {
+                if (getDesignerState().activeTool === "pointer") {
                     deselect();
                     return;
                 }
@@ -1332,7 +1326,7 @@
                     document.removeEventListener("mouseup", onUp);
                     rb.style.display = "none";
 
-                    const tool = TOOLS.find((t) => t.id === activeTool);
+                    const tool = TOOLS.find((t) => t.id === getDesignerState().activeTool);
                     if (!tool || !tool.tag) {
                         setTool("pointer");
                         return;
@@ -1352,7 +1346,7 @@
 
             // マウス位置ステータス
             body.addEventListener("mousemove", (e) => {
-                if (selId) return;
+                if (getDesignerState().selId) return;
                 const r = body.getBoundingClientRect();
                 const x = sn(e.clientX - r.left),
                     y = sn(e.clientY - r.top);
@@ -1411,7 +1405,7 @@
                 }
 
                 // ウィジェット本体 → ポインタなら移動、ツールなら無視
-                if (activeTool !== "pointer") return;
+                if (getDesignerState().activeTool !== "pointer") return;
                 e.stopPropagation();
                 e.preventDefault();
                 select(wid);
@@ -1419,7 +1413,7 @@
             });
 
             el.addEventListener("dblclick", (e) => {
-                if (activeTool !== "pointer") return;
+                if (getDesignerState().activeTool !== "pointer") return;
                 e.stopPropagation();
                 e.preventDefault();
                 const w = getWidget(wid);
@@ -1433,7 +1427,7 @@
             el.addEventListener("contextmenu", (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                ctxId = wid;
+                getDesignerState().ctxId = wid;
                 select(wid);
                 showCtx(e.clientX, e.clientY);
             });
@@ -1780,12 +1774,12 @@
                 el = $("elist");
             pl.innerHTML = "";
             el.innerHTML = "";
-            if (curTab === "e") {
+            if (getDesignerState().curTab === "e") {
                 renderEvents();
                 return;
             }
 
-            if (!selId) {
+            if (!getDesignerState().selId) {
                 // フォームプロパティをPDEFS.formで共通描画
                 const defs = PDEFS.form || [];
                 defs.forEach((d) => {
@@ -1801,7 +1795,7 @@
                 });
                 return;
             }
-            const w = getWidget(selId);
+            const w = getWidget(getDesignerState().selId);
             if (!w) return;
             const defs = PDEFS[w.tag] || [];
             defs.forEach((d) => {
@@ -2051,7 +2045,7 @@
         function renderEvents() {
             const el = $("elist");
             el.innerHTML = "";
-            if (!selId) {
+            if (!getDesignerState().selId) {
                 // ウィジェット未選択時はフォームイベントを表示
                 const formEvs = EVENTS["form"] || [];
                 const fev = forms[curFormIdx]?.events || {};
@@ -2072,7 +2066,7 @@
                 });
                 return;
             }
-            const w = getWidget(selId);
+            const w = getWidget(getDesignerState().selId);
             if (!w) return;
             (EVENTS[w.tag] || []).forEach((ev) => {
                 const hasY = w.events?.[ev]?.trim().length > 0;
@@ -2088,7 +2082,7 @@
         }
 
         function switchTab(t) {
-            curTab = t;
+            getDesignerState().curTab = t;
             document
                 .querySelectorAll(".ptab")
                 .forEach((el, i) =>
@@ -3667,20 +3661,20 @@
         }
         function ctxYaml() {
             hideCtx();
-            const w = getWidget(ctxId);
+            const w = getWidget(getDesignerState().ctxId);
             if (!w) return;
             openYaml(w.id, (EVENTS[w.tag] || ["Click"])[0]);
         }
         function ctxFront() {
             hideCtx();
-            const w = getWidget(ctxId);
+            const w = getWidget(getDesignerState().ctxId);
             if (!w) return;
             w.z = (w.z || 0) + 1;
             applyWPos($("w" + w.id), w);
         }
         function ctxBack() {
             hideCtx();
-            const w = getWidget(ctxId);
+            const w = getWidget(getDesignerState().ctxId);
             if (!w) return;
             w.z = Math.max(0, (w.z || 0) - 1);
             applyWPos($("w" + w.id), w);
@@ -3713,7 +3707,7 @@
         }
 
         function snapshot() {
-            return {forms, curFormIdx, constants, startFormId, aiConfig, cloudInfras, tables, snapOn, showGrid, projectInfo, extRuntime};
+            return {forms, curFormIdx, constants, startFormId, aiConfig, cloudInfras, tables, snapOn: getDesignerState().snapOn, showGrid: getDesignerState().showGrid, projectInfo, extRuntime};
         }
         // 現在の状態を undoStack に積む。redoStack はクリアする。
         function pushUndo() {
@@ -3743,8 +3737,8 @@
             constants = d.constants || [];
             startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
             tables = d.tables || [];
-            snapOn = d.snapOn !== undefined ? d.snapOn : true;
-            showGrid = d.showGrid !== undefined ? d.showGrid : false;
+            getDesignerState().snapOn = d.getDesignerState().snapOn !== undefined ? d.getDesignerState().snapOn : true;
+            getDesignerState().showGrid = d.getDesignerState().showGrid !== undefined ? d.getDesignerState().showGrid : false;
             // editorConfigはvja設定ファイルで管理するためプロジェクトからは読み込まない
             if (d.projectInfo) projectInfo = {...projectInfo, ...d.projectInfo};
             const _ac = d.aiConfig || {};
@@ -3773,7 +3767,7 @@
             });
             curFormIdx = d.curFormIdx;
             applyProjectData(d);
-            selId = null;
+            getDesignerState().selId = null;
             refreshAll();
         }
         // Undo 実行。現在の状態を redoStack に退避してから直前のスナップに戻す。
@@ -3793,19 +3787,19 @@
           DELETE / DUPLICATE
         ═══════════════════════════════════════════ */
         function actDelete() {
-            if (!selId) return;
+            if (!getDesignerState().selId) return;
             pushUndo();
-            $("w" + selId)?.remove();
-            widgets = widgets.filter((x) => x.id !== selId);
+            $("w" + getDesignerState().selId)?.remove();
+            widgets = widgets.filter((x) => x.id !== getDesignerState().selId);
             forms[curFormIdx].widgets = widgets;
-            selId = null;
+            getDesignerState().selId = null;
             $("prop-obj").textContent = formCfg.title;
             renderProps();
             updateCount();
         }
         function actDuplicate() {
             hideCtx();
-            const src = getWidget(ctxId ?? selId);
+            const src = getWidget(getDesignerState().ctxId ?? getDesignerState().selId);
             if (!src) return;
             const nw = {
                 ...src,
@@ -3841,7 +3835,7 @@
         function _doActNew() {
             forms = [makeFormData("Form1")];
             curFormIdx = 0;
-            selId = null;
+            getDesignerState().selId = null;
             undoStack = [];
             redoStack = [];
             _lastSavePath = null;
@@ -3878,7 +3872,7 @@
                     curFormIdx = d.curFormIdx || 0;
                 }
                 applyProjectData(d);
-                selId = null;
+                getDesignerState().selId = null;
                 undoStack = [];
                 redoStack = [];
                 refreshAll();
@@ -4155,7 +4149,7 @@
             if (idx === curFormIdx) return;
             commitIdCnt();
             curFormIdx = idx;
-            selId = null;
+            getDesignerState().selId = null;
             refreshAll();
             requestAnimationFrame(drawRulers);
         }
@@ -4173,7 +4167,7 @@
                 const f = makeFormData(title);
                 forms.push(f);
                 curFormIdx = forms.length - 1;
-                selId = null;
+                getDesignerState().selId = null;
                 refreshAll();
             });
         }
@@ -4189,7 +4183,7 @@
             commitAndPush();
             forms.splice(curFormIdx, 1);
             curFormIdx = Math.min(curFormIdx, forms.length - 1);
-            selId = null;
+            getDesignerState().selId = null;
             refreshAll();
         }
 
@@ -6147,28 +6141,28 @@
             applyEditorConfig();
             applyProjectInfo();
             // グリッド
-            fb().classList.toggle("show-grid", showGrid);
+            fb().classList.toggle("show-grid", getDesignerState().showGrid);
             const stg = $("st-grid");
-            if (stg) stg.innerHTML = "グリッド: <b style='color:" + (showGrid ? "var(--accent)" : "#ff6b6b") + "'>" + (showGrid ? "ON" : "OFF") + "</b>";
+            if (stg) stg.innerHTML = "グリッド: <b style='color:" + (getDesignerState().showGrid ? "var(--accent)" : "#ff6b6b") + "'>" + (getDesignerState().showGrid ? "ON" : "OFF") + "</b>";
             // スナップ
             const sts = $("st-snap");
-            if (sts) sts.innerHTML = "スナップ: <b style='color:" + (snapOn ? "var(--accent)" : "#ff6b6b") + "'>" + (snapOn ? "ON" : "OFF") + "</b>";
+            if (sts) sts.innerHTML = "スナップ: <b style='color:" + (getDesignerState().snapOn ? "var(--accent)" : "#ff6b6b") + "'>" + (getDesignerState().snapOn ? "ON" : "OFF") + "</b>";
             // メニュー項目
             const mgrid = document.querySelector(".dd-item[onmousedown=\"toggleGrid()\"]");
-            if (mgrid) mgrid.textContent = "グリッド表示切替（現在: " + (showGrid ? "ON" : "OFF") + "）";
+            if (mgrid) mgrid.textContent = "グリッド表示切替（現在: " + (getDesignerState().showGrid ? "ON" : "OFF") + "）";
             const msnap = document.querySelector(".dd-item[onmousedown=\"toggleSnap()\"]");
-            if (msnap) msnap.textContent = "スナップ切替（現在: " + (snapOn ? "ON" : "OFF") + "）";
+            if (msnap) msnap.textContent = "スナップ切替（現在: " + (getDesignerState().snapOn ? "ON" : "OFF") + "）";
         }
 
         function toggleGrid() {
-            showGrid = !showGrid;
+            getDesignerState().showGrid = !getDesignerState().showGrid;
             applyViewSettings();
-            showToast("グリッド表示: " + (showGrid ? "ON" : "OFF"));
+            showToast("グリッド表示: " + (getDesignerState().showGrid ? "ON" : "OFF"));
         }
         function toggleSnap() {
-            snapOn = !snapOn;
+            getDesignerState().snapOn = !getDesignerState().snapOn;
             applyViewSettings();
-            showToast("スナップ: " + (snapOn ? "ON" : "OFF"));
+            showToast("スナップ: " + (getDesignerState().snapOn ? "ON" : "OFF"));
         }
         function updateCount() {
             $("st-cnt").innerHTML =
@@ -6220,16 +6214,16 @@
             }
             if (e.ctrlKey && e.key === "d") {e.preventDefault(); actDuplicate();}
             if (e.key === "F4" && e.altKey) {e.preventDefault(); showCloseConfirm();}
-            if ((e.key === "Delete" || e.key === "Backspace") && selId) {e.preventDefault(); actDelete();}
+            if ((e.key === "Delete" || e.key === "Backspace") && getDesignerState().selId) {e.preventDefault(); actDelete();}
             if (e.key === "Escape") {
                 if (document.getElementById("close-confirm").classList.contains("show")) {
                     hideCloseConfirm(); return;
                 }
-                selId ? deselect() : setTool("pointer");
+                getDesignerState().selId ? deselect() : setTool("pointer");
             }
-            if (selId && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+            if (getDesignerState().selId && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
                 e.preventDefault();
-                const w = getWidget(selId);
+                const w = getWidget(getDesignerState().selId);
                 if (!w) return;
                 const d = e.shiftKey ? SNAP : 1;
                 if (e.key === "ArrowLeft") w.x = Math.max(0, w.x - d);
@@ -6455,7 +6449,7 @@
             makeResizer("form-resize-b", false, true);
         }
         function syncFormPropWH() {
-            if (selId) return; // フォームのプロパティ表示中のみ
+            if (getDesignerState().selId) return; // フォームのプロパティ表示中のみ
             const rows = [...$("plist").querySelectorAll(".prow")];
             rows.forEach((r) => {
                 const inp = r.querySelector("input[type=number]");
