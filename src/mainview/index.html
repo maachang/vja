@@ -3788,7 +3788,11 @@
             getEditHistory().redoStack = [];
             getEditHistory().lastSavePath = null;
             getEditHistory().lastOpenPath = null;
-            _clearProjectInfo();
+            getProjectData().projectInfo = {
+                name: "", description: "", version: "1.0.0",
+                author: "", company: "",
+                appEvents: {onStart: "", onExit: "", onStart_yaml: "", onExit_yaml: ""},
+            };
             applyProjectData({});
             refreshAll();
             applyProjectInfo();
