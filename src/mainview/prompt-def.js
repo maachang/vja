@@ -647,15 +647,14 @@ vja.notify.toast: { scope: UI_NOTIFICATION, args: [message:string, duration?:num
 vja.trigger.click: { scope: UI_TRIGGER, args: [name:string], return: "void", desc: "Triggers click on widget. For other events use same pattern: vja.trigger.focus(name), vja.trigger.blur(name), vja.trigger.change(name), vja.trigger.mouseDown(name), vja.trigger.mouseUp(name), vja.trigger.mouseEnter(name), vja.trigger.mouseLeave(name), vja.trigger.scroll(name)" }
 
 vja.event.getKey: { scope: EVENT_KEY, args: [], return: "string|null", desc: "KeyDown/KeyUp event ONLY. Returns key name ('Enter','Escape','ArrowUp' etc). Returns null in other events." }
+
 vja.event.isEnter: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Enter key." }
 vja.event.isEscape: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Escape key." }
 vja.event.isShift: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Shift key is held." }
 vja.event.isCtrl: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Ctrl key is held." }
 
-await vja.http.get: { scope: NETWORK_REST_API, args: [url:string, headers?:object], return: "any", desc: "HTTP GET request. Alias: delete" }
-await vja.http.delete: { scope: NETWORK_REST_API, args: [url:string, headers?:object], return: "any" }
-await vja.http.post: { scope: NETWORK_REST_API, args: [url:string, body:any, headers?:object], return: "any", desc: "HTTP POST request (body auto JSON). Alias: put" }
-await vja.http.put: { scope: NETWORK_REST_API, args: [url:string, body:any, headers?:object], return: "any" }
+await vja.http.get: { scope: NETWORK_REST_API, args: [url:string, headers?:object], return: "any", desc: "HTTP GET. (vja.http.delete(url, headers) uses same args)" }
+await vja.http.post: { scope: NETWORK_REST_API, args: [url:string, body:any, headers?:object], return: "any", desc: "HTTP POST with JSON body. (vja.http.put(url, body, headers) uses same args)" }
 await vja.fetch: { scope: NETWORK_LOW_LEVEL, args: [url:string, options?:object], return: "any", desc: "Low-level fetch alternative for custom options." }
 
 vja.ui.loading: { scope: UI_OVERLAY, args: [show:boolean, message?:string], return: "void", desc: "Toggle loading overlay screen. MUST wrap the actual code in try{} finally{ vja.ui.loading(false); } structure to ensure turn off on errors." }
