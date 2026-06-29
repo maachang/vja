@@ -1205,6 +1205,7 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     // ── _vjaRun: 共通実行関数（遅延初期化・キャッシュ・ログ・エラー補足） ──
     lines.push('const _vjaRun = async function(widgetName, eventName, event) {');
     lines.push('  const key = widgetName + "_" + eventName;');
+    lines.push('  if (!_vjaB64[key]) return; // イベント未定義の場合はスキップ');
     lines.push('  const label = "[" + widgetName + "." + eventName + "]";');
     lines.push('  window._vjaLastError = null;');
     lines.push('  window._vjaCurrentEvent = event || null; // vja.event.*で参照するイベントオブジェクト');
@@ -1295,6 +1296,15 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
         lines.push(`        const th = document.createElement("th");`);
         lines.push(`        th.style.cssText = thStyle + ";width:" + cd.width + "%";`);
         lines.push(`        th.textContent = cd.displayName || cd.label;`);
+        lines.push(`        th.style.cursor = "pointer";`);
+        lines.push(`        (function(colName) {`);
+        lines.push(`          th.addEventListener("click", function(e) {`);
+        lines.push(`            e.stopPropagation();`);
+        lines.push(`            window._vjaCurrentEventData = { type: "headerClick", column: colName };`);
+        lines.push(`            _vjaRun(el.id, "HeaderClick", e);`);
+        lines.push(`            _vjaRun(el.id, "Click", e);`);
+        lines.push(`          });`);
+        lines.push(`        })(cd.label);`);
         lines.push(`        headerRow.appendChild(th);`);
         lines.push(`      });`);
         lines.push(`      thead.innerHTML = "";`);
@@ -1308,6 +1318,17 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
         lines.push(`        const tr = document.createElement("tr");`);
         lines.push(`        tr.style.background = i % 2 === 0 ? rowBg : rowAltBg;`);
         lines.push(`        tr.style.color = rowFg;`);
+        lines.push(`        tr.style.cursor = "pointer";`);
+        lines.push(`        (function(rowIdx) {`);
+        lines.push(`          tr.addEventListener("click", function(e) {`);
+        lines.push(`            e.stopPropagation();`);
+        lines.push(`            const td = e.target.closest("td");`);
+        lines.push(`            const colIdx = td ? Array.from(td.parentNode.children).indexOf(td) : 0;`);
+        lines.push(`            window._vjaCurrentEventData = { type: "rowClick", row: rowIdx, column: colDefs[colIdx] ? colDefs[colIdx].label : colIdx };`);
+        lines.push(`            _vjaRun(el.id, "RowClick", e);`);
+        lines.push(`            _vjaRun(el.id, "Click", e);`);
+        lines.push(`          });`);
+        lines.push(`        })(i);`);
         lines.push(`        colDefs.forEach(function(cd) {`);
         lines.push(`          const td = document.createElement("td");`);
         lines.push(`          td.style.cssText = tdStyle;`);

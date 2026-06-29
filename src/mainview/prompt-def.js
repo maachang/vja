@@ -647,6 +647,7 @@ vja.notify.toast: { scope: UI_NOTIFICATION, args: [message:string, duration?:num
 vja.trigger.click: { scope: UI_TRIGGER, args: [name:string], return: "void", desc: "Triggers click on widget. For other events use same pattern: vja.trigger.focus(name), vja.trigger.blur(name), vja.trigger.change(name), vja.trigger.mouseDown(name), vja.trigger.mouseUp(name), vja.trigger.mouseEnter(name), vja.trigger.mouseLeave(name), vja.trigger.scroll(name)" }
 
 vja.event.getKey: { scope: EVENT_KEY, args: [], return: "string|null", desc: "KeyDown/KeyUp event ONLY. Returns key name ('Enter','Escape','ArrowUp' etc). Returns null in other events." }
+vja.event.get: { scope: EVENT_DATA, args: [], return: "object|null", desc: "MUST NOT use await or .then(). This is a synchronous function. Call directly: const ev = vja.event.get(); RowClick={type:'rowClick',row:rowIndex,column:'colName'}, HeaderClick={type:'headerClick',column:'colName'}, others=null. Example(RowClick): const ev=vja.event.get(); const rows=vja.widget.get('tableView'); const rowData=rows[ev.row];" }
 
 vja.event.isEnter: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Enter key." }
 vja.event.isEscape: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Escape key." }
@@ -1041,7 +1042,8 @@ ${vjaUseJsInfo}
 - Insert line breaks in the source code to make it easier to read.
 
 ## vja API
-- All vja.* calls must use await.
+- All vja.* calls must use await, except vja.event.* / vja.trigger.* / vja.widget.get / vja.widget.set / vja.widget.show / vja.widget.hide / vja.widget.enable / vja.widget.disable (these are synchronous).
+- Never use Promise, .then(), .catch() directly. Use await instead.
 - Screen navigation must use vja.form.navigate('screen name') only. (location is prohibited)
 - navigate() is exclusively for navigating to a different screen. Using it to refresh or update the current screen is absolutely prohibited.
 
@@ -1071,7 +1073,8 @@ ${vjaUseJsInfo}
 - Insert line breaks in the source code to make it easier to read.
 
 ## vja API
-- All vja.* calls must use await.
+- All vja.* calls must use await, except vja.event.* / vja.trigger.* / vja.widget.get / vja.widget.set / vja.widget.show / vja.widget.hide / vja.widget.enable / vja.widget.disable (these are synchronous).
+- Never use Promise, .then(), .catch() directly. Use await instead.
 - Screen navigation must use vja.form.navigate('screen name') only. (location is prohibited)
 - navigate() is exclusively for navigating to a different screen. Using it to refresh or update the current screen is absolutely prohibited.
 - window.confirm/alert are prohibited. Use vja.app.showDialog/showConfirm instead.
@@ -1172,6 +1175,7 @@ ${vjaUseJsInfo}
 ### プロジェクト情報
 ---
 - 現在のフォーム: ${formName}
+- 現在のウィジェット: ${wname}
 ---
 
 ### ウィジェット一覧（${formName}）
@@ -1304,6 +1308,7 @@ ${extRuntimeDoc}
 ### Project Information
 ---
 - Current Form: ${formName}
+- Current widget: ${wname}
 ---
 
 ### Widget List (${formName})

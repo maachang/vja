@@ -410,6 +410,14 @@
     // ════════════════════════════════════════════════
     vja.event = {
 
+        // イベントデータを取得
+        // RowClick: {type:'rowClick', row:rowIndex, column:colIndex}
+        // HeaderClick: {type:'headerClick', column:'colName'}
+        // それ以外: null
+        get() {
+            return window._vjaCurrentEventData ?? null;
+        },
+
         // キー名を取得（例: "Enter", "Escape", "ArrowUp"）
         getKey() {
             const e = window._vjaCurrentEvent;
