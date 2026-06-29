@@ -938,8 +938,6 @@
         let _coldefWid = null;
         let _coldefRows = [];
         let _coldefMaxRows = 0;
-        let undoStack = [];
-        let redoStack = [];
         const SNAP = 8;
 
         // 現在フォームの参照を更新する
@@ -3712,9 +3710,9 @@
         // 現在の状態を undoStack に積む。redoStack はクリアする。
         function pushUndo() {
             commitIdCnt();
-            undoStack.push(JSON.stringify(snapshot()));
-            if (undoStack.length > 60) undoStack.shift();
-            redoStack = [];
+            getEditHistory().undoStack.push(JSON.stringify(snapshot()));
+            if (getEditHistory().undoStack.length > 60) getEditHistory().undoStack.shift();
+            getEditHistory().redoStack = [];
         }
 
         // commitIdCnt + pushUndo の共通処理
@@ -3737,8 +3735,8 @@
             constants = d.constants || [];
             startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
             tables = d.tables || [];
-            getDesignerState().snapOn = d.getDesignerState().snapOn !== undefined ? d.getDesignerState().snapOn : true;
-            getDesignerState().showGrid = d.getDesignerState().showGrid !== undefined ? d.getDesignerState().showGrid : false;
+            getDesignerState().snapOn = d.snapOn !== undefined ? d.snapOn : true;
+            getDesignerState().showGrid = d.showGrid !== undefined ? d.showGrid : false;
             // editorConfigはvja設定ファイルで管理するためプロジェクトからは読み込まない
             if (d.projectInfo) projectInfo = {...projectInfo, ...d.projectInfo};
             const _ac = d.aiConfig || {};
@@ -3770,17 +3768,17 @@
             getDesignerState().selId = null;
             refreshAll();
         }
-        // Undo 実行。現在の状態を redoStack に退避してから直前のスナップに戻す。
+        // Undo 実行。現在の状態を getEditHistory().redoStack に退避してから直前のスナップに戻す。
         function actUndo() {
-            if (!undoStack.length) return;
-            redoStack.push(JSON.stringify(snapshot()));
-            restoreSnap(undoStack.pop());
+            if (!getEditHistory().undoStack.length) return;
+            getEditHistory().redoStack.push(JSON.stringify(snapshot()));
+            restoreSnap(getEditHistory().undoStack.pop());
         }
-        // Redo 実行。現在の状態を undoStack に退避してから Redo スタックのスナップに進む。
+        // Redo 実行。現在の状態を getEditHistory().undoStack に退避してから Redo スタックのスナップに進む。
         function actRedo() {
-            if (!redoStack.length) return;
-            undoStack.push(JSON.stringify(snapshot()));
-            restoreSnap(redoStack.pop());
+            if (!getEditHistory().redoStack.length) return;
+            getEditHistory().undoStack.push(JSON.stringify(snapshot()));
+            restoreSnap(getEditHistory().redoStack.pop());
         }
 
         /* ═══════════════════════════════════════════
@@ -3836,26 +3834,19 @@
             forms = [makeFormData("Form1")];
             curFormIdx = 0;
             getDesignerState().selId = null;
-            undoStack = [];
-            redoStack = [];
-            _lastSavePath = null;
-            _lastOpenPath = null;
+            getEditHistory().undoStack = [];
+            getEditHistory().redoStack = [];
+            getEditHistory().lastSavePath = null;
+            getEditHistory().lastOpenPath = null;
             _clearProjectInfo();
             applyProjectData({});
             refreshAll();
             applyProjectInfo();
             pushUndo();
-            _savedSnapshot = JSON.stringify(snapshot());
+            getEditHistory().savedSnapshot = JSON.stringify(snapshot());
         }
 
         // ── ファイル保存・オープン（Bunネイティブ経由）──
-        // _lastSavePath: 前回保存したパスを記憶（上書き保存用）
-        let _lastSavePath = null;
-        // _lastOpenPath: 前回開いた/保存したパスを記憶（ダイアログの開始フォルダ用）
-        let _lastOpenPath = null;
-        // _savedSnapshot: 最後に保存した時点のスナップショット（未保存検出用）
-        let _savedSnapshot = null;
-
         function loadProjectData(jsonStr) {
             try {
                 const d = JSON.parse(jsonStr);
@@ -3873,10 +3864,10 @@
                 }
                 applyProjectData(d);
                 getDesignerState().selId = null;
-                undoStack = [];
-                redoStack = [];
+                getEditHistory().undoStack = [];
+                getEditHistory().redoStack = [];
                 refreshAll();
-                _savedSnapshot = JSON.stringify(snapshot());
+                getEditHistory().savedSnapshot = JSON.stringify(snapshot());
                 applyViewSettings();
             } catch (err) {
                 showVjaAlert("読み込み失敗: " + err.message);
@@ -3900,13 +3891,13 @@
             try {
                 const result = await window.bunOpenFile({
                     filter: "vjaproj",
-                    lastPath: _lastOpenPath,  // 前回開いた/保存したパスを渡す
+                    lastPath: getEditHistory().lastOpenPath,  // 前回開いた/保存したパスを渡す
                 });
                 if (result && result.content) {
                     loadProjectData(result.content);
                     if (result.path) {
-                        _lastSavePath = result.path;
-                        _lastOpenPath = result.path;
+                        getEditHistory().lastSavePath = result.path;
+                        getEditHistory().lastOpenPath = result.path;
                     }
                 }
             } catch (e) {
@@ -3932,12 +3923,12 @@
                 const result = await window.bunSaveProject({
                     content,
                     defaultName: projName + ".vjaproj",
-                    lastPath: _lastSavePath, // nullなら名前を付けて保存ダイアログ
+                    lastPath: getEditHistory().lastSavePath, // nullなら名前を付けて保存ダイアログ
                 });
                 if (result && result.ok && result.path) {
-                    _lastSavePath = result.path;
-                    _lastOpenPath = result.path;
-                    _savedSnapshot = JSON.stringify(snap);
+                    getEditHistory().lastSavePath = result.path;
+                    getEditHistory().lastOpenPath = result.path;
+                    getEditHistory().savedSnapshot = JSON.stringify(snap);
                     showToast("保存しました: " + result.path);
                 }
                 // result.cancelled === true の場合は何もしない（エラーなし）
@@ -3948,11 +3939,11 @@
 
         // 名前を付けて保存（_lastSavePath を null にして actSave を呼ぶ）
         async function actSaveAs() {
-            const prevPath = _lastSavePath;
-            _lastSavePath = null;
+            const prevPath = getEditHistory().lastSavePath;
+            getEditHistory().lastSavePath = null;
             await actSave();
             // キャンセルされた場合は元のパスに戻す
-            if (!_lastSavePath) _lastSavePath = prevPath;
+            if (!getEditHistory().lastSavePath) getEditHistory().lastSavePath = prevPath;
         }
 
         // トースト通知（#toast-root で管理、z-index:9000）
@@ -3990,7 +3981,7 @@
                 return;
             }
             // 未保存チェック
-            if (!_lastSavePath) {
+            if (!getEditHistory().lastSavePath) {
                 showVjaAlert("プロジェクトを保存してからコンパイルしてください。");
                 return;
             }
@@ -4214,7 +4205,7 @@
         ═══════════════════════════════════════════ */
 
         /* ── ウィンドウを閉じる確認 ── */
-        // 未保存の変更があるか判定する。_savedSnapshot と現在の状態を比較する。
+        // 未保存の変更があるか判定する。getEditHistory().savedSnapshot と現在の状態を比較する。
         // フォーカス中の入力値を確定してからisDirtyを返す
         function commitCurrentInput() {
             const el = document.activeElement;
@@ -4226,8 +4217,8 @@
 
         function isDirty() {
             commitCurrentInput();
-            if (_savedSnapshot === null) return false;
-            return !deepEqual(snapshot(), JSON.parse(_savedSnapshot));
+            if (getEditHistory().savedSnapshot === null) return false;
+            return !deepEqual(snapshot(), JSON.parse(getEditHistory().savedSnapshot));
         }
         // クローズボタン押下時の処理。未保存の変更がある場合は確認ダイアログを表示する。
         function confirmClose() {
@@ -6477,7 +6468,7 @@
             requestAnimationFrame(drawRulers),
         );
         pushUndo();
-        _savedSnapshot = JSON.stringify(snapshot());
+        getEditHistory().savedSnapshot = JSON.stringify(snapshot());
         renderProps();
 
     </script>
