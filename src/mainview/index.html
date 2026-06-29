@@ -5704,6 +5704,8 @@
             const curUiSize = uiConfig.uiFontSize;
             const curUiFont = uiConfig.uiFontFamily;
 
+            // pv-sel 用オプション：{value, label} 形式
+            // value にフォントのCSS値を直接使用し、saveFontConfig で label→value 変換不要にする
             showModal(
                 mhdrHTML("🔤 フォント設定") +
                 "<div class='mbody' style='gap:14px'>" +
@@ -5719,12 +5721,8 @@
                 "<span style='color:var(--text2);font-size:var(--ui-font-size)'>px (10〜20)</span>" +
                 "</div></div>" +
                 "<div class='ai-cfg-row'><label>フォント</label>" +
-                "<div style='flex:1;background:#1e1e2e;border:1px solid #666;border-radius:3px;overflow:hidden'>" +
-                "<select id='uf-font-sel' style='width:100%;height:30px;background:transparent;border:none;color:#e0e0f0;font-size:var(--ui-font-size);padding:0 4px;outline:none;color-scheme:dark'>" +
-                UI_FONT_LIST.map((f, i) =>
-                    "<option value='" + i + "' style='background:#1e1e2e;color:#e0e0f0' " + (f.value === curUiFont ? "selected" : "") + ">" + esc(f.label) + "</option>"
-                ).join("") +
-                "</select></div></div>" +
+                makePvSel("uf-font-sel", UI_FONT_LIST, curUiFont, "setTimeout(function(){_updateFontPreview('ui',null)},0)") +
+                "</div>" +
                 // UIフォントプレビュー
                 "<div style='display:flex;flex-direction:column;gap:6px'>" +
                 "<label style='font-size:var(--ui-font-size);color:var(--text2)'>UIプレビュー</label>" +
@@ -5744,14 +5742,10 @@
                 "<span style='color:var(--text2);font-size:var(--ui-font-size)'>px (10〜32)</span>" +
                 "</div></div>" +
                 "<div class='ai-cfg-row'><label>フォント</label>" +
-                "<div style='flex:1;background:#1e1e2e;border:1px solid #666;border-radius:3px;overflow:hidden'>" +
-                "<select id='ef-font-sel' style='width:100%;height:30px;background:transparent;border:none;color:#e0e0f0;font-size:var(--ui-font-size);padding:0 4px;outline:none;color-scheme:dark'>" +
-                EDITOR_FONTS.map((f, i) =>
-                    "<option value='" + i + "' style='background:#1e1e2e;color:#e0e0f0' " + (f.value === curFont ? "selected" : "") + ">" + esc(f.label) + "</option>"
-                ).join("") +
-                "</select></div></div>" +
+                makePvSel("ef-font-sel", EDITOR_FONTS, curFont, "setTimeout(function(){_updateFontPreview('editor',null)},0)") +
+                "</div>" +
 
-                // プレビュー
+                // エディタプレビュー
                 "<div style='display:flex;flex-direction:column;gap:6px'>" +
                 "<label style='font-size:var(--ui-font-size);color:var(--text2)'>エディタプレビュー</label>" +
                 "<div id='ef-preview' style='background:#1e1e2e;border:1px solid var(--border);border-radius:4px;padding:12px;" +
@@ -5767,62 +5761,65 @@
                 "</div>"
             );
             rAfBind("#ef-save-btn", "click", saveFontConfig);
-            let _pfLastSize = curSize, _pfLastIdx = -1;
-            let _ufLastSize = curUiSize, _ufLastIdx = -1;
-            const _pfPoll = setInterval(() => {
-                // エディタプレビュー更新
-                const sel = $("ef-font-sel");
-                const sizeIn = $("ef-size");
-                const prev = $("ef-preview");
-                if (!sel || !prev) {clearInterval(_pfPoll); return;}
-                const nowSize = parseInt(sizeIn?.value) || 16;
-                const nowIdx = sel.selectedIndex;
-                if (nowSize !== _pfLastSize || nowIdx !== _pfLastIdx) {
-                    _pfLastSize = nowSize;
-                    _pfLastIdx = nowIdx;
-                    const f = EDITOR_FONTS[nowIdx] || EDITOR_FONTS[0];
-                    prev.style.setProperty("font-size", nowSize + "px", "important");
-                    prev.style.setProperty("font-family", f.value, "important");
-                }
-                // UIフォントプレビュー更新
-                const uiSel = $("uf-font-sel");
-                const uiSizeIn = $("uf-size");
-                const uiPrev = $("uf-preview");
-                if (uiSel && uiPrev) {
-                    const nowUiSize = parseInt(uiSizeIn?.value) || 13;
-                    const nowUiIdx = uiSel.selectedIndex;
-                    if (nowUiSize !== _ufLastSize || nowUiIdx !== _ufLastIdx) {
-                        _ufLastSize = nowUiSize;
-                        _ufLastIdx = nowUiIdx;
-                        const uf = UI_FONT_LIST[nowUiIdx] || UI_FONT_LIST[0];
-                        uiPrev.style.setProperty("font-size", nowUiSize + "px", "important");
-                        uiPrev.style.setProperty("font-family", uf.value || "inherit", "important");
-                    }
-                }
-            }, 150);
+
+            // サイズ直接入力時もプレビューを更新
+            requestAnimationFrame(function () {
+                var ufSize = $("uf-size");
+                var efSize = $("ef-size");
+                if (ufSize) ufSize.addEventListener("input", function () { _updateFontPreview("ui", null); });
+                if (efSize) efSize.addEventListener("input", function () { _updateFontPreview("editor", null); });
+            });
         }
 
+        // フォントプレビューを即時更新する
+        // kind: "ui" → UIフォントプレビュー, "editor" → エディタプレビュー
+        // fontValue: CSS font-family 値。null の場合は現在のpv-sel-btnラベルから逆引き
+        function _updateFontPreview(kind, fontValue) {
+            if (kind === "ui") {
+                var prev = $("uf-preview");
+                var sizeIn = $("uf-size");
+                if (!prev) return;
+                var sz = parseInt(sizeIn?.value) || 13;
+                if (fontValue === null) {
+                    var lbl = document.querySelector("#uf-font-sel .pv-sel-btn span:first-child")?.textContent || "";
+                    var f = UI_FONT_LIST.find(function(x) { return x.label === lbl; }) || UI_FONT_LIST[0];
+                    fontValue = f.value || "inherit";
+                }
+                prev.style.setProperty("font-size", sz + "px", "important");
+                prev.style.setProperty("font-family", fontValue || "inherit", "important");
+            } else {
+                var prev2 = $("ef-preview");
+                var sizeIn2 = $("ef-size");
+                if (!prev2) return;
+                var sz2 = parseInt(sizeIn2?.value) || 16;
+                if (fontValue === null) {
+                    var lbl2 = document.querySelector("#ef-font-sel .pv-sel-btn span:first-child")?.textContent || "";
+                    var f2 = EDITOR_FONTS.find(function(x) { return x.label === lbl2; }) || EDITOR_FONTS[0];
+                    fontValue = f2.value;
+                }
+                prev2.style.setProperty("font-size", sz2 + "px", "important");
+                prev2.style.setProperty("font-family", fontValue, "important");
+            }
+        }
 
-        // フォントサイズ入力の▲▼ステップ共通処理
+        // フォントサイズ入力の▲▼ステップ共通処理（ステップ後プレビューも更新）
         function _fontSizeStep(id, dir, min, max, defaultVal) {
             var el = $(id);
             if (!el) return;
             el.value = Math.max(min, Math.min(max, (parseInt(el.value) || defaultVal) + dir));
         }
-        function efSizeStep(dir) { _fontSizeStep("ef-size", dir, 10, 32, 16); }
-        function ufSizeStep(dir) { _fontSizeStep("uf-size", dir, 10, 20, 13); }
+        function efSizeStep(dir) { _fontSizeStep("ef-size", dir, 10, 32, 16); _updateFontPreview("editor", null); }
+        function ufSizeStep(dir) { _fontSizeStep("uf-size", dir, 10, 20, 13); _updateFontPreview("ui", null); }
 
         function saveFontConfig() {
-            // エディタフォント
-            const editorSize = Math.max(10, Math.min(32, parseInt($("ef-size")?.value) || 16));
-            const edSel = $("ef-font-sel");
-            const edFontIdx = edSel ? (parseInt(edSel.options[edSel.selectedIndex]?.value) || 0) : 0;
-            const edFont = (EDITOR_FONTS[edFontIdx] || EDITOR_FONTS[0]).value;
-            // UIフォント
-            const uiSize = Math.max(10, Math.min(20, parseInt($("uf-size")?.value) || 13));
-            const uiSel = $("uf-font-sel");
-            const uiFontIdx = uiSel ? (parseInt(uiSel.options[uiSel.selectedIndex]?.value) || 0) : 0;
-            const uiFont = (UI_FONT_LIST[uiFontIdx] || UI_FONT_LIST[0]).value;
+            // エディタフォント: pv-sel-btn の表示ラベルから value を逆引き
+            var editorSize = Math.max(10, Math.min(32, parseInt($("ef-size")?.value) || 16));
+            var edLabel = document.querySelector("#ef-font-sel .pv-sel-btn span:first-child")?.textContent || "";
+            var edFont = (EDITOR_FONTS.find(function(f) { return f.label === edLabel; }) || EDITOR_FONTS[0]).value;
+            // UIフォント: pv-sel-btn の表示ラベルから value を逆引き
+            var uiSize = Math.max(10, Math.min(20, parseInt($("uf-size")?.value) || 13));
+            var uiLabel = document.querySelector("#uf-font-sel .pv-sel-btn span:first-child")?.textContent || "";
+            var uiFont = (UI_FONT_LIST.find(function(f) { return f.label === uiLabel; }) || UI_FONT_LIST[0]).value;
             // uiConfigに統合して保存
             uiConfig = {...uiConfig, editorFontSize: editorSize, editorFontFamily: edFont, uiFontSize: uiSize, uiFontFamily: uiFont};
             applyEditorConfig();
