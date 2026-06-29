@@ -1186,6 +1186,7 @@ ${vjaUseJsInfo}
 ---
 - 現在のフォーム: ${formName}
 - 現在のウィジェット: ${wname}
+- 現在のイベント: ${eventName}
 ---
 
 ### ウィジェット一覧（${formName}）
@@ -1319,6 +1320,7 @@ ${extRuntimeDoc}
 ---
 - Current Form: ${formName}
 - Current widget: ${wname}
+- Current Event: ${eventName}
 ---
 
 ### Widget List (${formName})
