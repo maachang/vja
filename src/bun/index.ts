@@ -1214,14 +1214,14 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     lines.push('      const code = decodeURIComponent(escape(atob(_vjaB64[key])));');
     lines.push('      _vjaCache[key] = new AsyncFunction("vja", "event", code + "\\n//# sourceURL=vja://" + key);');
     lines.push('    }');
-    lines.push('    window.vja?.log?.debug?.(label + " 実行開始");');
+
     lines.push('    await _vjaCache[key](window.vja, event || null);');
     lines.push('    // 正常終了時: 握りつぶされたエラーがあればdebugで詳細出力');
     lines.push('    if (window._vjaLastError) {');
     lines.push('      window.vja?.log?.debug?.(_vjaErrDetail(label, key, window._vjaLastError));');
     lines.push('      window.vja?.log?.warn?.(label + " 実行失敗（エラーあり）");');
     lines.push('    } else {');
-    lines.push('      window.vja?.log?.info?.(label + " 実行成功");');
+    lines.push('');
     lines.push('    }');
     lines.push('  } catch(e) {');
     lines.push('    const msg = e?.message || String(e);');
