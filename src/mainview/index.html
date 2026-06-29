@@ -860,28 +860,9 @@
         function getAiContext()     { return _CTX._ai;       }
         function getUiConfig()      { return _CTX._ui.config;}
 
-        // プロジェクト全体
-        let forms = [makeFormData("Form1")]; // フォーム配列
-        let curFormIdx = 0; // 現在編集中インデックス
-        let startFormId = forms[0]?.id ?? ""; // 初期表示フォームのID
-        // AI接続設定
-        // プロジェクト情報
-        let projectInfo = {
-            name: "",
-            description: "",
-            version: "1.0.0",
-            author: "",
-            company: "",
-            appEvents: {onStart: "", onExit: "", onStart_yaml: "", onExit_yaml: ""},
-        };
-        function _clearProjectInfo() {
-            projectInfo.name = "";
-            projectInfo.description = "";
-            projectInfo.version = "1.0.0";
-            projectInfo.author = "";
-            projectInfo.company = "";
-            projectInfo.appEvents = {onStart: "", onExit: "", onStart_yaml: "", onExit_yaml: ""};
-        }
+        // _CTX._project の初期データを設定
+        getProjectData().forms = [makeFormData("Form1")];
+        getProjectData().startFormId = getProjectData().forms[0]?.id ?? "";
 
         // UIフォント用フォントリスト
         const UI_FONT_LIST = [
@@ -895,31 +876,13 @@
         ];
 
         // ── クラウドインフラ設定 ──────────────────────────
-        let cloudInfras = []; // { id, name, url, enabled, sdkUrl, credentials: {key: "暗号化済み"} }
         let _cloudDraft = [];
-        let extRuntime = {js: "", doc: ""};
-
-        let aiConfig = {
-            endpoint: "http://localhost:8080",
-            apiKey: "",
-            model: "",
-            models: [],
-            enabled: false,
-            routerMode: false,
-            maxTokens: "",
-            temperature: "",
-            thinking: true,
-        };
 
         // 現在フォームへのショートカット（参照）
-        let widgets = forms[0].widgets;
-        let formCfg = forms[0].cfg;
-        let idCnt = forms[0].idCnt;
+        let widgets = getProjectData().forms[0].widgets;
+        let formCfg = getProjectData().forms[0].cfg;
+        let idCnt   = getProjectData().forms[0].idCnt;
 
-        // 定数リスト [{name, value}]
-        let constants = [];
-        // SQLiteテーブル定義リスト
-        let tables = [];
         const SNAP = 8;
 
         // 現在フォームの参照を更新する
@@ -934,14 +897,14 @@
         }
 
         function syncCurForm() {
-            const f = forms[curFormIdx];
+            const f = getProjectData().forms[getProjectData().curFormIdx];
             widgets = f.widgets;
             formCfg = f.cfg;
             idCnt = f.idCnt;
         }
         // idCnt の書き戻し（追加・削除時）
         function commitIdCnt() {
-            forms[curFormIdx].idCnt = idCnt;
+            getProjectData().forms[getProjectData().curFormIdx].idCnt = idCnt;
         }
 
         /* ═══════════════════════════════════════════
@@ -2005,7 +1968,7 @@
                 }
             }
             formCfg[k] = v;
-            forms[curFormIdx].cfg[k] = v;
+            getProjectData().forms[getProjectData().curFormIdx].cfg[k] = v;
             buildFormSelect();
             applyForm();
         }
@@ -2028,7 +1991,7 @@
             if (!getDesignerState().selId) {
                 // ウィジェット未選択時はフォームイベントを表示
                 const formEvs = EVENTS["form"] || [];
-                const fev = forms[curFormIdx]?.events || {};
+                const fev = getProjectData().forms[getProjectData().curFormIdx]?.events || {};
                 const hdr = document.createElement("div");
                 hdr.style.cssText = "padding:6px 10px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border)";
                 hdr.textContent = "📋 フォームイベント";
@@ -2181,9 +2144,9 @@
 
         // 右パネルHTML生成
         function yamlBuildRightPanel(showWidgets = true) {
-            const curForm = forms[curFormIdx];
+            const curForm = getProjectData().forms[getProjectData().curFormIdx];
             const _formConsts = curForm?.constants || [];
-            const _allConsts = [...constants, ..._formConsts];
+            const _allConsts = [...getProjectData().constants, ..._formConsts];
 
             // ── 定数 ──
             const constBody = _allConsts.length > 0
@@ -2200,8 +2163,8 @@
                 : "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>定数なし</div>";
 
             // ── 画面一覧 ──
-            const formBody = "<div>" + forms.map((f, fi) => {
-                const isCur = fi === curFormIdx;
+            const formBody = "<div>" + getProjectData().forms.map((f, fi) => {
+                const isCur = fi === getProjectData().curFormIdx;
                 const ft = esc(f.cfg.name);
                 const wids = (f.widgets || []).map(ww => {
                     const wn = esc(ww.name);
@@ -2271,8 +2234,8 @@
                 : "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>ウィジェットなし</div>";
 
             // ── テーブル一覧 ──
-            const tblBody = tables.length > 0
-                ? "<div>" + tables.map((t, ti) => {
+            const tblBody = getProjectData().tables.length > 0
+                ? "<div>" + getProjectData().tables.map((t, ti) => {
                     const tn = esc(t.name);
                     const cols = (t.columns || []).map(c => {
                         const flags = [c.pk ? "PK" : "", c.notNull ? "NN" : "", c.useDefault ? "DEF" : "", c.index ? "IDX" : ""].filter(Boolean).join(" ");
@@ -2436,7 +2399,7 @@
             const isAppEvent = (wid === "appev");
             const w = getWidget(wid);
             if (!w) return;
-            if (!aiConfig.enabled) {
+            if (!getProjectData().aiConfig.enabled) {
                 if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
                     closeModal();
                     openAiConfig();
@@ -2473,15 +2436,15 @@
             const allWidgetsCtx = widgets.map(ww => "  - " + ww.name + " (" + ww.tag + ")").join("\n") || "  （なし）";
 
             // ── ③ 画面一覧 ──
-            const formsCtx = forms.map((f, i) => {
-                const star = f.id === startFormId ? "★" : "";
+            const formsCtx = getProjectData().forms.map((f, i) => {
+                const star = f.id === getProjectData().startFormId ? "★" : "";
                 return "  - " + f.cfg.name + (star ? " [初期画面]" : "") + (f.cfg.description ? " // " + f.cfg.description : "");
             }).join("\n");
 
             // ── ④ 定数（グローバル＋フォーム単位） ──
-            const curForm = forms[curFormIdx];
-            const globalConstCtx = constants.length > 0
-                ? constants.map(c => "  - " + c.name + " = " + c.value).join("\n")
+            const curForm = getProjectData().forms[getProjectData().curFormIdx];
+            const globalConstCtx = getProjectData().constants.length > 0
+                ? getProjectData().constants.map(c => "  - " + c.name + " = " + c.value).join("\n")
                 : "  （なし）";
             const formConstCtx = (curForm?.constants || []).length > 0
                 ? (curForm.constants || []).map(c => "  - " + c.name + " = " + c.value).join("\n")
@@ -2501,7 +2464,7 @@
                 }
             }
             const targetTables = mentionedTables.length > 0
-                ? tables.filter(t => mentionedTables.includes(t.name))
+                ? getProjectData().tables.filter(t => mentionedTables.includes(t.name))
                 : []; // 未指定の場合は何も渡さない
             const tablesCtx = targetTables.length > 0
                 ? targetTables.map(t => {
@@ -2530,7 +2493,7 @@
                     inputParamsCtx: inputParamsCtx, allWidgetsCtx: allWidgetsCtx,
                     formsCtx: formsCtx, globalConstCtx: globalConstCtx,
                     formConstCtx: formConstCtx, tablesCtx: tablesCtx,
-                    extRuntimeDoc: extRuntime.doc
+                    extRuntimeDoc: getProjectData().extRuntime.doc
                 });
 
             // ── ⑦ ユーザープロンプト ──
@@ -2542,7 +2505,7 @@
                     inputParamsCtx: inputParamsCtx, allWidgetsCtx: allWidgetsCtx,
                     formsCtx: formsCtx, globalConstCtx: globalConstCtx,
                     formConstCtx: formConstCtx, tablesCtx: tablesCtx,
-                    extRuntimeDoc: extRuntime.doc
+                    extRuntimeDoc: getProjectData().extRuntime.doc
                 }
             );
 
@@ -2842,7 +2805,7 @@
         /* ── YAMLエディタ共通HTML生成 ── */
         // tabConfig: null=通常(YAML+JS), {tabs:[{id,label,type:'yaml'|'js',val,ph}], aiBar, saveAction}
         function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", extraTabsHTML = "", tabConfig = null, isAppEvent = false) {
-            const aiEnabled = aiConfig.enabled;
+            const aiEnabled = getProjectData().aiConfig.enabled;
 
             // カスタムタブ構成
             if (tabConfig) {
@@ -2988,17 +2951,17 @@
 
         // AI接続設定モーダル
         function openAiConfig() {
-            // aiConfig の初期値保証
-            if (!aiConfig.routerMode) aiConfig.routerMode = false;
-            if (!aiConfig.apiKey) aiConfig.apiKey = "";
-            if (!aiConfig.models) aiConfig.models = [];
-            if (!aiConfig.endpoint) aiConfig.endpoint = "http://localhost:8080";
-            if (aiConfig.thinking === undefined) aiConfig.thinking = true;
+            // getProjectData().aiConfig の初期値保証
+            if (!getProjectData().aiConfig.routerMode) getProjectData().aiConfig.routerMode = false;
+            if (!getProjectData().aiConfig.apiKey) getProjectData().aiConfig.apiKey = "";
+            if (!getProjectData().aiConfig.models) getProjectData().aiConfig.models = [];
+            if (!getProjectData().aiConfig.endpoint) getProjectData().aiConfig.endpoint = "http://localhost:8080";
+            if (getProjectData().aiConfig.thinking === undefined) getProjectData().aiConfig.thinking = true;
 
-            const isEnabled = aiConfig.enabled === true;
-            const isRouter = aiConfig.routerMode === true;
-            const isThinking = aiConfig.thinking !== false;
-            const modelListHtml = aiCfgModelListHtml(aiConfig.models, aiConfig.model, isRouter);
+            const isEnabled = getProjectData().aiConfig.enabled === true;
+            const isRouter = getProjectData().aiConfig.routerMode === true;
+            const isThinking = getProjectData().aiConfig.thinking !== false;
+            const modelListHtml = aiCfgModelListHtml(getProjectData().aiConfig.models, getProjectData().aiConfig.model, isRouter);
 
             showModal(
                 mhdrHTML("🤖 AI接続設定") +
@@ -3012,11 +2975,11 @@
 
                 // エンドポイント
                 "<div class='ai-cfg-row'><label>エンドポイント</label>" +
-                "<input id='ai-ep' value='" + esc(aiConfig.endpoint) + "' placeholder='http://localhost:8080'></div>" +
+                "<input id='ai-ep' value='" + esc(getProjectData().aiConfig.endpoint) + "' placeholder='http://localhost:8080'></div>" +
 
                 // API Key
                 "<div class='ai-cfg-row'><label>API Key</label>" +
-                "<input id='ai-apikey' type='password' value='" + esc(aiConfig.apiKey) + "' placeholder='OpenAI等のAPIキー（任意）'></div>" +
+                "<input id='ai-apikey' type='password' value='" + esc(getProjectData().aiConfig.apiKey) + "' placeholder='OpenAI等のAPIキー（任意）'></div>" +
 
                 // ルーターモード
                 "<div class='ai-cfg-row'><label>ルーターモード</label>" +
@@ -3029,7 +2992,7 @@
                 "<div style='display:flex;gap:6px;align-items:center'>" +
                 "<div class='pv-sel' id='ai-model-sel' style='flex:1'>" +
                 "<div class='pv-sel-btn' onmousedown=\"pvSelOpen('ai-model-sel',event)\">" +
-                "<span id='ai-model-label'>" + (isRouter ? (aiConfig.model || "（モデルを選択）") : "") + "</span>" +
+                "<span id='ai-model-label'>" + (isRouter ? (getProjectData().aiConfig.model || "（モデルを選択）") : "") + "</span>" +
                 "<span class='arr'>▼</span></div>" +
                 "<div class='pv-sel-list' id='ai-model-list'>" + modelListHtml + "</div>" +
                 "</div>" +
@@ -3038,9 +3001,9 @@
 
                 // max tokens
                 "<div class='ai-cfg-row'><label>Max Tokens</label>" +
-                "<input id='ai-max-tokens' value='" + esc(String(aiConfig.maxTokens || "")) + "' placeholder='空の場合はサーバー側に依存' style='width:100%'></div>" +
+                "<input id='ai-max-tokens' value='" + esc(String(getProjectData().aiConfig.maxTokens || "")) + "' placeholder='空の場合はサーバー側に依存' style='width:100%'></div>" +
                 "<div class='ai-cfg-row'><label>temperature</label>" +
-                "<input id='ai-temperature' class='pv-input' value='" + esc(aiConfig.temperature !== "" && aiConfig.temperature != null ? String(aiConfig.temperature) : "") + "' placeholder='空の場合はサーバー側に依存' style='width:100%'></div>" +
+                "<input id='ai-temperature' class='pv-input' value='" + esc(getProjectData().aiConfig.temperature !== "" && getProjectData().aiConfig.temperature != null ? String(getProjectData().aiConfig.temperature) : "") + "' placeholder='空の場合はサーバー側に依存' style='width:100%'></div>" +
 
                 // 推論モード
                 "<div class='ai-cfg-row'><label>推論モード</label>" +
@@ -3081,7 +3044,7 @@
 
         // モデル一覧をllamaサーバーから取得
         async function aiCfgFetchModels() {
-            const ep = $("ai-ep")?.value?.trim() || aiConfig.endpoint;
+            const ep = $("ai-ep")?.value?.trim() || getProjectData().aiConfig.endpoint;
             const apiKey = $("ai-apikey")?.value?.trim() || "";
             const btn = document.querySelector("#ai-model-row button");
             if (btn) {btn.textContent = "⏳"; btn.disabled = true;}
@@ -3096,9 +3059,9 @@
                 const data = await res.json();
                 const models = (data.data || []).map(m => m.id || m).filter(Boolean).sort();
                 if (models.length === 0) throw new Error("モデルが見つかりません");
-                aiConfig.models = models;
+                getProjectData().aiConfig.models = models;
                 const list = $("ai-model-list");
-                if (list) list.innerHTML = aiCfgModelListHtml(models, aiConfig.model, true);
+                if (list) list.innerHTML = aiCfgModelListHtml(models, getProjectData().aiConfig.model, true);
                 showToast((apiKey ? "OpenAI" : "ローカル") + "からモデルを" + models.length + "件取得しました");
             } catch (e) {
                 showToast("取得失敗: " + e.message);
@@ -3117,19 +3080,19 @@
             const enabled = enaSel?.textContent === "ON";
             const routerMode = rtrSel?.textContent === "ON";
             const thinking = thnSel?.textContent !== "OFF";
-            const model = modSel?.textContent || aiConfig.model || "";
+            const model = modSel?.textContent || getProjectData().aiConfig.model || "";
             const maxTokensRaw = $("ai-max-tokens")?.value?.trim() || "";
             const maxTokens = maxTokensRaw !== "" ? parseInt(maxTokensRaw, 10) || "" : "";
             const temperatureRaw = $("ai-temperature")?.value?.trim() || "";
             const temperature = temperatureRaw !== "" ? parseFloat(temperatureRaw) : "";
-            aiConfig = {
+            getProjectData().aiConfig = {
                 endpoint: ep,
                 apiKey,
                 enabled,
                 routerMode,
                 thinking,
                 model: routerMode ? model : "",
-                models: aiConfig.models || [],
+                models: getProjectData().aiConfig.models || [],
                 maxTokens,
                 temperature,
             };
@@ -3445,7 +3408,7 @@
 
         /* ── フォームイベント編集 ── */
         function openFormYaml(evName) {
-            const f = forms[curFormIdx];
+            const f = getProjectData().forms[getProjectData().curFormIdx];
             if (!f.events) f.events = {};
             const cur = f.events[evName] ||
                 // 空の場合はデフォルトのYAMLセット.
@@ -3458,7 +3421,7 @@
         }
 
         function saveFormYaml(evName) {
-            const f = forms[curFormIdx];
+            const f = getProjectData().forms[getProjectData().curFormIdx];
             if (!f.events) f.events = {};
             f.events[evName] = $("yaml-ta")?.value || "";
             f.events["_js_" + evName] = $("js-ta")?.value || "";
@@ -3468,7 +3431,7 @@
         }
 
         async function deleteFormYaml(evName) {
-            const f = forms[curFormIdx];
+            const f = getProjectData().forms[getProjectData().curFormIdx];
             const hasY = f.events?.[evName]?.trim().length > 0;
             if (!hasY) return;
             const dlg = await vja.app.showConfirm("「" + evName + "」のイベント定義を削除してよろしいですか？");
@@ -3537,14 +3500,14 @@
         // - onError: エラー時のコールバック（省略可）
         async function runAiGenerate(options) {
             const {systemPrompt, userPrompt, onSuccess, onCancel, onError, loadingMsg} = options;
-            const hasApiKey = !!aiConfig.apiKey;
-            const isRouterOn = !!aiConfig.routerMode;
-            const endpoint = hasApiKey ? "https://api.openai.com" : aiConfig.endpoint;
+            const hasApiKey = !!getProjectData().aiConfig.apiKey;
+            const isRouterOn = !!getProjectData().aiConfig.routerMode;
+            const endpoint = hasApiKey ? "https://api.openai.com" : getProjectData().aiConfig.endpoint;
             const modelName = hasApiKey
-                ? (aiConfig.model || "gpt-4o-mini")
-                : (isRouterOn ? aiConfig.model : undefined);
+                ? (getProjectData().aiConfig.model || "gpt-4o-mini")
+                : (isRouterOn ? getProjectData().aiConfig.model : undefined);
             const headers = {"Content-Type": "application/json"};
-            if (hasApiKey) headers["Authorization"] = "Bearer " + aiConfig.apiKey;
+            if (hasApiKey) headers["Authorization"] = "Bearer " + getProjectData().aiConfig.apiKey;
             const body = {
                 messages: [
                     {role: "system", content: systemPrompt},
@@ -3552,12 +3515,12 @@
                 ],
                 stream: false
             };
-            if (aiConfig.temperature !== "" && aiConfig.temperature !== undefined) body.temperature = aiConfig.temperature;
-            if (aiConfig.maxTokens) body.max_tokens = aiConfig.maxTokens;
+            if (getProjectData().aiConfig.temperature !== "" && getProjectData().aiConfig.temperature !== undefined) body.temperature = getProjectData().aiConfig.temperature;
+            if (getProjectData().aiConfig.maxTokens) body.max_tokens = getProjectData().aiConfig.maxTokens;
             if (modelName) body.model = modelName;
             // 推論モードOFFの場合、各サーバー向けのパラメータを付与
             // llama.cpp / mlx-lm: chat_template_kwargs, Ollama: think, vLLM: reasoning_effort
-            if (aiConfig.thinking === false) {
+            if (getProjectData().aiConfig.thinking === false) {
                 body.think = false;
                 body.reasoning_effort = "none";
                 body.chat_template_kwargs = { enable_thinking: false };
@@ -3679,7 +3642,20 @@
         }
 
         function snapshot() {
-            return {forms, curFormIdx, constants, startFormId, aiConfig, cloudInfras, tables, snapOn: getDesignerState().snapOn, showGrid: getDesignerState().showGrid, projectInfo, extRuntime};
+            var p = getProjectData();
+            return {
+                forms:       p.forms,
+                curFormIdx:  p.curFormIdx,
+                constants:   p.constants,
+                startFormId: p.startFormId,
+                aiConfig:    p.aiConfig,
+                cloudInfras: p.cloudInfras,
+                tables:      p.tables,
+                snapOn:      getDesignerState().snapOn,
+                showGrid:    getDesignerState().showGrid,
+                projectInfo: p.projectInfo,
+                extRuntime:  p.extRuntime,
+            };
         }
         // 現在の状態を undoStack に積む。redoStack はクリアする。
         function pushUndo() {
@@ -3702,19 +3678,19 @@
         }
         // ── プロジェクトデータ復元共通処理 ──────────────
         // スナップショットや保存データから状態を復元する共通処理。
-        // forms/curFormIdx 以外の全フィールドをここで復元する。
+        // getProjectData().forms/getProjectData().curFormIdx 以外の全フィールドをここで復元する。
         function applyProjectData(d) {
-            cloudInfras = d.cloudInfras || [];
-            extRuntime = d.extRuntime || {js: "", doc: ""};
-            constants = d.constants || [];
-            startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
-            tables = d.tables || [];
+            getProjectData().cloudInfras = d.cloudInfras || [];
+            getProjectData().extRuntime = d.extRuntime || {js: "", doc: ""};
+            getProjectData().constants = d.constants || [];
+            getProjectData().startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
+            getProjectData().tables = d.tables || [];
             getDesignerState().snapOn = d.snapOn !== undefined ? d.snapOn : true;
             getDesignerState().showGrid = d.showGrid !== undefined ? d.showGrid : false;
             // editorConfigはvja設定ファイルで管理するためプロジェクトからは読み込まない
-            if (d.projectInfo) projectInfo = {...projectInfo, ...d.projectInfo};
+            if (d.projectInfo) getProjectData().projectInfo = {...getProjectData().projectInfo, ...d.projectInfo};
             const _ac = d.aiConfig || {};
-            aiConfig = {
+            getProjectData().aiConfig = {
                 endpoint: _ac.endpoint || "http://localhost:8080",
                 apiKey: _ac.apiKey || "",
                 model: _ac.model || "",
@@ -3730,14 +3706,14 @@
         // JSON 文字列からプロジェクト全体を復元し、画面を再描画する。
         function restoreSnap(s) {
             const d = JSON.parse(s);
-            forms = d.forms;
+            getProjectData().forms = d.forms;
             // 古いプロジェクトファイルにはvalidationsがないため補完
-            forms.forEach(f => {
+            getProjectData().forms.forEach(f => {
                 if (!f.validations) f.validations = [];
                 // 旧形式（オブジェクト）の場合は配列に変換
                 if (!Array.isArray(f.validations)) f.validations = [];
             });
-            curFormIdx = d.curFormIdx;
+            getProjectData().curFormIdx = d.curFormIdx;
             applyProjectData(d);
             getDesignerState().selId = null;
             refreshAll();
@@ -3763,7 +3739,7 @@
             pushUndo();
             $("w" + getDesignerState().selId)?.remove();
             widgets = widgets.filter((x) => x.id !== getDesignerState().selId);
-            forms[curFormIdx].widgets = widgets;
+            getProjectData().forms[getProjectData().curFormIdx].widgets = widgets;
             getDesignerState().selId = null;
             $("prop-obj").textContent = formCfg.title;
             renderProps();
@@ -3805,8 +3781,8 @@
             }
         }
         function _doActNew() {
-            forms = [makeFormData("Form1")];
-            curFormIdx = 0;
+            getProjectData().forms = [makeFormData("Form1")];
+            getProjectData().curFormIdx = 0;
             getDesignerState().selId = null;
             getEditHistory().undoStack = [];
             getEditHistory().redoStack = [];
@@ -3826,15 +3802,15 @@
                 const d = JSON.parse(jsonStr);
                 // 旧フォーマット互換（formCfg/widgets のフラット構造）
                 if (d.formCfg && !d.forms) {
-                    forms = [{id: "f0", cfg: d.formCfg, widgets: d.widgets || [], idCnt: d.idCnt || 1}];
-                    curFormIdx = 0;
+                    getProjectData().forms = [{id: "f0", cfg: d.formCfg, widgets: d.widgets || [], idCnt: d.idCnt || 1}];
+                    getProjectData().curFormIdx = 0;
                 } else {
                     // 互換: nameがなければtitleをnameとして補完
-                    forms = (d.forms || []).map(f => ({
+                    getProjectData().forms = (d.forms || []).map(f => ({
                         ...f,
                         cfg: {...f.cfg, name: f.cfg.name || f.cfg.title}
                     }));
-                    curFormIdx = d.curFormIdx || 0;
+                    getProjectData().curFormIdx = d.curFormIdx || 0;
                 }
                 applyProjectData(d);
                 getDesignerState().selId = null;
@@ -3886,7 +3862,7 @@
             commitIdCnt();
             const snap = snapshot();
             const content = JSON.stringify(snap);
-            const projName = projectInfo.name?.trim() || "project";
+            const projName = getProjectData().projectInfo.name?.trim() || "project";
             // bridge.ts がロードされているか確認
             if (typeof window.bunSaveProject !== "function") {
                 showVjaAlert("エラー: bunSaveProject が未定義です。bridge.ts が正しくロードされていません。");
@@ -3939,12 +3915,13 @@
         /* ── プロジェクト実行 ── */
         // Bun側に渡す現在のプロジェクトデータを返す
         window._getProjectData = function () {
+            var p = getProjectData();
             return {
-                projectInfo,
-                forms,
-                constants,
-                tables,
-                extRuntime,
+                projectInfo: p.projectInfo,
+                forms:       p.forms,
+                constants:   p.constants,
+                tables:      p.tables,
+                extRuntime:  p.extRuntime,
             };
         };
 
@@ -4055,9 +4032,9 @@
 
         // 初期フォームを設定
         function setStartForm() {
-            const f = forms[curFormIdx];
+            const f = getProjectData().forms[getProjectData().curFormIdx];
             if (!f) return;
-            startFormId = f.id;
+            getProjectData().startFormId = f.id;
             updateStartBtn();
             pushUndo();
             showToast("「" + f.cfg.title + "」を初期表示フォームに設定しました");
@@ -4067,8 +4044,8 @@
         function updateStartBtn() {
             const btn = $("btn-set-start");
             if (!btn) return;
-            const f = forms[curFormIdx];
-            const isStart = f && f.id === startFormId;
+            const f = getProjectData().forms[getProjectData().curFormIdx];
+            const isStart = f && f.id === getProjectData().startFormId;
             btn.classList.toggle("is-start", isStart);
             btn.title = isStart ? "この画面が初期表示フォームです" : "初期表示フォームに設定";
             btn.style.color = isStart ? "#f5a623" : "";
@@ -4079,12 +4056,12 @@
         function buildFormSelect() {
             const list = $("fdd-list");
             list.innerHTML = "";
-            forms.forEach((f, i) => {
+            getProjectData().forms.forEach((f, i) => {
                 const item = document.createElement("div");
                 item.className =
-                    "fdd-item" + (i === curFormIdx ? " fdd-active" : "");
+                    "fdd-item" + (i === getProjectData().curFormIdx ? " fdd-active" : "");
                 // 初期フォームに★マークを付ける
-                item.textContent = (f.id === startFormId ? "★ " : "") + `[${i + 1}] ${f.cfg.name || f.cfg.title}`;
+                item.textContent = (f.id === getProjectData().startFormId ? "★ " : "") + `[${i + 1}] ${f.cfg.name || f.cfg.title}`;
                 item.onclick = (e) => {
                     e.stopPropagation();
                     switchForm(i);
@@ -4093,9 +4070,9 @@
                 list.appendChild(item);
             });
             // ボタンラベル更新
-            const cur = forms[curFormIdx];
+            const cur = getProjectData().forms[getProjectData().curFormIdx];
             $("fdd-label").textContent = cur
-                ? `[${curFormIdx + 1}] ${cur.cfg.name || cur.cfg.title}`
+                ? `[${getProjectData().curFormIdx + 1}] ${cur.cfg.name || cur.cfg.title}`
                 : "";
             updateStartBtn();
         }
@@ -4111,9 +4088,9 @@
         // フォームを切り替え
         function switchForm(idx) {
             idx = parseInt(idx);
-            if (idx === curFormIdx) return;
+            if (idx === getProjectData().curFormIdx) return;
             commitIdCnt();
-            curFormIdx = idx;
+            getProjectData().curFormIdx = idx;
             getDesignerState().selId = null;
             refreshAll();
             requestAnimationFrame(drawRulers);
@@ -4122,7 +4099,7 @@
         // 新しい画面を追加
         function formNew() {
             commitCurrentInput();
-            showVjaPrompt("新しい画面の名前を入力してください", "Form" + (forms.length + 1), (title) => {
+            showVjaPrompt("新しい画面の名前を入力してください", "Form" + (getProjectData().forms.length + 1), (title) => {
                 if (!title) return;
                 if (!/^[a-zA-Z0-9_\-\.]+$/.test(title)) {
                     showToast("画面名は英数字・アンダースコア・ハイフン・ドットのみ使用できます", 5000);
@@ -4130,8 +4107,8 @@
                 }
                 commitAndPush();
                 const f = makeFormData(title);
-                forms.push(f);
-                curFormIdx = forms.length - 1;
+                getProjectData().forms.push(f);
+                getProjectData().curFormIdx = getProjectData().forms.length - 1;
                 getDesignerState().selId = null;
                 refreshAll();
             });
@@ -4140,14 +4117,14 @@
         // 現在の画面を削除
         async function formDelete() {
             commitCurrentInput();
-            if (forms.length <= 1) {
+            if (getProjectData().forms.length <= 1) {
                 showVjaAlert("最後の画面は削除できません");
                 return;
             }
             if (!(await vja.app.showConfirm(`"${formCfg.title}" を削除しますか？`))) return;
             commitAndPush();
-            forms.splice(curFormIdx, 1);
-            curFormIdx = Math.min(curFormIdx, forms.length - 1);
+            getProjectData().forms.splice(getProjectData().curFormIdx, 1);
+            getProjectData().curFormIdx = Math.min(getProjectData().curFormIdx, getProjectData().forms.length - 1);
             getDesignerState().selId = null;
             refreshAll();
         }
@@ -4163,11 +4140,11 @@
                 }
                 pushUndo();
                 formCfg.name = newName;
-                forms[curFormIdx].cfg.name = newName;
+                getProjectData().forms[getProjectData().curFormIdx].cfg.name = newName;
                 // titleが未設定または同じだった場合はtitleも更新
                 if (!formCfg.title || formCfg.title === formCfg.name) {
                     formCfg.title = newName;
-                    forms[curFormIdx].cfg.title = newName;
+                    getProjectData().forms[getProjectData().curFormIdx].cfg.title = newName;
                 }
                 applyForm();
                 buildFormSelect();
@@ -4241,7 +4218,7 @@
 
         /* ── 定数エディタ ── */
         function openConstEditor() {
-            getModalContext().constRows = constants.map(c => ({name: c.name || "", value: c.value || ""}));
+            getModalContext().constRows = getProjectData().constants.map(c => ({name: c.name || "", value: c.value || ""}));
             if (getModalContext().constRows.length === 0) getModalContext().constRows.push({name: "", value: ""});
             renderConstModal();
         }
@@ -4330,7 +4307,7 @@
             if (dup) {showVjaAlert("定数名「" + dup + "」が重複しています"); return;}
             const saved = valid.map(r => ({name: r.name.trim(), value: r.value}));
             if (target === null) {
-                constants = saved;
+                getProjectData().constants = saved;
             } else {
                 target.constants = saved;
                 showToast("フォーム定数を保存しました（" + saved.length + "件）");
@@ -4418,8 +4395,8 @@
         }
 
         function renderTableManagerModal() {
-            const rows = tables.length > 0
-                ? tables.map((t, i) => {
+            const rows = getProjectData().tables.length > 0
+                ? getProjectData().tables.map((t, i) => {
                     const colCount = t.columns ? t.columns.length : 0;
                     const idxCount = t.columns ? t.columns.filter(c => c.index).length : 0;
                     return "<tr>" +
@@ -4441,7 +4418,7 @@
                 mhdrHTML("🗄 テーブル管理") +
                 "<div class='mbody tbl-mgr-wrap'>" +
                 "<div class='tbl-mgr-header'>" +
-                "<span style='font-size:12px;color:var(--text2)'>SQLiteテーブル定義（全" + tables.length + "件）</span>" +
+                "<span style='font-size:12px;color:var(--text2)'>SQLiteテーブル定義（全" + getProjectData().tables.length + "件）</span>" +
                 "<button class='tbl-add-btn' onmousedown='openTableEdit(-1)'>＋ テーブル追加</button>" +
                 "</div>" +
                 "<div class='tbl-list-scroll'>" +
@@ -4465,10 +4442,10 @@
 
         // テーブル削除
         async function deleteTable(idx) {
-            const t = tables[idx];
+            const t = getProjectData().tables[idx];
             if (!t) return;
             if (!(await vja.app.showConfirm("テーブル「" + t.name + "」を削除しますか？この操作は元に戻せません。"))) return;
-            tables.splice(idx, 1);
+            getProjectData().tables.splice(idx, 1);
             pushUndo();
             renderTableManagerModal();
         }
@@ -4479,7 +4456,7 @@
             const isNew = idx < 0;
             const tbl = isNew
                 ? {name: "", description: "", columns: [defaultColumn()]}
-                : JSON.parse(JSON.stringify(tables[idx])); // ディープコピー
+                : JSON.parse(JSON.stringify(getProjectData().tables[idx])); // ディープコピー
             if (!tbl.columns || tbl.columns.length === 0) tbl.columns = [defaultColumn()];
             getModalContext().tblEditIdx = idx;
             getModalContext().tblEdit = tbl;
@@ -4977,7 +4954,7 @@
             const tbl = getModalContext().tblEdit;
             if (!tbl.name.trim()) {showVjaAlert("テーブル名を入力してください"); return;}
             // テーブル名重複チェック（自分自身は除外）
-            const dupIdx = tables.findIndex((t, i) => t.name === tbl.name.trim() && i !== getModalContext().tblEditIdx);
+            const dupIdx = getProjectData().tables.findIndex((t, i) => t.name === tbl.name.trim() && i !== getModalContext().tblEditIdx);
             if (dupIdx >= 0) {showVjaAlert("テーブル名「" + tbl.name + "」は既に存在します"); return;}
             // 空カラムを除去（バリデーション用。getModalContext().tblEdit.columnsはまだ書き換えない）
             const validCols = (tbl.columns || []).filter(c => c.name.trim());
@@ -5005,9 +4982,9 @@
             tbl.columns = validCols; // バリデーション通過後に空カラムを除去して代入
             tbl.updatedAt = new Date().toISOString(); // テーブル更新時刻を記録
             if (getModalContext().tblEditIdx < 0) {
-                tables.push(tbl);
+                getProjectData().tables.push(tbl);
             } else {
-                tables[getModalContext().tblEditIdx] = tbl;
+                getProjectData().tables[getModalContext().tblEditIdx] = tbl;
             }
             pushUndo();
             showToast("テーブル「" + tbl.name + "」を保存しました");
@@ -5040,7 +5017,7 @@
         ];
 
         function openValidationEditor() {
-            const f = forms[curFormIdx];
+            const f = getProjectData().forms[getProjectData().curFormIdx];
             if (!f) return;
             if (!Array.isArray(f.validations)) f.validations = [];
             renderValidationListModal();
@@ -5048,7 +5025,7 @@
 
         // ── バリデーション一覧モーダル（テーブル管理の一覧と同じ構成） ──
         function renderValidationListModal() {
-            const f = forms[curFormIdx];
+            const f = getProjectData().forms[getProjectData().curFormIdx];
             const list = f.validations || [];
             let rows = "";
             list.forEach((v, i) => {
@@ -5092,7 +5069,7 @@
 
         // ── バリデーション編集モーダル ──
         function openValidationEdit(idx) {
-            const f = forms[curFormIdx];
+            const f = getProjectData().forms[getProjectData().curFormIdx];
             if (!Array.isArray(f.validations)) f.validations = [];
             getModalContext().validEdit = idx < 0
                 ? {name: "", toastDuration: 5000, rules: []}
@@ -5114,7 +5091,7 @@
                 const nid = "valid-name-" + i;
                 const notid = "valid-not-" + i;
                 const INPUT_TAGS = ["inputtype", "textarea", "checkbox", "radiobutton", "selectBox", "listbox", "slider"];
-                const widgetNames = ["", ...(forms[curFormIdx]?.widgets || [])
+                const widgetNames = ["", ...(getProjectData().forms[getProjectData().curFormIdx]?.widgets || [])
                     .filter(w => INPUT_TAGS.includes(w.tag))
                     .map(w => w.name)
                     .filter(Boolean)];
@@ -5210,14 +5187,14 @@
             _rowDel(() => getModalContext().validEdit.rules, idx, null, renderValidationEditModal);
         }
         function deleteValidation(idx) {
-            const f = forms[curFormIdx];
+            const f = getProjectData().forms[getProjectData().curFormIdx];
             if (!f || !f.validations) return;
             f.validations.splice(idx, 1);
             pushUndo();
             renderValidationListModal();
         }
         function validSave() {
-            const f = forms[curFormIdx];
+            const f = getProjectData().forms[getProjectData().curFormIdx];
             if (!f || !getModalContext().validEdit) return;
             const name = $("valid-name")?.value?.trim();
             if (!name) {showVjaAlert("定義名を入力してください"); return;}
@@ -5239,7 +5216,7 @@
         }
 
         function openFormConstEditor() {
-            const f = forms[curFormIdx];
+            const f = getProjectData().forms[getProjectData().curFormIdx];
             if (!f) return;
             if (!f.constants) f.constants = [];
             getModalContext().constRows = f.constants.map(c => ({name: c.name || "", value: c.value || ""}));
@@ -5248,7 +5225,7 @@
         }
 
         function renderFormConstModal() {
-            const f = forms[curFormIdx];
+            const f = getProjectData().forms[getProjectData().curFormIdx];
             const formTitle = f?.cfg?.title || "フォーム";
             renderConstModalBase(
                 "📌 フォーム定数 — " + esc(formTitle),
@@ -5265,7 +5242,7 @@
         }
 
         function saveFormConst() {
-            const f = forms[curFormIdx];
+            const f = getProjectData().forms[getProjectData().curFormIdx];
             if (!f) return;
             _constSaveBase(f);
         }
@@ -5281,7 +5258,7 @@
         function openAppEvents(evKey) {
             evKey = evKey || "onStart";
             _curAppEvKey = evKey;
-            const ae = projectInfo.appEvents || {};
+            const ae = getProjectData().projectInfo.appEvents || {};
             const cur = ae[evKey + "_yaml"] || "# アプリイベント: " + evKey + "\n# YAML形式でAIへの指示を記述します\n";
             // OnStart/OnExitはBun側でTypeScriptとして実行される
             const _tsHint = evKey === "onStart"
@@ -5312,9 +5289,9 @@
         }
 
         function saveAppEvent() {
-            if (!projectInfo.appEvents) projectInfo.appEvents = {};
-            projectInfo.appEvents[_curAppEvKey + "_yaml"] = $("yaml-ta")?.value || "";
-            projectInfo.appEvents[_curAppEvKey] = $("js-ta")?.value || "";
+            if (!getProjectData().projectInfo.appEvents) getProjectData().projectInfo.appEvents = {};
+            getProjectData().projectInfo.appEvents[_curAppEvKey + "_yaml"] = $("yaml-ta")?.value || "";
+            getProjectData().projectInfo.appEvents[_curAppEvKey] = $("js-ta")?.value || "";
             closeModal();
             pushUndo();
             showToast("アプリイベントを保存しました");
@@ -5325,23 +5302,23 @@
                 mhdrHTML("📁 プロジェクト情報") +
                 "<div class='mbody' style='gap:10px'>" +
                 "<div class='ai-cfg-row'><label>プロジェクト名</label>" +
-                "<input id='pi-name' class='pv-input' style='height:28px;font-size:13px' value='" + esc(projectInfo.name) + "' placeholder='マイプロジェクト'>" +
+                "<input id='pi-name' class='pv-input' style='height:28px;font-size:13px' value='" + esc(getProjectData().projectInfo.name) + "' placeholder='マイプロジェクト'>" +
                 "</div>" +
                 "<div class='ai-cfg-row'><label>説明</label>" +
-                "<textarea id='pi-desc' class='pv-textarea' style='height:60px;font-size:13px'>" + esc(projectInfo.description) + "</textarea>" +
+                "<textarea id='pi-desc' class='pv-textarea' style='height:60px;font-size:13px'>" + esc(getProjectData().projectInfo.description) + "</textarea>" +
                 "</div>" +
                 "<div class='ai-cfg-row'><label>バージョン</label>" +
                 "<div style='display:flex;align-items:center;gap:4px;flex:1'>" +
-                "<input id='pi-ver' class='pv-input' style='height:28px;font-size:13px;flex:1' value='" + esc(projectInfo.version) + "' placeholder='1.0.0'>" +
+                "<input id='pi-ver' class='pv-input' style='height:28px;font-size:13px;flex:1' value='" + esc(getProjectData().projectInfo.version) + "' placeholder='1.0.0'>" +
                 "<button onmousedown='piVerStep(1)' style='width:24px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);cursor:pointer;font-size:11px;flex-shrink:0'>▲</button>" +
                 "<button onmousedown='piVerStep(-1)' style='width:24px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);cursor:pointer;font-size:11px;flex-shrink:0'>▼</button>" +
                 "</div>" +
                 "</div>" +
                 "<div class='ai-cfg-row'><label>作成者</label>" +
-                "<input id='pi-author' class='pv-input' style='height:28px;font-size:13px' value='" + esc(projectInfo.author) + "' placeholder='作成者名'>" +
+                "<input id='pi-author' class='pv-input' style='height:28px;font-size:13px' value='" + esc(getProjectData().projectInfo.author) + "' placeholder='作成者名'>" +
                 "</div>" +
                 "<div class='ai-cfg-row'><label>会社名</label>" +
-                "<input id='pi-company' class='pv-input' style='height:28px;font-size:13px' value='" + esc(projectInfo.company) + "' placeholder='会社・組織名'>" +
+                "<input id='pi-company' class='pv-input' style='height:28px;font-size:13px' value='" + esc(getProjectData().projectInfo.company) + "' placeholder='会社・組織名'>" +
                 "</div>" +
                 "</div>" +
                 "<div class='mfoot'>" +
@@ -5364,7 +5341,7 @@
         }
 
         function saveProjectInfo() {
-            projectInfo = {
+            getProjectData().projectInfo = {
                 name: $("pi-name")?.value || "",
                 description: $("pi-desc")?.value || "",
                 version: $("pi-ver")?.value || "1.0.0",
@@ -5379,8 +5356,8 @@
 
         /* ── 拡張ランタイム ── */
         // vja ランタイムに追加する JavaScript コードと AI向け説明（YAML）を管理する。
-        // extRuntime.js  : 実行時に注入されるカスタム JS コード
-        // extRuntime.doc : AI向けの関数説明（YAML形式）。runAiGenerate で自動生成可能。
+        // getProjectData().extRuntime.js  : 実行時に注入されるカスタム JS コード
+        // getProjectData().extRuntime.doc : AI向けの関数説明（YAML形式）。runAiGenerate で自動生成可能。
         let _extRtYuState = {stack: [], idx: -1, busy: false};
         let _extRtJuState = {stack: [], idx: -1, busy: false};
 
@@ -5389,8 +5366,8 @@
         function openExtRuntime() {
             const tabConfig = {
                 tabs: [
-                    {id: "extrt-js", label: "📜 JavaScript", type: "js", val: extRuntime.js || ""},
-                    {id: "extrt-doc", label: "📋 AI向け説明", type: "yaml", val: extRuntime.doc || ""},
+                    {id: "extrt-js", label: "📜 JavaScript", type: "js", val: getProjectData().extRuntime.js || ""},
+                    {id: "extrt-doc", label: "📋 AI向け説明", type: "yaml", val: getProjectData().extRuntime.doc || ""},
                 ],
                 aiBar: "<button class='yaml-ai-btn' onmousedown='extRtGenDoc()'>🤖 AI向け説明を生成</button>",
                 saveAction: "saveExtRuntime()",
@@ -5430,25 +5407,25 @@
             });
         }
 
-        // 拡張ランタイムの内容を extRuntime 変数に保存して Undo に積む。
+        // 拡張ランタイムの内容を getProjectData().extRuntime 変数に保存して Undo に積む。
         function saveExtRuntime() {
-            extRuntime.js = $("ta-extrt-js")?.value || "";
-            extRuntime.doc = $("ta-extrt-doc")?.value || "";
+            getProjectData().extRuntime.js = $("ta-extrt-js")?.value || "";
+            getProjectData().extRuntime.doc = $("ta-extrt-doc")?.value || "";
             closeModal();
             showToast("拡張ランタイムを保存しました");
             pushUndo();
         }
 
         // 拡張ランタイムの JavaScript コードを元に AI向け説明（YAML）を生成する。
-        // runAiGenerate を使用し、生成結果を extRuntime.doc にセットして再表示する。
+        // runAiGenerate を使用し、生成結果を getProjectData().extRuntime.doc にセットして再表示する。
         async function extRtGenDoc() {
-            if (!aiConfig.enabled) {
+            if (!getProjectData().aiConfig.enabled) {
                 showToast("AI接続設定が有効になっていません");
                 return;
             }
             const js = $("ta-extrt-js")?.value || "";
             if (!js.trim()) {showToast("JavaScriptコードを入力してください"); return;}
-            const existsDoc = (extRuntime.doc || $("ta-extrt-doc")?.value || "").trim();
+            const existsDoc = (getProjectData().extRuntime.doc || $("ta-extrt-doc")?.value || "").trim();
             const confirmMsg = existsDoc
                 ? "既に内容が登録されています。\n上書きしますか？\n※実行前に現在の内容を保存します。"
                 : "AI向け説明を生成しますか？\n※実行前に現在の内容を保存します。";
@@ -5459,7 +5436,7 @@
                 systemPrompt: _PROMPT_DEF.EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT(),
                 userPrompt: _PROMPT_DEF.EXT_RUNTIME_JS_TO_YAML_USER_PROMPT(js),
                 onSuccess: async (result) => {
-                    extRuntime.doc = result;
+                    getProjectData().extRuntime.doc = result;
                     openExtRuntime();
                     requestAnimationFrame(() => requestAnimationFrame(() => {
                         const taDock = $("ta-extrt-doc");
@@ -5483,7 +5460,7 @@
 
         function openCloudInfraConfig() {
             closeAllMenus();
-            _cloudDraft = cloudInfras.map(c => JSON.parse(JSON.stringify(c)));
+            _cloudDraft = getProjectData().cloudInfras.map(c => JSON.parse(JSON.stringify(c)));
             _renderCloudModal();
         }
 
@@ -5721,7 +5698,7 @@
                 const result = await window.bunSaveCloudInfras(_cloudDraft);
                 if (!result?.ok) throw new Error(result?.error || "保存失敗");
                 // フロント側にも反映（次回モーダルオープン時のベースになる）
-                cloudInfras = _cloudDraft.map(c => JSON.parse(JSON.stringify(c)));
+                getProjectData().cloudInfras = _cloudDraft.map(c => JSON.parse(JSON.stringify(c)));
                 closeModal();
                 showToast("クラウドインフラ設定を保存しました");
                 pushUndo();
@@ -6037,15 +6014,15 @@
             // ステータスバーにプロジェクト名を表示
             const nameEl = $("st-project-name");
             if (nameEl) {
-                nameEl.textContent = projectInfo.name
-                    ? "📁 " + projectInfo.name + (projectInfo.version ? " v" + projectInfo.version : "")
+                nameEl.textContent = getProjectData().projectInfo.name
+                    ? "📁 " + getProjectData().projectInfo.name + (getProjectData().projectInfo.version ? " v" + getProjectData().projectInfo.version : "")
                     : "";
             }
             // タイトルバーにプロジェクト名を反映
             const titleEl = $("titlebar-title");
             if (titleEl) {
-                titleEl.textContent = projectInfo.name
-                    ? "VJA Form Designer (" + projectInfo.name + ")"
+                titleEl.textContent = getProjectData().projectInfo.name
+                    ? "VJA Form Designer (" + getProjectData().projectInfo.name + ")"
                     : "VJA Form Designer";
             }
         }
