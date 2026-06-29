@@ -761,6 +761,105 @@
             };
         }
 
+        /* ═══════════════════════════════════════════
+           _CTX — 状態管理オブジェクト
+           デザイナー全体の状態をグループごとに管理する。
+           各グループへのアクセスは getter 関数経由で行う。
+        ═══════════════════════════════════════════ */
+        var _CTX = {
+            // デザイナーのUI操作状態
+            _state: {
+                selId:      null,
+                activeTool: "pointer",
+                snapOn:     true,
+                showGrid:   false,
+                curTab:     "p",
+                ctxId:      null,
+            },
+            // プロジェクトデータ
+            _project: {
+                forms:       [],
+                curFormIdx:  0,
+                startFormId: "",
+                constants:   [],
+                tables:      [],
+                cloudInfras: [],
+                extRuntime:  {js: "", doc: ""},
+                aiConfig: {
+                    endpoint:    "http://localhost:8080",
+                    apiKey:      "",
+                    model:       "",
+                    models:      [],
+                    enabled:     false,
+                    routerMode:  false,
+                    maxTokens:   "",
+                    temperature: "",
+                    thinking:    true,
+                },
+                projectInfo: {
+                    name:        "",
+                    description: "",
+                    version:     "1.0.0",
+                    author:      "",
+                    company:     "",
+                    appEvents:   {onStart: "", onExit: "", onStart_yaml: "", onExit_yaml: ""},
+                },
+            },
+            // 編集履歴・保存パス
+            _history: {
+                undoStack:     [],
+                redoStack:     [],
+                savedSnapshot: null,
+                lastSavePath:  null,
+                lastOpenPath:  null,
+            },
+            // モーダル編集中の一時データ
+            _modal: {
+                constRows:    [],
+                tblEdit:      null,
+                tblEditIdx:   -1,
+                coldefWid:    null,
+                coldefRows:   [],
+                coldefMaxRows:0,
+                validEdit:    null,
+                confirmOkCb:  null,
+            },
+            // YAMLエディタの入力状態
+            _editor: {
+                searchLast:    {taId: null, word: "", pos: 0},
+                clickPos:      -1,
+                lastMouseDown: 0,
+                dblPending:    false,
+                yu: {stack: [], idx: -1, busy: false},
+                ju: {stack: [], idx: -1, busy: false},
+            },
+            // AI生成リクエストの状態
+            _ai: {
+                fetchId:      null,
+                loadingTimer: null,
+            },
+            // フォント・パネル幅等のUI設定
+            _ui: {
+                config: {
+                    uiFontSize:       13,
+                    uiFontFamily:     "",
+                    editorFontSize:   16,
+                    editorFontFamily: "'Courier New', Courier, monospace",
+                    leftPanelW:       110,
+                    rightPanelW:      420,
+                },
+            },
+        };
+
+        // ── _CTX getter 関数 ──────────────────────────
+        function getDesignerState() { return _CTX._state;    }
+        function getProjectData()   { return _CTX._project;  }
+        function getEditHistory()   { return _CTX._history;  }
+        function getModalContext()  { return _CTX._modal;    }
+        function getEditorContext() { return _CTX._editor;   }
+        function getAiContext()     { return _CTX._ai;       }
+        function getUiConfig()      { return _CTX._ui.config;}
+
         // プロジェクト全体
         let forms = [makeFormData("Form1")]; // フォーム配列
         let curFormIdx = 0; // 現在編集中インデックス
@@ -811,8 +910,6 @@
         let _cloudDraft = [];
         let extRuntime = {js: "", doc: ""};
 
-        let _aiFetchId = null;
-        let _aiLoadingTimer = null;
         let aiConfig = {
             endpoint: "http://localhost:8080",
             apiKey: "",
@@ -3441,11 +3538,11 @@
         // モーダルを閉じる。AIローディングタイマーが残っていれば合わせてクリアする。
         // layer: 閉じる対象のroot要素ID（省略時は"modal-root"）
         function closeModal(layer = "modal-root") {
-            if (layer === "modal-root" && _aiLoadingTimer) {clearInterval(_aiLoadingTimer); _aiLoadingTimer = null;}
+            if (layer === "modal-root" && getAiContext().loadingTimer) {clearInterval(getAiContext().loadingTimer); getAiContext().loadingTimer = null;}
             $(layer).innerHTML = "";
         }
         // AI生成中のローディングモーダルを表示する。
-        // 経過秒数タイマーとキャンセルボタンを持つ。_aiLoadingTimer で管理。
+        // 経過秒数タイマーとキャンセルボタンを持つ。getAiContext().loadingTimer で管理。
         function showLoadingModal(msg) {
             $("modal-root").innerHTML =
                 `<div class="ov"><div class="modal modal-loading" style="padding:32px 40px;display:flex;flex-direction:column;align-items:center;gap:16px;min-width:260px">` +
@@ -3454,16 +3551,16 @@
                 `<div id="loading-timer" style="color:var(--accent,#7eb8f7);font-size:20px;font-weight:bold">0秒</div>` +
                 `<button class="modal-btn" onmousedown="cancelAiGenerate()" style="margin-top:12px;padding:8px 28px">キャンセル</button>` +
                 `</div></div>`;
-            if (_aiLoadingTimer) {clearInterval(_aiLoadingTimer); _aiLoadingTimer = null;}
+            if (getAiContext().loadingTimer) {clearInterval(getAiContext().loadingTimer); getAiContext().loadingTimer = null;}
             let sec = 0;
-            _aiLoadingTimer = setInterval(() => {
+            getAiContext().loadingTimer = setInterval(() => {
                 const el = $("loading-timer");
                 if (el) el.textContent = (++sec) + "秒";
             }, 1000);
         }
         // AI生成をキャンセルする。vja.fetchAbort() でBun側のリクエストを中断する。
         function cancelAiGenerate() {
-            if (_aiFetchId) {window.vja?.fetchAbort?.(_aiFetchId); _aiFetchId = null;}
+            if (getAiContext().fetchId) {window.vja?.fetchAbort?.(getAiContext().fetchId); getAiContext().fetchId = null;}
         }
 
         // AI生成共通実行関数。
@@ -3499,7 +3596,7 @@
                 body.reasoning_effort = "none";
                 body.chat_template_kwargs = { enable_thinking: false };
             }
-            _aiFetchId = null;
+            getAiContext().fetchId = null;
             showLoadingModal(loadingMsg || "AI生成中…");
             let startTime;
             let res = null;
@@ -3512,9 +3609,9 @@
                     headers,
                     body: JSON.stringify(body),
                 });
-                _aiFetchId = fetchReq.fetchId;
+                getAiContext().fetchId = fetchReq.fetchId;
                 res = await fetchReq;
-                _aiFetchId = null;
+                getAiContext().fetchId = null;
                 if (!res.ok) {
                     const errText = await res.text().catch(() => "");
                     throw new Error("HTTP " + res.status + (errText ? " — " + errText.slice(0, 120) : ""));
@@ -3553,7 +3650,7 @@
                     if (onError) await onError(e);
                 }
             } finally {
-                _aiFetchId = null;
+                getAiContext().fetchId = null;
                 // AI処理時間を出力.
                 vja.log.debug("# AI処理時間: " + (Date.now() - startTime) + " msec");
             }
