@@ -1278,6 +1278,9 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
         lines.push(`    const rowFg = el.dataset.rowFg || "#000000";`);
         lines.push(`    const maxRows = el.dataset.maxRows ? parseInt(el.dataset.maxRows) : 0;`);
         lines.push(`    const displayRows = maxRows > 0 ? (rows || []).slice(0, maxRows) : (rows || []);`);
+        lines.push(`    // セットしたデータを保持（vja.widget.get()で取得可能にする）`);
+        lines.push(`    window._vjaDatagridStore = window._vjaDatagridStore || {};`);
+        lines.push(`    window._vjaDatagridStore[el.id] = rows || [];`);
         lines.push(`    const fontFamily = el.dataset.fontFamily || "";`);
         lines.push(`    const fontWeight = el.dataset.fontBold || "normal";`);
         lines.push(`    const fontStyle = (fontFamily ? "font-family:" + fontFamily + ";" : "") + "font-weight:" + fontWeight + ";";`);

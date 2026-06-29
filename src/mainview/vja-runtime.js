@@ -41,6 +41,10 @@
             const el = _getEl(name);
             if (!el) return null;
             const tag = el.tagName.toLowerCase();
+            // datagrid: セットしたデータをそのまま返す
+            if (el.dataset.columns !== undefined) {
+                return (window._vjaDatagridStore || {})[name] || [];
+            }
             if (tag === "input") {
                 if (el.type === "checkbox" || el.type === "radio") return el.checked;
                 return el.value;
