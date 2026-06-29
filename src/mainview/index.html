@@ -883,17 +883,6 @@
             projectInfo.appEvents = {onStart: "", onExit: "", onStart_yaml: "", onExit_yaml: ""};
         }
 
-        // エディタ設定（一時保持のみ・保存はuiConfig経由）
-        // UIフォント設定（vja自身に保存）
-        let uiConfig = {
-            uiFontSize: 13,
-            uiFontFamily: "",
-            editorFontSize: 16,
-            editorFontFamily: "'Courier New', Courier, monospace",
-            leftPanelW: 110,
-            rightPanelW: 420,
-        };
-
         // UIフォント用フォントリスト
         const UI_FONT_LIST = [
             {label: "（システムデフォルト）", value: ""},
@@ -5763,10 +5752,10 @@
 
 
         function openFontConfig() {
-            const curFont = uiConfig.editorFontFamily;
-            const curSize = uiConfig.editorFontSize;
-            const curUiSize = uiConfig.uiFontSize;
-            const curUiFont = uiConfig.uiFontFamily;
+            const curFont = getUiConfig().editorFontFamily;
+            const curSize = getUiConfig().editorFontSize;
+            const curUiSize = getUiConfig().uiFontSize;
+            const curUiFont = getUiConfig().uiFontFamily;
 
             // pv-sel 用オプション：{value, label} 形式
             // value にフォントのCSS値を直接使用し、saveFontConfig で label→value 変換不要にする
@@ -5885,10 +5874,10 @@
             var uiLabel = document.querySelector("#uf-font-sel .pv-sel-btn span:first-child")?.textContent || "";
             var uiFont = (UI_FONT_LIST.find(function(f) { return f.label === uiLabel; }) || UI_FONT_LIST[0]).value;
             // uiConfigに統合して保存
-            uiConfig = {...uiConfig, editorFontSize: editorSize, editorFontFamily: edFont, uiFontSize: uiSize, uiFontFamily: uiFont};
+            Object.assign(getUiConfig(), {editorFontSize: editorSize, editorFontFamily: edFont, uiFontSize: uiSize, uiFontFamily: uiFont});
             applyEditorConfig();
             applyUiConfig();
-            window.bunSaveUiConfig?.(uiSize, uiFont, editorSize, edFont, uiConfig.leftPanelW, uiConfig.rightPanelW);
+            window.bunSaveUiConfig?.(uiSize, uiFont, editorSize, edFont, getUiConfig().leftPanelW, getUiConfig().rightPanelW);
             closeModal();
             pushUndo();
             showToast("フォント設定を保存しました");
@@ -6064,29 +6053,29 @@
         // bridge.tsからのUI設定読み込み結果を受け取るハンドラー
         window._onLoadUiConfigResult = function (cfg) {
             if (!cfg) return;
-            uiConfig = {
-                uiFontSize: cfg.uiFontSize || 13,
-                uiFontFamily: cfg.uiFontFamily || "",
-                editorFontSize: cfg.editorFontSize || 16,
+            Object.assign(getUiConfig(), {
+                uiFontSize:       cfg.uiFontSize || 13,
+                uiFontFamily:     cfg.uiFontFamily || "",
+                editorFontSize:   cfg.editorFontSize || 16,
                 editorFontFamily: cfg.editorFontFamily || "'Courier New', Courier, monospace",
-                leftPanelW: cfg.leftPanelW || 110,
-                rightPanelW: cfg.rightPanelW || 420,
-            };
+                leftPanelW:       cfg.leftPanelW || 110,
+                rightPanelW:      cfg.rightPanelW || 420,
+            });
             applyUiConfig();
             applyEditorConfig();
             applyViewSettings();
         };
 
         function applyUiConfig() {
-            document.documentElement.style.setProperty("--ui-font-size", uiConfig.uiFontSize + "px");
-            if (uiConfig.uiFontFamily) {
-                document.documentElement.style.setProperty("--font", uiConfig.uiFontFamily);
+            document.documentElement.style.setProperty("--ui-font-size", getUiConfig().uiFontSize + "px");
+            if (getUiConfig().uiFontFamily) {
+                document.documentElement.style.setProperty("--font", getUiConfig().uiFontFamily);
             }
         }
 
         function applyEditorConfig() {
-            const fs = uiConfig.editorFontSize + "px";
-            const ff = uiConfig.editorFontFamily;
+            const fs = getUiConfig().editorFontSize + "px";
+            const ff = getUiConfig().editorFontFamily;
             // CSS変数を更新
             document.documentElement.style.setProperty("--editor-font-size", fs);
             document.documentElement.style.setProperty("--editor-font-family", ff);
@@ -6104,8 +6093,8 @@
 
         function applyViewSettings() {
             // パネル幅を復元
-            const lw = uiConfig.leftPanelW || 110;
-            const rw = uiConfig.rightPanelW || 420;
+            const lw = getUiConfig().leftPanelW || 110;
+            const rw = getUiConfig().rightPanelW || 420;
             document.documentElement.style.setProperty("--panel", lw + "px");
             document.documentElement.style.setProperty("--prop", rw + "px");
             const tb = $("toolbox"), pp = $("props-panel");
@@ -6173,6 +6162,12 @@
                 return;
             }
 
+            // Ctrl+F: 入力フィールド内でも有効（エディタ検索）
+            if (e.ctrlKey && e.key === "f") {
+                const searchIn = $("editor-search-in");
+                if (searchIn) {e.preventDefault(); searchIn.focus(); searchIn.select();}
+            }
+
             // 以下は入力フィールド内では無効
             if (inInput) return;
 
@@ -6181,10 +6176,6 @@
             if (e.ctrlKey && e.key === "s") {e.preventDefault(); actSave();}
             if (navigator.platform.startsWith("Mac") && e.metaKey && e.key === "s") {e.preventDefault(); actSave();} // Mac: Cmd+S
             if (e.ctrlKey && e.key === "w") {e.preventDefault(); showCloseConfirm();}
-            if (e.ctrlKey && e.key === "f") {
-                const searchIn = $("editor-search-in");
-                if (searchIn) {e.preventDefault(); searchIn.focus(); searchIn.select();}
-            }
             if (e.ctrlKey && e.key === "d") {e.preventDefault(); actDuplicate();}
             if (e.key === "F4" && e.altKey) {e.preventDefault(); showCloseConfirm();}
             if ((e.key === "Delete" || e.key === "Backspace") && getDesignerState().selId) {e.preventDefault(); actDelete();}
@@ -6254,12 +6245,12 @@
                     newW = Math.min(MAX_W, Math.max(MIN_W, startW + (me.clientX - startX)));
                     tb.style.width = newW + "px";
                     document.documentElement.style.setProperty("--panel", newW + "px");
-                    uiConfig.leftPanelW = newW;
+                    getUiConfig().leftPanelW = newW;
                 } else {
                     newW = Math.min(MAX_W, Math.max(MIN_W, startW - (me.clientX - startX)));
                     pp.style.width = newW + "px";
                     document.documentElement.style.setProperty("--prop", newW + "px");
-                    uiConfig.rightPanelW = newW;
+                    getUiConfig().rightPanelW = newW;
                 }
                 requestAnimationFrame(drawRulers);
             };
@@ -6270,9 +6261,9 @@
                 document.body.style.userSelect = "";
                 // パネル幅をui-config.jsonに保存
                 window.bunSaveUiConfig?.(
-                    uiConfig.uiFontSize, uiConfig.uiFontFamily,
-                    uiConfig.editorFontSize, uiConfig.editorFontFamily,
-                    uiConfig.leftPanelW, uiConfig.rightPanelW
+                    getUiConfig().uiFontSize, getUiConfig().uiFontFamily,
+                    getUiConfig().editorFontSize, getUiConfig().editorFontFamily,
+                    getUiConfig().leftPanelW, getUiConfig().rightPanelW
                 );
                 pushUndo();
             };
