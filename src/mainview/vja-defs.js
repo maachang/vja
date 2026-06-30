@@ -85,877 +85,877 @@
    全てに反映されているか、出力直前に再確認すること。
 ═══════════════════════════════════════════════════════════════ */
 
-        /* ═══════════════════════════════════════════
-            WIDGET_DEFS 定義
-        ═══════════════════════════════════════════ */
-        // ── プロパティ定義の共通パーツ（WIDGET_DEFS.pdefs内でスプレッドして使う）──
-        const PP_POS = [
-            {k: "name", lb: "Name", t: "text", sp: "name"},
-            {k: "x", lb: "Left", t: "num", sp: "x"},
-            {k: "y", lb: "Top", t: "num", sp: "y"},
-            {k: "w", lb: "Width", t: "num", sp: "w"},
-            {k: "h", lb: "Height", t: "num", sp: "h"},
-        ];
-        // フォントセット（fontSize を持つウィジェット共通）
-        const PP_FONT = [
-            {k: "fontSize", lb: "FontSize", t: "num"},
-            {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
-            {k: "fontBold", lb: "Bold", t: "bool"},
-        ];
-        // ボーダー（border持ちウィジェット共通）
-        const PP_BORDER = [
-            {k: "borderSize", lb: "BorderSize", t: "num"},
-            {k: "borderColor", lb: "BorderColor", t: "color"},
-        ];
-        // 表示・説明（全ウィジェット共通）
-        const PP_TAIL = [
-            {k: "visible", lb: "Visible", t: "bool"},
-            {sep: "説明"},
-            {k: "description", lb: "説明（任意）", t: "area"},
-        ];
+/* ═══════════════════════════════════════════
+    WIDGET_DEFS 定義
+═══════════════════════════════════════════ */
+// ── プロパティ定義の共通パーツ（WIDGET_DEFS.pdefs内でスプレッドして使う）──
+const PP_POS = [
+    { k: "name", lb: "Name", t: "text", sp: "name" },
+    { k: "x", lb: "Left", t: "num", sp: "x" },
+    { k: "y", lb: "Top", t: "num", sp: "y" },
+    { k: "w", lb: "Width", t: "num", sp: "w" },
+    { k: "h", lb: "Height", t: "num", sp: "h" },
+];
+// フォントセット（fontSize を持つウィジェット共通）
+const PP_FONT = [
+    { k: "fontSize", lb: "FontSize", t: "num" },
+    { k: "fontFamily", lb: "FontFamily", t: "fontsel" },
+    { k: "fontBold", lb: "Bold", t: "bool" },
+];
+// ボーダー（border持ちウィジェット共通）
+const PP_BORDER = [
+    { k: "borderSize", lb: "BorderSize", t: "num" },
+    { k: "borderColor", lb: "BorderColor", t: "color" },
+];
+// 表示・説明（全ウィジェット共通）
+const PP_TAIL = [
+    { k: "visible", lb: "Visible", t: "bool" },
+    { sep: "説明" },
+    { k: "description", lb: "説明（任意）", t: "area" },
+];
 
-        // ポインタツール（WIDGET_DEFSとは別の特殊ツール。配置可能なウィジェットではない）
-        const POINTER_TOOL = {id: "pointer", label: "ポインタ", icon: "🖱️"};
+// ポインタツール（WIDGET_DEFSとは別の特殊ツール。配置可能なウィジェットではない）
+const POINTER_TOOL = { id: "pointer", label: "ポインタ", icon: "🖱️" };
 
-        /* ═══════════════════════════════════════════
-           WIDGET_DEFS — ウィジェット定義の統合オブジェクト
-           1タグにつき1エントリで、ラベル・アイコン・デフォルト値
-           （旧TOOLS）・発火可能イベント一覧（旧EVENTS）・
-           プロパティパネル定義（旧PDEFS）を集約する。
-           新しいウィジェットを追加する場合は、ここに1エントリ
-           追加するだけでよい（以前のように複数箇所への追記は不要）。
-        ═══════════════════════════════════════════ */
-        const WIDGET_DEFS = {
-            button: {
-                label: "button", icon: "⬜",
-                def: {
-                    w: 96, h: 28,
-                    text: "Button1",
-                    bg: "#e0e0e0", fg: "#000",
-                    fontSize: 12, fontFamily: "", fontBold: false,
-                    borderSize: 1, borderColor: "#cccccc", borderRadius: 2,
-                    disabled: false, visible: true, description: "",
-                },
-                events: ["Click", "MouseDown", "MouseUp", "MouseEnter", "MouseLeave", "GotFocus", "LostFocus"],
-                pdefs: [
-                    ...PP_POS,
-                    {sep: "外観"},
-                    {k: "text", lb: "Text", t: "text"},
-                    {k: "bg", lb: "BackColor", t: "color"},
-                    {k: "fg", lb: "ForeColor", t: "color"},
-                    ...PP_FONT,
-                    ...PP_BORDER,
-                    {k: "borderRadius", lb: "Radius", t: "num"},
-                    {sep: "動作"},
-                    {k: "disabled", lb: "Disabled", t: "bool"},
-                    ...PP_TAIL,
-                ],
-                preview: (p, base, vis) => `<button style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};border-radius:${p.borderRadius || 2}px;cursor:default;pointer-events:none;${vis}">${esc(p.text)}</button>`,
+/* ═══════════════════════════════════════════
+    WIDGET_DEFS — ウィジェット定義の統合オブジェクト
+    1タグにつき1エントリで、ラベル・アイコン・デフォルト値
+    （旧TOOLS）・発火可能イベント一覧（旧EVENTS）・
+    プロパティパネル定義（旧PDEFS）を集約する。
+    新しいウィジェットを追加する場合は、ここに1エントリ
+    追加するだけでよい（以前のように複数箇所への追記は不要）。
+═══════════════════════════════════════════ */
+const WIDGET_DEFS = {
+    button: {
+        label: "button", icon: "⬜",
+        def: {
+            w: 96, h: 28,
+            text: "Button1",
+            bg: "#e0e0e0", fg: "#000",
+            fontSize: 12, fontFamily: "", fontBold: false,
+            borderSize: 1, borderColor: "#cccccc", borderRadius: 2,
+            disabled: false, visible: true, description: "",
+        },
+        events: ["Click", "MouseDown", "MouseUp", "MouseEnter", "MouseLeave", "GotFocus", "LostFocus"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "外観" },
+            { k: "text", lb: "Text", t: "text" },
+            { k: "bg", lb: "BackColor", t: "color" },
+            { k: "fg", lb: "ForeColor", t: "color" },
+            ...PP_FONT,
+            ...PP_BORDER,
+            { k: "borderRadius", lb: "Radius", t: "num" },
+            { sep: "動作" },
+            { k: "disabled", lb: "Disabled", t: "bool" },
+            ...PP_TAIL,
+        ],
+        preview: (p, base, vis) => `<button style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};border-radius:${p.borderRadius || 2}px;cursor:default;pointer-events:none;${vis}">${esc(p.text)}</button>`,
+    },
+    label: {
+        label: "label", icon: "🏷️",
+        def: {
+            w: 100, h: 24,
+            text: "Label1",
+            bg: "transparent", fg: "#000",
+            fontSize: 12, fontFamily: "", fontBold: false,
+            align: "left",
+            visible: true, description: "",
+        },
+        events: ["Click", "MouseEnter", "MouseLeave"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "外観" },
+            { k: "text", lb: "Text", t: "text" },
+            { k: "fg", lb: "ForeColor", t: "color" },
+            { k: "bg", lb: "BackColor", t: "color" },
+            ...PP_FONT,
+            { k: "align", lb: "Align", t: "sel", opts: ["left", "center", "right"] },
+            ...PP_TAIL,
+        ],
+        preview: (p, base, vis) => `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};text-align:${p.align || "left"};display:flex;align-items:center;overflow:hidden;padding:0 2px;${vis}">${esc(p.text)}</div>`,
+    },
+    inputtype: {
+        label: "text", icon: "📝",
+        def: {
+            w: 140, h: 28,
+            inputType: "text", text: "", placeholder: "",
+            bg: "#fff", fg: "#000",
+            fontSize: 12, fontFamily: "", fontBold: false,
+            borderSize: 1, borderColor: "#cccccc",
+            maxLength: 0, required: false, readonly: false, disabled: false,
+            visible: true, description: "",
+        },
+        events: ["TextChanged", "KeyDown", "KeyUp", "GotFocus", "LostFocus", "Click"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "入力タイプ" },
+            {
+                k: "inputType", lb: "InputType", t: "sel",
+                opts: ["text", "password", "number", "email", "tel", "date", "time", "datetime-local", "url", "search"]
             },
-            label: {
-                label: "label", icon: "🏷️",
-                def: {
-                    w: 100, h: 24,
-                    text: "Label1",
-                    bg: "transparent", fg: "#000",
-                    fontSize: 12, fontFamily: "", fontBold: false,
-                    align: "left",
-                    visible: true, description: "",
-                },
-                events: ["Click", "MouseEnter", "MouseLeave"],
-                pdefs: [
-                    ...PP_POS,
-                    {sep: "外観"},
-                    {k: "text", lb: "Text", t: "text"},
-                    {k: "fg", lb: "ForeColor", t: "color"},
-                    {k: "bg", lb: "BackColor", t: "color"},
-                    ...PP_FONT,
-                    {k: "align", lb: "Align", t: "sel", opts: ["left", "center", "right"]},
-                    ...PP_TAIL,
-                ],
-                preview: (p, base, vis) => `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};text-align:${p.align || "left"};display:flex;align-items:center;overflow:hidden;padding:0 2px;${vis}">${esc(p.text)}</div>`,
-            },
-            inputtype: {
-                label: "text", icon: "📝",
-                def: {
-                    w: 140, h: 28,
-                    inputType: "text", text: "", placeholder: "",
-                    bg: "#fff", fg: "#000",
-                    fontSize: 12, fontFamily: "", fontBold: false,
-                    borderSize: 1, borderColor: "#cccccc",
-                    maxLength: 0, required: false, readonly: false, disabled: false,
-                    visible: true, description: "",
-                },
-                events: ["TextChanged", "KeyDown", "KeyUp", "GotFocus", "LostFocus", "Click"],
-                pdefs: [
-                    ...PP_POS,
-                    {sep: "入力タイプ"},
-                    {
-                        k: "inputType", lb: "InputType", t: "sel",
-                        opts: ["text", "password", "number", "email", "tel", "date", "time", "datetime-local", "url", "search"]
-                    },
-                    {sep: "外観"},
-                    {k: "text", lb: "Text", t: "text"},
-                    {k: "placeholder", lb: "Placeholder", t: "text"},
-                    {k: "maxLength", lb: "MaxLength", t: "num"},
-                    {k: "bg", lb: "BackColor", t: "color"},
-                    {k: "fg", lb: "ForeColor", t: "color"},
-                    ...PP_FONT,
-                    ...PP_BORDER,
-                    {sep: "動作"},
-                    {k: "disabled", lb: "Disabled", t: "bool"},
-                    {k: "readonly", lb: "ReadOnly", t: "bool"},
-                    {k: "required", lb: "Required", t: "bool"},
-                    ...PP_TAIL,
-                ],
-                preview: (p, base, vis) => {
-                    const itype = p.inputType || "text";
-                    const typeIcons = {
-                        password: "🔒 password",
-                        email: "📧 email",
-                        number: "🔢 number",
-                        tel: "📞 tel",
-                        url: "🌐 url",
-                        search: "🔍 search",
-                        date: "📅 date",
-                        time: "⏰ time",
-                        month: "📆 month",
-                        week: "🗓 week",
-                        "datetime-local": "📅🕐 datetime",
-                        color: "🎨 color",
-                        range: "↔ range",
-                        file: "📁 file",
-                        text: "📝 text",
-                    };
-                    const needsPreview = [
-                        "date", "time", "month", "week", "datetime-local", "color", "range", "file",
-                    ].includes(itype);
-                    if (needsPreview) {
-                        return `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};display:flex;align-items:center;padding:0 6px;gap:6px;pointer-events:none;${vis}"><span style="font-size:11px;opacity:.7">${typeIcons[itype] || itype}</span></div>`;
-                    }
-                    return `<input type="${itype}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" ${p.maxLength ? `maxlength="${p.maxLength}"` : ""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px;pointer-events:none;${vis}">`;
-                },
-            },
-            textarea: {
-                label: "textarea", icon: "📄",
-                def: {
-                    w: 200, h: 80,
-                    text: "", placeholder: "",
-                    bg: "#fff", fg: "#000",
-                    fontSize: 12, fontFamily: "", fontBold: false,
-                    borderSize: 1, borderColor: "#cccccc",
-                    disabled: false, readonly: false,
-                    visible: true, description: "",
-                },
-                events: ["TextChanged", "KeyDown", "KeyUp", "GotFocus", "LostFocus", "Click"],
-                pdefs: [
-                    ...PP_POS,
-                    {sep: "外観"},
-                    {k: "text", lb: "Text", t: "area"},
-                    {k: "placeholder", lb: "Placeholder", t: "text"},
-                    {k: "bg", lb: "BackColor", t: "color"},
-                    {k: "fg", lb: "ForeColor", t: "color"},
-                    ...PP_FONT,
-                    ...PP_BORDER,
-                    {sep: "動作"},
-                    {k: "disabled", lb: "Disabled", t: "bool"},
-                    {k: "readonly", lb: "ReadOnly", t: "bool"},
-                    ...PP_TAIL,
-                ],
-                preview: (p, base, vis) => `<textarea style="${base}background:${p.bg || "#fff"};color:${p.fg || "#000"};font-size:${p.fontSize || 12}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};resize:none;padding:4px;box-sizing:border-box;pointer-events:none;${vis}" placeholder="${esc(p.placeholder || "")}">${esc(p.text || "")}</textarea>`,
-            },
-            checkbox: {
-                label: "checkbox", icon: "☑️",
-                def: {
-                    w: 100, h: 22,
-                    text: "CheckBox1", checked: false,
-                    fg: "#000",
-                    fontSize: 12, fontFamily: "", fontBold: false,
-                    visible: true, description: "",
-                },
-                events: ["Click", "CheckedChanged"],
-                pdefs: [
-                    ...PP_POS,
-                    {sep: "外観"},
-                    {k: "text", lb: "Text", t: "text"},
-                    {k: "fg", lb: "ForeColor", t: "color"},
-                    ...PP_FONT,
-                    {sep: "状態"},
-                    {k: "checked", lb: "Checked", t: "bool"},
-                    ...PP_TAIL,
-                ],
-                preview: (p, base, vis) => `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};pointer-events:none;${vis}"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
-            },
-            radio: {
-                label: "radioButton", icon: "🔘",
-                def: {
-                    w: 100, h: 22,
-                    text: "RadioButton1", checked: false, group: "Group1",
-                    fg: "#000",
-                    fontSize: 12, fontFamily: "", fontBold: false,
-                    visible: true, description: "",
-                },
-                events: ["Click", "CheckedChanged"],
-                pdefs: [
-                    ...PP_POS,
-                    {sep: "外観"},
-                    {k: "text", lb: "Text", t: "text"},
-                    {k: "group", lb: "GroupName", t: "text"},
-                    {k: "fg", lb: "ForeColor", t: "color"},
-                    ...PP_FONT,
-                    {sep: "状態"},
-                    {k: "checked", lb: "Checked", t: "bool"},
-                    ...PP_TAIL,
-                ],
-                preview: (p, base, vis) => `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};pointer-events:none;${vis}"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
-            },
-            selectBox: {
-                label: "selectBox", icon: "🔽",
-                def: {
-                    w: 120, h: 24,
-                    items: "項目1\n項目2\n項目3",
-                    bg: "#fff", fg: "#000",
-                    fontSize: 12, fontFamily: "", fontBold: false,
-                    borderSize: 1, borderColor: "#cccccc",
-                    visible: true, description: "",
-                },
-                events: ["SelectedIndexChanged", "TextChanged", "DropDown"],
-                pdefs: [
-                    ...PP_POS,
-                    {sep: "外観"},
-                    {k: "items", lb: "Items", t: "itemsdef"},
-                    {k: "bg", lb: "BackColor", t: "color"},
-                    {k: "fg", lb: "ForeColor", t: "color"},
-                    ...PP_FONT,
-                    ...PP_BORDER,
-                    ...PP_TAIL,
-                ],
-                preview: (p, base, vis) => `<select style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};pointer-events:none;${vis}">${(
-                    p.items || ""
-                )
-                    .split("\n")
-                    .map((s) => {const idx = s.indexOf("="); const label = idx > 0 ? s.slice(0, idx).trim() : s.trim(); const val = idx > 0 ? s.slice(idx + 1).trim() : s.trim(); return `<option value="${esc(val)}">${esc(label)}</option>`;})
-                    .join("")}</select>`,
-            },
-            listbox: {
-                label: "listBox", icon: "📋",
-                def: {
-                    w: 120, h: 80,
-                    items: "項目1\n項目2\n項目3",
-                    bg: "#fff", fg: "#000",
-                    fontSize: 12, fontFamily: "", fontBold: false,
-                    borderSize: 1, borderColor: "#cccccc",
-                    visible: true, description: "",
-                },
-                events: ["SelectedIndexChanged", "Click", "MouseDown"],
-                pdefs: [
-                    ...PP_POS,
-                    {sep: "外観"},
-                    {k: "items", lb: "Items", t: "itemsdef"},
-                    {k: "bg", lb: "BackColor", t: "color"},
-                    {k: "fg", lb: "ForeColor", t: "color"},
-                    ...PP_FONT,
-                    ...PP_BORDER,
-                    ...PP_TAIL,
-                ],
-                preview: (p, base, vis) => `<select multiple style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};pointer-events:none;${vis}">${(
-                    p.items || ""
-                )
-                    .split("\n")
-                    .map((s) => {const idx = s.indexOf("="); const label = idx > 0 ? s.slice(0, idx).trim() : s.trim(); const val = idx > 0 ? s.slice(idx + 1).trim() : s.trim(); return `<option value="${esc(val)}">${esc(label)}</option>`;})
-                    .join("")}</select>`,
-            },
-            datagrid: {
-                label: "テーブル", icon: "🗃️",
-                def: {
-                    w: 320, h: 160,
-                    columns: "ID:20\n名前:50\n値:30",
-                    bg: "#ffffff", fg: "#000000",
-                    maxRows: 10,
-                    headerBg: "#4a4a6a", headerFg: "#ffffff",
-                    rowBg: "#ffffff", rowAltBg: "#f5f5f5", rowFg: "#000000",
-                    borderSize: 1, borderColor: "#cccccc",
-                    fontSize: 12, fontFamily: "", fontBold: false,
-                    rowHeight: 24, headerHeight: 28,
-                    visible: true, description: "",
-                },
-                events: ["Click", "RowClick", "HeaderClick"],
-                pdefs: [
-                    ...PP_POS,
-                    {sep: "外観"},
-                    {k: "columns", lb: "Columns", t: "coldef"},
-                    {k: "bg", lb: "BackColor", t: "color"},
-                    {k: "fg", lb: "ForeColor", t: "color"},
-                    {k: "headerBg", lb: "HeaderBg", t: "color"},
-                    {k: "headerFg", lb: "HeaderFg", t: "color"},
-                    {k: "rowBg", lb: "RowBackColor", t: "color"},
-                    {k: "rowAltBg", lb: "AltRowBackColor", t: "color"},
-                    {k: "rowFg", lb: "RowForeColor", t: "color"},
-                    ...PP_FONT,
-                    ...PP_BORDER,
-                    {k: "maxRows", lb: "MaxRows", t: "num"},
-                    {k: "rowHeight", lb: "RowHeight", t: "num"},
-                    {k: "headerHeight", lb: "HeaderHeight", t: "num"},
-                    ...PP_TAIL,
-                ],
-                preview: (p) => {
-                    const cols = (p.columns || "ID:20\n名前:50\n値:30").split(/[;\n]/).filter(s => s.trim()).map((c, ci) => {
-                        const parts = c.trim().split(":");
-                        const label = parts[0] || ("列" + (ci + 1));
-                        const width = parseInt(parts[1]) || 20;
-                        const displayName = parts[2] || "";
-                        return {key: "col" + ci, label, width, displayName};
-                    });
-                    const maxR = p.maxRows || 5;
-                    const hbg = p.headerBg || "#4a4a6a";
-                    const hfg = p.headerFg || "#ffffff";
-                    const rbg = p.rowBg || "#ffffff";
-                    const rabg = p.rowAltBg || "#f5f5f5";
-                    const rfg = p.rowFg || "#000000";
-                    const bc = p.borderColor || "#cccccc";
-                    const fs = p.fontSize || 12;
-                    const vis2 = p.visible === false ? "visibility:hidden" : "";
-                    const ff = p.fontFamily || "";
-                    const fw = p.fontBold ? "bold" : "normal";
-                    const fontStyle = (ff ? `font-family:${ff};` : "") + `font-weight:${fw};`;
-                    let html = `<div style="width:100%;height:100%;overflow:auto;border:1px solid ${bc};box-sizing:border-box;font-size:${fs}px;${fontStyle}${vis2}">`;
-                    html += `<table style="width:100%;border-collapse:collapse;table-layout:fixed">`;
-                    html += `<thead><tr style="background:${hbg};color:${hfg}">`;
-                    cols.forEach(c => {
-                        html += `<th style="width:${c.width}%;padding:3px 6px;border:1px solid ${bc};text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${fontStyle}">${esc(c.displayName || c.label)}</th>`;
-                    });
-                    html += `</tr></thead><tbody>`;
-                    for (let r = 0; r < Math.min(maxR, 5); r++) {
-                        const bg2 = r % 2 === 0 ? rbg : rabg;
-                        html += `<tr style="background:${bg2};color:${rfg}">`;
-                        cols.forEach(c => {
-                            html += `<td style="padding:2px 6px;border:1px solid ${bc};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${fontStyle}">${r === 0 ? "(データ)" : ""}</td>`;
-                        });
-                        html += `</tr>`;
-                    }
-                    html += `</tbody></table></div>`;
-                    return html;
-                },
-            },
-            treeview: {
-                label: "treeView", icon: "🌲",
-                def: {
-                    w: 200, h: 160,
-                    items: "親1\n  子1-1\n  子1-2\n親2\n  子2-1",
-                    bg: "#fff", fg: "#000",
-                    fontSize: 12, fontFamily: "", fontBold: false,
-                    borderSize: 1, borderColor: "#cccccc",
-                    visible: true, description: "",
-                },
-                events: ["NodeClick", "NodeExpand", "NodeCollapse", "Click"],
-                pdefs: [
-                    ...PP_POS,
-                    {sep: "外観"},
-                    {k: "items", lb: "Items", t: "area"},
-                    {k: "bg", lb: "BackColor", t: "color"},
-                    {k: "fg", lb: "ForeColor", t: "color"},
-                    ...PP_FONT,
-                    ...PP_BORDER,
-                    ...PP_TAIL,
-                ],
-                preview: (p, base, vis) => {
-                    const buildTree = (lines) => {
-                        let html = "<ul style='list-style:none;padding-left:14px;margin:0'>";
-                        lines.forEach(l => {
-                            const indent = l.match(/^(\s*)/)[1].length;
-                            const text = l.trim();
-                            if (!text) return;
-                            const hasChildren = indent === 0;
-                            html += `<li style="line-height:20px;white-space:nowrap">${hasChildren ? "▶ " : "• "}${esc(text)}</li>`;
-                        });
-                        html += "</ul>";
-                        return html;
-                    };
-                    const treeLines = (p.items || "").split("\n");
-                    return `<div style="${base}background:${p.bg || "#fff"};color:${p.fg || "#000"};font-size:${p.fontSize || 12}px;border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};overflow:auto;padding:4px;box-sizing:border-box;${vis}">${buildTree(treeLines)}</div>`;
-                },
-            },
-            progressbar: {
-                label: "progress", icon: "📊",
-                def: {
-                    w: 200, h: 20,
-                    value: 50, min: 0, max: 100,
-                    bg: "#e0e0e0", fg: "#5b7bfa",
-                    borderSize: 1, borderColor: "#cccccc",
-                    visible: true, description: "",
-                },
-                events: ["Click"],
-                pdefs: [
-                    ...PP_POS,
-                    {sep: "値"},
-                    {k: "value", lb: "Value", t: "num"},
-                    {k: "min", lb: "Min", t: "num"},
-                    {k: "max", lb: "Max", t: "num"},
-                    {sep: "外観"},
-                    {k: "bg", lb: "BackColor", t: "color"},
-                    {k: "fg", lb: "BarColor", t: "color"},
-                    ...PP_BORDER,
-                    ...PP_TAIL,
-                ],
-                preview: (p, base, vis) => {
-                    const pval = Math.min(100, Math.max(0, ((p.value || 0) - (p.min || 0)) / ((p.max || 100) - (p.min || 0)) * 100));
-                    return `<div style="${base}background:${p.bg || "#e0e0e0"};border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};border-radius:3px;overflow:hidden;${vis}"><div style="width:${pval}%;height:100%;background:${p.fg || "#5b7bfa"};transition:width 0.2s;border-radius:3px"></div></div>`;
-                },
-            },
-            groupbox: {
-                label: "groupBox", icon: "🗂️",
-                def: {
-                    w: 160, h: 100,
-                    text: "GroupBox1",
-                    bg: "transparent", fg: "#000",
-                    fontSize: 12, fontFamily: "", fontBold: false,
-                    borderSize: 1, borderColor: "#cccccc",
-                    visible: true, description: "",
-                },
-                events: ["Click"],
-                pdefs: [
-                    ...PP_POS,
-                    {sep: "外観"},
-                    {k: "text", lb: "Text", t: "text"},
-                    {k: "fg", lb: "ForeColor", t: "color"},
-                    {k: "bg", lb: "BackColor", t: "color"},
-                    ...PP_FONT,
-                    ...PP_BORDER,
-                    ...PP_TAIL,
-                ],
-                preview: (p, base, vis) => `<fieldset style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};${vis}"><legend style="padding:0 4px;font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"}">${esc(p.text)}</legend></fieldset>`,
-            },
-            picture: {
-                label: "image", icon: "🖼️",
-                def: {
-                    w: 100, h: 80,
-                    src: "", bg: "#ddd", objectFit: "contain",
-                    borderSize: 1, borderColor: "#cccccc",
-                    visible: true, description: "",
-                },
-                events: ["Click", "MouseDown", "MouseUp"],
-                pdefs: [
-                    ...PP_POS,
-                    {sep: "画像"},
-                    {k: "src", lb: "Image", t: "img"},
-                    {k: "objectFit", lb: "ObjectFit", t: "sel", opts: ["contain", "cover", "fill", "none"]},
-                    {k: "bg", lb: "BackColor", t: "color"},
-                    ...PP_BORDER,
-                    ...PP_TAIL,
-                ],
-                preview: (p, base, vis) => `<div style="${base}background:${p.bg};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};display:flex;align-items:center;justify-content:center;color:#888;font-size:11px;${vis}">${p.src ? `<img src="${esc(p.src)}" style="max-width:100%;max-height:100%;object-fit:${p.objectFit || "contain"}">` : "📷"}</div>`,
-            },
-            datepicker: {
-                label: "日付/時刻", icon: "📅",
-                def: {
-                    w: 160, h: 28,
-                    inputType: "date", value: "", min: "", max: "",
-                    bg: "#fff", fg: "#000",
-                    fontSize: 12, fontFamily: "", fontBold: false,
-                    borderSize: 1, borderColor: "#cccccc",
-                    disabled: false, readonly: false, visible: true, description: "",
-                },
-                events: ["TextChanged", "GotFocus", "LostFocus", "Click"],
-                pdefs: [
-                    ...PP_POS,
-                    {sep: "外観"},
-                    {k: "bg", lb: "BackColor", t: "color"},
-                    {k: "fg", lb: "ForeColor", t: "color"},
-                    ...PP_FONT,
-                    ...PP_BORDER,
-                    {sep: "種別"},
-                    {k: "inputType", lb: "InputType", t: "select", opts: ["date", "time", "datetime-local", "month"]},
-                    {sep: "値"},
-                    {k: "value", lb: "Value", t: "text"},
-                    {k: "min", lb: "Min", t: "text"},
-                    {k: "max", lb: "Max", t: "text"},
-                    {sep: "動作"},
-                    {k: "disabled", lb: "Disabled", t: "bool"},
-                    {k: "readonly", lb: "ReadOnly", t: "bool"},
-                    ...PP_TAIL,
-                ],
-                preview: (p, base, vis) => {
-                    const _itype = p.inputType || "date";
-                    return `<input type="${_itype}" value="${esc(p.value || "")}" ${p.min ? `min="${esc(p.min)}"` : ""}  ${p.max ? `max="${esc(p.max)}"` : ""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px;pointer-events:none;${vis}">`;
-                },
-            },
-            slider: {
-                label: "スライダー", icon: "🎚️",
-                def: {
-                    w: 160, h: 28,
-                    min: 0, max: 100, value: 0, step: 1,
-                    orient: "horizontal", bg: "transparent",
-                    disabled: false, visible: true, description: "",
-                },
-                events: ["ValueChanged", "MouseDown", "MouseUp"],
-                pdefs: [
-                    ...PP_POS,
-                    {sep: "値"},
-                    {k: "min", lb: "Min", t: "num"},
-                    {k: "max", lb: "Max", t: "num"},
-                    {k: "value", lb: "Value", t: "num"},
-                    {k: "step", lb: "Step", t: "num"},
-                    {sep: "外観"},
-                    {k: "orient", lb: "Orient", t: "select", opts: ["horizontal", "vertical"]},
-                    {k: "bg", lb: "BackColor", t: "color"},
-                    {sep: "動作"},
-                    {k: "disabled", lb: "Disabled", t: "bool"},
-                    ...PP_TAIL,
-                ],
-                preview: (p, base, vis) => `<div style="${base}display:flex;align-items:center;${vis}"><input type="range" min="${p.min || 0}" max="${p.max || 100}" value="${p.value || 0}" step="${p.step || 1}" style="width:100%;pointer-events:none;accent-color:#5b7bfa"></div>`,
-            },
-            hscroll: {
-                label: "水平scroll", icon: "↔️",
-                def: {
-                    w: 120, h: 18,
-                    min: 0, max: 100, val: 0,
-                    visible: true, description: "",
-                },
-                events: ["Scroll", "ValueChanged"],
-                pdefs: [
-                    ...PP_POS,
-                    {sep: "値"},
-                    {k: "min", lb: "Min", t: "num"},
-                    {k: "max", lb: "Max", t: "num"},
-                    {k: "val", lb: "Value", t: "num"},
-                    ...PP_TAIL,
-                ],
-                preview: (p, base, vis) => `<div style="${base}background:${p.bg || "#ddd"};border:1px solid #999;border-radius:2px;display:flex;align-items:center;justify-content:space-between;padding:0 2px;${vis}"><span style="font-size:9px">◀</span><div style="flex:1;height:50%;background:#999;margin:0 3px;border-radius:1px"></div><span style="font-size:9px">▶</span></div>`,
-            },
-            vscroll: {
-                label: "垂直scroll", icon: "↕️",
-                def: {
-                    w: 18, h: 80,
-                    min: 0, max: 100, val: 0,
-                    visible: true, description: "",
-                },
-                events: ["Scroll", "ValueChanged"],
-                pdefs: [
-                    ...PP_POS,
-                    {sep: "値"},
-                    {k: "min", lb: "Min", t: "num"},
-                    {k: "max", lb: "Max", t: "num"},
-                    {k: "val", lb: "Value", t: "num"},
-                    ...PP_TAIL,
-                ],
-                preview: (p, base, vis) => `<div style="${base}background:${p.bg || "#ddd"};border:1px solid #999;border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;${vis}"><span style="font-size:9px">▲</span><div style="width:50%;flex:1;background:#999;margin:3px 0;border-radius:1px"></div><span style="font-size:9px">▼</span></div>`,
-            },
-            // フォーム自体（ツールボックスには表示されないため label/icon/def は持たない）
-            form: {
-                events: ["Load", "Resize", "Click", "KeyDown", "KeyUp", "Closing"],
-                pdefs: [
-                    {k: "name", lb: "name", t: "text", sp: "formName"},
-                    {k: "title", lb: "title", t: "text", sp: "formTitle"},
-                    {k: "w", lb: "Width", t: "num", sp: "formW"},
-                    {k: "h", lb: "Height", t: "num", sp: "formH"},
-                    {k: "bg", lb: "背景色", t: "color", sp: "formBg"},
-                    {k: "description", lb: "説明（任意）", t: "area", sp: "formDesc"},
-                ],
-            },
-        };
-
-        // ツールボックスのid（タグ名と同一、ただし"pointer"のみ特殊）からツール情報を取得する。
-        // 旧 TOOLS.find(t => t.id === id) の置き換え。
-        function getToolById(id) {
-            if (id === "pointer") return POINTER_TOOL;
-            const d = WIDGET_DEFS[id];
-            return d ? {id, tag: id, label: d.label, icon: d.icon, def: d.def} : null;
-        }
-
-        /* ═══════════════════════════════════════════
-          STATE  （マルチフォーム対応）
-        ═══════════════════════════════════════════ */
-
-        // フォーム1枚分のデータ構造を生成
-        function makeFormData(title = "Form1") {
-            return {
-                id:
-                    "f" +
-                    Date.now() +
-                    Math.random().toString(36).slice(2, 6),
-                cfg: {title, name: title, w: 640, h: 420, bg: "#ececec", description: ""},
-                widgets: [],
-                idCnt: 1,
-                constants: [], // フォーム単位の定数
-                events: {},    // フォームイベント
-                // ── バリデーション定義 ──────────────────────────────
-                // テーブル管理と同じ構成。validationsは定義の配列。
-                // 各定義: { name, toastDuration, rules: [{ name, type, arg1, arg2, arg3, message }] }
-                //   name: 定義名（vja.validate.run('定義名') で呼び出す）
-                //   toastDuration: トースト表示時間（ms）省略時5000ms
-                //   rules[].name: 対象ウィジェット名
-                //   rules[].type: required/maxLength/minLength/range/numeric/integer/
-                //                 email/tel/zipcode/url/date/alphanumeric/alpha/
-                //                 hiragana/katakana/pattern
-                //   rules[].arg1〜arg3: バリデーションタイプに応じた引数
-                //   rules[].message: エラー時のトースト表示メッセージ
-                validations: [],
+            { sep: "外観" },
+            { k: "text", lb: "Text", t: "text" },
+            { k: "placeholder", lb: "Placeholder", t: "text" },
+            { k: "maxLength", lb: "MaxLength", t: "num" },
+            { k: "bg", lb: "BackColor", t: "color" },
+            { k: "fg", lb: "ForeColor", t: "color" },
+            ...PP_FONT,
+            ...PP_BORDER,
+            { sep: "動作" },
+            { k: "disabled", lb: "Disabled", t: "bool" },
+            { k: "readonly", lb: "ReadOnly", t: "bool" },
+            { k: "required", lb: "Required", t: "bool" },
+            ...PP_TAIL,
+        ],
+        preview: (p, base, vis) => {
+            const itype = p.inputType || "text";
+            const typeIcons = {
+                password: "🔒 password",
+                email: "📧 email",
+                number: "🔢 number",
+                tel: "📞 tel",
+                url: "🌐 url",
+                search: "🔍 search",
+                date: "📅 date",
+                time: "⏰ time",
+                month: "📆 month",
+                week: "🗓 week",
+                "datetime-local": "📅🕐 datetime",
+                color: "🎨 color",
+                range: "↔ range",
+                file: "📁 file",
+                text: "📝 text",
             };
-        }
-
-        /* ═══════════════════════════════════════════
-           _CTX — 状態管理オブジェクト
-           デザイナー全体の状態をグループごとに管理する。
-           各グループへのアクセスは getter 関数経由で行う。
-        ═══════════════════════════════════════════ */
-        var _CTX = {
-            // デザイナーのUI操作状態
-            _state: {
-                selId:      null,
-                activeTool: "pointer",
-                snapOn:     true,
-                showGrid:   false,
-                curTab:     "p",
-                ctxId:      null,
-            },
-            // プロジェクトデータ
-            _project: {
-                forms:       [],
-                curFormIdx:  0,
-                startFormId: "",
-                constants:   [],
-                tables:      [],
-                cloudInfras: [],
-                extRuntime:  {js: "", doc: ""},
-                // 現在編集中フォームへのショートカット（syncCurForm()で都度更新される）
-                widgets:     [],
-                formCfg:     {},
-                idCnt:       1,
-                aiConfig: {
-                    endpoint:    "http://localhost:8080",
-                    apiKey:      "",
-                    model:       "",
-                    models:      [],
-                    enabled:     false,
-                    routerMode:  false,
-                    maxTokens:   "",
-                    temperature: "",
-                    thinking:    true,
-                },
-                projectInfo: {
-                    name:        "",
-                    description: "",
-                    version:     "1.0.0",
-                    author:      "",
-                    company:     "",
-                    appEvents:   {onStart: "", onExit: "", onStart_yaml: "", onExit_yaml: ""},
-                },
-            },
-            // 編集履歴・保存パス
-            _history: {
-                undoStack:     [],
-                redoStack:     [],
-                savedSnapshot: null,
-                lastSavePath:  null,
-                lastOpenPath:  null,
-            },
-            // YAMLエディタの入力状態
-            _editor: {
-                searchLast:    {taId: null, word: "", pos: 0},
-                clickPos:      -1,
-                lastMouseDown: 0,
-                dblPending:    false,
-                yu: {stack: [], idx: -1, busy: false},
-                ju: {stack: [], idx: -1, busy: false},
-            },
-            // AI生成リクエストの状態
-            _ai: {
-                fetchId:      null,
-                loadingTimer: null,
-            },
-            // フォント・パネル幅等のUI設定
-            _ui: {
-                config: {
-                    uiFontSize:       13,
-                    uiFontFamily:     "",
-                    editorFontSize:   16,
-                    editorFontFamily: "'Courier New', Courier, monospace",
-                    leftPanelW:       110,
-                    rightPanelW:      420,
-                },
-            },
-        };
-
-        // ── _CTX getter 関数 ──────────────────────────
-        function getDesignerState() { return _CTX._state;    }
-        function getProjectData()   { return _CTX._project;  }
-        function getEditHistory()   { return _CTX._history;  }
-        function getEditorContext() { return _CTX._editor;   }
-        function getAiContext()     { return _CTX._ai;       }
-        function getUiConfig()      { return _CTX._ui.config;}
-
-        /* ═══════════════════════════════════════════
-           機能別ローカル状態オブジェクト
-           _CTX とは別に、特定の1モーダル・1エディタの中でしか
-           使わない局所的な一時状態をここにまとめる。
-        ═══════════════════════════════════════════ */
-        // クラウドインフラ設定モーダル専用の一時状態
-        var _CLOUD_MODAL = {
-            draft: [],
-        };
-        // アプリイベント編集モーダル専用の一時状態
-        var _APPEVENT_MODAL = {
-            curKey: "onStart",
-        };
-        // 拡張ランタイムエディタ専用のUndo状態
-        var _EXTRT_EDITOR = {
-            jsUndo:  {stack: [], idx: -1, busy: false},
-            docUndo: {stack: [], idx: -1, busy: false},
-        };
-        // 項目定義エディタ専用の一時状態
-        var _ITEMSDEF_EDITOR = {
-            wid:  null,
-            rows: [],
-        };
-        // 確認ダイアログ専用の一時状態
-        var _CONFIRM_MODAL = {
-            okCb: null,
-        };
-        // カラム定義エディタ専用の一時状態
-        var _COLDEF_MODAL = {
-            wid:     null,
-            rows:    [],
-            maxRows: 0,
-        };
-        // 定数編集モーダル専用の一時状態
-        var _CONST_MODAL = {
-            rows: [],
-        };
-        // バリデーション編集モーダル専用の一時状態
-        var _VALID_MODAL = {
-            edit: null,
-        };
-        // テーブル編集モーダル専用の一時状態
-        var _TABLE_MODAL = {
-            edit:    null,
-            editIdx: -1,
-        };
-
-        // _CTX._project の初期データを設定
-        getProjectData().forms = [makeFormData("Form1")];
-        getProjectData().startFormId = getProjectData().forms[0]?.id ?? "";
-
-        // UIフォント用フォントリスト
-        const UI_FONT_LIST = [
-            {label: "（システムデフォルト）", value: ""},
-            {label: "Yu Gothic UI", value: "'Yu Gothic UI', 'Meiryo UI', sans-serif"},
-            {label: "Meiryo", value: "'Meiryo', sans-serif"},
-            {label: "Segoe UI", value: "'Segoe UI', sans-serif"},
-            {label: "Noto Sans JP", value: "'Noto Sans JP', sans-serif"},
-            {label: "sans-serif", value: "sans-serif"},
-            {label: "serif", value: "serif"},
-        ];
-
-        // 現在フォームへのショートカット（_CTX._project に統合済み）
-        getProjectData().widgets = getProjectData().forms[0].widgets;
-        getProjectData().formCfg = getProjectData().forms[0].cfg;
-        getProjectData().idCnt   = getProjectData().forms[0].idCnt;
-
-        const SNAP = 8;
-
-        // 現在フォームの参照を更新する
-        // ── UI全更新（フォーム切替・Undo/Redo後など） ──
-        function refreshAll() {
-            syncCurForm();
-            buildFormSelect();
-            applyForm();
-            fullRedraw();
-            renderProps();
-            updateCount();
-        }
-
-        function syncCurForm() {
-            const f = getProjectData().forms[getProjectData().curFormIdx];
-            getProjectData().widgets = f.widgets;
-            getProjectData().formCfg = f.cfg;
-            getProjectData().idCnt = f.idCnt;
-        }
-        // idCnt の書き戻し（追加・削除時）
-        function commitIdCnt() {
-            getProjectData().forms[getProjectData().curFormIdx].idCnt = getProjectData().idCnt;
-        }
-
-        /* ═══════════════════════════════════════════
-          SNAP / HELPERS
-        ═══════════════════════════════════════════ */
-        const sn = (v) => (getDesignerState().snapOn ? Math.round(v / SNAP) * SNAP : v);
-        /* ═══════════════════════════════════════════
-           共通ユーティリティ
-        ═══════════════════════════════════════════ */
-
-        // ① グローバルブリッジ共通管理
-        const _pvRegistry = {};
-        function pvRegister(key, fn) {_pvRegistry[key] = fn;}
-        function pvCall(key, ...args) {
-            if (_pvRegistry[key]) _pvRegistry[key](...args);
-            else console.warn("[pvCall] not registered:", key);
-        }
-
-        // addEventListener ヘルパー（WebKitGTK対応）
-        function rAfBind(selector, event, fn, root) {
-            requestAnimationFrame(() => {
-                const el = typeof selector === "string"
-                    ? (root || document).querySelector(selector)
-                    : selector;
-                if (el) el.addEventListener(event, fn);
+            const needsPreview = [
+                "date", "time", "month", "week", "datetime-local", "color", "range", "file",
+            ].includes(itype);
+            if (needsPreview) {
+                return `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};display:flex;align-items:center;padding:0 6px;gap:6px;pointer-events:none;${vis}"><span style="font-size:11px;opacity:.7">${typeIcons[itype] || itype}</span></div>`;
+            }
+            return `<input type="${itype}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" ${p.maxLength ? `maxlength="${p.maxLength}"` : ""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px;pointer-events:none;${vis}">`;
+        },
+    },
+    textarea: {
+        label: "textarea", icon: "📄",
+        def: {
+            w: 200, h: 80,
+            text: "", placeholder: "",
+            bg: "#fff", fg: "#000",
+            fontSize: 12, fontFamily: "", fontBold: false,
+            borderSize: 1, borderColor: "#cccccc",
+            disabled: false, readonly: false,
+            visible: true, description: "",
+        },
+        events: ["TextChanged", "KeyDown", "KeyUp", "GotFocus", "LostFocus", "Click"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "外観" },
+            { k: "text", lb: "Text", t: "area" },
+            { k: "placeholder", lb: "Placeholder", t: "text" },
+            { k: "bg", lb: "BackColor", t: "color" },
+            { k: "fg", lb: "ForeColor", t: "color" },
+            ...PP_FONT,
+            ...PP_BORDER,
+            { sep: "動作" },
+            { k: "disabled", lb: "Disabled", t: "bool" },
+            { k: "readonly", lb: "ReadOnly", t: "bool" },
+            ...PP_TAIL,
+        ],
+        preview: (p, base, vis) => `<textarea style="${base}background:${p.bg || "#fff"};color:${p.fg || "#000"};font-size:${p.fontSize || 12}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};resize:none;padding:4px;box-sizing:border-box;pointer-events:none;${vis}" placeholder="${esc(p.placeholder || "")}">${esc(p.text || "")}</textarea>`,
+    },
+    checkbox: {
+        label: "checkbox", icon: "☑️",
+        def: {
+            w: 100, h: 22,
+            text: "CheckBox1", checked: false,
+            fg: "#000",
+            fontSize: 12, fontFamily: "", fontBold: false,
+            visible: true, description: "",
+        },
+        events: ["Click", "CheckedChanged"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "外観" },
+            { k: "text", lb: "Text", t: "text" },
+            { k: "fg", lb: "ForeColor", t: "color" },
+            ...PP_FONT,
+            { sep: "状態" },
+            { k: "checked", lb: "Checked", t: "bool" },
+            ...PP_TAIL,
+        ],
+        preview: (p, base, vis) => `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};pointer-events:none;${vis}"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
+    },
+    radio: {
+        label: "radioButton", icon: "🔘",
+        def: {
+            w: 100, h: 22,
+            text: "RadioButton1", checked: false, group: "Group1",
+            fg: "#000",
+            fontSize: 12, fontFamily: "", fontBold: false,
+            visible: true, description: "",
+        },
+        events: ["Click", "CheckedChanged"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "外観" },
+            { k: "text", lb: "Text", t: "text" },
+            { k: "group", lb: "GroupName", t: "text" },
+            { k: "fg", lb: "ForeColor", t: "color" },
+            ...PP_FONT,
+            { sep: "状態" },
+            { k: "checked", lb: "Checked", t: "bool" },
+            ...PP_TAIL,
+        ],
+        preview: (p, base, vis) => `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};pointer-events:none;${vis}"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
+    },
+    selectBox: {
+        label: "selectBox", icon: "🔽",
+        def: {
+            w: 120, h: 24,
+            items: "項目1\n項目2\n項目3",
+            bg: "#fff", fg: "#000",
+            fontSize: 12, fontFamily: "", fontBold: false,
+            borderSize: 1, borderColor: "#cccccc",
+            visible: true, description: "",
+        },
+        events: ["SelectedIndexChanged", "TextChanged", "DropDown"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "外観" },
+            { k: "items", lb: "Items", t: "itemsdef" },
+            { k: "bg", lb: "BackColor", t: "color" },
+            { k: "fg", lb: "ForeColor", t: "color" },
+            ...PP_FONT,
+            ...PP_BORDER,
+            ...PP_TAIL,
+        ],
+        preview: (p, base, vis) => `<select style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};pointer-events:none;${vis}">${(
+            p.items || ""
+        )
+            .split("\n")
+            .map((s) => { const idx = s.indexOf("="); const label = idx > 0 ? s.slice(0, idx).trim() : s.trim(); const val = idx > 0 ? s.slice(idx + 1).trim() : s.trim(); return `<option value="${esc(val)}">${esc(label)}</option>`; })
+            .join("")}</select>`,
+    },
+    listbox: {
+        label: "listBox", icon: "📋",
+        def: {
+            w: 120, h: 80,
+            items: "項目1\n項目2\n項目3",
+            bg: "#fff", fg: "#000",
+            fontSize: 12, fontFamily: "", fontBold: false,
+            borderSize: 1, borderColor: "#cccccc",
+            visible: true, description: "",
+        },
+        events: ["SelectedIndexChanged", "Click", "MouseDown"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "外観" },
+            { k: "items", lb: "Items", t: "itemsdef" },
+            { k: "bg", lb: "BackColor", t: "color" },
+            { k: "fg", lb: "ForeColor", t: "color" },
+            ...PP_FONT,
+            ...PP_BORDER,
+            ...PP_TAIL,
+        ],
+        preview: (p, base, vis) => `<select multiple style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};pointer-events:none;${vis}">${(
+            p.items || ""
+        )
+            .split("\n")
+            .map((s) => { const idx = s.indexOf("="); const label = idx > 0 ? s.slice(0, idx).trim() : s.trim(); const val = idx > 0 ? s.slice(idx + 1).trim() : s.trim(); return `<option value="${esc(val)}">${esc(label)}</option>`; })
+            .join("")}</select>`,
+    },
+    datagrid: {
+        label: "テーブル", icon: "🗃️",
+        def: {
+            w: 320, h: 160,
+            columns: "ID:20\n名前:50\n値:30",
+            bg: "#ffffff", fg: "#000000",
+            maxRows: 10,
+            headerBg: "#4a4a6a", headerFg: "#ffffff",
+            rowBg: "#ffffff", rowAltBg: "#f5f5f5", rowFg: "#000000",
+            borderSize: 1, borderColor: "#cccccc",
+            fontSize: 12, fontFamily: "", fontBold: false,
+            rowHeight: 24, headerHeight: 28,
+            visible: true, description: "",
+        },
+        events: ["Click", "RowClick", "HeaderClick"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "外観" },
+            { k: "columns", lb: "Columns", t: "coldef" },
+            { k: "bg", lb: "BackColor", t: "color" },
+            { k: "fg", lb: "ForeColor", t: "color" },
+            { k: "headerBg", lb: "HeaderBg", t: "color" },
+            { k: "headerFg", lb: "HeaderFg", t: "color" },
+            { k: "rowBg", lb: "RowBackColor", t: "color" },
+            { k: "rowAltBg", lb: "AltRowBackColor", t: "color" },
+            { k: "rowFg", lb: "RowForeColor", t: "color" },
+            ...PP_FONT,
+            ...PP_BORDER,
+            { k: "maxRows", lb: "MaxRows", t: "num" },
+            { k: "rowHeight", lb: "RowHeight", t: "num" },
+            { k: "headerHeight", lb: "HeaderHeight", t: "num" },
+            ...PP_TAIL,
+        ],
+        preview: (p) => {
+            const cols = (p.columns || "ID:20\n名前:50\n値:30").split(/[;\n]/).filter(s => s.trim()).map((c, ci) => {
+                const parts = c.trim().split(":");
+                const label = parts[0] || ("列" + (ci + 1));
+                const width = parseInt(parts[1]) || 20;
+                const displayName = parts[2] || "";
+                return { key: "col" + ci, label, width, displayName };
             });
-        }
-        const esc = (s) =>
-            String(s ?? "")
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;");
-        const $ = (id) => document.getElementById(id);
-        const fb = () => $("form-body");
+            const maxR = p.maxRows || 5;
+            const hbg = p.headerBg || "#4a4a6a";
+            const hfg = p.headerFg || "#ffffff";
+            const rbg = p.rowBg || "#ffffff";
+            const rabg = p.rowAltBg || "#f5f5f5";
+            const rfg = p.rowFg || "#000000";
+            const bc = p.borderColor || "#cccccc";
+            const fs = p.fontSize || 12;
+            const vis2 = p.visible === false ? "visibility:hidden" : "";
+            const ff = p.fontFamily || "";
+            const fw = p.fontBold ? "bold" : "normal";
+            const fontStyle = (ff ? `font-family:${ff};` : "") + `font-weight:${fw};`;
+            let html = `<div style="width:100%;height:100%;overflow:auto;border:1px solid ${bc};box-sizing:border-box;font-size:${fs}px;${fontStyle}${vis2}">`;
+            html += `<table style="width:100%;border-collapse:collapse;table-layout:fixed">`;
+            html += `<thead><tr style="background:${hbg};color:${hfg}">`;
+            cols.forEach(c => {
+                html += `<th style="width:${c.width}%;padding:3px 6px;border:1px solid ${bc};text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${fontStyle}">${esc(c.displayName || c.label)}</th>`;
+            });
+            html += `</tr></thead><tbody>`;
+            for (let r = 0; r < Math.min(maxR, 5); r++) {
+                const bg2 = r % 2 === 0 ? rbg : rabg;
+                html += `<tr style="background:${bg2};color:${rfg}">`;
+                cols.forEach(c => {
+                    html += `<td style="padding:2px 6px;border:1px solid ${bc};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${fontStyle}">${r === 0 ? "(データ)" : ""}</td>`;
+                });
+                html += `</tr>`;
+            }
+            html += `</tbody></table></div>`;
+            return html;
+        },
+    },
+    treeview: {
+        label: "treeView", icon: "🌲",
+        def: {
+            w: 200, h: 160,
+            items: "親1\n  子1-1\n  子1-2\n親2\n  子2-1",
+            bg: "#fff", fg: "#000",
+            fontSize: 12, fontFamily: "", fontBold: false,
+            borderSize: 1, borderColor: "#cccccc",
+            visible: true, description: "",
+        },
+        events: ["NodeClick", "NodeExpand", "NodeCollapse", "Click"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "外観" },
+            { k: "items", lb: "Items", t: "area" },
+            { k: "bg", lb: "BackColor", t: "color" },
+            { k: "fg", lb: "ForeColor", t: "color" },
+            ...PP_FONT,
+            ...PP_BORDER,
+            ...PP_TAIL,
+        ],
+        preview: (p, base, vis) => {
+            const buildTree = (lines) => {
+                let html = "<ul style='list-style:none;padding-left:14px;margin:0'>";
+                lines.forEach(l => {
+                    const indent = l.match(/^(\s*)/)[1].length;
+                    const text = l.trim();
+                    if (!text) return;
+                    const hasChildren = indent === 0;
+                    html += `<li style="line-height:20px;white-space:nowrap">${hasChildren ? "▶ " : "• "}${esc(text)}</li>`;
+                });
+                html += "</ul>";
+                return html;
+            };
+            const treeLines = (p.items || "").split("\n");
+            return `<div style="${base}background:${p.bg || "#fff"};color:${p.fg || "#000"};font-size:${p.fontSize || 12}px;border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};overflow:auto;padding:4px;box-sizing:border-box;${vis}">${buildTree(treeLines)}</div>`;
+        },
+    },
+    progressbar: {
+        label: "progress", icon: "📊",
+        def: {
+            w: 200, h: 20,
+            value: 50, min: 0, max: 100,
+            bg: "#e0e0e0", fg: "#5b7bfa",
+            borderSize: 1, borderColor: "#cccccc",
+            visible: true, description: "",
+        },
+        events: ["Click"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "値" },
+            { k: "value", lb: "Value", t: "num" },
+            { k: "min", lb: "Min", t: "num" },
+            { k: "max", lb: "Max", t: "num" },
+            { sep: "外観" },
+            { k: "bg", lb: "BackColor", t: "color" },
+            { k: "fg", lb: "BarColor", t: "color" },
+            ...PP_BORDER,
+            ...PP_TAIL,
+        ],
+        preview: (p, base, vis) => {
+            const pval = Math.min(100, Math.max(0, ((p.value || 0) - (p.min || 0)) / ((p.max || 100) - (p.min || 0)) * 100));
+            return `<div style="${base}background:${p.bg || "#e0e0e0"};border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};border-radius:3px;overflow:hidden;${vis}"><div style="width:${pval}%;height:100%;background:${p.fg || "#5b7bfa"};transition:width 0.2s;border-radius:3px"></div></div>`;
+        },
+    },
+    groupbox: {
+        label: "groupBox", icon: "🗂️",
+        def: {
+            w: 160, h: 100,
+            text: "GroupBox1",
+            bg: "transparent", fg: "#000",
+            fontSize: 12, fontFamily: "", fontBold: false,
+            borderSize: 1, borderColor: "#cccccc",
+            visible: true, description: "",
+        },
+        events: ["Click"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "外観" },
+            { k: "text", lb: "Text", t: "text" },
+            { k: "fg", lb: "ForeColor", t: "color" },
+            { k: "bg", lb: "BackColor", t: "color" },
+            ...PP_FONT,
+            ...PP_BORDER,
+            ...PP_TAIL,
+        ],
+        preview: (p, base, vis) => `<fieldset style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};${vis}"><legend style="padding:0 4px;font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"}">${esc(p.text)}</legend></fieldset>`,
+    },
+    picture: {
+        label: "image", icon: "🖼️",
+        def: {
+            w: 100, h: 80,
+            src: "", bg: "#ddd", objectFit: "contain",
+            borderSize: 1, borderColor: "#cccccc",
+            visible: true, description: "",
+        },
+        events: ["Click", "MouseDown", "MouseUp"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "画像" },
+            { k: "src", lb: "Image", t: "img" },
+            { k: "objectFit", lb: "ObjectFit", t: "sel", opts: ["contain", "cover", "fill", "none"] },
+            { k: "bg", lb: "BackColor", t: "color" },
+            ...PP_BORDER,
+            ...PP_TAIL,
+        ],
+        preview: (p, base, vis) => `<div style="${base}background:${p.bg};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};display:flex;align-items:center;justify-content:center;color:#888;font-size:11px;${vis}">${p.src ? `<img src="${esc(p.src)}" style="max-width:100%;max-height:100%;object-fit:${p.objectFit || "contain"}">` : "📷"}</div>`,
+    },
+    datepicker: {
+        label: "日付/時刻", icon: "📅",
+        def: {
+            w: 160, h: 28,
+            inputType: "date", value: "", min: "", max: "",
+            bg: "#fff", fg: "#000",
+            fontSize: 12, fontFamily: "", fontBold: false,
+            borderSize: 1, borderColor: "#cccccc",
+            disabled: false, readonly: false, visible: true, description: "",
+        },
+        events: ["TextChanged", "GotFocus", "LostFocus", "Click"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "外観" },
+            { k: "bg", lb: "BackColor", t: "color" },
+            { k: "fg", lb: "ForeColor", t: "color" },
+            ...PP_FONT,
+            ...PP_BORDER,
+            { sep: "種別" },
+            { k: "inputType", lb: "InputType", t: "select", opts: ["date", "time", "datetime-local", "month"] },
+            { sep: "値" },
+            { k: "value", lb: "Value", t: "text" },
+            { k: "min", lb: "Min", t: "text" },
+            { k: "max", lb: "Max", t: "text" },
+            { sep: "動作" },
+            { k: "disabled", lb: "Disabled", t: "bool" },
+            { k: "readonly", lb: "ReadOnly", t: "bool" },
+            ...PP_TAIL,
+        ],
+        preview: (p, base, vis) => {
+            const _itype = p.inputType || "date";
+            return `<input type="${_itype}" value="${esc(p.value || "")}" ${p.min ? `min="${esc(p.min)}"` : ""}  ${p.max ? `max="${esc(p.max)}"` : ""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px;pointer-events:none;${vis}">`;
+        },
+    },
+    slider: {
+        label: "スライダー", icon: "🎚️",
+        def: {
+            w: 160, h: 28,
+            min: 0, max: 100, value: 0, step: 1,
+            orient: "horizontal", bg: "transparent",
+            disabled: false, visible: true, description: "",
+        },
+        events: ["ValueChanged", "MouseDown", "MouseUp"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "値" },
+            { k: "min", lb: "Min", t: "num" },
+            { k: "max", lb: "Max", t: "num" },
+            { k: "value", lb: "Value", t: "num" },
+            { k: "step", lb: "Step", t: "num" },
+            { sep: "外観" },
+            { k: "orient", lb: "Orient", t: "select", opts: ["horizontal", "vertical"] },
+            { k: "bg", lb: "BackColor", t: "color" },
+            { sep: "動作" },
+            { k: "disabled", lb: "Disabled", t: "bool" },
+            ...PP_TAIL,
+        ],
+        preview: (p, base, vis) => `<div style="${base}display:flex;align-items:center;${vis}"><input type="range" min="${p.min || 0}" max="${p.max || 100}" value="${p.value || 0}" step="${p.step || 1}" style="width:100%;pointer-events:none;accent-color:#5b7bfa"></div>`,
+    },
+    hscroll: {
+        label: "水平scroll", icon: "↔️",
+        def: {
+            w: 120, h: 18,
+            min: 0, max: 100, val: 0,
+            visible: true, description: "",
+        },
+        events: ["Scroll", "ValueChanged"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "値" },
+            { k: "min", lb: "Min", t: "num" },
+            { k: "max", lb: "Max", t: "num" },
+            { k: "val", lb: "Value", t: "num" },
+            ...PP_TAIL,
+        ],
+        preview: (p, base, vis) => `<div style="${base}background:${p.bg || "#ddd"};border:1px solid #999;border-radius:2px;display:flex;align-items:center;justify-content:space-between;padding:0 2px;${vis}"><span style="font-size:9px">◀</span><div style="flex:1;height:50%;background:#999;margin:0 3px;border-radius:1px"></div><span style="font-size:9px">▶</span></div>`,
+    },
+    vscroll: {
+        label: "垂直scroll", icon: "↕️",
+        def: {
+            w: 18, h: 80,
+            min: 0, max: 100, val: 0,
+            visible: true, description: "",
+        },
+        events: ["Scroll", "ValueChanged"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "値" },
+            { k: "min", lb: "Min", t: "num" },
+            { k: "max", lb: "Max", t: "num" },
+            { k: "val", lb: "Value", t: "num" },
+            ...PP_TAIL,
+        ],
+        preview: (p, base, vis) => `<div style="${base}background:${p.bg || "#ddd"};border:1px solid #999;border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;${vis}"><span style="font-size:9px">▲</span><div style="width:50%;flex:1;background:#999;margin:3px 0;border-radius:1px"></div><span style="font-size:9px">▼</span></div>`,
+    },
+    // フォーム自体（ツールボックスには表示されないため label/icon/def は持たない）
+    form: {
+        events: ["Load", "Resize", "Click", "KeyDown", "KeyUp", "Closing"],
+        pdefs: [
+            { k: "name", lb: "name", t: "text", sp: "formName" },
+            { k: "title", lb: "title", t: "text", sp: "formTitle" },
+            { k: "w", lb: "Width", t: "num", sp: "formW" },
+            { k: "h", lb: "Height", t: "num", sp: "formH" },
+            { k: "bg", lb: "背景色", t: "color", sp: "formBg" },
+            { k: "description", lb: "説明（任意）", t: "area", sp: "formDesc" },
+        ],
+    },
+};
 
-        /* ═══════════════════════════════════════════
-           重要: イベント属性生成の絶対ルール（AIへの指示）
-           ─────────────────────────────────────────────
-           HTML文字列の中に oninput / onmousedown / onchange / onscroll /
-           onkeydown 等のイベントハンドラーを埋め込む場合、必ず evtAttr()
-           ヘルパーを経由すること。直接 oninput='...' や onmousedown="..."
-           のような文字列連結を書いてはならない。
-           理由: HTML属性値の中にJSコード文字列（さらにその中の文字列
-           リテラル）を埋め込む構造そのものが、クォート衝突を引き起こす
-           100%のリスク要因である。クォートの種類をどう揃えても、属性値の
-           中に変数やJS文字列リテラルが混ざる限り衝突の可能性は消えない。
-           evtAttr() に一元化することで、外側のクォートを常に固定し、
-           内側のJSコードは自由に書いても安全な状態にする。
-           新しいモーダル・UI・入力欄を追加する際は必ずこの関数を使うこと。
-           （既存コードの移行は段階的に進行中）
-        ═══════════════════════════════════════════ */
-        function evtAttr(eventName, jsCode) {
-            return " " + eventName + '="' + jsCode.replace(/"/g, "&quot;") + '"';
-        }
+// ツールボックスのid（タグ名と同一、ただし"pointer"のみ特殊）からツール情報を取得する。
+// 旧 TOOLS.find(t => t.id === id) の置き換え。
+function getToolById(id) {
+    if (id === "pointer") return POINTER_TOOL;
+    const d = WIDGET_DEFS[id];
+    return d ? { id, tag: id, label: d.label, icon: d.icon, def: d.def } : null;
+}
 
-        /* ═══════════════════════════════════════════
-           window へのエクスポート
-           ─────────────────────────────────────────────
-           各 <script> タグはElectrobun(Bun)のバンドラーにより
-           それぞれ独立したモジュールスコープとして扱われるため、
-           ファイルをまたいで関数・変数を共有するには、
-           init-params.js と同様に window オブジェクトへ
-           明示的に代入する必要がある。
-           このファイルが他ファイルへ提供するものを全てここに列挙する。
-           （widgets/formCfg/idCnt は _CTX._project に統合済みのため、
-           個別の window.widgets 等は不要。getProjectData().widgets の形で参照する）
-        ═══════════════════════════════════════════ */
-        Object.assign(window, {
-            // 状態管理オブジェクト・getter
-            _CTX,
-            getDesignerState, getProjectData, getEditHistory,
-            getEditorContext, getAiContext, getUiConfig,
-            // 機能別ローカル状態オブジェクト
-            _CLOUD_MODAL, _APPEVENT_MODAL, _EXTRT_EDITOR, _ITEMSDEF_EDITOR,
-            _CONFIRM_MODAL, _COLDEF_MODAL, _CONST_MODAL, _VALID_MODAL, _TABLE_MODAL,
-            // ウィジェット定義
-            PP_POS, PP_FONT, PP_BORDER, PP_TAIL,
-            POINTER_TOOL, WIDGET_DEFS, getToolById,
-            // UI定義・定数
-            UI_FONT_LIST, SNAP, sn,
-            // 共通ユーティリティ
-            esc, $, fb, evtAttr, _pvRegistry, pvRegister, pvCall, rAfBind,
-            // フォームデータ生成・現在フォームのショートカット同期関数
-            makeFormData, refreshAll, syncCurForm, commitIdCnt,
-        });
+/* ═══════════════════════════════════════════
+    STATE  （マルチフォーム対応）
+═══════════════════════════════════════════ */
+
+// フォーム1枚分のデータ構造を生成
+function makeFormData(title = "Form1") {
+    return {
+        id:
+            "f" +
+            Date.now() +
+            Math.random().toString(36).slice(2, 6),
+        cfg: { title, name: title, w: 640, h: 420, bg: "#ececec", description: "" },
+        widgets: [],
+        idCnt: 1,
+        constants: [], // フォーム単位の定数
+        events: {},    // フォームイベント
+        // ── バリデーション定義 ──────────────────────────────
+        // テーブル管理と同じ構成。validationsは定義の配列。
+        // 各定義: { name, toastDuration, rules: [{ name, type, arg1, arg2, arg3, message }] }
+        //   name: 定義名（vja.validate.run('定義名') で呼び出す）
+        //   toastDuration: トースト表示時間（ms）省略時5000ms
+        //   rules[].name: 対象ウィジェット名
+        //   rules[].type: required/maxLength/minLength/range/numeric/integer/
+        //                 email/tel/zipcode/url/date/alphanumeric/alpha/
+        //                 hiragana/katakana/pattern
+        //   rules[].arg1〜arg3: バリデーションタイプに応じた引数
+        //   rules[].message: エラー時のトースト表示メッセージ
+        validations: [],
+    };
+}
+
+/* ═══════════════════════════════════════════
+    _CTX — 状態管理オブジェクト
+    デザイナー全体の状態をグループごとに管理する。
+    各グループへのアクセスは getter 関数経由で行う。
+═══════════════════════════════════════════ */
+var _CTX = {
+    // デザイナーのUI操作状態
+    _state: {
+        selId: null,
+        activeTool: "pointer",
+        snapOn: true,
+        showGrid: false,
+        curTab: "p",
+        ctxId: null,
+    },
+    // プロジェクトデータ
+    _project: {
+        forms: [],
+        curFormIdx: 0,
+        startFormId: "",
+        constants: [],
+        tables: [],
+        cloudInfras: [],
+        extRuntime: { js: "", doc: "" },
+        // 現在編集中フォームへのショートカット（syncCurForm()で都度更新される）
+        widgets: [],
+        formCfg: {},
+        idCnt: 1,
+        aiConfig: {
+            endpoint: "http://localhost:8080",
+            apiKey: "",
+            model: "",
+            models: [],
+            enabled: false,
+            routerMode: false,
+            maxTokens: "",
+            temperature: "",
+            thinking: true,
+        },
+        projectInfo: {
+            name: "",
+            description: "",
+            version: "1.0.0",
+            author: "",
+            company: "",
+            appEvents: { onStart: "", onExit: "", onStart_yaml: "", onExit_yaml: "" },
+        },
+    },
+    // 編集履歴・保存パス
+    _history: {
+        undoStack: [],
+        redoStack: [],
+        savedSnapshot: null,
+        lastSavePath: null,
+        lastOpenPath: null,
+    },
+    // YAMLエディタの入力状態
+    _editor: {
+        searchLast: { taId: null, word: "", pos: 0 },
+        clickPos: -1,
+        lastMouseDown: 0,
+        dblPending: false,
+        yu: { stack: [], idx: -1, busy: false },
+        ju: { stack: [], idx: -1, busy: false },
+    },
+    // AI生成リクエストの状態
+    _ai: {
+        fetchId: null,
+        loadingTimer: null,
+    },
+    // フォント・パネル幅等のUI設定
+    _ui: {
+        config: {
+            uiFontSize: 13,
+            uiFontFamily: "",
+            editorFontSize: 16,
+            editorFontFamily: "'Courier New', Courier, monospace",
+            leftPanelW: 110,
+            rightPanelW: 420,
+        },
+    },
+};
+
+// ── _CTX getter 関数 ──────────────────────────
+function getDesignerState() { return _CTX._state; }
+function getProjectData() { return _CTX._project; }
+function getEditHistory() { return _CTX._history; }
+function getEditorContext() { return _CTX._editor; }
+function getAiContext() { return _CTX._ai; }
+function getUiConfig() { return _CTX._ui.config; }
+
+/* ═══════════════════════════════════════════
+    機能別ローカル状態オブジェクト
+    _CTX とは別に、特定の1モーダル・1エディタの中でしか
+    使わない局所的な一時状態をここにまとめる。
+═══════════════════════════════════════════ */
+// クラウドインフラ設定モーダル専用の一時状態
+var _CLOUD_MODAL = {
+    draft: [],
+};
+// アプリイベント編集モーダル専用の一時状態
+var _APPEVENT_MODAL = {
+    curKey: "onStart",
+};
+// 拡張ランタイムエディタ専用のUndo状態
+var _EXTRT_EDITOR = {
+    jsUndo: { stack: [], idx: -1, busy: false },
+    docUndo: { stack: [], idx: -1, busy: false },
+};
+// 項目定義エディタ専用の一時状態
+var _ITEMSDEF_EDITOR = {
+    wid: null,
+    rows: [],
+};
+// 確認ダイアログ専用の一時状態
+var _CONFIRM_MODAL = {
+    okCb: null,
+};
+// カラム定義エディタ専用の一時状態
+var _COLDEF_MODAL = {
+    wid: null,
+    rows: [],
+    maxRows: 0,
+};
+// 定数編集モーダル専用の一時状態
+var _CONST_MODAL = {
+    rows: [],
+};
+// バリデーション編集モーダル専用の一時状態
+var _VALID_MODAL = {
+    edit: null,
+};
+// テーブル編集モーダル専用の一時状態
+var _TABLE_MODAL = {
+    edit: null,
+    editIdx: -1,
+};
+
+// _CTX._project の初期データを設定
+getProjectData().forms = [makeFormData("Form1")];
+getProjectData().startFormId = getProjectData().forms[0]?.id ?? "";
+
+// UIフォント用フォントリスト
+const UI_FONT_LIST = [
+    { label: "（システムデフォルト）", value: "" },
+    { label: "Yu Gothic UI", value: "'Yu Gothic UI', 'Meiryo UI', sans-serif" },
+    { label: "Meiryo", value: "'Meiryo', sans-serif" },
+    { label: "Segoe UI", value: "'Segoe UI', sans-serif" },
+    { label: "Noto Sans JP", value: "'Noto Sans JP', sans-serif" },
+    { label: "sans-serif", value: "sans-serif" },
+    { label: "serif", value: "serif" },
+];
+
+// 現在フォームへのショートカット（_CTX._project に統合済み）
+getProjectData().widgets = getProjectData().forms[0].widgets;
+getProjectData().formCfg = getProjectData().forms[0].cfg;
+getProjectData().idCnt = getProjectData().forms[0].idCnt;
+
+const SNAP = 8;
+
+// 現在フォームの参照を更新する
+// ── UI全更新（フォーム切替・Undo/Redo後など） ──
+function refreshAll() {
+    syncCurForm();
+    buildFormSelect();
+    applyForm();
+    fullRedraw();
+    renderProps();
+    updateCount();
+}
+
+function syncCurForm() {
+    const f = getProjectData().forms[getProjectData().curFormIdx];
+    getProjectData().widgets = f.widgets;
+    getProjectData().formCfg = f.cfg;
+    getProjectData().idCnt = f.idCnt;
+}
+// idCnt の書き戻し（追加・削除時）
+function commitIdCnt() {
+    getProjectData().forms[getProjectData().curFormIdx].idCnt = getProjectData().idCnt;
+}
+
+/* ═══════════════════════════════════════════
+    SNAP / HELPERS
+═══════════════════════════════════════════ */
+const sn = (v) => (getDesignerState().snapOn ? Math.round(v / SNAP) * SNAP : v);
+/* ═══════════════════════════════════════════
+    共通ユーティリティ
+═══════════════════════════════════════════ */
+
+// ① グローバルブリッジ共通管理
+const _pvRegistry = {};
+function pvRegister(key, fn) { _pvRegistry[key] = fn; }
+function pvCall(key, ...args) {
+    if (_pvRegistry[key]) _pvRegistry[key](...args);
+    else console.warn("[pvCall] not registered:", key);
+}
+
+// addEventListener ヘルパー（WebKitGTK対応）
+function rAfBind(selector, event, fn, root) {
+    requestAnimationFrame(() => {
+        const el = typeof selector === "string"
+            ? (root || document).querySelector(selector)
+            : selector;
+        if (el) el.addEventListener(event, fn);
+    });
+}
+const esc = (s) =>
+    String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+const $ = (id) => document.getElementById(id);
+const fb = () => $("form-body");
+
+/* ═══════════════════════════════════════════
+    重要: イベント属性生成の絶対ルール（AIへの指示）
+    ─────────────────────────────────────────────
+    HTML文字列の中に oninput / onmousedown / onchange / onscroll /
+    onkeydown 等のイベントハンドラーを埋め込む場合、必ず evtAttr()
+    ヘルパーを経由すること。直接 oninput='...' や onmousedown="..."
+    のような文字列連結を書いてはならない。
+    理由: HTML属性値の中にJSコード文字列（さらにその中の文字列
+    リテラル）を埋め込む構造そのものが、クォート衝突を引き起こす
+    100%のリスク要因である。クォートの種類をどう揃えても、属性値の
+    中に変数やJS文字列リテラルが混ざる限り衝突の可能性は消えない。
+    evtAttr() に一元化することで、外側のクォートを常に固定し、
+    内側のJSコードは自由に書いても安全な状態にする。
+    新しいモーダル・UI・入力欄を追加する際は必ずこの関数を使うこと。
+    （既存コードの移行は段階的に進行中）
+═══════════════════════════════════════════ */
+function evtAttr(eventName, jsCode) {
+    return " " + eventName + '="' + jsCode.replace(/"/g, "&quot;") + '"';
+}
+
+/* ═══════════════════════════════════════════
+    window へのエクスポート
+    ─────────────────────────────────────────────
+    各 <script> タグはElectrobun(Bun)のバンドラーにより
+    それぞれ独立したモジュールスコープとして扱われるため、
+    ファイルをまたいで関数・変数を共有するには、
+    init-params.js と同様に window オブジェクトへ
+    明示的に代入する必要がある。
+    このファイルが他ファイルへ提供するものを全てここに列挙する。
+    （widgets/formCfg/idCnt は _CTX._project に統合済みのため、
+    個別の window.widgets 等は不要。getProjectData().widgets の形で参照する）
+═══════════════════════════════════════════ */
+Object.assign(window, {
+    // 状態管理オブジェクト・getter
+    _CTX,
+    getDesignerState, getProjectData, getEditHistory,
+    getEditorContext, getAiContext, getUiConfig,
+    // 機能別ローカル状態オブジェクト
+    _CLOUD_MODAL, _APPEVENT_MODAL, _EXTRT_EDITOR, _ITEMSDEF_EDITOR,
+    _CONFIRM_MODAL, _COLDEF_MODAL, _CONST_MODAL, _VALID_MODAL, _TABLE_MODAL,
+    // ウィジェット定義
+    PP_POS, PP_FONT, PP_BORDER, PP_TAIL,
+    POINTER_TOOL, WIDGET_DEFS, getToolById,
+    // UI定義・定数
+    UI_FONT_LIST, SNAP, sn,
+    // 共通ユーティリティ
+    esc, $, fb, evtAttr, _pvRegistry, pvRegister, pvCall, rAfBind,
+    // フォームデータ生成・現在フォームのショートカット同期関数
+    makeFormData, refreshAll, syncCurForm, commitIdCnt,
+});
