@@ -196,8 +196,9 @@
                 const lbl = typeof o === "object" ? (o.label || o.value) : o;
                 const code = onPickCode.replace(/\{value\}/g, "'" + String(val).replace(/'/g, "\\'") + "'");
                 const isActive = currentVal === val;
-                return "<div class='pv-sel-opt" + (isActive ? " active" : "") + "' " +
-                    "onmousedown=\"pvSelPick('" + id + "','" + String(val).replace(/'/g, "\\'") + "','" + String(lbl).replace(/'/g, "\\'") + "',event);" + code + "\">" + esc(lbl) + "</div>";
+                const pickCode = "pvSelPick('" + id + "','" + String(val).replace(/'/g, "\\'") + "','" + String(lbl).replace(/'/g, "\\'") + "',event);" + code;
+                return "<div class='pv-sel-opt" + (isActive ? " active" : "") + "'" +
+                    evtAttr("onmousedown", pickCode) + ">" + esc(lbl) + "</div>";
             }).join("");
             const curLabel = (() => {
                 const found = options.find(o => (typeof o === "object" ? o.value : o) === currentVal);
@@ -205,7 +206,7 @@
                 return currentVal || (options.length > 0 ? (typeof options[0] === "object" ? options[0].label : options[0]) : "");
             })();
             return "<div class='pv-sel' id='" + id + "'>" +
-                "<div class='pv-sel-btn' onmousedown=\"pvSelOpen('" + id + "',event)\">" +
+                "<div class='pv-sel-btn'" + evtAttr("onmousedown", "pvSelOpen('" + id + "',event)") + ">" +
                 "<span>" + esc(curLabel) + "</span><span class='arr'>▼</span>" +
                 "</div>" +
                 "<div class='pv-sel-list'>" + opts + "</div>" +

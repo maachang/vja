@@ -989,7 +989,7 @@
                 "<label>モデル名</label>" +
                 "<div style='display:flex;gap:6px;align-items:center'>" +
                 "<div class='pv-sel' id='ai-model-sel' style='flex:1'>" +
-                "<div class='pv-sel-btn' onmousedown=\"pvSelOpen('ai-model-sel',event)\">" +
+                "<div class='pv-sel-btn'" + evtAttr("onmousedown", "pvSelOpen('ai-model-sel',event)") + ">" +
                 "<span id='ai-model-label'>" + (isRouter ? (getProjectData().aiConfig.model || "（モデルを選択）") : "") + "</span>" +
                 "<span class='arr'>▼</span></div>" +
                 "<div class='pv-sel-list' id='ai-model-list'>" + modelListHtml + "</div>" +
@@ -1023,8 +1023,8 @@
                 return "<div class='pv-sel-opt'>（ルーターモードONで更新）</div>";
             }
             return models.map(m =>
-                "<div class='pv-sel-opt " + (m === current ? "active" : "") + "' " +
-                "onmousedown=\"pvSelPick('ai-model-sel','" + esc(m) + "',event);$('ai-model-label').textContent='" + esc(m) + "'\">" + esc(m) + "</div>"
+                "<div class='pv-sel-opt " + (m === current ? "active" : "") + "'" +
+                evtAttr("onmousedown", "pvSelPick('ai-model-sel','" + String(m).replace(/'/g, "\\'") + "',event);$('ai-model-label').textContent='" + String(m).replace(/'/g, "\\'") + "'") + ">" + esc(m) + "</div>"
             ).join("");
         }
 
