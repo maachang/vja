@@ -1970,7 +1970,8 @@ textarea.yaml:focus {
     color: var(--text);
     cursor: pointer;
     font-size: var(--ui-font-size);
-    margin: 0 2px
+    margin: 0 2px;
+    white-space: nowrap
 }
 
 .tbl-action-btn:hover {

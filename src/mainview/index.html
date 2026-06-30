@@ -4455,8 +4455,16 @@
         }
 
         function renderTableManagerModal() {
-            const rows = getProjectData().tables.length > 0
-                ? getProjectData().tables.map((t, i) => {
+            renderListManagerModal({
+                title: "🗄 テーブル管理",
+                items: getProjectData().tables,
+                colCount: 6,
+                emptyText: "テーブルが未登録です。「＋ テーブル追加」から追加してください。",
+                countLabel: (n) => "SQLiteテーブル定義（全" + n + "件）",
+                addAction: "openTableEdit(-1)",
+                addLabel: "＋ テーブル追加",
+                headerHtml: "<th style='width:36px'>No</th><th>テーブル名</th><th style='width:72px;text-align:center'>カラム数</th><th style='width:90px;text-align:center'>インデックス数</th><th style='width:80px;text-align:center'>編集</th><th style='width:80px;text-align:center'>削除</th>",
+                rowHtmlFn: (t, i) => {
                     const colCount = t.columns ? t.columns.length : 0;
                     const idxCount = t.columns ? t.columns.filter(c => c.index).length : 0;
                     return "<tr>" +
@@ -4471,33 +4479,8 @@
                         "<button class='tbl-action-btn del'" + evtAttr("onmousedown", "deleteTable(" + i + ")") + ">削除</button>" +
                         "</td>" +
                         "</tr>";
-                }).join("")
-                : "<tr><td colspan='6' class='tbl-empty'>テーブルが未登録です。「＋ テーブル追加」から追加してください。</td></tr>";
-
-            showModal(
-                mhdrHTML("🗄 テーブル管理") +
-                "<div class='mbody tbl-mgr-wrap'>" +
-                "<div class='tbl-mgr-header'>" +
-                "<span style='font-size:12px;color:var(--text2)'>SQLiteテーブル定義（全" + getProjectData().tables.length + "件）</span>" +
-                "<button class='tbl-add-btn'" + evtAttr("onmousedown", "openTableEdit(-1)") + ">＋ テーブル追加</button>" +
-                "</div>" +
-                "<div class='tbl-list-scroll'>" +
-                "<table class='tbl-list-table'>" +
-                "<thead><tr>" +
-                "<th style='width:36px'>No</th>" +
-                "<th>テーブル名</th>" +
-                "<th style='width:72px;text-align:center'>カラム数</th>" +
-                "<th style='width:90px;text-align:center'>インデックス数</th>" +
-                "<th style='width:80px;text-align:center'>編集</th>" +
-                "<th style='width:80px;text-align:center'>削除</th>" +
-                "</tr></thead>" +
-                "<tbody>" + rows + "</tbody>" +
-                "</table></div>" +
-                "</div>" +
-                "<div class='mfoot'>" +
-                "<button" + evtAttr("onmousedown", "closeModal()") + ">閉じる</button>" +
-                "</div>"
-            );
+                },
+            });
         }
 
         // テーブル削除
@@ -5089,10 +5072,16 @@
         // ── バリデーション一覧モーダル（テーブル管理の一覧と同じ構成） ──
         function renderValidationListModal() {
             const f = getProjectData().forms[getProjectData().curFormIdx];
-            const list = f.validations || [];
-            let rows = "";
-            list.forEach((v, i) => {
-                rows += "<tr>" +
+            renderListManagerModal({
+                title: "✅ バリデーション管理",
+                items: f.validations || [],
+                colCount: 6,
+                emptyText: "バリデーション定義がありません。「＋ バリデーション追加」から追加してください。",
+                countLabel: (n) => "バリデーション定義（全" + n + "件）",
+                addAction: "openValidationEdit(-1)",
+                addLabel: "＋ バリデーション追加",
+                headerHtml: "<th style='width:40px'>No</th><th style='text-align:left'>定義名</th><th style='text-align:left'>説明</th><th style='width:80px'>ルール数</th><th style='width:80px'>編集</th><th style='width:80px'>削除</th>",
+                rowHtmlFn: (v, i) => "<tr>" +
                     "<td style='text-align:center'>" + (i + 1) + "</td>" +
                     "<td>" + esc(v.name || "") + "</td>" +
                     "<td style='max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>" + esc(v.description || "") + "</td>" +
@@ -5103,31 +5092,8 @@
                     "<td style='text-align:center'>" +
                     "<button class='tbl-action-btn del'" + evtAttr("onmousedown", "deleteValidation(" + i + ")") + ">削除</button>" +
                     "</td>" +
-                    "</tr>";
+                    "</tr>",
             });
-            showModal("<div id='valid-list-modal'>" +
-                mhdrHTML("✅ バリデーション管理") +
-                "<div class='mbody' style='gap:6px'>" +
-                "<span style='font-size:12px;color:var(--text2)'>バリデーション定義（全" + list.length + "件）</span>" +
-                "<div style='overflow:auto'>" +
-                "<table style='width:100%;border-collapse:collapse'>" +
-                "<thead><tr style='background:var(--bg4)'>" +
-                "<th style='width:40px;padding:4px 6px'>No</th>" +
-                "<th style='padding:4px 6px;text-align:left'>定義名</th>" +
-                "<th style='padding:4px 6px;text-align:left'>説明</th>" +
-                "<th style='width:80px;padding:4px 6px'>ルール数</th>" +
-                "<th style='width:60px;padding:4px 6px'>編集</th>" +
-                "<th style='width:60px;padding:4px 6px'>削除</th>" +
-                "</tr></thead>" +
-                "<tbody>" + rows + "</tbody>" +
-                "</table>" +
-                "</div>" +
-                "<button class='tbl-add-btn'" + evtAttr("onmousedown", "openValidationEdit(-1)") + ">＋ バリデーション追加</button>" +
-                "</div>" +
-                "<div class='mfoot'>" +
-                "<button class='sec'" + evtAttr("onmousedown", "closeModal()") + ">閉じる</button>" +
-                "</div>" +
-                "</div>");
         }
 
         // ── バリデーション編集モーダル ──
@@ -5266,6 +5232,39 @@
                 + "<button class='pri'" + evtAttr("onmousedown", opts.saveAction) + ">保存</button>"
                 + "</div>"
                 + "</div>");
+        }
+
+        // ── 一覧管理モーダル共通テンプレート ──────────────────────
+        // 「ヘッダー＋一覧テーブル＋編集/削除ボタン＋追加ボタン＋閉じるボタン」の
+        // 構造を持つモーダルの共通骨格。行の中身は rowHtmlFn コールバックで
+        // 呼び出し側が自由に定義する。
+        // opts: {
+        //   title, items, colCount, emptyText, countLabel(n),
+        //   addAction, addLabel, headerHtml,
+        //   rowHtmlFn: (item, idx) => "<tr>...</tr>",
+        // }
+        function renderListManagerModal(opts) {
+            const items = opts.items || [];
+            const rows = items.length > 0
+                ? items.map((item, i) => opts.rowHtmlFn(item, i)).join("")
+                : "<tr><td colspan='" + opts.colCount + "' class='tbl-empty'>" + opts.emptyText + "</td></tr>";
+            showModal(
+                mhdrHTML(opts.title) +
+                "<div class='mbody tbl-mgr-wrap'>" +
+                "<div class='tbl-mgr-header'>" +
+                "<span style='font-size:12px;color:var(--text2)'>" + opts.countLabel(items.length) + "</span>" +
+                "<button class='tbl-add-btn'" + evtAttr("onmousedown", opts.addAction) + ">" + opts.addLabel + "</button>" +
+                "</div>" +
+                "<div class='tbl-list-scroll'>" +
+                "<table class='tbl-list-table'>" +
+                "<thead><tr>" + opts.headerHtml + "</tr></thead>" +
+                "<tbody>" + rows + "</tbody>" +
+                "</table></div>" +
+                "</div>" +
+                "<div class='mfoot'>" +
+                "<button" + evtAttr("onmousedown", "closeModal()") + ">閉じる</button>" +
+                "</div>"
+            );
         }
 
         function validAddRow() {
