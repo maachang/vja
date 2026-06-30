@@ -2112,13 +2112,13 @@
         /* ── YAMLエディタ 右パネル ── */
 
         // 右パネルHTML生成
-        function yamlBuildRightPanel(showWidgets = true) {
+        // ── 右パネル: 定数セクション ──
+        // グローバル定数＋現在フォームのフォーム定数を一覧表示する。
+        function _rpBuildConstSection() {
             const curForm = getProjectData().forms[getProjectData().curFormIdx];
             const _formConsts = curForm?.constants || [];
             const _allConsts = [...getProjectData().constants, ..._formConsts];
-
-            // ── 定数 ──
-            const constBody = _allConsts.length > 0
+            return _allConsts.length > 0
                 ? "<table class='rp-table'>"
                 + _allConsts.map(c => {
                     const isForm = _formConsts.some(fc => fc.name === c.name);
@@ -2130,9 +2130,12 @@
                         + "</tr>";
                 }).join("") + "</table>"
                 : "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>定数なし</div>";
+        }
 
-            // ── 画面一覧 ──
-            const formBody = "<div>" + getProjectData().forms.map((f, fi) => {
+        // ── 右パネル: 画面一覧セクション ──
+        // 全フォームと、各フォームに含まれるウィジェット名を一覧表示する。
+        function _rpBuildFormSection() {
+            return "<div>" + getProjectData().forms.map((f, fi) => {
                 const isCur = fi === getProjectData().curFormIdx;
                 const ft = esc(f.cfg.name);
                 const wids = (f.widgets || []).map(ww => {
@@ -2151,9 +2154,13 @@
                     + (wids ? "<div class='rp-tbl-cols'><table>" + wids + "</table></div>" : "")
                     + "</div>";
             }).join("") + "</div>";
+        }
 
-            // ── 現在フォームのウィジェット ──
-            const widBody = widgets.length > 0
+        // ── 右パネル: 現在フォームのウィジェット一覧セクション ──
+        // ウィジェット名・タグ・説明を表示し、種別によって展開可能な
+        // 追加行（グループ名・選択肢・カラム一覧）を持つ。
+        function _rpBuildWidgetSection() {
+            return widgets.length > 0
                 ? "<div>" + widgets.map(ww => {
                     try {
                         const n = esc(ww.name);
@@ -2201,9 +2208,12 @@
                     }
                 }).join("") + "</div>"
                 : "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>ウィジェットなし</div>";
+        }
 
-            // ── テーブル一覧 ──
-            const tblBody = getProjectData().tables.length > 0
+        // ── 右パネル: テーブル一覧セクション ──
+        // SQLiteテーブル定義のカラム一覧（PK/NOT NULL/DEFAULT/INDEXフラグ付き）を表示する。
+        function _rpBuildTableSection() {
+            return getProjectData().tables.length > 0
                 ? "<div>" + getProjectData().tables.map((t, ti) => {
                     const tn = esc(t.name);
                     const cols = (t.columns || []).map(c => {
@@ -2224,12 +2234,15 @@
                         + "</div>";
                 }).join("") + "</div>"
                 : "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>\u30c6\u30fc\u30d6\u30eb\u306a\u3057</div>";
+        }
 
-            // ── 検証（バリデーション定義）一覧 ──
-            // ヘッダー: 定義名クリックで「検証: 定義名」をYAMLエディタの現在位置に挿入。
-            // 展開: ルールのウィジェット名・バリデーション条件をテーブル形式で表示。
+        // ── 右パネル: 検証（バリデーション定義）一覧セクション ──
+        // ヘッダー: 定義名クリックで「検証: 定義名」をYAMLエディタの現在位置に挿入。
+        // 展開: ルールのウィジェット名・バリデーション条件をテーブル形式で表示。
+        function _rpBuildValidationSection() {
+            const curForm = getProjectData().forms[getProjectData().curFormIdx];
             const validations = curForm?.validations || [];
-            const validBody = validations.length > 0
+            return validations.length > 0
                 ? "<div>" + validations.map(v => {
                     const vn = esc(v.name);
                     const rules = (v.rules || []).filter(r => r.name && r.type);
@@ -2248,13 +2261,15 @@
                         + "</div>";
                 }).join("") + "</div>"
                 : "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>検証定義なし</div>";
+        }
 
+        function yamlBuildRightPanel(showWidgets = true) {
             return [
-                yamlRpSection("📌 定数", constBody, true),
-                yamlRpSection("📋 画面一覧", formBody, true),
-                showWidgets ? yamlRpSection("🔲 現在フォームのウィジェット", widBody, true) : "",
-                yamlRpSection("✅ 検証", validBody, true),
-                yamlRpSection("🗄 テーブル一覧", tblBody, true),
+                yamlRpSection("📌 定数", _rpBuildConstSection(), true),
+                yamlRpSection("📋 画面一覧", _rpBuildFormSection(), true),
+                showWidgets ? yamlRpSection("🔲 現在フォームのウィジェット", _rpBuildWidgetSection(), true) : "",
+                yamlRpSection("✅ 検証", _rpBuildValidationSection(), true),
+                yamlRpSection("🗄 テーブル一覧", _rpBuildTableSection(), true),
             ].join("");
         }
 
