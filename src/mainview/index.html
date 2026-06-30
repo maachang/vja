@@ -5095,10 +5095,10 @@
                     "<td style='max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>" + esc(v.description || "") + "</td>" +
                     "<td style='text-align:center'>" + (v.rules?.length || 0) + "</td>" +
                     "<td style='text-align:center'>" +
-                    "<button class='tbl-action-btn' onmousedown='openValidationEdit(" + i + ")'>編集</button>" +
+                    "<button class='tbl-action-btn'" + evtAttr("onmousedown", "openValidationEdit(" + i + ")") + ">編集</button>" +
                     "</td>" +
                     "<td style='text-align:center'>" +
-                    "<button class='tbl-action-btn del' onmousedown='deleteValidation(" + i + ")'>削除</button>" +
+                    "<button class='tbl-action-btn del'" + evtAttr("onmousedown", "deleteValidation(" + i + ")") + ">削除</button>" +
                     "</td>" +
                     "</tr>";
             });
@@ -5119,10 +5119,10 @@
                 "<tbody>" + rows + "</tbody>" +
                 "</table>" +
                 "</div>" +
-                "<button class='tbl-add-btn' onmousedown='openValidationEdit(-1)'>＋ バリデーション追加</button>" +
+                "<button class='tbl-add-btn'" + evtAttr("onmousedown", "openValidationEdit(-1)") + ">＋ バリデーション追加</button>" +
                 "</div>" +
                 "<div class='mfoot'>" +
-                "<button class='sec' onmousedown='closeModal()'>閉じる</button>" +
+                "<button class='sec'" + evtAttr("onmousedown", "closeModal()") + ">閉じる</button>" +
                 "</div>" +
                 "</div>");
         }
@@ -5161,13 +5161,13 @@
                     "<td>" + makePvSel(nid, nameOpts, r.name || "", "_VALID_MODAL.edit.rules[" + i + "].name={value}") + "</td>" +
                     "<td>" + makePvSel(sid, VALIDATION_TYPES, r.type || "required", "_VALID_MODAL.edit.rules[" + i + "].type={value}") + "</td>" +
                     "<td>" + makePvSel(notid, [{value: "false", label: "OFF"}, {value: "true", label: "ON"}], r.not ? "true" : "false", "_VALID_MODAL.edit.rules[" + i + "].not=({value}==='true')") + "</td>" +
-                    "<td><input type='text' class='pv-input' value='" + esc(r.arg1 || "") + "' oninput=\"_VALID_MODAL.edit.rules[" + i + "].arg1=this.value\" placeholder='arg1'></td>" +
-                    "<td><input type='text' class='pv-input' value='" + esc(r.arg2 || "") + "' oninput=\"_VALID_MODAL.edit.rules[" + i + "].arg2=this.value\" placeholder='arg2'></td>" +
-                    "<td><input type='text' class='pv-input' value='" + esc(r.arg3 || "") + "' oninput=\"_VALID_MODAL.edit.rules[" + i + "].arg3=this.value\" placeholder='arg3'></td>" +
-                    "<td><input type='text' class='pv-input' value='" + esc(r.message || "") + "' oninput=\"_VALID_MODAL.edit.rules[" + i + "].message=this.value\" placeholder='エラーメッセージ'></td>" +
+                    "<td><input type='text' class='pv-input' value='" + esc(r.arg1 || "") + "'" + evtAttr("oninput", "_VALID_MODAL.edit.rules[" + i + "].arg1=this.value") + " placeholder='arg1'></td>" +
+                    "<td><input type='text' class='pv-input' value='" + esc(r.arg2 || "") + "'" + evtAttr("oninput", "_VALID_MODAL.edit.rules[" + i + "].arg2=this.value") + " placeholder='arg2'></td>" +
+                    "<td><input type='text' class='pv-input' value='" + esc(r.arg3 || "") + "'" + evtAttr("oninput", "_VALID_MODAL.edit.rules[" + i + "].arg3=this.value") + " placeholder='arg3'></td>" +
+                    "<td><input type='text' class='pv-input' value='" + esc(r.message || "") + "'" + evtAttr("oninput", "_VALID_MODAL.edit.rules[" + i + "].message=this.value") + " placeholder='エラーメッセージ'></td>" +
                     "<td style='white-space:nowrap'>" +
-                    "<button class='del-btn' onmousedown='validInsertRow(" + i + ")' title='この行の前に挿入' style='margin-right:2px'>＋</button>" +
-                    "<button class='del-btn' onmousedown='validDelRow(" + i + ")' title='削除'>✕</button>" +
+                    "<button class='del-btn'" + evtAttr("onmousedown", "validInsertRow(" + i + ")") + " title='この行の前に挿入' style='margin-right:2px'>＋</button>" +
+                    "<button class='del-btn'" + evtAttr("onmousedown", "validDelRow(" + i + ")") + " title='削除'>✕</button>" +
                     "</td>" +
                     "</tr>";
             });
@@ -5184,7 +5184,7 @@
                 "</div>" +
                 "<div style='display:flex;justify-content:space-between;align-items:center'>" +
                 "<span style='font-size:12px;color:var(--text2)'>ルール定義（" + rules.length + "件）</span>" +
-                "<button class='col-add-btn' onmousedown='validAddRow()'>＋ ルール追加</button>" +
+                "<button class='col-add-btn'" + evtAttr("onmousedown", "validAddRow()") + ">＋ ルール追加</button>" +
                 "</div>" +
                 "<div class='coldef-scroll'>" +
                 "<table class='coldef-table'>" +
@@ -5205,7 +5205,7 @@
                 "</div>" +
                 "<div class='mfoot'>" +
                 mfootHTML([{label: "← 一覧に戻る", action: "renderValidationListModal()"}]) +
-                "<button class='pri' onmousedown='validSave()'>保存</button>" +
+                "<button class='pri'" + evtAttr("onmousedown", "validSave()") + ">保存</button>" +
                 "</div>" +
                 "</div>", "", "modal-root");
         }
