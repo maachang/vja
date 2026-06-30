@@ -2532,9 +2532,16 @@
                         `if (!await vja.validate.run(${JSON.stringify(validationName)})) return;\n\n${unwrapped}`
                         : unwrapped;
                     // モーダルを再表示してJSタブに切り替え
-                    const w2 = getWidget(wid);
-                    if (!w2) return;
-                    openYaml(wid, evName);
+                    // ウィジェット/フォーム/アプリイベントで「開き直す」関数が異なるため出し分ける
+                    if (isFormEvent) {
+                        openFormYaml(evName);
+                    } else if (isAppEvent) {
+                        openAppEvents(evName);
+                    } else {
+                        const w2 = getWidget(wid);
+                        if (!w2) return;
+                        openYaml(wid, evName);
+                    }
                     requestAnimationFrame(() => requestAnimationFrame(() => {
                         const jsTa = $("js-ta");
                         if (jsTa) jsTa.value = finalCode;
