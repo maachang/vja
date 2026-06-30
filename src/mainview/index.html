@@ -5214,6 +5214,37 @@
             renderFn();
         }
 
+        // ── 行リストモーダル共通テンプレート ──────────────────────
+        // 「ヘッダー＋行リスト＋行追加ボタン＋保存ボタン」の構造を持つモーダルの共通骨格。
+        // 行の中身（何列・どんな入力か）は rowHtmlFn コールバックで呼び出し側が自由に定義する。
+        // opts: {
+        //   modalId, title, infoText, headerHtml, rows,
+        //   rowHtmlFn: (row, idx) => "<tr>...</tr>",
+        //   addAction, saveAction, maxLen, extraHtml
+        // }
+        function renderRowListModal(opts) {
+            const rows = opts.rows || [];
+            const tbody = rows.map((r, i) => opts.rowHtmlFn(r, i)).join("");
+            showModal("<div id='" + opts.modalId + "'>"
+                + mhdrHTML(opts.title)
+                + "<div class='mbody' style='gap:6px'>"
+                + "<div class='infobox'>" + opts.infoText + "</div>"
+                + (opts.extraHtml || "")
+                + "<div class='coldef-scroll'>"
+                + "<table class='coldef-table'>"
+                + "<thead><tr>" + opts.headerHtml + "</tr></thead>"
+                + "<tbody>" + tbody + "</tbody>"
+                + "</table>"
+                + "</div>"
+                + (!opts.maxLen || rows.length < opts.maxLen ? "<button class='add-row-btn' onmousedown='" + opts.addAction + "'>＋ 行を追加</button>" : "")
+                + "</div>"
+                + "<div class='mfoot'>"
+                + mfootHTML([{label: "キャンセル", action: "closeModal()"}])
+                + "<button class='pri' onmousedown='" + opts.saveAction + "'>保存</button>"
+                + "</div>"
+                + "</div>");
+        }
+
         function validAddRow() {
             if (!_VALID_MODAL.edit) return;
             _rowAdd(() => _VALID_MODAL.edit.rules, () => ({name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: ""}), renderValidationEditModal);
@@ -5914,10 +5945,14 @@
             renderColDefModal();
         }
         function renderColDefModal() {
-            const rows = _COLDEF_MODAL.rows || [];
-            let tbody = "";
-            rows.forEach((r, i) => {
-                tbody += "<tr>"
+            renderRowListModal({
+                modalId: "coldef-modal",
+                title: "📊 カラム定義エディタ",
+                infoText: "カラム名と幅(%)を定義します。Noは自動採番。",
+                rows: _COLDEF_MODAL.rows,
+                maxLen: 100,
+                headerHtml: "<th style='width:36px'>No</th><th>カラム名</th><th>表示名</th><th style='width:80px'>幅(%)</th><th style='width:56px'></th>",
+                rowHtmlFn: (r, i) => "<tr>"
                     + "<td>" + (i + 1) + "</td>"
                     + "<td><input type='text' value='" + esc(r.label) + "' oninput=\"coldefUpdate(" + i + ",'label',this.value)\" placeholder='カラム名'></td>"
                     + "<td><input type='text' value='" + esc(r.displayName || "") + "' oninput=\"coldefUpdate(" + i + ",'displayName',this.value)\" placeholder='表示名（省略可）'></td>"
@@ -5925,30 +5960,14 @@
                     + "<td style='white-space:nowrap'>"
                     + "<button class='del-btn' onmousedown='coldefInsertRow(" + i + ")' title='この行の前に挿入' style='margin-right:2px'>＋</button>"
                     + "<button class='del-btn' onmousedown='coldefDelRow(" + i + ")' title='削除'>✕</button>"
-                    + "</td>"
-                    + "</tr>";
+                    + "</td></tr>",
+                addAction: "coldefAddRow()",
+                saveAction: "coldefSave()",
+                extraHtml: "<div style='display:flex;align-items:center;gap:8px;padding:4px 0'>"
+                    + "<label style='font-size:12px;color:var(--text2);white-space:nowrap'>最大表示件数（0=無制限）:</label>"
+                    + "<input type='number' id='coldef-maxrows' value='" + (_COLDEF_MODAL.maxRows || 0) + "' min='0' class='pv-input' style='width:80px'>"
+                    + "</div>",
             });
-            showModal("<div id='coldef-modal'>"
-                + mhdrHTML("📊 カラム定義エディタ")
-                + "<div class='mbody' style='gap:6px'>"
-                + "<div class='infobox'>カラム名と幅(%)を定義します。Noは自動採番。</div>"
-                + "<div style='display:flex;align-items:center;gap:8px;padding:4px 0'>"
-                + "<label style='font-size:12px;color:var(--text2);white-space:nowrap'>最大表示件数（0=無制限）:</label>"
-                + "<input type='number' id='coldef-maxrows' value='" + (_COLDEF_MODAL.maxRows || 0) + "' min='0' class='pv-input' style='width:80px'>"
-                + "</div>"
-                + "<div class='coldef-scroll'>"
-                + "<table class='coldef-table'>"
-                + "<thead><tr><th style='width:36px'>No</th><th>カラム名</th><th>表示名</th><th style='width:80px'>幅(%)</th><th style='width:56px'></th></tr></thead>"
-                + "<tbody>" + tbody + "</tbody>"
-                + "</table>"
-                + "</div>"
-                + (rows.length < 100 ? "<button class='add-row-btn' onmousedown='coldefAddRow()'>＋ 行を追加</button>" : "")
-                + "</div>"
-                + "<div class='mfoot'>"
-                + mfootHTML([{label: "キャンセル", action: "closeModal()"}]) + ""
-                + "<button class='pri' onmousedown='coldefSave()'>保存</button>"
-                + "</div>"
-                + "</div>");
         }
         function coldefUpdate(idx, key, val) {
             if (_COLDEF_MODAL.rows) _COLDEF_MODAL.rows[idx][key] = val;
@@ -5993,36 +6012,23 @@
             renderItemsDefModal();
         }
         function renderItemsDefModal() {
-            const rows = _ITEMSDEF_EDITOR.rows || [];
-            let tbody = "";
-            rows.forEach((r, i) => {
-                tbody += "<tr>"
+            renderRowListModal({
+                modalId: "itemsdef-modal",
+                title: "📋 項目定義エディタ",
+                infoText: "選択肢を定義します。Value省略時は表示名が使われます。",
+                rows: _ITEMSDEF_EDITOR.rows,
+                headerHtml: "<th style='width:36px'>No</th><th>表示名</th><th>Value（省略可）</th><th style='width:56px'></th>",
+                rowHtmlFn: (r, i) => "<tr>"
                     + "<td>" + (i + 1) + "</td>"
                     + "<td><input type='text' class='pv-input' value='" + esc(r.label) + "' oninput=\"_ITEMSDEF_EDITOR.rows[" + i + "].label=this.value\" placeholder='表示名'></td>"
                     + "<td><input type='text' class='pv-input' value='" + esc(r.value || "") + "' oninput=\"_ITEMSDEF_EDITOR.rows[" + i + "].value=this.value\" placeholder='Value（省略可）'></td>"
                     + "<td style='white-space:nowrap'>"
                     + "<button class='del-btn' onmousedown='itemsdefInsertRow(" + i + ")' title='この行の前に挿入' style='margin-right:2px'>＋</button>"
                     + "<button class='del-btn' onmousedown='itemsdefDelRow(" + i + ")' title='削除'>✕</button>"
-                    + "</td>"
-                    + "</tr>";
+                    + "</td></tr>",
+                addAction: "itemsdefAddRow()",
+                saveAction: "itemsdefSave()",
             });
-            showModal("<div id='itemsdef-modal'>"
-                + mhdrHTML("📋 項目定義エディタ")
-                + "<div class='mbody' style='gap:6px'>"
-                + "<div class='infobox'>選択肢を定義します。Value省略時は表示名が使われます。</div>"
-                + "<div class='coldef-scroll'>"
-                + "<table class='coldef-table'>"
-                + "<thead><tr><th style='width:36px'>No</th><th>表示名</th><th>Value（省略可）</th><th style='width:56px'></th></tr></thead>"
-                + "<tbody>" + tbody + "</tbody>"
-                + "</table>"
-                + "</div>"
-                + "<button class='add-row-btn' onmousedown='itemsdefAddRow()'>＋ 行を追加</button>"
-                + "</div>"
-                + "<div class='mfoot'>"
-                + mfootHTML([{label: "キャンセル", action: "closeModal()"}])
-                + "<button class='pri' onmousedown='itemsdefSave()'>保存</button>"
-                + "</div>"
-                + "</div>");
         }
         function itemsdefAddRow() {
             _rowAdd(() => _ITEMSDEF_EDITOR.rows, () => ({label: "", value: ""}), renderItemsDefModal);
