@@ -448,16 +448,48 @@
 
     <script>
         /* ═══════════════════════════════════════════
-            TOOLS 定義
+            WIDGET_DEFS 定義
         ═══════════════════════════════════════════ */
-        const TOOLS = [
-            {id: "pointer", label: "ポインタ", icon: "🖱️"},
-            // ── よく使う順 ──────────────────────────────────
-            {
-                id: "button",
-                label: "button",
-                icon: "⬜",
-                tag: "button",
+        // ── プロパティ定義の共通パーツ（WIDGET_DEFS.pdefs内でスプレッドして使う）──
+        const PP_POS = [
+            {k: "name", lb: "Name", t: "text", sp: "name"},
+            {k: "x", lb: "Left", t: "num", sp: "x"},
+            {k: "y", lb: "Top", t: "num", sp: "y"},
+            {k: "w", lb: "Width", t: "num", sp: "w"},
+            {k: "h", lb: "Height", t: "num", sp: "h"},
+        ];
+        // フォントセット（fontSize を持つウィジェット共通）
+        const PP_FONT = [
+            {k: "fontSize", lb: "FontSize", t: "num"},
+            {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
+            {k: "fontBold", lb: "Bold", t: "bool"},
+        ];
+        // ボーダー（border持ちウィジェット共通）
+        const PP_BORDER = [
+            {k: "borderSize", lb: "BorderSize", t: "num"},
+            {k: "borderColor", lb: "BorderColor", t: "color"},
+        ];
+        // 表示・説明（全ウィジェット共通）
+        const PP_TAIL = [
+            {k: "visible", lb: "Visible", t: "bool"},
+            {sep: "説明"},
+            {k: "description", lb: "説明（任意）", t: "area"},
+        ];
+
+        // ポインタツール（WIDGET_DEFSとは別の特殊ツール。配置可能なウィジェットではない）
+        const POINTER_TOOL = {id: "pointer", label: "ポインタ", icon: "🖱️"};
+
+        /* ═══════════════════════════════════════════
+           WIDGET_DEFS — ウィジェット定義の統合オブジェクト
+           1タグにつき1エントリで、ラベル・アイコン・デフォルト値
+           （旧TOOLS）・発火可能イベント一覧（旧EVENTS）・
+           プロパティパネル定義（旧PDEFS）を集約する。
+           新しいウィジェットを追加する場合は、ここに1エントリ
+           追加するだけでよい（以前のように複数箇所への追記は不要）。
+        ═══════════════════════════════════════════ */
+        const WIDGET_DEFS = {
+            button: {
+                label: "button", icon: "⬜",
                 def: {
                     w: 96, h: 28,
                     text: "Button1",
@@ -466,12 +498,23 @@
                     borderSize: 1, borderColor: "#cccccc", borderRadius: 2,
                     disabled: false, visible: true, description: "",
                 },
+                events: ["Click", "MouseDown", "MouseUp", "MouseEnter", "MouseLeave", "GotFocus", "LostFocus"],
+                pdefs: [
+                    ...PP_POS,
+                    {sep: "外観"},
+                    {k: "text", lb: "Text", t: "text"},
+                    {k: "bg", lb: "BackColor", t: "color"},
+                    {k: "fg", lb: "ForeColor", t: "color"},
+                    ...PP_FONT,
+                    ...PP_BORDER,
+                    {k: "borderRadius", lb: "Radius", t: "num"},
+                    {sep: "動作"},
+                    {k: "disabled", lb: "Disabled", t: "bool"},
+                    ...PP_TAIL,
+                ],
             },
-            {
-                id: "label",
-                label: "label",
-                icon: "🏷️",
-                tag: "label",
+            label: {
+                label: "label", icon: "🏷️",
                 def: {
                     w: 100, h: 24,
                     text: "Label1",
@@ -480,12 +523,20 @@
                     align: "left",
                     visible: true, description: "",
                 },
+                events: ["Click", "MouseEnter", "MouseLeave"],
+                pdefs: [
+                    ...PP_POS,
+                    {sep: "外観"},
+                    {k: "text", lb: "Text", t: "text"},
+                    {k: "fg", lb: "ForeColor", t: "color"},
+                    {k: "bg", lb: "BackColor", t: "color"},
+                    ...PP_FONT,
+                    {k: "align", lb: "Align", t: "sel", opts: ["left", "center", "right"]},
+                    ...PP_TAIL,
+                ],
             },
-            {
-                id: "inputtype",
-                label: "text",
-                icon: "📝",
-                tag: "inputtype",
+            inputtype: {
+                label: "text", icon: "📝",
                 def: {
                     w: 140, h: 28,
                     inputType: "text", text: "", placeholder: "",
@@ -495,12 +546,31 @@
                     maxLength: 0, required: false, readonly: false, disabled: false,
                     visible: true, description: "",
                 },
+                events: ["TextChanged", "KeyDown", "KeyUp", "GotFocus", "LostFocus", "Click"],
+                pdefs: [
+                    ...PP_POS,
+                    {sep: "入力タイプ"},
+                    {
+                        k: "inputType", lb: "InputType", t: "sel",
+                        opts: ["text", "password", "number", "email", "tel", "date", "time", "datetime-local", "url", "search"]
+                    },
+                    {sep: "外観"},
+                    {k: "text", lb: "Text", t: "text"},
+                    {k: "placeholder", lb: "Placeholder", t: "text"},
+                    {k: "maxLength", lb: "MaxLength", t: "num"},
+                    {k: "bg", lb: "BackColor", t: "color"},
+                    {k: "fg", lb: "ForeColor", t: "color"},
+                    ...PP_FONT,
+                    ...PP_BORDER,
+                    {sep: "動作"},
+                    {k: "disabled", lb: "Disabled", t: "bool"},
+                    {k: "readonly", lb: "ReadOnly", t: "bool"},
+                    {k: "required", lb: "Required", t: "bool"},
+                    ...PP_TAIL,
+                ],
             },
-            {
-                id: "textarea",
-                label: "textarea",
-                icon: "📄",
-                tag: "textarea",
+            textarea: {
+                label: "textarea", icon: "📄",
                 def: {
                     w: 200, h: 80,
                     text: "", placeholder: "",
@@ -510,12 +580,24 @@
                     disabled: false, readonly: false,
                     visible: true, description: "",
                 },
+                events: ["TextChanged", "KeyDown", "KeyUp", "GotFocus", "LostFocus", "Click"],
+                pdefs: [
+                    ...PP_POS,
+                    {sep: "外観"},
+                    {k: "text", lb: "Text", t: "area"},
+                    {k: "placeholder", lb: "Placeholder", t: "text"},
+                    {k: "bg", lb: "BackColor", t: "color"},
+                    {k: "fg", lb: "ForeColor", t: "color"},
+                    ...PP_FONT,
+                    ...PP_BORDER,
+                    {sep: "動作"},
+                    {k: "disabled", lb: "Disabled", t: "bool"},
+                    {k: "readonly", lb: "ReadOnly", t: "bool"},
+                    ...PP_TAIL,
+                ],
             },
-            {
-                id: "checkbox",
-                label: "checkbox",
-                icon: "☑️",
-                tag: "checkbox",
+            checkbox: {
+                label: "checkbox", icon: "☑️",
                 def: {
                     w: 100, h: 22,
                     text: "CheckBox1", checked: false,
@@ -523,12 +605,20 @@
                     fontSize: 12, fontFamily: "", fontBold: false,
                     visible: true, description: "",
                 },
+                events: ["Click", "CheckedChanged"],
+                pdefs: [
+                    ...PP_POS,
+                    {sep: "外観"},
+                    {k: "text", lb: "Text", t: "text"},
+                    {k: "fg", lb: "ForeColor", t: "color"},
+                    ...PP_FONT,
+                    {sep: "状態"},
+                    {k: "checked", lb: "Checked", t: "bool"},
+                    ...PP_TAIL,
+                ],
             },
-            {
-                id: "radio",
-                label: "radioButton",
-                icon: "🔘",
-                tag: "radio",
+            radio: {
+                label: "radioButton", icon: "🔘",
                 def: {
                     w: 100, h: 22,
                     text: "RadioButton1", checked: false, group: "Group1",
@@ -536,12 +626,21 @@
                     fontSize: 12, fontFamily: "", fontBold: false,
                     visible: true, description: "",
                 },
+                events: ["Click", "CheckedChanged"],
+                pdefs: [
+                    ...PP_POS,
+                    {sep: "外観"},
+                    {k: "text", lb: "Text", t: "text"},
+                    {k: "group", lb: "GroupName", t: "text"},
+                    {k: "fg", lb: "ForeColor", t: "color"},
+                    ...PP_FONT,
+                    {sep: "状態"},
+                    {k: "checked", lb: "Checked", t: "bool"},
+                    ...PP_TAIL,
+                ],
             },
-            {
-                id: "selectBox",
-                label: "selectBox",
-                icon: "🔽",
-                tag: "selectBox",
+            selectBox: {
+                label: "selectBox", icon: "🔽",
                 def: {
                     w: 120, h: 24,
                     items: "項目1\n項目2\n項目3",
@@ -550,12 +649,20 @@
                     borderSize: 1, borderColor: "#cccccc",
                     visible: true, description: "",
                 },
+                events: ["SelectedIndexChanged", "TextChanged", "DropDown"],
+                pdefs: [
+                    ...PP_POS,
+                    {sep: "外観"},
+                    {k: "items", lb: "Items", t: "itemsdef"},
+                    {k: "bg", lb: "BackColor", t: "color"},
+                    {k: "fg", lb: "ForeColor", t: "color"},
+                    ...PP_FONT,
+                    ...PP_BORDER,
+                    ...PP_TAIL,
+                ],
             },
-            {
-                id: "listbox",
-                label: "listBox",
-                icon: "📋",
-                tag: "listbox",
+            listbox: {
+                label: "listBox", icon: "📋",
                 def: {
                     w: 120, h: 80,
                     items: "項目1\n項目2\n項目3",
@@ -564,12 +671,20 @@
                     borderSize: 1, borderColor: "#cccccc",
                     visible: true, description: "",
                 },
+                events: ["SelectedIndexChanged", "Click", "MouseDown"],
+                pdefs: [
+                    ...PP_POS,
+                    {sep: "外観"},
+                    {k: "items", lb: "Items", t: "itemsdef"},
+                    {k: "bg", lb: "BackColor", t: "color"},
+                    {k: "fg", lb: "ForeColor", t: "color"},
+                    ...PP_FONT,
+                    ...PP_BORDER,
+                    ...PP_TAIL,
+                ],
             },
-            {
-                id: "datagrid",
-                label: "テーブル",
-                icon: "🗃️",
-                tag: "datagrid",
+            datagrid: {
+                label: "テーブル", icon: "🗃️",
                 def: {
                     w: 320, h: 160,
                     columns: "ID:20\n名前:50\n値:30",
@@ -582,12 +697,28 @@
                     rowHeight: 24, headerHeight: 28,
                     visible: true, description: "",
                 },
+                events: ["Click", "RowClick", "HeaderClick"],
+                pdefs: [
+                    ...PP_POS,
+                    {sep: "外観"},
+                    {k: "columns", lb: "Columns", t: "coldef"},
+                    {k: "bg", lb: "BackColor", t: "color"},
+                    {k: "fg", lb: "ForeColor", t: "color"},
+                    {k: "headerBg", lb: "HeaderBg", t: "color"},
+                    {k: "headerFg", lb: "HeaderFg", t: "color"},
+                    {k: "rowBg", lb: "RowBackColor", t: "color"},
+                    {k: "rowAltBg", lb: "AltRowBackColor", t: "color"},
+                    {k: "rowFg", lb: "RowForeColor", t: "color"},
+                    ...PP_FONT,
+                    ...PP_BORDER,
+                    {k: "maxRows", lb: "MaxRows", t: "num"},
+                    {k: "rowHeight", lb: "RowHeight", t: "num"},
+                    {k: "headerHeight", lb: "HeaderHeight", t: "num"},
+                    ...PP_TAIL,
+                ],
             },
-            {
-                id: "treeview",
-                label: "treeView",
-                icon: "🌲",
-                tag: "treeview",
+            treeview: {
+                label: "treeView", icon: "🌲",
                 def: {
                     w: 200, h: 160,
                     items: "親1\n  子1-1\n  子1-2\n親2\n  子2-1",
@@ -596,12 +727,20 @@
                     borderSize: 1, borderColor: "#cccccc",
                     visible: true, description: "",
                 },
+                events: ["NodeClick", "NodeExpand", "NodeCollapse", "Click"],
+                pdefs: [
+                    ...PP_POS,
+                    {sep: "外観"},
+                    {k: "items", lb: "Items", t: "area"},
+                    {k: "bg", lb: "BackColor", t: "color"},
+                    {k: "fg", lb: "ForeColor", t: "color"},
+                    ...PP_FONT,
+                    ...PP_BORDER,
+                    ...PP_TAIL,
+                ],
             },
-            {
-                id: "progressbar",
-                label: "progress",
-                icon: "📊",
-                tag: "progressbar",
+            progressbar: {
+                label: "progress", icon: "📊",
                 def: {
                     w: 200, h: 20,
                     value: 50, min: 0, max: 100,
@@ -609,12 +748,22 @@
                     borderSize: 1, borderColor: "#cccccc",
                     visible: true, description: "",
                 },
+                events: ["Click"],
+                pdefs: [
+                    ...PP_POS,
+                    {sep: "値"},
+                    {k: "value", lb: "Value", t: "num"},
+                    {k: "min", lb: "Min", t: "num"},
+                    {k: "max", lb: "Max", t: "num"},
+                    {sep: "外観"},
+                    {k: "bg", lb: "BackColor", t: "color"},
+                    {k: "fg", lb: "BarColor", t: "color"},
+                    ...PP_BORDER,
+                    ...PP_TAIL,
+                ],
             },
-            {
-                id: "groupbox",
-                label: "groupBox",
-                icon: "🗂️",
-                tag: "groupbox",
+            groupbox: {
+                label: "groupBox", icon: "🗂️",
                 def: {
                     w: 160, h: 100,
                     text: "GroupBox1",
@@ -623,24 +772,39 @@
                     borderSize: 1, borderColor: "#cccccc",
                     visible: true, description: "",
                 },
+                events: ["Click"],
+                pdefs: [
+                    ...PP_POS,
+                    {sep: "外観"},
+                    {k: "text", lb: "Text", t: "text"},
+                    {k: "fg", lb: "ForeColor", t: "color"},
+                    {k: "bg", lb: "BackColor", t: "color"},
+                    ...PP_FONT,
+                    ...PP_BORDER,
+                    ...PP_TAIL,
+                ],
             },
-            {
-                id: "picture",
-                label: "image",
-                icon: "🖼️",
-                tag: "picture",
+            picture: {
+                label: "image", icon: "🖼️",
                 def: {
                     w: 100, h: 80,
                     src: "", bg: "#ddd", objectFit: "contain",
                     borderSize: 1, borderColor: "#cccccc",
                     visible: true, description: "",
                 },
+                events: ["Click", "MouseDown", "MouseUp"],
+                pdefs: [
+                    ...PP_POS,
+                    {sep: "画像"},
+                    {k: "src", lb: "Image", t: "img"},
+                    {k: "objectFit", lb: "ObjectFit", t: "sel", opts: ["contain", "cover", "fill", "none"]},
+                    {k: "bg", lb: "BackColor", t: "color"},
+                    ...PP_BORDER,
+                    ...PP_TAIL,
+                ],
             },
-            {
-                id: "datepicker",
-                label: "日付/時刻",
-                icon: "📅",
-                tag: "datepicker",
+            datepicker: {
+                label: "日付/時刻", icon: "📅",
                 def: {
                     w: 160, h: 28,
                     inputType: "date", value: "", min: "", max: "",
@@ -649,86 +813,105 @@
                     borderSize: 1, borderColor: "#cccccc",
                     disabled: false, readonly: false, visible: true, description: "",
                 },
+                events: ["TextChanged", "GotFocus", "LostFocus", "Click"],
+                pdefs: [
+                    ...PP_POS,
+                    {sep: "外観"},
+                    {k: "bg", lb: "BackColor", t: "color"},
+                    {k: "fg", lb: "ForeColor", t: "color"},
+                    ...PP_FONT,
+                    ...PP_BORDER,
+                    {sep: "種別"},
+                    {k: "inputType", lb: "InputType", t: "select", opts: ["date", "time", "datetime-local", "month"]},
+                    {sep: "値"},
+                    {k: "value", lb: "Value", t: "text"},
+                    {k: "min", lb: "Min", t: "text"},
+                    {k: "max", lb: "Max", t: "text"},
+                    {sep: "動作"},
+                    {k: "disabled", lb: "Disabled", t: "bool"},
+                    {k: "readonly", lb: "ReadOnly", t: "bool"},
+                    ...PP_TAIL,
+                ],
             },
-            {
-                id: "slider",
-                label: "スライダー",
-                icon: "🎚️",
-                tag: "slider",
+            slider: {
+                label: "スライダー", icon: "🎚️",
                 def: {
                     w: 160, h: 28,
                     min: 0, max: 100, value: 0, step: 1,
                     orient: "horizontal", bg: "transparent",
                     disabled: false, visible: true, description: "",
                 },
+                events: ["ValueChanged", "MouseDown", "MouseUp"],
+                pdefs: [
+                    ...PP_POS,
+                    {sep: "値"},
+                    {k: "min", lb: "Min", t: "num"},
+                    {k: "max", lb: "Max", t: "num"},
+                    {k: "value", lb: "Value", t: "num"},
+                    {k: "step", lb: "Step", t: "num"},
+                    {sep: "外観"},
+                    {k: "orient", lb: "Orient", t: "select", opts: ["horizontal", "vertical"]},
+                    {k: "bg", lb: "BackColor", t: "color"},
+                    {sep: "動作"},
+                    {k: "disabled", lb: "Disabled", t: "bool"},
+                    ...PP_TAIL,
+                ],
             },
-            {
-                id: "hscroll",
-                label: "水平scroll",
-                icon: "↔️",
-                tag: "hscroll",
+            hscroll: {
+                label: "水平scroll", icon: "↔️",
                 def: {
                     w: 120, h: 18,
                     min: 0, max: 100, val: 0,
                     visible: true, description: "",
                 },
+                events: ["Scroll", "ValueChanged"],
+                pdefs: [
+                    ...PP_POS,
+                    {sep: "値"},
+                    {k: "min", lb: "Min", t: "num"},
+                    {k: "max", lb: "Max", t: "num"},
+                    {k: "val", lb: "Value", t: "num"},
+                    ...PP_TAIL,
+                ],
             },
-            {
-                id: "vscroll",
-                label: "垂直scroll",
-                icon: "↕️",
-                tag: "vscroll",
+            vscroll: {
+                label: "垂直scroll", icon: "↕️",
                 def: {
                     w: 18, h: 80,
                     min: 0, max: 100, val: 0,
                     visible: true, description: "",
                 },
+                events: ["Scroll", "ValueChanged"],
+                pdefs: [
+                    ...PP_POS,
+                    {sep: "値"},
+                    {k: "min", lb: "Min", t: "num"},
+                    {k: "max", lb: "Max", t: "num"},
+                    {k: "val", lb: "Value", t: "num"},
+                    ...PP_TAIL,
+                ],
             },
-        ];
-
-        const EVENTS = {
-            button: [
-                "Click",
-                "MouseDown",
-                "MouseUp",
-                "MouseEnter",
-                "MouseLeave",
-                "GotFocus",
-                "LostFocus",
-            ],
-            label: ["Click", "MouseEnter", "MouseLeave"],
-
-            inputtype: [
-                "TextChanged",
-                "KeyDown",
-                "KeyUp",
-                "GotFocus",
-                "LostFocus",
-                "Click",
-            ],
-            checkbox: ["Click", "CheckedChanged"],
-            radio: ["Click", "CheckedChanged"],
-            listbox: ["SelectedIndexChanged", "Click", "MouseDown"],
-            selectBox: ["SelectedIndexChanged", "TextChanged", "DropDown"],
-            textarea: ["TextChanged", "KeyDown", "KeyUp", "GotFocus", "LostFocus", "Click"],
-            treeview: ["NodeClick", "NodeExpand", "NodeCollapse", "Click"],
-            progressbar: ["Click"],
-            groupbox: ["Click"],
-            picture: ["Click", "MouseDown", "MouseUp"],
-            hscroll: ["Scroll", "ValueChanged"],
-            vscroll: ["Scroll", "ValueChanged"],
-            datepicker: ["TextChanged", "GotFocus", "LostFocus", "Click"],
-            slider: ["ValueChanged", "MouseDown", "MouseUp"],
-            datagrid: ["Click", "RowClick", "HeaderClick"],
-            form: [
-                "Load",
-                "Resize",
-                "Click",
-                "KeyDown",
-                "KeyUp",
-                "Closing",
-            ],
+            // フォーム自体（ツールボックスには表示されないため label/icon/def は持たない）
+            form: {
+                events: ["Load", "Resize", "Click", "KeyDown", "KeyUp", "Closing"],
+                pdefs: [
+                    {k: "name", lb: "name", t: "text", sp: "formName"},
+                    {k: "title", lb: "title", t: "text", sp: "formTitle"},
+                    {k: "w", lb: "Width", t: "num", sp: "formW"},
+                    {k: "h", lb: "Height", t: "num", sp: "formH"},
+                    {k: "bg", lb: "背景色", t: "color", sp: "formBg"},
+                    {k: "description", lb: "説明（任意）", t: "area", sp: "formDesc"},
+                ],
+            },
         };
+
+        // ツールボックスのid（タグ名と同一、ただし"pointer"のみ特殊）からツール情報を取得する。
+        // 旧 TOOLS.find(t => t.id === id) の置き換え。
+        function getToolById(id) {
+            if (id === "pointer") return POINTER_TOOL;
+            const d = WIDGET_DEFS[id];
+            return d ? {id, tag: id, label: d.label, icon: d.icon, def: d.def} : null;
+        }
 
         /* ═══════════════════════════════════════════
           STATE  （マルチフォーム対応）
@@ -999,7 +1182,13 @@
         function buildTools() {
             const g = $("tool-grid");
             g.innerHTML = "";
-            TOOLS.forEach((t) => {
+            const toolList = [
+                POINTER_TOOL,
+                ...Object.entries(WIDGET_DEFS)
+                    .filter(([, d]) => d.icon)
+                    .map(([tag, d]) => ({id: tag, label: d.label, icon: d.icon})),
+            ];
+            toolList.forEach((t) => {
                 const d = document.createElement("div");
                 d.className =
                     "tool-item" +
@@ -1021,7 +1210,7 @@
                         el.dataset.tid === id,
                     ),
                 );
-            const tool = TOOLS.find((t) => t.id === id);
+            const tool = getToolById(id);
             $("st-tool").innerHTML = `<b>${tool?.label ?? id}</b>`;
             // フォームボディのカーソル
             fb().style.cursor = id === "pointer" ? "default" : "crosshair";
@@ -1247,7 +1436,7 @@
             getDesignerState().selId = id;
             updateSelVisual();
             const w = getWidget(id);
-            $("prop-obj").textContent = w ? (TOOLS.find(t => t.tag === w.tag)?.label ?? w.tag) : formCfg.title;
+            $("prop-obj").textContent = w ? (WIDGET_DEFS[w.tag]?.label ?? w.tag) : formCfg.title;
             updateStatusSel(w);
             renderProps();
         }
@@ -1321,7 +1510,7 @@
                     document.removeEventListener("mouseup", onUp);
                     rb.style.display = "none";
 
-                    const tool = TOOLS.find((t) => t.id === getDesignerState().activeTool);
+                    const tool = getToolById(getDesignerState().activeTool);
                     if (!tool || !tool.tag) {
                         setTool("pointer");
                         return;
@@ -1413,7 +1602,7 @@
                 e.preventDefault();
                 const w = getWidget(wid);
                 if (!w) return;
-                const evList = EVENTS[w.tag] || [];
+                const evList = WIDGET_DEFS[w.tag]?.events || [];
                 if (evList.length === 0) return;
                 select(wid);
                 openYaml(w.id, evList[0]);
@@ -1517,253 +1706,6 @@
           PROPERTIES PANEL
         ═══════════════════════════════════════════ */
 
-        /* ═══════════════════════════════════════════
-           プロパティ定義 共通パーツ
-        ═══════════════════════════════════════════ */
-        // 位置・サイズ（全ウィジェット共通）
-        const PP_POS = [
-            {k: "name", lb: "Name", t: "text", sp: "name"},
-            {k: "x", lb: "Left", t: "num", sp: "x"},
-            {k: "y", lb: "Top", t: "num", sp: "y"},
-            {k: "w", lb: "Width", t: "num", sp: "w"},
-            {k: "h", lb: "Height", t: "num", sp: "h"},
-        ];
-        // フォントセット（fontSize を持つウィジェット共通）
-        const PP_FONT = [
-            {k: "fontSize", lb: "FontSize", t: "num"},
-            {k: "fontFamily", lb: "FontFamily", t: "fontsel"},
-            {k: "fontBold", lb: "Bold", t: "bool"},
-        ];
-        // ボーダー（border持ちウィジェット共通）
-        const PP_BORDER = [
-            {k: "borderSize", lb: "BorderSize", t: "num"},
-            {k: "borderColor", lb: "BorderColor", t: "color"},
-        ];
-        // 表示・説明（全ウィジェット共通）
-        const PP_TAIL = [
-            {k: "visible", lb: "Visible", t: "bool"},
-            {sep: "説明"},
-            {k: "description", lb: "説明（任意）", t: "area"},
-        ];
-
-        const PDEFS = {
-            form: [
-                {k: "name", lb: "name", t: "text", sp: "formName"},
-                {k: "title", lb: "title", t: "text", sp: "formTitle"},
-                {k: "w", lb: "Width", t: "num", sp: "formW"},
-                {k: "h", lb: "Height", t: "num", sp: "formH"},
-                {k: "bg", lb: "背景色", t: "color", sp: "formBg"},
-                {k: "description", lb: "説明（任意）", t: "area", sp: "formDesc"},
-            ],
-            button: [
-                ...PP_POS,
-                {sep: "外観"},
-                {k: "text", lb: "Text", t: "text"},
-                {k: "bg", lb: "BackColor", t: "color"},
-                {k: "fg", lb: "ForeColor", t: "color"},
-                ...PP_FONT,
-                ...PP_BORDER,
-                {k: "borderRadius", lb: "Radius", t: "num"},
-                {sep: "動作"},
-                {k: "disabled", lb: "Disabled", t: "bool"},
-                ...PP_TAIL,
-            ],
-            label: [
-                ...PP_POS,
-                {sep: "外観"},
-                {k: "text", lb: "Text", t: "text"},
-                {k: "fg", lb: "ForeColor", t: "color"},
-                {k: "bg", lb: "BackColor", t: "color"},
-                ...PP_FONT,
-                {k: "align", lb: "Align", t: "sel", opts: ["left", "center", "right"]},
-                ...PP_TAIL,
-            ],
-            inputtype: [
-                ...PP_POS,
-                {sep: "入力タイプ"},
-                {
-                    k: "inputType", lb: "InputType", t: "sel",
-                    opts: ["text", "password", "number", "email", "tel", "date", "time", "datetime-local", "url", "search"]
-                },
-                {sep: "外観"},
-                {k: "text", lb: "Text", t: "text"},
-                {k: "placeholder", lb: "Placeholder", t: "text"},
-                {k: "maxLength", lb: "MaxLength", t: "num"},
-                {k: "bg", lb: "BackColor", t: "color"},
-                {k: "fg", lb: "ForeColor", t: "color"},
-                ...PP_FONT,
-                ...PP_BORDER,
-                {sep: "動作"},
-                {k: "disabled", lb: "Disabled", t: "bool"},
-                {k: "readonly", lb: "ReadOnly", t: "bool"},
-                {k: "required", lb: "Required", t: "bool"},
-                ...PP_TAIL,
-            ],
-
-            checkbox: [
-                ...PP_POS,
-                {sep: "外観"},
-                {k: "text", lb: "Text", t: "text"},
-                {k: "fg", lb: "ForeColor", t: "color"},
-                ...PP_FONT,
-                {sep: "状態"},
-                {k: "checked", lb: "Checked", t: "bool"},
-                ...PP_TAIL,
-            ],
-            radio: [
-                ...PP_POS,
-                {sep: "外観"},
-                {k: "text", lb: "Text", t: "text"},
-                {k: "group", lb: "GroupName", t: "text"},
-                {k: "fg", lb: "ForeColor", t: "color"},
-                ...PP_FONT,
-                {sep: "状態"},
-                {k: "checked", lb: "Checked", t: "bool"},
-                ...PP_TAIL,
-            ],
-            listbox: [
-                ...PP_POS,
-                {sep: "外観"},
-                {k: "items", lb: "Items", t: "itemsdef"},
-                {k: "bg", lb: "BackColor", t: "color"},
-                {k: "fg", lb: "ForeColor", t: "color"},
-                ...PP_FONT,
-                ...PP_BORDER,
-                ...PP_TAIL,
-            ],
-            selectBox: [
-                ...PP_POS,
-                {sep: "外観"},
-                {k: "items", lb: "Items", t: "itemsdef"},
-                {k: "bg", lb: "BackColor", t: "color"},
-                {k: "fg", lb: "ForeColor", t: "color"},
-                ...PP_FONT,
-                ...PP_BORDER,
-                ...PP_TAIL,
-            ],
-            groupbox: [
-                ...PP_POS,
-                {sep: "外観"},
-                {k: "text", lb: "Text", t: "text"},
-                {k: "fg", lb: "ForeColor", t: "color"},
-                {k: "bg", lb: "BackColor", t: "color"},
-                ...PP_FONT,
-                ...PP_BORDER,
-                ...PP_TAIL,
-            ],
-            picture: [
-                ...PP_POS,
-                {sep: "画像"},
-                {k: "src", lb: "Image", t: "img"},
-                {k: "objectFit", lb: "ObjectFit", t: "sel", opts: ["contain", "cover", "fill", "none"]},
-                {k: "bg", lb: "BackColor", t: "color"},
-                ...PP_BORDER,
-                ...PP_TAIL,
-            ],
-            datagrid: [
-                ...PP_POS,
-                {sep: "外観"},
-                {k: "columns", lb: "Columns", t: "coldef"},
-                {k: "bg", lb: "BackColor", t: "color"},
-                {k: "fg", lb: "ForeColor", t: "color"},
-                {k: "headerBg", lb: "HeaderBg", t: "color"},
-                {k: "headerFg", lb: "HeaderFg", t: "color"},
-                {k: "rowBg", lb: "RowBackColor", t: "color"},
-                {k: "rowAltBg", lb: "AltRowBackColor", t: "color"},
-                {k: "rowFg", lb: "RowForeColor", t: "color"},
-                ...PP_FONT,
-                ...PP_BORDER,
-                {k: "maxRows", lb: "MaxRows", t: "num"},
-                {k: "rowHeight", lb: "RowHeight", t: "num"},
-                {k: "headerHeight", lb: "HeaderHeight", t: "num"},
-                ...PP_TAIL,
-            ],
-            textarea: [
-                ...PP_POS,
-                {sep: "外観"},
-                {k: "text", lb: "Text", t: "area"},
-                {k: "placeholder", lb: "Placeholder", t: "text"},
-                {k: "bg", lb: "BackColor", t: "color"},
-                {k: "fg", lb: "ForeColor", t: "color"},
-                ...PP_FONT,
-                ...PP_BORDER,
-                {sep: "動作"},
-                {k: "disabled", lb: "Disabled", t: "bool"},
-                {k: "readonly", lb: "ReadOnly", t: "bool"},
-                ...PP_TAIL,
-            ],
-            progressbar: [
-                ...PP_POS,
-                {sep: "値"},
-                {k: "value", lb: "Value", t: "num"},
-                {k: "min", lb: "Min", t: "num"},
-                {k: "max", lb: "Max", t: "num"},
-                {sep: "外観"},
-                {k: "bg", lb: "BackColor", t: "color"},
-                {k: "fg", lb: "BarColor", t: "color"},
-                ...PP_BORDER,
-                ...PP_TAIL,
-            ],
-            treeview: [
-                ...PP_POS,
-                {sep: "外観"},
-                {k: "items", lb: "Items", t: "area"},
-                {k: "bg", lb: "BackColor", t: "color"},
-                {k: "fg", lb: "ForeColor", t: "color"},
-                ...PP_FONT,
-                ...PP_BORDER,
-                ...PP_TAIL,
-            ],
-            hscroll: [
-                ...PP_POS,
-                {sep: "値"},
-                {k: "min", lb: "Min", t: "num"},
-                {k: "max", lb: "Max", t: "num"},
-                {k: "val", lb: "Value", t: "num"},
-                ...PP_TAIL,
-            ],
-            vscroll: [
-                ...PP_POS,
-                {sep: "値"},
-                {k: "min", lb: "Min", t: "num"},
-                {k: "max", lb: "Max", t: "num"},
-                {k: "val", lb: "Value", t: "num"},
-                ...PP_TAIL,
-            ],
-            datepicker: [
-                ...PP_POS,
-                {sep: "外観"},
-                {k: "bg", lb: "BackColor", t: "color"},
-                {k: "fg", lb: "ForeColor", t: "color"},
-                ...PP_FONT,
-                ...PP_BORDER,
-                {sep: "種別"},
-                {k: "inputType", lb: "InputType", t: "select", opts: ["date", "time", "datetime-local", "month"]},
-                {sep: "値"},
-                {k: "value", lb: "Value", t: "text"},
-                {k: "min", lb: "Min", t: "text"},
-                {k: "max", lb: "Max", t: "text"},
-                {sep: "動作"},
-                {k: "disabled", lb: "Disabled", t: "bool"},
-                {k: "readonly", lb: "ReadOnly", t: "bool"},
-                ...PP_TAIL,
-            ],
-            slider: [
-                ...PP_POS,
-                {sep: "値"},
-                {k: "min", lb: "Min", t: "num"},
-                {k: "max", lb: "Max", t: "num"},
-                {k: "value", lb: "Value", t: "num"},
-                {k: "step", lb: "Step", t: "num"},
-                {sep: "外観"},
-                {k: "orient", lb: "Orient", t: "select", opts: ["horizontal", "vertical"]},
-                {k: "bg", lb: "BackColor", t: "color"},
-                {sep: "動作"},
-                {k: "disabled", lb: "Disabled", t: "bool"},
-                ...PP_TAIL,
-            ],
-        };
-
         function renderProps() {
             const pl = $("plist"),
                 el = $("elist");
@@ -1775,8 +1717,8 @@
             }
 
             if (!getDesignerState().selId) {
-                // フォームプロパティをPDEFS.formで共通描画
-                const defs = PDEFS.form || [];
+                // フォームプロパティをWIDGET_DEFS.form.pdefsで共通描画
+                const defs = WIDGET_DEFS.form?.pdefs || [];
                 defs.forEach((d) => {
                     if (d.sep) {pl.appendChild(makeSec(d.sep)); return;}
                     let val;
@@ -1792,7 +1734,7 @@
             }
             const w = getWidget(getDesignerState().selId);
             if (!w) return;
-            const defs = PDEFS[w.tag] || [];
+            const defs = WIDGET_DEFS[w.tag]?.pdefs || [];
             defs.forEach((d) => {
                 if (d.sep) {
                     pl.appendChild(makeSec(d.sep));
@@ -1972,7 +1914,7 @@
         function commitWidget(w, opts = {}) {
             renderWidget(w, false);
             applyWPos($("w" + w.id), w);
-            if (opts.name) $("prop-obj").textContent = TOOLS.find(t => t.tag === w.tag)?.label ?? w.tag;
+            if (opts.name) $("prop-obj").textContent = WIDGET_DEFS[w.tag]?.label ?? w.tag;
             if (opts.props !== false) renderProps();
             pushUndo();
         }
@@ -2044,7 +1986,7 @@
             el.innerHTML = "";
             if (!getDesignerState().selId) {
                 // ウィジェット未選択時はフォームイベントを表示
-                const formEvs = EVENTS["form"] || [];
+                const formEvs = WIDGET_DEFS.form?.events || [];
                 const fev = getProjectData().forms[getProjectData().curFormIdx]?.events || {};
                 const hdr = document.createElement("div");
                 hdr.style.cssText = "padding:6px 10px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border)";
@@ -2065,7 +2007,7 @@
             }
             const w = getWidget(getDesignerState().selId);
             if (!w) return;
-            (EVENTS[w.tag] || []).forEach((ev) => {
+            (WIDGET_DEFS[w.tag]?.events || []).forEach((ev) => {
                 const hasY = w.events?.[ev]?.trim().length > 0;
                 const row = document.createElement("div");
                 row.className = "erow";
@@ -3653,7 +3595,7 @@
             hideCtx();
             const w = getWidget(getDesignerState().ctxId);
             if (!w) return;
-            openYaml(w.id, (EVENTS[w.tag] || ["Click"])[0]);
+            openYaml(w.id, (WIDGET_DEFS[w.tag]?.events || ["Click"])[0]);
         }
         function ctxFront() {
             hideCtx();
