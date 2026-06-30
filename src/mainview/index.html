@@ -822,7 +822,6 @@
                 coldefRows:   [],
                 coldefMaxRows:0,
                 validEdit:    null,
-                confirmOkCb:  null,
             },
             // YAMLエディタの入力状態
             _editor: {
@@ -882,6 +881,10 @@
         var _ITEMSDEF_EDITOR = {
             wid:  null,
             rows: [],
+        };
+        // 確認ダイアログ専用の一時状態
+        var _CONFIRM_MODAL = {
+            okCb: null,
         };
 
         // _CTX._project の初期データを設定
@@ -4219,15 +4222,15 @@
             if (m) m.textContent = mainMsg || "VJA Form Designer を閉じますか？";
             if (s) s.textContent = subMsg || "保存していない変更は失われます。";
             if (b) b.textContent = okLabel || "閉じる";
-            getModalContext().confirmOkCb = onOk || null;
+            _CONFIRM_MODAL.okCb = onOk || null;
             document.getElementById("close-confirm").classList.add("show");
         }
         function hideCloseConfirm() {
             document.getElementById("close-confirm").classList.remove("show");
-            getModalContext().confirmOkCb = null;
+            _CONFIRM_MODAL.okCb = null;
         }
         function _onConfirmOk() {
-            const cb = getModalContext().confirmOkCb;
+            const cb = _CONFIRM_MODAL.okCb;
             hideCloseConfirm();
             if (cb) cb();
         }
