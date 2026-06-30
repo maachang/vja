@@ -370,7 +370,6 @@ const WIDGET_DEFS = {
         def: {
             w: 320, h: 160,
             columns: "ID:20\n名前:50\n値:30",
-            bg: "#ffffff", fg: "#000000",
             maxRows: 10,
             headerBg: "#4a4a6a", headerFg: "#ffffff",
             rowBg: "#ffffff", rowAltBg: "#f5f5f5", rowFg: "#000000",
@@ -384,8 +383,6 @@ const WIDGET_DEFS = {
             ...PP_POS,
             { sep: "外観" },
             { k: "columns", lb: "Columns", t: "coldef" },
-            { k: "bg", lb: "BackColor", t: "color" },
-            { k: "fg", lb: "ForeColor", t: "color" },
             { k: "headerBg", lb: "HeaderBg", t: "color" },
             { k: "headerFg", lb: "HeaderFg", t: "color" },
             { k: "rowBg", lb: "RowBackColor", t: "color" },
