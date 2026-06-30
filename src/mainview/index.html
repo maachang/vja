@@ -4537,26 +4537,26 @@
                 const oi_default = "tblColUpdate(" + i + ",'default',this.value)";
                 const oi_useDefault = "tblColUpdate(" + i + ",'useDefault',this.checked)";
                 const defCell =
-                    "<input class='col-check' type='checkbox' " + (c.useDefault ? "checked" : "") + " onchange=\"" + oi_useDefault + "\" style='margin-right:6px'>" +
+                    "<input class='col-check' type='checkbox' " + (c.useDefault ? "checked" : "") + evtAttr("onchange", oi_useDefault) + " style='margin-right:6px'>" +
                     "<input class='col-input' type='text' value='" + esc(c.default || "") + "' " +
-                    "oninput=\"" + oi_default + "\" placeholder='" + esc(defaultValueForType(c.type)) + "' style='width:72px'>";
+                    evtAttr("oninput", oi_default) + " placeholder='" + esc(defaultValueForType(c.type)) + "' style='width:72px'>";
                 return "<tr id='col-row-" + i + "'>" +
                     "<td>" + (i + 1) + "</td>" +
                     "<td><input class='col-input' type='text' value='" + esc(c.name) + "' " +
-                    "oninput=\"" + oi_name + "\" placeholder='カラム名'></td>" +
+                    evtAttr("oninput", oi_name) + " placeholder='カラム名'></td>" +
                     "<td>" +
                     "<button type='button' class='col-type-btn' data-colidx='" + i + "'>" +
                     "<span class='col-type-lbl'>" + esc(c.type || "TEXT") + "</span>" +
                     "<span class='arr'>▼</span></button>" +
                     "</td>" +
                     "<td><input class='col-check' type='checkbox' " + (c.notNull ? "checked" : "") + " " +
-                    "onchange=\"" + oi_notNull + "\"></td>" +
+                    evtAttr("onchange", oi_notNull) + "></td>" +
                     "<td><input class='col-check' type='checkbox' " + (c.pk ? "checked" : "") + " " +
-                    "onchange=\"" + oi_pk + "\"></td>" +
+                    evtAttr("onchange", oi_pk) + "></td>" +
                     "<td><input class='col-check' type='checkbox' " + (c.index ? "checked" : "") + " " +
-                    "onchange=\"" + oi_index + "\"></td>" +
+                    evtAttr("onchange", oi_index) + "></td>" +
                     "<td style='white-space:nowrap'>" + defCell + "</td>" +
-                    "<td style='white-space:nowrap'><button class='tbl-action-btn' onmousedown='tblColInsert(" + i + ")' style='margin-right:2px'>＋</button><button class='tbl-action-btn del' onmousedown='tblColDelete(" + i + ")'>✕</button></td>" +
+                    "<td style='white-space:nowrap'><button class='tbl-action-btn'" + evtAttr("onmousedown", "tblColInsert(" + i + ")") + " style='margin-right:2px'>＋</button><button class='tbl-action-btn del'" + evtAttr("onmousedown", "tblColDelete(" + i + ")") + ">✕</button></td>" +
                     "</tr>";
             }).join("");
 
@@ -4566,16 +4566,16 @@
                 // テーブル名
                 "<div class='tbl-name-row'><label>テーブル名</label>" +
                 "<input id='tbl-name-in' value='" + esc(tbl.name) + "' placeholder='例: users' " +
-                "oninput='_TABLE_MODAL.edit.name=this.value'></div>" +
+                evtAttr("oninput", "_TABLE_MODAL.edit.name=this.value") + "></div>" +
                 // 説明
                 "<div class='tbl-desc-row'><label>説明（任意）</label>" +
-                "<textarea id='tbl-desc-in' oninput='_TABLE_MODAL.edit.description=this.value'>" + esc(tbl.description || "") + "</textarea></div>" +
+                "<textarea id='tbl-desc-in'" + evtAttr("oninput", "_TABLE_MODAL.edit.description=this.value") + ">" + esc(tbl.description || "") + "</textarea></div>" +
                 // マスターCSV
                 _renderMasterCsvArea(tbl) +
                 // カラム一覧
                 "<div style='display:flex;justify-content:space-between;align-items:center'>" +
                 "<span style='font-size:12px;color:var(--text2)'>カラム定義（" + cols.length + "列）</span>" +
-                "<button class='col-add-btn' onmousedown='tblColAdd()'>＋ カラム追加</button>" +
+                "<button class='col-add-btn'" + evtAttr("onmousedown", "tblColAdd()") + ">＋ カラム追加</button>" +
                 "</div>" +
                 "<div class='col-list-scroll'>" +
                 "<table class='col-list-table'>" +
@@ -4593,14 +4593,14 @@
                 "</table></div>" +
                 // DDL プレビュー
                 "<div style='font-size:11px;color:var(--text3);margin-top:2px'>" +
-                "<span onmousedown='tblShowDdl()' style='cursor:pointer;text-decoration:underline'>DDLプレビューを表示</span>" +
+                "<span" + evtAttr("onmousedown", "tblShowDdl()") + " style='cursor:pointer;text-decoration:underline'>DDLプレビューを表示</span>" +
                 "</div>" +
                 "<pre id='tbl-ddl-preview' style='display:none;background:var(--bg3);border:1px solid var(--border);" +
                 "border-radius:3px;padding:8px;font-size:11px;color:#98d982;overflow-x:auto;white-space:pre-wrap'></pre>" +
                 "</div>" +
                 "<div class='mfoot'>" +
-                "<button onmousedown='openTableManager()'>← 一覧に戻る</button>" +
-                "<button class='pri' onmousedown='tblSave()'>保存</button>" +
+                "<button" + evtAttr("onmousedown", "openTableManager()") + ">← 一覧に戻る</button>" +
+                "<button class='pri'" + evtAttr("onmousedown", "tblSave()") + ">保存</button>" +
                 "</div>"
             );
             // showModal後にイベントデリゲーション登録
