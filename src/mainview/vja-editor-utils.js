@@ -195,6 +195,52 @@ function escHl(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/* ── JavaScript シンタックスハイライト ── */
+function jsHlUpdate() { _hlUpdate("js-ta", "js-hl", jsTokenize); }
+function jsHlSync() { _hlSync("js-ta", "js-hl"); }
+function jsTokenize(code) {
+    const KW = /^(function|return|if|else|for|while|do|switch|case|break|continue|const|let|var|new|this|typeof|instanceof|try|catch|finally|throw|await|async|of|in|class|extends|import|export|default|void|delete|yield)$/;
+    const BOOL = /^(true|false|null|undefined|NaN|Infinity)$/;
+    return code.split("\n").map(line => {
+        // 行コメント
+        if (/^\s*\/\//.test(line)) return '<span class="jc">' + escHl(line) + '</span>';
+        let out = ""; let i = 0;
+        while (i < line.length) {
+            // 行コメント（途中）
+            if (line[i] === "/" && line[i + 1] === "/") {
+                out += '<span class="jc">' + escHl(line.slice(i)) + '</span>';
+                break;
+            }
+            // 文字列
+            if (line[i] === '"' || line[i] === "'" || line[i] === "`") {
+                const q = line[i]; let j = i + 1;
+                while (j < line.length) { if (line[j] === "\\") { j += 2; continue; } if (line[j] === q) { j++; break; } j++; }
+                out += '<span class="js">' + escHl(line.slice(i, j)) + '</span>';
+                i = j; continue;
+            }
+            // 数値
+            if (/[0-9]/.test(line[i]) && (i === 0 || !/\w/.test(line[i - 1]))) {
+                let j = i; while (j < line.length && /[0-9._xXa-fA-F]/.test(line[j])) j++;
+                out += '<span class="jn">' + escHl(line.slice(i, j)) + '</span>';
+                i = j; continue;
+            }
+            // 識別子・キーワード
+            if (/[a-zA-Z_$]/.test(line[i])) {
+                let j = i; while (j < line.length && /[\w$]/.test(line[j])) j++;
+                const word = line.slice(i, j);
+                const next = line[j];
+                if (KW.test(word)) out += '<span class="jk">' + escHl(word) + '</span>';
+                else if (BOOL.test(word)) out += '<span class="jb">' + escHl(word) + '</span>';
+                else if (next === "(") out += '<span class="jf">' + escHl(word) + '</span>';
+                else out += '<span class="jp">' + escHl(word) + '</span>';
+                i = j; continue;
+            }
+            out += escHl(line[i]); i++;
+        }
+        return out;
+    }).join("\n");
+}
+
 // YAMLデータをウィジェットに保存する（モーダルは閉じない）
 function _saveYamlData(wid, evName) {
     const w = getWidget(wid);
@@ -251,6 +297,7 @@ Object.assign(window, {
     editorUpdateGutter, editorSyncGutter, yamlTabSwitch,
     editorUndoPush, editorUndoInit, editorUndo, editorRedo,
     _hlSync, _hlUpdate, yamlHlUpdate, yamlHlSync, yamlTokenize,
-    colorVal, escHl,
+    jsHlUpdate, jsHlSync, jsTokenize,
+    colorVal, escHl, _ensureCursorVisible,
     _saveYamlData, saveYaml, openFormYaml, saveFormYaml, deleteFormYaml,
 });
