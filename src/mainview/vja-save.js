@@ -146,22 +146,6 @@ async function actSaveAs() {
     if (!getEditHistory().lastSavePath) getEditHistory().lastSavePath = prevPath;
 }
 
-// トースト通知（#toast-root で管理、z-index:9000）
-function showToast(msg, duration = 2500) {
-    const root = $("toast-root");
-    if (!root) return;
-    const t = document.createElement("div");
-    t.className = "toast-msg";
-    t.style.fontSize = "15px";
-    t.textContent = msg;
-    root.appendChild(t);
-    requestAnimationFrame(() => t.classList.add("show"));
-    setTimeout(() => {
-        t.classList.remove("show");
-        setTimeout(() => t.remove(), 200);
-    }, duration);
-}
-
 /* ── プロジェクト実行 ── */
 // Bun側に渡す現在のプロジェクトデータを返す
 window._getProjectData = function () {
@@ -405,7 +389,7 @@ function formRename() {
    window へのエクスポート（他ファイルから参照される関数のみ）
 ═══════════════════════════════════════════ */
 Object.assign(window, {
-    actNew, loadProjectData, actOpen, actSave, actSaveAs, showToast,
+    actNew, loadProjectData, actOpen, actSave, actSaveAs,
     actCompileProject, actRunProject, actClearProjectDb,
     actShowVersion, actStopProject,
     setStartForm, updateStartBtn, buildFormSelect,

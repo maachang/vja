@@ -43,6 +43,18 @@ function closeModal(layer = "modal-root") {
     if (layer === "modal-root" && getAiContext().loadingTimer) { clearInterval(getAiContext().loadingTimer); getAiContext().loadingTimer = null; }
     $(layer).innerHTML = "";
 }
+// モーダルヘッダー生成ヘルパー
+function mhdrHTML(title, layer = "modal-root") {
+    return "<div class='mhdr'><h4>" + title + "</h4>" +
+        "<button class='mclose'" + evtAttr("onmousedown", "closeModal(\"" + layer + "\")") + ">✕</button></div>";
+}
+// モーダルフッター生成ヘルパー
+function mfootHTML(btns) {
+    // btns: [{label, cls, action}]
+    return "<div class='mfoot'>" +
+        btns.map(b => `<button class='${b.cls || ""}'${evtAttr("onmousedown", b.action)}>${b.label}</button>`).join("") +
+        "</div>";
+}
 // AI生成中のローディングモーダルを表示する。
 // 経過秒数タイマーとキャンセルボタンを持つ。getAiContext().loadingTimer で管理。
 function showLoadingModal(msg) {
@@ -342,7 +354,7 @@ function actDuplicate() {
    window へのエクスポート（他ファイルから参照される関数のみ）
 ═══════════════════════════════════════════ */
 Object.assign(window, {
-    showModal, closeModal, showLoadingModal, cancelAiGenerate, runAiGenerate,
+    showModal, closeModal, mhdrHTML, mfootHTML, showLoadingModal, cancelAiGenerate, runAiGenerate,
     showCtx, hideCtx, ctxYaml, ctxFront, ctxBack,
     deepEqual, snapshot, pushUndo, commitAndPush, renderEventsAndPush,
     applyProjectData, restoreSnap, actUndo, actRedo, actDelete, actDuplicate,

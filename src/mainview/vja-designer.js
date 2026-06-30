@@ -559,19 +559,6 @@ function setProp(k, sp, val, wid) {
     commitWidget(w, { name: sp === "name", props: true });
 }
 
-// モーダルヘッダー生成ヘルパー
-function mhdrHTML(title, layer = "modal-root") {
-    return "<div class='mhdr'><h4>" + title + "</h4>" +
-        "<button class='mclose'" + evtAttr("onmousedown", "closeModal(\"" + layer + "\")") + ">✕</button></div>";
-}
-// モーダルフッター生成ヘルパー
-function mfootHTML(btns) {
-    // btns: [{label, cls, action}]
-    return "<div class='mfoot'>" +
-        btns.map(b => `<button class='${b.cls || ""}'${evtAttr("onmousedown", b.action)}>${b.label}</button>`).join("") +
-        "</div>";
-}
-
 // ── 画像アップロード ─────────────────────────────
 function openImgUpload(wid) {
     const inp = document.createElement("input");
@@ -727,7 +714,7 @@ Object.assign(window, {
     applyWPos, fullRedraw, updateSelVisual, select, deselect,
     updateStatusSel, initFormBodyEvents, addWidget, bindWidget,
     startMove, startResize, renderProps, makeSec, makeProw,
-    pinput, setProp, mhdrHTML, mfootHTML, openImgUpload, clearImg,
+    pinput, setProp, openImgUpload, clearImg,
     commitWidget, getWidget, pvNumStep, setFontFamilyProp,
     syncPropXY, syncPropWH, setFormCfg, deleteYaml, renderEvents,
     switchTab,

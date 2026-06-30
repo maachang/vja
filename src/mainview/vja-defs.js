@@ -888,6 +888,23 @@ function evtAttr(eventName, jsCode) {
     return " " + eventName + '="' + jsCode.replace(/"/g, "&quot;") + '"';
 }
 
+// トースト通知（#toast-root で管理、z-index:9000）
+// 全ドメインから共通利用される汎用UI部品のためここに集約
+function showToast(msg, duration = 2500) {
+    const root = $("toast-root");
+    if (!root) return;
+    const t = document.createElement("div");
+    t.className = "toast-msg";
+    t.style.fontSize = "15px";
+    t.textContent = msg;
+    root.appendChild(t);
+    requestAnimationFrame(() => t.classList.add("show"));
+    setTimeout(() => {
+        t.classList.remove("show");
+        setTimeout(() => t.remove(), 200);
+    }, duration);
+}
+
 /* ═══════════════════════════════════════════
     window へのエクスポート
     ─────────────────────────────────────────────
@@ -914,7 +931,7 @@ Object.assign(window, {
     // UI定義・定数
     UI_FONT_LIST, SNAP, sn,
     // 共通ユーティリティ
-    esc, $, fb, evtAttr, _pvRegistry, pvRegister, pvCall, rAfBind,
+    esc, $, fb, evtAttr, _pvRegistry, pvRegister, pvCall, rAfBind, showToast,
     // フォームデータ生成・現在フォームのショートカット同期関数
     makeFormData, refreshAll, syncCurForm, commitIdCnt,
 });
