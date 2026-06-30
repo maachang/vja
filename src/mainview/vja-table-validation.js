@@ -1100,65 +1100,28 @@
         /* ═══════════════════════════════════════════
            window へのエクスポート（他ファイルから参照される関数のみ）
         ═══════════════════════════════════════════ */
-        window.commitCurrentInput = commitCurrentInput;
-        window.isDirty = isDirty;
-        window.confirmClose = confirmClose;
-        window.showCloseConfirm = showCloseConfirm;
-        window.hideCloseConfirm = hideCloseConfirm;
-        window._onConfirmOk = _onConfirmOk;
-        window.doClose = doClose;
-        window.openConstEditor = openConstEditor;
-        window.renderConstModal = renderConstModal;
-        window.renderConstModalBase = renderConstModalBase;
-        window.syncConstFromDOM = syncConstFromDOM;
-        window.constUpdate = constUpdate;
-        window.constAddRow = constAddRow;
-        window.constDelRow = constDelRow;
-        window._constSaveBase = _constSaveBase;
-        window.constSave = constSave;
-        window.makePvSel = makePvSel;
-        window.pvSelOpen = pvSelOpen;
-        window.pvSelPick = pvSelPick;
-        window.openTableManager = openTableManager;
-        window.renderTableManagerModal = renderTableManagerModal;
-        window.deleteTable = deleteTable;
-        window.openTableEdit = openTableEdit;
-        window.defaultColumn = defaultColumn;
-        window.renderTableEditModal = renderTableEditModal;
-        window._renderMasterCsvArea = _renderMasterCsvArea;
-        window.tblUploadMasterCsv = tblUploadMasterCsv;
-        window.tblReuploadMasterCsv = tblReuploadMasterCsv;
-        window.tblOnCsvSelected = tblOnCsvSelected;
-        window._compressCsv = _compressCsv;
-        window._decompressCsv = _decompressCsv;
-        window._parseCsvLine = _parseCsvLine;
-        window.tblDownloadMasterCsv = tblDownloadMasterCsv;
-        window.tblDeleteMasterCsv = tblDeleteMasterCsv;
-        window.defaultValueForType = defaultValueForType;
-        window.validateDefaultValue = validateDefaultValue;
-        window.tblColUpdate = tblColUpdate;
-        window.tblColUpdatePk = tblColUpdatePk;
-        window.tblColAdd = tblColAdd;
-        window.tblColInsert = tblColInsert;
-        window.tblColDelete = tblColDelete;
-        window.tblSyncFromDOM = tblSyncFromDOM;
-        window.tblShowDdl = tblShowDdl;
-        window.generateDDL = generateDDL;
-        window.tblTypeOpen = tblTypeOpen;
-        window.tblTypeSelect = tblTypeSelect;
-        window.tblSave = tblSave;
-        window.openValidationEditor = openValidationEditor;
-        window.renderValidationListModal = renderValidationListModal;
-        window.openValidationEdit = openValidationEdit;
-        window.renderValidationEditModal = renderValidationEditModal;
-        window._rowAdd = _rowAdd;
-        window._rowInsert = _rowInsert;
-        window._rowDel = _rowDel;
-        window.renderRowListModal = renderRowListModal;
-        window.renderListManagerModal = renderListManagerModal;
-        window.validAddRow = validAddRow;
-        window.validInsertRow = validInsertRow;
-        window.validDelRow = validDelRow;
-        window.deleteValidation = deleteValidation;
-        window.validSave = validSave;
+        Object.assign(window, {
+            // 閉じる確認
+            commitCurrentInput, isDirty, confirmClose,
+            showCloseConfirm, hideCloseConfirm, _onConfirmOk, doClose,
+            // 定数編集・行リストモーダル共通テンプレート
+            openConstEditor, renderConstModal, renderConstModalBase,
+            syncConstFromDOM, constUpdate, constAddRow, constDelRow,
+            _constSaveBase, constSave,
+            makePvSel, pvSelOpen, pvSelPick,
+            _rowAdd, _rowInsert, _rowDel, renderRowListModal, renderListManagerModal,
+            // テーブル管理
+            openTableManager, renderTableManagerModal, deleteTable, openTableEdit,
+            defaultColumn, renderTableEditModal, _renderMasterCsvArea,
+            tblUploadMasterCsv, tblReuploadMasterCsv, tblOnCsvSelected,
+            _compressCsv, _decompressCsv, _parseCsvLine,
+            tblDownloadMasterCsv, tblDeleteMasterCsv,
+            defaultValueForType, validateDefaultValue,
+            tblColUpdate, tblColUpdatePk, tblColAdd, tblColInsert, tblColDelete,
+            tblSyncFromDOM, tblShowDdl, generateDDL, tblTypeOpen, tblTypeSelect, tblSave,
+            // バリデーション編集
+            openValidationEditor, renderValidationListModal, openValidationEdit,
+            renderValidationEditModal,
+            validAddRow, validInsertRow, validDelRow, deleteValidation, validSave,
+        });
 

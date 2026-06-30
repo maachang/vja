@@ -896,63 +896,28 @@
         /* ═══════════════════════════════════════════
            window へのエクスポート（他ファイルから参照される関数のみ）
         ═══════════════════════════════════════════ */
-        window.openFormConstEditor = openFormConstEditor;
-        window.renderFormConstModal = renderFormConstModal;
-        window.formConstAddRow = formConstAddRow;
-        window.saveFormConst = saveFormConst;
-        window.openAppEvents = openAppEvents;
-        window.saveAppEvent = saveAppEvent;
-        window.openProjectInfo = openProjectInfo;
-        window.piVerStep = piVerStep;
-        window.saveProjectInfo = saveProjectInfo;
-        window.openExtRuntime = openExtRuntime;
-        window.saveExtRuntime = saveExtRuntime;
-        window.extRtGenDoc = extRtGenDoc;
-        window.openDebugTools = openDebugTools;
-        window.openCloudInfraConfig = openCloudInfraConfig;
-        window._renderCloudModal = _renderCloudModal;
-        window._cloudSelId = _cloudSelId;
-        window._cloudOptsHtml = _cloudOptsHtml;
-        window._cloudSvcOptsHtml = _cloudSvcOptsHtml;
-        window._cloudUrlFieldHtml = _cloudUrlFieldHtml;
-        window._cloudCredFieldsHtml = _cloudCredFieldsHtml;
-        window._cloudInfraRow = _cloudInfraRow;
-        window.addCloudInfra = addCloudInfra;
-        window.removeCloudInfra = removeCloudInfra;
-        window.updateCloudField = updateCloudField;
-        window.updateCloudCred = updateCloudCred;
-        window.updateCloudCredsJson = updateCloudCredsJson;
-        window.updateCloudAppInput = updateCloudAppInput;
-        window.selectCloudPreset = selectCloudPreset;
-        window.selectCloudService = selectCloudService;
-        window._refreshCloudList = _refreshCloudList;
-        window.saveCloudInfraConfig = saveCloudInfraConfig;
-        window.openFontConfig = openFontConfig;
-        window._updateFontPreview = _updateFontPreview;
-        window._fontSizeStep = _fontSizeStep;
-        window.efSizeStep = efSizeStep;
-        window.ufSizeStep = ufSizeStep;
-        window.saveFontConfig = saveFontConfig;
-        window.openColDefEditor = openColDefEditor;
-        window.renderColDefModal = renderColDefModal;
-        window.coldefUpdate = coldefUpdate;
-        window.coldefAddRow = coldefAddRow;
-        window.coldefInsertRow = coldefInsertRow;
-        window.coldefDelRow = coldefDelRow;
-        window.coldefSave = coldefSave;
-        window.openItemsDefEditor = openItemsDefEditor;
-        window.renderItemsDefModal = renderItemsDefModal;
-        window.itemsdefAddRow = itemsdefAddRow;
-        window.itemsdefInsertRow = itemsdefInsertRow;
-        window.itemsdefDelRow = itemsdefDelRow;
-        window.itemsdefSave = itemsdefSave;
-        window.applyProjectInfo = applyProjectInfo;
-        window.applyUiConfig = applyUiConfig;
-        window.applyEditorConfig = applyEditorConfig;
-        window.applyViewSettings = applyViewSettings;
-        window.toggleGrid = toggleGrid;
-        window.toggleSnap = toggleSnap;
-        window.updateCount = updateCount;
-        window.toggleMenu = toggleMenu;
-        window.closeAllMenus = closeAllMenus;
+        Object.assign(window, {
+            // フォーム定数・アプリイベント・プロジェクト情報・拡張ランタイム
+            openFormConstEditor, renderFormConstModal, formConstAddRow, saveFormConst,
+            openAppEvents, saveAppEvent,
+            openProjectInfo, piVerStep, saveProjectInfo,
+            openExtRuntime, saveExtRuntime, extRtGenDoc,
+            openDebugTools,
+            // クラウドインフラ設定
+            openCloudInfraConfig, _renderCloudModal, _cloudSelId,
+            _cloudOptsHtml, _cloudSvcOptsHtml, _cloudUrlFieldHtml, _cloudCredFieldsHtml,
+            _cloudInfraRow, addCloudInfra, removeCloudInfra,
+            updateCloudField, updateCloudCred, updateCloudCredsJson, updateCloudAppInput,
+            selectCloudPreset, selectCloudService, _refreshCloudList, saveCloudInfraConfig,
+            // フォント設定
+            openFontConfig, _updateFontPreview, _fontSizeStep, efSizeStep, ufSizeStep, saveFontConfig,
+            // カラム定義・項目定義エディタ
+            openColDefEditor, renderColDefModal,
+            coldefUpdate, coldefAddRow, coldefInsertRow, coldefDelRow, coldefSave,
+            openItemsDefEditor, renderItemsDefModal,
+            itemsdefAddRow, itemsdefInsertRow, itemsdefDelRow, itemsdefSave,
+            // 各種反映・トグル
+            applyProjectInfo, applyUiConfig, applyEditorConfig, applyViewSettings,
+            toggleGrid, toggleSnap, updateCount, toggleMenu, closeAllMenus,
+        });
 

@@ -341,25 +341,10 @@
         /* ═══════════════════════════════════════════
            window へのエクスポート（他ファイルから参照される関数のみ）
         ═══════════════════════════════════════════ */
-        window.showModal = showModal;
-        window.closeModal = closeModal;
-        window.showLoadingModal = showLoadingModal;
-        window.cancelAiGenerate = cancelAiGenerate;
-        window.runAiGenerate = runAiGenerate;
-        window.showCtx = showCtx;
-        window.hideCtx = hideCtx;
-        window.ctxYaml = ctxYaml;
-        window.ctxFront = ctxFront;
-        window.ctxBack = ctxBack;
-        window.deepEqual = deepEqual;
-        window.snapshot = snapshot;
-        window.pushUndo = pushUndo;
-        window.commitAndPush = commitAndPush;
-        window.renderEventsAndPush = renderEventsAndPush;
-        window.applyProjectData = applyProjectData;
-        window.restoreSnap = restoreSnap;
-        window.actUndo = actUndo;
-        window.actRedo = actRedo;
-        window.actDelete = actDelete;
-        window.actDuplicate = actDuplicate;
+        Object.assign(window, {
+            showModal, closeModal, showLoadingModal, cancelAiGenerate, runAiGenerate,
+            showCtx, hideCtx, ctxYaml, ctxFront, ctxBack,
+            deepEqual, snapshot, pushUndo, commitAndPush, renderEventsAndPush,
+            applyProjectData, restoreSnap, actUndo, actRedo, actDelete, actDuplicate,
+        });
 

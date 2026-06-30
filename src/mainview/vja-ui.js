@@ -294,13 +294,10 @@
         /* ═══════════════════════════════════════════
            window へのエクスポート（他ファイルから参照される関数のみ）
         ═══════════════════════════════════════════ */
-        window.startPanelResize = startPanelResize;
-        window.initRuler = initRuler;
-        window.drawRulers = drawRulers;
-        window.drawRulerH = drawRulerH;
-        window.drawRulerV = drawRulerV;
-        window.initFormResize = initFormResize;
-        window.syncFormPropWH = syncFormPropWH;
+        Object.assign(window, {
+            startPanelResize, initRuler, drawRulers, drawRulerH, drawRulerV,
+            initFormResize, syncFormPropWH,
+        });
 
         /* ═══════════════════════════════════════════
           INIT

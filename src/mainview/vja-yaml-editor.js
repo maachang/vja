@@ -1201,31 +1201,14 @@
         /* ═══════════════════════════════════════════
            window へのエクスポート（他ファイルから参照される関数のみ）
         ═══════════════════════════════════════════ */
-        window._parseApiRefNav = _parseApiRefNav;
-        window.openApiRef = openApiRef;
-        window.openYaml = openYaml;
-        window.yamlBuildRightPanel = yamlBuildRightPanel;
-        window.yamlRpSection = yamlRpSection;
-        window.yamlToggleRpSection = yamlToggleRpSection;
-        window.yamlToggleTblCols = yamlToggleTblCols;
-        window.yamlInitRpanelEvents = yamlInitRpanelEvents;
-        window.yamlInitResize = yamlInitResize;
-        window.yamlInsert = yamlInsert;
-        window.yamlAiGenerate = yamlAiGenerate;
-        window.editorKeyHandler = editorKeyHandler;
-        window.editorMouseDownHandler2 = editorMouseDownHandler2;
-        window.editorDblClickHandler = editorDblClickHandler;
-        window.editorHlUpdate = editorHlUpdate;
-        window.buildYamlEditorHTML = buildYamlEditorHTML;
-        window.initYamlEditorModal = initYamlEditorModal;
-        window.openAiConfig = openAiConfig;
-        window.aiCfgModelListHtml = aiCfgModelListHtml;
-        window.aiCfgToggleRouter = aiCfgToggleRouter;
-        window.aiCfgToggleEnabled = aiCfgToggleEnabled;
-        window.aiCfgFetchModels = aiCfgFetchModels;
-        window.saveAiConfig = saveAiConfig;
-        window.editorSearch = editorSearch;
-        window.jsHlUpdate = jsHlUpdate;
-        window.jsHlSync = jsHlSync;
-        window.jsTokenize = jsTokenize;
+        Object.assign(window, {
+            _parseApiRefNav, openApiRef, openYaml,
+            yamlBuildRightPanel, yamlRpSection, yamlToggleRpSection, yamlToggleTblCols,
+            yamlInitRpanelEvents, yamlInitResize, yamlInsert, yamlAiGenerate,
+            editorKeyHandler, editorMouseDownHandler2, editorDblClickHandler, editorHlUpdate,
+            buildYamlEditorHTML, initYamlEditorModal,
+            openAiConfig, aiCfgModelListHtml, aiCfgToggleRouter, aiCfgToggleEnabled,
+            aiCfgFetchModels, saveAiConfig,
+            editorSearch, jsHlUpdate, jsHlSync, jsTokenize,
+        });
 

@@ -247,23 +247,11 @@
         /* ═══════════════════════════════════════════
            window へのエクスポート（他ファイルから参照される関数のみ）
         ═══════════════════════════════════════════ */
-        window.editorUpdateGutter = editorUpdateGutter;
-        window.editorSyncGutter = editorSyncGutter;
-        window.yamlTabSwitch = yamlTabSwitch;
-        window.editorUndoPush = editorUndoPush;
-        window.editorUndoInit = editorUndoInit;
-        window.editorUndo = editorUndo;
-        window.editorRedo = editorRedo;
-        window._hlSync = _hlSync;
-        window._hlUpdate = _hlUpdate;
-        window.yamlHlUpdate = yamlHlUpdate;
-        window.yamlHlSync = yamlHlSync;
-        window.yamlTokenize = yamlTokenize;
-        window.colorVal = colorVal;
-        window.escHl = escHl;
-        window._saveYamlData = _saveYamlData;
-        window.saveYaml = saveYaml;
-        window.openFormYaml = openFormYaml;
-        window.saveFormYaml = saveFormYaml;
-        window.deleteFormYaml = deleteFormYaml;
+        Object.assign(window, {
+            editorUpdateGutter, editorSyncGutter, yamlTabSwitch,
+            editorUndoPush, editorUndoInit, editorUndo, editorRedo,
+            _hlSync, _hlUpdate, yamlHlUpdate, yamlHlSync, yamlTokenize,
+            colorVal, escHl,
+            _saveYamlData, saveYaml, openFormYaml, saveFormYaml, deleteFormYaml,
+        });
 

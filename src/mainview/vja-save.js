@@ -404,24 +404,11 @@
         /* ═══════════════════════════════════════════
            window へのエクスポート（他ファイルから参照される関数のみ）
         ═══════════════════════════════════════════ */
-        window.actNew = actNew;
-        window.loadProjectData = loadProjectData;
-        window.actOpen = actOpen;
-        window.actSave = actSave;
-        window.actSaveAs = actSaveAs;
-        window.showToast = showToast;
-        window.actCompileProject = actCompileProject;
-        window.actRunProject = actRunProject;
-        window.actClearProjectDb = actClearProjectDb;
-        window.actShowVersion = actShowVersion;
-        window.actStopProject = actStopProject;
-        window.setStartForm = setStartForm;
-        window.updateStartBtn = updateStartBtn;
-        window.buildFormSelect = buildFormSelect;
-        window.toggleFdd = toggleFdd;
-        window.closeFdd = closeFdd;
-        window.switchForm = switchForm;
-        window.formNew = formNew;
-        window.formDelete = formDelete;
-        window.formRename = formRename;
+        Object.assign(window, {
+            actNew, loadProjectData, actOpen, actSave, actSaveAs, showToast,
+            actCompileProject, actRunProject, actClearProjectDb,
+            actShowVersion, actStopProject,
+            setStartForm, updateStartBtn, buildFormSelect,
+            toggleFdd, closeFdd, switchForm, formNew, formDelete, formRename,
+        });
 

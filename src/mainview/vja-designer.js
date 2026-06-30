@@ -722,41 +722,16 @@
         /* ═══════════════════════════════════════════
            window へのエクスポート（他ファイルから参照される関数のみ）
         ═══════════════════════════════════════════ */
-        window.buildTools = buildTools;
-        window.setTool = setTool;
-        window.applyForm = applyForm;
-        window.makeInner = makeInner;
-        window.renderWidget = renderWidget;
-        window.applyWPos = applyWPos;
-        window.fullRedraw = fullRedraw;
-        window.updateSelVisual = updateSelVisual;
-        window.select = select;
-        window.deselect = deselect;
-        window.updateStatusSel = updateStatusSel;
-        window.initFormBodyEvents = initFormBodyEvents;
-        window.addWidget = addWidget;
-        window.bindWidget = bindWidget;
-        window.startMove = startMove;
-        window.startResize = startResize;
-        window.renderProps = renderProps;
-        window.makeSec = makeSec;
-        window.makeProw = makeProw;
-        window.pinput = pinput;
-        window.setProp = setProp;
-        window.mhdrHTML = mhdrHTML;
-        window.mfootHTML = mfootHTML;
-        window.openImgUpload = openImgUpload;
-        window.clearImg = clearImg;
-        window.commitWidget = commitWidget;
-        window.getWidget = getWidget;
-        window.pvNumStep = pvNumStep;
-        window.setFontFamilyProp = setFontFamilyProp;
-        window.syncPropXY = syncPropXY;
-        window.syncPropWH = syncPropWH;
-        window.setFormCfg = setFormCfg;
-        window.deleteYaml = deleteYaml;
-        window.renderEvents = renderEvents;
-        window.switchTab = switchTab;
+        Object.assign(window, {
+            buildTools, setTool, applyForm, makeInner, renderWidget,
+            applyWPos, fullRedraw, updateSelVisual, select, deselect,
+            updateStatusSel, initFormBodyEvents, addWidget, bindWidget,
+            startMove, startResize, renderProps, makeSec, makeProw,
+            pinput, setProp, mhdrHTML, mfootHTML, openImgUpload, clearImg,
+            commitWidget, getWidget, pvNumStep, setFontFamilyProp,
+            syncPropXY, syncPropWH, setFormCfg, deleteYaml, renderEvents,
+            switchTab,
+        });
 
         function switchTab(t) {
             getDesignerState().curTab = t;

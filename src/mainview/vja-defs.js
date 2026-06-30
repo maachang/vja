@@ -869,50 +869,24 @@
            init-params.js と同様に window オブジェクトへ
            明示的に代入する必要がある。
            このファイルが他ファイルへ提供するものを全てここに列挙する。
+           （widgets/formCfg/idCnt は _CTX._project に統合済みのため、
+           個別の window.widgets 等は不要。getProjectData().widgets の形で参照する）
         ═══════════════════════════════════════════ */
-        // 状態管理オブジェクト・getter
-        window._CTX = _CTX;
-        window.getDesignerState = getDesignerState;
-        window.getProjectData = getProjectData;
-        window.getEditHistory = getEditHistory;
-        window.getEditorContext = getEditorContext;
-        window.getAiContext = getAiContext;
-        window.getUiConfig = getUiConfig;
-        // 機能別ローカル状態オブジェクト
-        window._CLOUD_MODAL = _CLOUD_MODAL;
-        window._APPEVENT_MODAL = _APPEVENT_MODAL;
-        window._EXTRT_EDITOR = _EXTRT_EDITOR;
-        window._ITEMSDEF_EDITOR = _ITEMSDEF_EDITOR;
-        window._CONFIRM_MODAL = _CONFIRM_MODAL;
-        window._COLDEF_MODAL = _COLDEF_MODAL;
-        window._CONST_MODAL = _CONST_MODAL;
-        window._VALID_MODAL = _VALID_MODAL;
-        window._TABLE_MODAL = _TABLE_MODAL;
-        // ウィジェット定義
-        window.PP_POS = PP_POS;
-        window.PP_FONT = PP_FONT;
-        window.PP_BORDER = PP_BORDER;
-        window.PP_TAIL = PP_TAIL;
-        window.POINTER_TOOL = POINTER_TOOL;
-        window.WIDGET_DEFS = WIDGET_DEFS;
-        window.getToolById = getToolById;
-        // UI定義・定数
-        window.UI_FONT_LIST = UI_FONT_LIST;
-        window.SNAP = SNAP;
-        window.sn = sn;
-        // 共通ユーティリティ
-        window.esc = esc;
-        window.$ = $;
-        window.fb = fb;
-        window.evtAttr = evtAttr;
-        window._pvRegistry = _pvRegistry;
-        window.pvRegister = pvRegister;
-        window.pvCall = pvCall;
-        window.rAfBind = rAfBind;
-        // フォームデータ生成・現在フォームのショートカット同期関数
-        // （widgets/formCfg/idCnt は _CTX._project に統合済みのため、
-        //   個別の window.widgets 等は不要。getProjectData().widgets の形で参照する）
-        window.makeFormData = makeFormData;
-        window.refreshAll = refreshAll;
-        window.syncCurForm = syncCurForm;
-        window.commitIdCnt = commitIdCnt;
+        Object.assign(window, {
+            // 状態管理オブジェクト・getter
+            _CTX,
+            getDesignerState, getProjectData, getEditHistory,
+            getEditorContext, getAiContext, getUiConfig,
+            // 機能別ローカル状態オブジェクト
+            _CLOUD_MODAL, _APPEVENT_MODAL, _EXTRT_EDITOR, _ITEMSDEF_EDITOR,
+            _CONFIRM_MODAL, _COLDEF_MODAL, _CONST_MODAL, _VALID_MODAL, _TABLE_MODAL,
+            // ウィジェット定義
+            PP_POS, PP_FONT, PP_BORDER, PP_TAIL,
+            POINTER_TOOL, WIDGET_DEFS, getToolById,
+            // UI定義・定数
+            UI_FONT_LIST, SNAP, sn,
+            // 共通ユーティリティ
+            esc, $, fb, evtAttr, _pvRegistry, pvRegister, pvCall, rAfBind,
+            // フォームデータ生成・現在フォームのショートカット同期関数
+            makeFormData, refreshAll, syncCurForm, commitIdCnt,
+        });
