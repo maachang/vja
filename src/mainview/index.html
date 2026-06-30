@@ -1827,19 +1827,19 @@
             const w2 = wid;
             switch (d.t) {
                 case "text":
-                    return `<input type="text" class="pv-input" value="${esc(val ?? "")}" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">`;
+                    return `<input type="text" class="pv-input" value="${esc(val ?? "")}"${evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")")}>`;
                 case "num": {
                     const nid = "pn_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
                     const nMin = d.min ?? -9999;
                     const nMax = d.max ?? 9999;
                     return `<div style="display:flex;align-items:center;gap:2px;width:100%">` +
                         `<input type="number" id="${nid}" class="pv-input" value="${val ?? 0}" min="${nMin}" max="${nMax}" ` +
-                        `style="flex:1;height:22px;-webkit-appearance:none;appearance:none;text-align:right" ` +
-                        `onchange="setProp('${d.k}','${d.sp || ""}',+this.value,${w2})">` +
-                        `<button onmousedown="pvNumStep('${nid}',1,'${d.k}','${d.sp || ""}',${w2},${nMin},${nMax})" ` +
-                        `style="width:18px;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:10px;cursor:pointer;padding:0;flex-shrink:0">▲</button>` +
-                        `<button onmousedown="pvNumStep('${nid}',-1,'${d.k}','${d.sp || ""}',${w2},${nMin},${nMax})" ` +
-                        `style="width:18px;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:10px;cursor:pointer;padding:0;flex-shrink:0">▼</button>` +
+                        `style="flex:1;height:22px;-webkit-appearance:none;appearance:none;text-align:right"` +
+                        evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',+this.value," + w2 + ")") + ">" +
+                        `<button` + evtAttr("onmousedown", "pvNumStep('" + nid + "',1,'" + d.k + "','" + (d.sp || "") + "'," + w2 + "," + nMin + "," + nMax + ")") +
+                        ` style="width:18px;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:10px;cursor:pointer;padding:0;flex-shrink:0">▲</button>` +
+                        `<button` + evtAttr("onmousedown", "pvNumStep('" + nid + "',-1,'" + d.k + "','" + (d.sp || "") + "'," + w2 + "," + nMin + "," + nMax + ")") +
+                        ` style="width:18px;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:10px;cursor:pointer;padding:0;flex-shrink:0">▼</button>` +
                         `</div>`;
                 }
                 case "bool": {
@@ -1850,7 +1850,9 @@
                         "setProp('" + d.k + "','" + (d.sp || "") + "',{value}==='true'," + w2 + ")");
                 }
                 case "color":
-                    return `<input type="color" value="${val || "#000000"}" style="width:100%;height:22px;padding:1px 2px;cursor:pointer;border:1px solid var(--border);border-radius:2px;background:var(--bg3)" oninput="setProp('${d.k}','${d.sp || ""}',this.value,${w2})" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">`;
+                    return `<input type="color" value="${val || "#000000"}" style="width:100%;height:22px;padding:1px 2px;cursor:pointer;border:1px solid var(--border);border-radius:2px;background:var(--bg3)"` +
+                        evtAttr("oninput", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")") +
+                        evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")") + ">";
                 case "sel":
                 case "select": {
                     const sid = "pvs_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
@@ -1859,9 +1861,9 @@
                         "setProp('" + d.k + "','" + (d.sp || "") + "',{value}," + w2 + ")");
                 }
                 case "itemsdef":
-                    return `<button onmousedown="openItemsDefEditor(${w2})" class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ 項目編集…</button>`;
+                    return `<button${evtAttr("onmousedown", "openItemsDefEditor(" + w2 + ")")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ 項目編集…</button>`;
                 case "area":
-                    return `<textarea class="pv-textarea" style="height:56px" onchange="setProp('${d.k}','${d.sp || ""}',this.value,${w2})">${esc(val || "")}</textarea>`;
+                    return `<textarea class="pv-textarea" style="height:56px"${evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")")}>${esc(val || "")}</textarea>`;
                 case "img": {
                     const hasImg = val && val.startsWith("data:");
                     const iid = "pvimg_" + w2;
@@ -1872,23 +1874,23 @@
                             : `<span style="color:var(--text3);font-size:11px">画像なし</span>`) +
                         `</div>` +
                         `<div style="display:flex;gap:4px">` +
-                        `<button class="pv-input" style="flex:1;cursor:pointer;color:var(--accent)" onmousedown="openImgUpload(${w2})">📁 選択…</button>` +
-                        (hasImg ? `<button class="pv-input" style="cursor:pointer;color:#ff6b6b" onmousedown="clearImg(${w2})">✕</button>` : "") +
+                        `<button class="pv-input" style="flex:1;cursor:pointer;color:var(--accent)"` + evtAttr("onmousedown", "openImgUpload(" + w2 + ")") + `>📁 選択…</button>` +
+                        (hasImg ? `<button class="pv-input" style="cursor:pointer;color:#ff6b6b"` + evtAttr("onmousedown", "clearImg(" + w2 + ")") + `>✕</button>` : "") +
                         `</div>` +
                         `</div>`;
                 }
                 case "coldef":
-                    return `<button onmousedown="openColDefEditor(${w2})" class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ カラム編集…</button>`;
+                    return `<button${evtAttr("onmousedown", "openColDefEditor(" + w2 + ")")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ カラム編集…</button>`;
                 case "fontsel": {
                     const curFF = val || "";
                     const curFFL = WIDGET_FONTS.find(f => f.value === curFF)?.label || "（デフォルト）";
                     const fid = "pv-ff-" + w2;
                     const fopts = WIDGET_FONTS.map((f, i) =>
-                        `<div class="pv-sel-opt ${f.value === curFF ? "active" : ""}" ` +
-                        `onmousedown="pvSelPick('${fid}','${esc(f.label)}',event);setFontFamilyProp(${i},${w2})">${esc(f.label)}</div>`
+                        `<div class="pv-sel-opt ${f.value === curFF ? "active" : ""}"` +
+                        evtAttr("onmousedown", "pvSelPick('" + fid + "','" + esc(f.label) + "',event);setFontFamilyProp(" + i + "," + w2 + ")") + `>${esc(f.label)}</div>`
                     ).join("");
                     return `<div class="pv-sel" id="${fid}">` +
-                        `<div class="pv-sel-btn" onmousedown="pvSelOpen('${fid}',event)">` +
+                        `<div class="pv-sel-btn"` + evtAttr("onmousedown", "pvSelOpen('" + fid + "',event)") + `>` +
                         `<span>${esc(curFFL)}</span><span class="arr">▼</span></div>` +
                         `<div class="pv-sel-list">${fopts}</div></div>`;
                 }
@@ -1919,13 +1921,13 @@
         // モーダルヘッダー生成ヘルパー
         function mhdrHTML(title, layer = "modal-root") {
             return "<div class='mhdr'><h4>" + title + "</h4>" +
-                "<button class='mclose' onmousedown='closeModal(\"" + layer + "\")'>✕</button></div>";
+                "<button class='mclose'" + evtAttr("onmousedown", "closeModal(\"" + layer + "\")") + ">✕</button></div>";
         }
         // モーダルフッター生成ヘルパー
         function mfootHTML(btns) {
             // btns: [{label, cls, action}]
             return "<div class='mfoot'>" +
-                btns.map(b => `<button class='${b.cls || ""}' onmousedown='${b.action}'>${b.label}</button>`).join("") +
+                btns.map(b => `<button class='${b.cls || ""}'${evtAttr("onmousedown", b.action)}>${b.label}</button>`).join("") +
                 "</div>";
         }
 
@@ -2053,10 +2055,10 @@
                     const row = document.createElement("div");
                     row.className = "erow";
                     row.innerHTML = `<div class="ek ${hasY ? "has-yaml" : ""}">${ev}${hasY ? " ✓" : ""}</div>
-      <button class="ebtn" onmousedown="openFormYaml('${ev}')">
+      <button class="ebtn"${evtAttr("onmousedown", "openFormYaml('" + ev + "')")}>
         <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       </button>
-      <button class="edelbtn ${hasY ? "has-yaml" : ""}" onmousedown="deleteFormYaml('${ev}')" title="イベントを削除">✕</button>`;
+      <button class="edelbtn ${hasY ? "has-yaml" : ""}"${evtAttr("onmousedown", "deleteFormYaml('" + ev + "')")} title="イベントを削除">✕</button>`;
                     el.appendChild(row);
                 });
                 return;
@@ -2068,10 +2070,10 @@
                 const row = document.createElement("div");
                 row.className = "erow";
                 row.innerHTML = `<div class="ek ${hasY ? "has-yaml" : ""}">${ev}${hasY ? " ✓" : ""}</div>
-      <button class="ebtn" onmousedown="openYaml(${w.id},'${ev}')">
+      <button class="ebtn"${evtAttr("onmousedown", "openYaml(" + w.id + ",'" + ev + "')")}>
         <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       </button>
-      <button class="edelbtn ${hasY ? "has-yaml" : ""}" onmousedown="deleteYaml(${w.id},'${ev}')" title="イベントを削除">✕</button>`;
+      <button class="edelbtn ${hasY ? "has-yaml" : ""}"${evtAttr("onmousedown", "deleteYaml(" + w.id + ",'" + ev + "')")} title="イベントを削除">✕</button>`;
                 el.appendChild(row);
             });
         }
@@ -2120,7 +2122,7 @@
 
             // 左パネルのナビゲーションHTML生成（カテゴリのみ）
             const navHtml = nav.filter(item => item.type === "category").map(item => {
-                return "<div class='api-ref-cat' data-label='" + esc(item.label) + "' onmousedown='_apiRefJump(this.dataset.label)'>" + esc(item.label) + "</div>";
+                return "<div class='api-ref-cat' data-label='" + esc(item.label) + "'" + evtAttr("onmousedown", "_apiRefJump(this.dataset.label)") + ">" + esc(item.label) + "</div>";
             }).join("");
 
             showModal(
@@ -2130,7 +2132,7 @@
                 navHtml +
                 "</div>" +
                 "<div style='flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;padding:8px;overflow:hidden'>" +
-                "<input id='api-ref-search' placeholder='🔍 検索...' oninput='_apiRefFilter()' " +
+                "<input id='api-ref-search' placeholder='🔍 検索...'" + evtAttr("oninput", "_apiRefFilter()") + " " +
                 "style='height:30px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:13px;padding:0 10px;outline:none;flex-shrink:0;width:100%;box-sizing:border-box'>" +
                 "<div id='api-ref-body' style='flex:1;overflow:auto;font-size:18px;line-height:1.7;font-family:monospace;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:10px;white-space:pre-wrap;word-break:break-word;width:100%;box-sizing:border-box;user-select:text;-webkit-user-select:text'>" +
                 yamlTokenize(info) +
@@ -2229,7 +2231,7 @@
                     + "<div class='rp-tbl-header'>"
                     + "<span class='rp-tbl-name rp-insert' data-insert='" + ft + "' style='" + (isCur ? "color:var(--accent);font-weight:bold" : "") + "'>"
                     + (isCur ? "★ " : "") + ft + "</span>"
-                    + (wids ? "<button class='rp-tbl-expand' onmousedown='event.stopPropagation();yamlToggleTblCols(this)'>▶</button>" : "")
+                    + (wids ? "<button class='rp-tbl-expand' " + evtAttr("onmousedown", "event.stopPropagation();yamlToggleTblCols(this)") + ">▶</button>" : "")
                     + "</div>"
                     + (wids ? "<div class='rp-tbl-cols'><table>" + wids + "</table></div>" : "")
                     + "</div>";
@@ -2273,7 +2275,7 @@
                             + "<span class='rp-tbl-name rp-insert' data-insert='" + n + "'>" + n + "</span>"
                             + "<span class='rp-tbl-desc'>" + esc(ww.tag) + "</span>"
                             + (desc ? "<span class='rp-tbl-desc'>" + desc + "</span>" : "")
-                            + (hasExtra ? "<button class='rp-tbl-expand' onmousedown='event.stopPropagation();yamlToggleTblCols(this)'>▶</button>" : "")
+                            + (hasExtra ? "<button class='rp-tbl-expand' " + evtAttr("onmousedown", "event.stopPropagation();yamlToggleTblCols(this)") + ">▶</button>" : "")
                             + "</div>"
                             + (hasExtra ? "<div class='rp-tbl-cols'><table>" + extraRows + "</table></div>" : "")
                             + "</div>";
@@ -2301,7 +2303,7 @@
                         + "<div class='rp-tbl-header'>"
                         + "<span class='rp-tbl-name rp-insert' data-insert='" + tn + "'>" + tn + "</span>"
 
-                        + (cols ? "<button class='rp-tbl-expand' onmousedown='event.stopPropagation();yamlToggleTblCols(this)'>▶</button>" : "")
+                        + (cols ? "<button class='rp-tbl-expand' " + evtAttr("onmousedown", "event.stopPropagation();yamlToggleTblCols(this)") + ">▶</button>" : "")
                         + "</div>"
                         + (cols ? "<div class='rp-tbl-cols'><table>" + cols + "</table></div>" : "")
                         + "</div>";
@@ -2325,7 +2327,7 @@
                     return "<div class='rp-tbl-row'>"
                         + "<div class='rp-tbl-header'>"
                         + "<span class='rp-tbl-name rp-insert' data-insert='検証: " + vn + "'>" + vn + "</span>"
-                        + (ruleRows ? "<button class='rp-tbl-expand' onmousedown='event.stopPropagation();yamlToggleTblCols(this)'>▶</button>" : "")
+                        + (ruleRows ? "<button class='rp-tbl-expand' " + evtAttr("onmousedown", "event.stopPropagation();yamlToggleTblCols(this)") + ">▶</button>" : "")
                         + "</div>"
                         + (ruleRows ? "<div class='rp-tbl-cols'><table>" + ruleRows + "</table></div>" : "")
                         + "</div>";
@@ -2449,8 +2451,9 @@
         // 生成完了後に openYaml を再表示し、JS タブにコードをセットする。
         async function yamlAiGenerate(wid, evName) {
             const isAppEvent = (wid === "appev");
-            const w = getWidget(wid);
-            if (!w) return;
+            const isFormEvent = (wid === "form");
+            const w = (isAppEvent || isFormEvent) ? null : getWidget(wid);
+            if (!isAppEvent && !isFormEvent && !w) return;
             if (!getProjectData().aiConfig.enabled) {
                 if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
                     closeModal();
@@ -2541,7 +2544,7 @@
                 isAppEvent,
                 {
                     formName: curForm?.cfg?.name, eventName: evName,
-                    wname: w.name, wtag: w.tag, wdescription: w.props?.description,
+                    wname: w?.name, wtag: w?.tag, wdescription: w?.props?.description,
                     inputParamsCtx: inputParamsCtx, allWidgetsCtx: allWidgetsCtx,
                     formsCtx: formsCtx, globalConstCtx: globalConstCtx,
                     formConstCtx: formConstCtx, tablesCtx: tablesCtx,
@@ -2553,7 +2556,7 @@
                 isAppEvent, yamlForAi, addPrompt,
                 {
                     formName: curForm?.cfg?.name, eventName: evName,
-                    wname: w.name, wtag: w.tag, wdescription: w.props?.description,
+                    wname: w?.name, wtag: w?.tag, wdescription: w?.props?.description,
                     inputParamsCtx: inputParamsCtx, allWidgetsCtx: allWidgetsCtx,
                     formsCtx: formsCtx, globalConstCtx: globalConstCtx,
                     formConstCtx: formConstCtx, tablesCtx: tablesCtx,
@@ -2876,8 +2879,8 @@
                         `<div class='${hlWrap}'>` +
                         `<div class='${hlBg}' id='hl-${t.id}'></div>` +
                         `<textarea class='yaml' id='ta-${t.id}' autocorrect='off' autocapitalize='off' spellcheck='false' style='height:100%;min-height:300px'` +
-                        ` oninput='editorHlUpdate("ta-${t.id}")'` +
-                        ` onscroll='_hlSync("ta-${t.id}","hl-${t.id}");editorSyncGutter("ta-${t.id}","gutter-${t.id}")'` +
+                        evtAttr("oninput", `editorHlUpdate("ta-${t.id}")`) +
+                        evtAttr("onscroll", `_hlSync("ta-${t.id}","hl-${t.id}");editorSyncGutter("ta-${t.id}","gutter-${t.id}")`) +
                         (t.ph ? ` placeholder='${esc(t.ph)}'` : "") + `>` + esc(t.val || "") + `</textarea>` +
                         `</div></div></div></div>`;
                 }).join("");
@@ -2885,7 +2888,7 @@
                     ? `<div class='yaml-ai-bar'>${tabConfig.aiBar}</div>`
                     : "";
                 const saveBtn = tabConfig.saveAction
-                    ? `<button class='pri' onmousedown='${tabConfig.saveAction}'>保存</button>`
+                    ? `<button class='pri'${evtAttr("onmousedown", tabConfig.saveAction)}>保存</button>`
                     : "";
                 return (
                     "<div class='modal-yaml'>" +
@@ -2919,7 +2922,7 @@
                 "<div class='yaml-tab-bar'>" +
                 "<div class='yaml-tab active' id='tab-yaml'>📋 YAML</div>" +
                 "<div class='yaml-tab' id='tab-js'>📜 JavaScript</div>" +
-                "<button class='yaml-api-ref-btn' onmousedown='openApiRef(" + isAppEvent + ")'>📖 API</button>" +
+                "<button class='yaml-api-ref-btn'" + evtAttr("onmousedown", "openApiRef(" + isAppEvent + ")") + ">📖 API</button>" +
                 "</div>" +
                 "<div class='yaml-pane active' id='pane-yaml'>" +
                 "<div class='editor-wrap'>" +
@@ -2928,8 +2931,8 @@
                 "<div class='yaml-hl-wrap'>" +
                 "<div class='yaml-hl-bg' id='yaml-hl'></div>" +
                 "<textarea class='yaml' id='yaml-ta' autocorrect='off' autocapitalize='off' spellcheck='false' " +
-                "oninput='yamlHlUpdate();editorUpdateGutter(\"yaml-ta\",\"yaml-gutter\")' " +
-                "onscroll='yamlHlSync();editorSyncGutter(\"yaml-ta\",\"yaml-gutter\")' " +
+                evtAttr("oninput", "yamlHlUpdate();editorUpdateGutter(\"yaml-ta\",\"yaml-gutter\")") + " " +
+                evtAttr("onscroll", "yamlHlSync();editorSyncGutter(\"yaml-ta\",\"yaml-gutter\")") + " " +
                 ">" + esc(cur) + "</textarea>" +
                 "</div></div></div></div>" +
                 "<div class='yaml-pane' id='pane-js'>" +
@@ -2939,23 +2942,23 @@
                 "<div class='js-hl-wrap'>" +
                 "<div class='js-hl-bg' id='js-hl'></div>" +
                 "<textarea class='yaml' id='js-ta' autocorrect='off' autocapitalize='off' spellcheck='false' " +
-                "oninput='jsHlUpdate();editorUpdateGutter(\"js-ta\",\"js-gutter\")' " +
-                "onscroll='jsHlSync();editorSyncGutter(\"js-ta\",\"js-gutter\")' " +
+                evtAttr("oninput", "jsHlUpdate();editorUpdateGutter(\"js-ta\",\"js-gutter\")") + " " +
+                evtAttr("onscroll", "jsHlSync();editorSyncGutter(\"js-ta\",\"js-gutter\")") + " " +
                 "placeholder='// AIでJavaScriptを生成、または直接編集できます'>" + esc(curJs) + "</textarea>" +
                 "</div></div></div></div>" +
                 "<div class='yaml-ai-bar' style='padding-bottom:8px;flex-direction:column;align-items:stretch;gap:4px'>" +
                 "<div style='display:flex;align-items:center;gap:4px'>" +
                 "<input id='ai-prompt-in' placeholder='AIへの追加指示（任意）' style='flex:1'>" +
-                "<button class='yaml-ai-btn' id='ai-gen-btn' onmousedown='pvCall(\"yamlAiGen\")'>" +
+                "<button class='yaml-ai-btn' id='ai-gen-btn'" + evtAttr("onmousedown", "pvCall(\"yamlAiGen\")") + ">" +
                 (aiEnabled ? "🤖 AI生成" : "🤖 AI生成（設定要）") + "</button>" +
                 "<span class='yaml-ai-right-spacer' id='ai-status'></span>" +
                 "</div>" +
                 "<div style='display:flex;align-items:center;gap:4px'>" +
                 "<input id='editor-search-in' placeholder='検索ワード（Ctrl+F）' style='flex:1' " +
-                "onkeydown='if(event.key===\"Enter\"){event.preventDefault();editorSearch();}' " +
-                "oninput='getEditorContext().searchLast={taId:null,word:\"\",pos:0}'>" +
-                "<button class='yaml-ai-btn' onmousedown='event.preventDefault();$(\"editor-search-in\").value=\"\";getEditorContext().searchLast={taId:null,word:\"\",pos:0}'>✕</button>" +
-                "<button class='yaml-ai-btn' onmousedown='event.preventDefault();editorSearch()'>🔍 検索</button>" +
+                evtAttr("onkeydown", "if(event.key===\"Enter\"){event.preventDefault();editorSearch();}") + " " +
+                evtAttr("oninput", "getEditorContext().searchLast={taId:null,word:\"\",pos:0}") + ">" +
+                "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "event.preventDefault();$(\"editor-search-in\").value=\"\";getEditorContext().searchLast={taId:null,word:\"\",pos:0}") + ">✕</button>" +
+                "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "event.preventDefault();editorSearch()") + ">🔍 検索</button>" +
                 "<span class='yaml-ai-right-spacer'></span>" +
                 "</div>" +
                 "</div>" +
@@ -2968,7 +2971,7 @@
                 "</div>" +
                 "<div class='mfoot'>" +
                 mfootHTML([{label: "キャンセル", action: "closeModal()"}]) +
-                "<button class='pri' onmousedown='pvCall(\"yamlSave\")'>保存</button>" +
+                "<button class='pri'" + evtAttr("onmousedown", "pvCall(\"yamlSave\")") + ">保存</button>" +
                 "</div>" +
                 "</div>"
             );
@@ -3048,7 +3051,7 @@
                 "<span class='arr'>▼</span></div>" +
                 "<div class='pv-sel-list' id='ai-model-list'>" + modelListHtml + "</div>" +
                 "</div>" +
-                "<button onmousedown='aiCfgFetchModels()' style='height:28px;padding:0 10px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;flex-shrink:0'>🔄 更新</button>" +
+                "<button" + evtAttr("onmousedown", "aiCfgFetchModels()") + " style='height:28px;padding:0 10px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;flex-shrink:0'>🔄 更新</button>" +
                 "</div></div>" +
 
                 // max tokens
@@ -3066,7 +3069,7 @@
                 "</div>" +
                 "<div class='mfoot'>" +
                 mfootHTML([{label: "キャンセル", action: "closeModal()"}]) + "" +
-                "<button class='pri' onmousedown='saveAiConfig()'>保存</button>" +
+                "<button class='pri'" + evtAttr("onmousedown", "saveAiConfig()") + ">保存</button>" +
                 "</div>"
             );
         }
@@ -4462,10 +4465,10 @@
                         "<td style='text-align:center'>" + colCount + "</td>" +
                         "<td style='text-align:center'>" + idxCount + "</td>" +
                         "<td style='text-align:center'>" +
-                        "<button class='tbl-action-btn' onmousedown='openTableEdit(" + i + ")'>編集</button>" +
+                        "<button class='tbl-action-btn'" + evtAttr("onmousedown", "openTableEdit(" + i + ")") + ">編集</button>" +
                         "</td>" +
                         "<td style='text-align:center'>" +
-                        "<button class='tbl-action-btn del' onmousedown='deleteTable(" + i + ")'>削除</button>" +
+                        "<button class='tbl-action-btn del'" + evtAttr("onmousedown", "deleteTable(" + i + ")") + ">削除</button>" +
                         "</td>" +
                         "</tr>";
                 }).join("")
@@ -4476,7 +4479,7 @@
                 "<div class='mbody tbl-mgr-wrap'>" +
                 "<div class='tbl-mgr-header'>" +
                 "<span style='font-size:12px;color:var(--text2)'>SQLiteテーブル定義（全" + getProjectData().tables.length + "件）</span>" +
-                "<button class='tbl-add-btn' onmousedown='openTableEdit(-1)'>＋ テーブル追加</button>" +
+                "<button class='tbl-add-btn'" + evtAttr("onmousedown", "openTableEdit(-1)") + ">＋ テーブル追加</button>" +
                 "</div>" +
                 "<div class='tbl-list-scroll'>" +
                 "<table class='tbl-list-table'>" +
@@ -4492,7 +4495,7 @@
                 "</table></div>" +
                 "</div>" +
                 "<div class='mfoot'>" +
-                "<button onmousedown='closeModal()'>閉じる</button>" +
+                "<button" + evtAttr("onmousedown", "closeModal()") + ">閉じる</button>" +
                 "</div>"
             );
         }
@@ -4634,15 +4637,15 @@
                     csv.rows + " 行 / 元サイズ: " + origKb + " / 圧縮後: " + compKb +
                     "</span>" +
                     "<div style='display:flex;gap:6px;margin-top:4px'>" +
-                    "<button class='modal-btn' onmousedown='tblDownloadMasterCsv()'>⬇ ダウンロード</button>" +
-                    "<button class='modal-btn' onmousedown='tblReuploadMasterCsv()'>🔄 再アップロード</button>" +
-                    "<button class='modal-btn' style='color:#ff6b6b' onmousedown='tblDeleteMasterCsv()'>🗑 削除</button>" +
+                    "<button class='modal-btn'" + evtAttr("onmousedown", "tblDownloadMasterCsv()") + ">⬇ ダウンロード</button>" +
+                    "<button class='modal-btn'" + evtAttr("onmousedown", "tblReuploadMasterCsv()") + ">🔄 再アップロード</button>" +
+                    "<button class='modal-btn' style='color:#ff6b6b'" + evtAttr("onmousedown", "tblDeleteMasterCsv()") + ">🗑 削除</button>" +
                     "</div></div></div>";
             } else {
                 return "<div class='tbl-csv-area'>" +
                     "<label>マスターCSV <span style='font-size:11px;color:var(--text2)'>（テーブルが空の場合に自動INSERT）</span></label>" +
-                    "<button class='modal-btn' onmousedown='tblUploadMasterCsv()'>📂 CSVをアップロード</button>" +
-                    "<input type='file' id='tbl-csv-file' accept='.csv' style='display:none' onchange='tblOnCsvSelected(event)'>" +
+                    "<button class='modal-btn'" + evtAttr("onmousedown", "tblUploadMasterCsv()") + ">📂 CSVをアップロード</button>" +
+                    "<input type='file' id='tbl-csv-file' accept='.csv' style='display:none'" + evtAttr("onchange", "tblOnCsvSelected(event)") + ">" +
                     "</div>";
             }
         }
@@ -5369,7 +5372,7 @@
                 "<h4 style='margin:0 12px 0 0'>⚡ アプリイベント</h4>" +
                 "<div class='yaml-tab-bar' style='border-bottom:none;flex:1'>" + evTabs + "</div>" +
                 "</div>" +
-                "<button class='mclose' onmousedown='closeModal()'>✕</button>" +
+                "<button class='mclose'" + evtAttr("onmousedown", "closeModal()") + ">✕</button>" +
                 "</div>";
             showModal(buildYamlEditorHTML(cur, curJs, false, appEvHeader));
             initYamlEditorModal(cur, curJs, () => {
@@ -5402,8 +5405,8 @@
                 "<div class='ai-cfg-row'><label>バージョン</label>" +
                 "<div style='display:flex;align-items:center;gap:4px;flex:1'>" +
                 "<input id='pi-ver' class='pv-input' style='height:28px;font-size:13px;flex:1' value='" + esc(getProjectData().projectInfo.version) + "' placeholder='1.0.0'>" +
-                "<button onmousedown='piVerStep(1)' style='width:24px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);cursor:pointer;font-size:11px;flex-shrink:0'>▲</button>" +
-                "<button onmousedown='piVerStep(-1)' style='width:24px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);cursor:pointer;font-size:11px;flex-shrink:0'>▼</button>" +
+                "<button" + evtAttr("onmousedown", "piVerStep(1)") + " style='width:24px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);cursor:pointer;font-size:11px;flex-shrink:0'>▲</button>" +
+                "<button" + evtAttr("onmousedown", "piVerStep(-1)") + " style='width:24px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);cursor:pointer;font-size:11px;flex-shrink:0'>▼</button>" +
                 "</div>" +
                 "</div>" +
                 "<div class='ai-cfg-row'><label>作成者</label>" +
@@ -5414,7 +5417,7 @@
                 "</div>" +
                 "</div>" +
                 "<div class='mfoot'>" +
-                "<button onmousedown='closeModal()'>キャンセル</button>" +
+                "<button" + evtAttr("onmousedown", "closeModal()") + ">キャンセル</button>" +
                 "<button class='pri' id='pi-save-btn'>保存</button>" +
                 "</div>"
             );
@@ -5459,7 +5462,7 @@
                     {id: "extrt-js", label: "📜 JavaScript", type: "js", val: getProjectData().extRuntime.js || ""},
                     {id: "extrt-doc", label: "📋 AI向け説明", type: "yaml", val: getProjectData().extRuntime.doc || ""},
                 ],
-                aiBar: "<button class='yaml-ai-btn' onmousedown='extRtGenDoc()'>🤖 AI向け説明を生成</button>",
+                aiBar: "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "extRtGenDoc()") + ">🤖 AI向け説明を生成</button>",
                 saveAction: "saveExtRuntime()",
             };
             showModal(buildYamlEditorHTML("", "", false, mhdrHTML("⚡ 拡張ランタイム"), "", tabConfig));
@@ -5564,7 +5567,7 @@
                 "<div class='mbody' style='gap:10px;overflow-y:auto;max-height:60vh'>" +
                 "<div class='infobox'>同一クラウドを複数登録した場合、先頭のCredentialが優先されます。</div>" +
                 "<div id='cloud-list' style='display:flex;flex-direction:column;gap:8px'>" + rows + "</div>" +
-                "<button class='modal-btn' style='margin-top:4px' onmousedown='addCloudInfra()'>＋ 追加</button>" +
+                "<button class='modal-btn' style='margin-top:4px'" + evtAttr("onmousedown", "addCloudInfra()") + ">＋ 追加</button>" +
                 "</div>" +
                 mfootHTML([
                     {label: "保存", cls: "primary", action: "saveCloudInfraConfig()"},
@@ -5836,8 +5839,8 @@
                 "<div style='display:flex;align-items:center;gap:8px'>" +
                 "<input id='uf-size' type='number' value='" + curUiSize + "' min='10' max='20' step='1' " +
                 "style='width:70px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);padding:0 8px;outline:none;text-align:center'>" +
-                "<button onmousedown='ufSizeStep(1)'  style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);cursor:pointer'>▲</button>" +
-                "<button onmousedown='ufSizeStep(-1)' style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);cursor:pointer'>▼</button>" +
+                "<button" + evtAttr("onmousedown", "ufSizeStep(1)") + " style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);cursor:pointer'>▲</button>" +
+                "<button" + evtAttr("onmousedown", "ufSizeStep(-1)") + " style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);cursor:pointer'>▼</button>" +
                 "<span style='color:var(--text2);font-size:var(--ui-font-size)'>px (10〜20)</span>" +
                 "</div></div>" +
                 "<div class='ai-cfg-row'><label>フォント</label>" +
@@ -5857,8 +5860,8 @@
                 "<div style='display:flex;align-items:center;gap:8px'>" +
                 "<input id='ef-size' type='number' value='" + curSize + "' min='10' max='32' step='1' " +
                 "style='width:70px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);padding:0 8px;outline:none;text-align:center'>" +
-                "<button onmousedown='efSizeStep(1)'  style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);cursor:pointer'>▲</button>" +
-                "<button onmousedown='efSizeStep(-1)' style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);cursor:pointer'>▼</button>" +
+                "<button" + evtAttr("onmousedown", "efSizeStep(1)") + " style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);cursor:pointer'>▲</button>" +
+                "<button" + evtAttr("onmousedown", "efSizeStep(-1)") + " style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);cursor:pointer'>▼</button>" +
                 "<span style='color:var(--text2);font-size:var(--ui-font-size)'>px (10〜32)</span>" +
                 "</div></div>" +
                 "<div class='ai-cfg-row'><label>フォント</label>" +

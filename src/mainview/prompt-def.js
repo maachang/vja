@@ -1179,14 +1179,14 @@ ${vjaUseJsInfo}
         let ret;
 
         // フロント条件.
+        const widgetLine = wname ? `- 現在のウィジェット: ${wname}\n` : "";
         const frontInfo = isAppEvent
             ? ""
             : `
 ### プロジェクト情報
 ---
 - 現在のフォーム: ${formName}
-- 現在のウィジェット: ${wname}
-- 現在のイベント: ${eventName}
+${widgetLine}- 現在のイベント: ${eventName}
 ---
 
 ### ウィジェット一覧（${formName}）
@@ -1313,14 +1313,14 @@ ${extRuntimeDoc}
         let ret;
 
         // フロント条件.
+        const widgetLineEn = wname ? `- Current widget: ${wname}\n` : "";
         const frontInfo = isAppEvent
             ? ""
             : `
 ### Project Information
 ---
 - Current Form: ${formName}
-- Current widget: ${wname}
-- Current Event: ${eventName}
+${widgetLineEn}- Current Event: ${eventName}
 ---
 
 ### Widget List (${formName})
