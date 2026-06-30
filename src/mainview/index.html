@@ -817,7 +817,6 @@
             _modal: {
                 tblEdit:      null,
                 tblEditIdx:   -1,
-                validEdit:    null,
             },
             // YAMLエディタの入力状態
             _editor: {
@@ -891,6 +890,10 @@
         // 定数編集モーダル専用の一時状態
         var _CONST_MODAL = {
             rows: [],
+        };
+        // バリデーション編集モーダル専用の一時状態
+        var _VALID_MODAL = {
+            edit: null,
         };
 
         // _CTX._project の初期データを設定
@@ -4275,8 +4278,8 @@
                 const oi_v = "constUpdate(" + i + ",'value',this.value)";
                 tbody += "<tr>"
                     + "<td>" + (i + 1) + "</td>"
-                    + "<td><input type='text' value='" + esc(r.name) + "' oninput='" + oi_n + "' placeholder='定数名'></td>"
-                    + "<td><input type='text' value='" + esc(r.value) + "' oninput='" + oi_v + "' placeholder='値'></td>"
+                    + "<td><input type='text' value='" + esc(r.name) + "' oninput=\"" + oi_n + "\" placeholder='定数名'></td>"
+                    + "<td><input type='text' value='" + esc(r.value) + "' oninput=\"" + oi_v + "\" placeholder='値'></td>"
                     + "<td><button class='del-btn' onmousedown='constDelRow(" + i + ",\"" + delRenderFn + "\")' title='削除'>✕</button></td>"
                     + "</tr>";
             });
@@ -5106,19 +5109,19 @@
         function openValidationEdit(idx) {
             const f = getProjectData().forms[getProjectData().curFormIdx];
             if (!Array.isArray(f.validations)) f.validations = [];
-            getModalContext().validEdit = idx < 0
+            _VALID_MODAL.edit = idx < 0
                 ? {name: "", toastDuration: 5000, rules: []}
                 : JSON.parse(JSON.stringify(f.validations[idx]));
-            getModalContext().validEdit._idx = idx;
+            _VALID_MODAL.edit._idx = idx;
             // 初期表示で3件の空ルールを用意（既存ルールが3件未満の場合）
-            while (getModalContext().validEdit.rules.length < 3) {
-                getModalContext().validEdit.rules.push({name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: ""});
+            while (_VALID_MODAL.edit.rules.length < 3) {
+                _VALID_MODAL.edit.rules.push({name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: ""});
             }
             renderValidationEditModal();
         }
 
         function renderValidationEditModal() {
-            const v = getModalContext().validEdit;
+            const v = _VALID_MODAL.edit;
             const rules = v.rules || [];
             let tbody = "";
             rules.forEach((r, i) => {
@@ -5133,13 +5136,13 @@
                 const nameOpts = widgetNames.map(n => ({value: n, label: n === "" ? "（未選択）" : n}));
                 tbody += "<tr>" +
                     "<td>" + (i + 1) + "</td>" +
-                    "<td>" + makePvSel(nid, nameOpts, r.name || "", "getModalContext().validEdit.rules[" + i + "].name={value}") + "</td>" +
-                    "<td>" + makePvSel(sid, VALIDATION_TYPES, r.type || "required", "getModalContext().validEdit.rules[" + i + "].type={value}") + "</td>" +
-                    "<td>" + makePvSel(notid, [{value: "false", label: "OFF"}, {value: "true", label: "ON"}], r.not ? "true" : "false", "getModalContext().validEdit.rules[" + i + "].not=({value}==='true')") + "</td>" +
-                    "<td><input type='text' class='pv-input' value='" + esc(r.arg1 || "") + "' oninput=\"getModalContext().validEdit.rules[" + i + "].arg1=this.value\" placeholder='arg1'></td>" +
-                    "<td><input type='text' class='pv-input' value='" + esc(r.arg2 || "") + "' oninput=\"getModalContext().validEdit.rules[" + i + "].arg2=this.value\" placeholder='arg2'></td>" +
-                    "<td><input type='text' class='pv-input' value='" + esc(r.arg3 || "") + "' oninput=\"getModalContext().validEdit.rules[" + i + "].arg3=this.value\" placeholder='arg3'></td>" +
-                    "<td><input type='text' class='pv-input' value='" + esc(r.message || "") + "' oninput=\"getModalContext().validEdit.rules[" + i + "].message=this.value\" placeholder='エラーメッセージ'></td>" +
+                    "<td>" + makePvSel(nid, nameOpts, r.name || "", "_VALID_MODAL.edit.rules[" + i + "].name={value}") + "</td>" +
+                    "<td>" + makePvSel(sid, VALIDATION_TYPES, r.type || "required", "_VALID_MODAL.edit.rules[" + i + "].type={value}") + "</td>" +
+                    "<td>" + makePvSel(notid, [{value: "false", label: "OFF"}, {value: "true", label: "ON"}], r.not ? "true" : "false", "_VALID_MODAL.edit.rules[" + i + "].not=({value}==='true')") + "</td>" +
+                    "<td><input type='text' class='pv-input' value='" + esc(r.arg1 || "") + "' oninput=\"_VALID_MODAL.edit.rules[" + i + "].arg1=this.value\" placeholder='arg1'></td>" +
+                    "<td><input type='text' class='pv-input' value='" + esc(r.arg2 || "") + "' oninput=\"_VALID_MODAL.edit.rules[" + i + "].arg2=this.value\" placeholder='arg2'></td>" +
+                    "<td><input type='text' class='pv-input' value='" + esc(r.arg3 || "") + "' oninput=\"_VALID_MODAL.edit.rules[" + i + "].arg3=this.value\" placeholder='arg3'></td>" +
+                    "<td><input type='text' class='pv-input' value='" + esc(r.message || "") + "' oninput=\"_VALID_MODAL.edit.rules[" + i + "].message=this.value\" placeholder='エラーメッセージ'></td>" +
                     "<td style='white-space:nowrap'>" +
                     "<button class='del-btn' onmousedown='validInsertRow(" + i + ")' title='この行の前に挿入' style='margin-right:2px'>＋</button>" +
                     "<button class='del-btn' onmousedown='validDelRow(" + i + ")' title='削除'>✕</button>" +
@@ -5210,16 +5213,16 @@
         }
 
         function validAddRow() {
-            if (!getModalContext().validEdit) return;
-            _rowAdd(() => getModalContext().validEdit.rules, () => ({name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: ""}), renderValidationEditModal);
+            if (!_VALID_MODAL.edit) return;
+            _rowAdd(() => _VALID_MODAL.edit.rules, () => ({name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: ""}), renderValidationEditModal);
         }
         function validInsertRow(idx) {
-            if (!getModalContext().validEdit) return;
-            _rowInsert(() => getModalContext().validEdit.rules, idx, () => ({name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: ""}), renderValidationEditModal);
+            if (!_VALID_MODAL.edit) return;
+            _rowInsert(() => _VALID_MODAL.edit.rules, idx, () => ({name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: ""}), renderValidationEditModal);
         }
         function validDelRow(idx) {
-            if (!getModalContext().validEdit) return;
-            _rowDel(() => getModalContext().validEdit.rules, idx, null, renderValidationEditModal);
+            if (!_VALID_MODAL.edit) return;
+            _rowDel(() => _VALID_MODAL.edit.rules, idx, null, renderValidationEditModal);
         }
         function deleteValidation(idx) {
             const f = getProjectData().forms[getProjectData().curFormIdx];
@@ -5230,20 +5233,20 @@
         }
         function validSave() {
             const f = getProjectData().forms[getProjectData().curFormIdx];
-            if (!f || !getModalContext().validEdit) return;
+            if (!f || !_VALID_MODAL.edit) return;
             const name = $("valid-name")?.value?.trim();
             if (!name) {showVjaAlert("定義名を入力してください"); return;}
-            getModalContext().validEdit.name = name;
-            getModalContext().validEdit.description = $("valid-desc")?.value?.trim() || "";
-            getModalContext().validEdit.toastDuration = parseInt($("valid-toast-dur")?.value) || 5000;
-            // 空ルールを除去（バリデーション用。getModalContext().validEdit.rulesはまだ書き換えない）
-            const validRules = (getModalContext().validEdit.rules || []).filter(r => r.name.trim() && r.type);
+            _VALID_MODAL.edit.name = name;
+            _VALID_MODAL.edit.description = $("valid-desc")?.value?.trim() || "";
+            _VALID_MODAL.edit.toastDuration = parseInt($("valid-toast-dur")?.value) || 5000;
+            // 空ルールを除去（バリデーション用。_VALID_MODAL.edit.rulesはまだ書き換えない）
+            const validRules = (_VALID_MODAL.edit.rules || []).filter(r => r.name.trim() && r.type);
             if (!Array.isArray(f.validations)) f.validations = [];
-            const saveData = {name: getModalContext().validEdit.name, description: getModalContext().validEdit.description, toastDuration: getModalContext().validEdit.toastDuration, rules: validRules};
-            if (getModalContext().validEdit._idx < 0) {
+            const saveData = {name: _VALID_MODAL.edit.name, description: _VALID_MODAL.edit.description, toastDuration: _VALID_MODAL.edit.toastDuration, rules: validRules};
+            if (_VALID_MODAL.edit._idx < 0) {
                 f.validations.push(saveData);
             } else {
-                f.validations[getModalContext().validEdit._idx] = saveData;
+                f.validations[_VALID_MODAL.edit._idx] = saveData;
             }
             pushUndo();
             showToast("バリデーション定義を保存しました");
