@@ -10,6 +10,7 @@ import { makeFetchMaps, makeVjaFetch, makeFetchResultHandlers, type Pending } fr
 const pending = {
     navigateForm: null as Pending<{ ok: boolean; error?: string }> | null,
     openFile: null as Pending<{ content: string | null; path: string | null }> | null,
+    saveGenericFile: null as Pending<{ ok: boolean; path: string | null; cancelled: boolean }> | null,
     dbInit: null as Pending<{ ok: boolean; error?: string }> | null,
     sessionGet: null as Pending<{ ok: boolean; value: string | null }> | null,
     sessionSet: null as Pending<{ ok: boolean }> | null,
@@ -56,6 +57,7 @@ const rpc = Electroview.defineRPC<VjaRPCType>({
         messages: {
             navigateFormResult: (v: any) => resolve("navigateForm", v),
             openFileResult: (v: any) => resolve("openFile", v),
+            saveGenericFileResult: (v: any) => resolve("saveGenericFile", v),
             dbInitResult: (v: any) => resolve("dbInit", v),
             sessionGetResult: (v: any) => resolve("sessionGet", v),
             sessionSetResult: (v: any) => resolve("sessionSet", v),
@@ -265,6 +267,11 @@ w.vja.session = {
 // vja._openFile を差し替えることで vja.io.openFile/openCsv/openJson がRPC経由になる
 w.vja._openFile = (filter: string = "*") =>
     mkPromise("openFile", () => s.openFileRequest({ filter, lastPath: null }));
+
+// ファイル保存（saveCsv/saveJson/saveText用）
+// vja._saveFile を差し替えることで vja.io.saveCsv/saveJson/saveText がネイティブ保存ダイアログ経由になる
+w.vja._saveFile = (content: string, filename: string, ext: string = "txt") =>
+    mkPromise("saveGenericFile", () => s.saveGenericFileRequest({ content, defaultName: filename, ext }));
 
 // DB init
 w.vja.db.init = (ddlStatements: string[]) =>

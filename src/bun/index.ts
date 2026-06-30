@@ -320,6 +320,27 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 }
             },
 
+            // 汎用ファイル保存（マスターCSVダウンロード等、プロジェクト保存以外の任意ファイル書き出し用）
+            saveGenericFileRequest: async ({ content, defaultName, ext }) => {
+                const fileExt = ext || (defaultName?.includes(".") ? defaultName.split(".").pop() : "txt");
+                const savePath = await saveFileDialog(defaultName ?? ("file." + fileExt), fileExt);
+                if (!savePath) {
+                    console.log("[saveGenericFile] cancelled");
+                    browserWindow.webview.rpc.send.saveGenericFileResult({ ok: false, path: null, cancelled: true });
+                    return;
+                }
+                try {
+                    await Bun.write(savePath, content);
+                    _lastDir = dirname(savePath);
+                    await saveLastDir(savePath);
+                    console.log("[saveGenericFile saved]", savePath);
+                    browserWindow.webview.rpc.send.saveGenericFileResult({ ok: true, path: savePath, cancelled: false });
+                } catch (e: any) {
+                    console.error("[saveGenericFile error]", e.message);
+                    browserWindow.webview.rpc.send.saveGenericFileResult({ ok: false, path: null, cancelled: false });
+                }
+            },
+
             closeAppRequest: () => {
                 console.log("[close]");
                 browserWindow.close();

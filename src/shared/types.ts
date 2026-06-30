@@ -40,6 +40,12 @@ export type VjaRPCType = {
                 defaultName: string;
                 lastPath: string | null;
             };
+            // 汎用ファイル保存（マスターCSVダウンロード等）
+            saveGenericFileRequest: {
+                content: string;
+                defaultName: string;
+                ext?: string;
+            };
             closeAppRequest: { _?: never };
 
             // ── DB: SELECT ───────────────────────────────
@@ -173,6 +179,11 @@ export type VjaRPCType = {
             // ── プロジェクトファイル操作結果 ──────────────
             openFileResult: { content: string | null; path: string | null };
             saveFileResult: {
+                ok: boolean;
+                path: string | null;
+                cancelled: boolean;
+            };
+            saveGenericFileResult: {
                 ok: boolean;
                 path: string | null;
                 cancelled: boolean;

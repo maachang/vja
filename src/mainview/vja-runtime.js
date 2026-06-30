@@ -635,6 +635,19 @@
         return global.bunOpenFile({ filter, lastPath: null });
     };
 
+    // ファイル保存のデフォルト実装（ブラウザの<a download>方式）
+    // project-bridge.ts で差し替えることでネイティブ保存ダイアログ経由になる
+    vja._saveFile = function (content, filename, ext) {
+        const blob = new Blob([content]);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+        return Promise.resolve({ ok: true, path: null, cancelled: false });
+    };
+
     vja.io = {
 
         // ファイル選択ダイアログ（差し替え可能な内部関数に委譲）
@@ -717,16 +730,12 @@
             this._download(text, filename, "text/plain;charset=utf-8;");
         },
 
-        // ダウンロード共通処理
+        // ダウンロード共通処理（差し替え可能な vja._saveFile に委譲）
+        // project-bridge.js側で vja._saveFile を上書きすることでネイティブ保存ダイアログに切り替わる
         _download(content, filename, mimeType) {
             const bom = mimeType.includes("csv") ? "\uFEFF" : "";
-            const blob = new Blob([bom + content], { type: mimeType });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url; a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+            const ext = filename.includes(".") ? filename.split(".").pop() : "txt";
+            return vja._saveFile(bom + content, filename, ext);
         },
 
         // 印刷

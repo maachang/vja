@@ -813,11 +813,6 @@
                 lastSavePath:  null,
                 lastOpenPath:  null,
             },
-            // モーダル編集中の一時データ
-            _modal: {
-                tblEdit:      null,
-                tblEditIdx:   -1,
-            },
             // YAMLエディタの入力状態
             _editor: {
                 searchLast:    {taId: null, word: "", pos: 0},
@@ -849,7 +844,6 @@
         function getDesignerState() { return _CTX._state;    }
         function getProjectData()   { return _CTX._project;  }
         function getEditHistory()   { return _CTX._history;  }
-        function getModalContext()  { return _CTX._modal;    }
         function getEditorContext() { return _CTX._editor;   }
         function getAiContext()     { return _CTX._ai;       }
         function getUiConfig()      { return _CTX._ui.config;}
@@ -894,6 +888,11 @@
         // バリデーション編集モーダル専用の一時状態
         var _VALID_MODAL = {
             edit: null,
+        };
+        // テーブル編集モーダル専用の一時状態
+        var _TABLE_MODAL = {
+            edit:    null,
+            editIdx: -1,
         };
 
         // _CTX._project の初期データを設定
@@ -4496,8 +4495,8 @@
                 ? {name: "", description: "", columns: [defaultColumn()]}
                 : JSON.parse(JSON.stringify(getProjectData().tables[idx])); // ディープコピー
             if (!tbl.columns || tbl.columns.length === 0) tbl.columns = [defaultColumn()];
-            getModalContext().tblEditIdx = idx;
-            getModalContext().tblEdit = tbl;
+            _TABLE_MODAL.editIdx = idx;
+            _TABLE_MODAL.edit = tbl;
             renderTableEditModal();
         }
 
@@ -4506,8 +4505,8 @@
         }
 
         function renderTableEditModal() {
-            const tbl = getModalContext().tblEdit;
-            const isNew = getModalContext().tblEditIdx < 0;
+            const tbl = _TABLE_MODAL.edit;
+            const isNew = _TABLE_MODAL.editIdx < 0;
             const cols = tbl.columns || [];
 
             let tbody = cols.map((c, i) => {
@@ -4547,10 +4546,10 @@
                 // テーブル名
                 "<div class='tbl-name-row'><label>テーブル名</label>" +
                 "<input id='tbl-name-in' value='" + esc(tbl.name) + "' placeholder='例: users' " +
-                "oninput='getModalContext().tblEdit.name=this.value'></div>" +
+                "oninput='_TABLE_MODAL.edit.name=this.value'></div>" +
                 // 説明
                 "<div class='tbl-desc-row'><label>説明（任意）</label>" +
-                "<textarea id='tbl-desc-in' oninput='getModalContext().tblEdit.description=this.value'>" + esc(tbl.description || "") + "</textarea></div>" +
+                "<textarea id='tbl-desc-in' oninput='_TABLE_MODAL.edit.description=this.value'>" + esc(tbl.description || "") + "</textarea></div>" +
                 // マスターCSV
                 _renderMasterCsvArea(tbl) +
                 // カラム一覧
@@ -4671,7 +4670,7 @@
 
             // ヘッダー解析
             const headers = _parseCsvLine(lines[0]);
-            const tbl = getModalContext().tblEdit;
+            const tbl = _TABLE_MODAL.edit;
             const cols = tbl.columns || [];
 
             // 必須カラムチェック（NOT NULL + DEFAULTなし + PKでない）
@@ -4698,7 +4697,7 @@
             // gzip圧縮 → Base64
             try {
                 const compressed = await _compressCsv(text);
-                getModalContext().tblEdit.masterCsv = {
+                _TABLE_MODAL.edit.masterCsv = {
                     filename: file.name,
                     data: compressed,
                     rows: dataLines.length,
@@ -4779,17 +4778,20 @@
 
         // マスターCSVをダウンロードする
         async function tblDownloadMasterCsv() {
-            const csv = getModalContext().tblEdit.masterCsv;
+            const csv = _TABLE_MODAL.edit.masterCsv;
             if (!csv?.data) return;
             try {
                 const text = await _decompressCsv(csv.data);
-                const blob = new Blob([text], {type: "text/csv"});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = csv.filename || (getModalContext().tblEdit.name + "_master.csv");
-                a.click();
-                URL.revokeObjectURL(url);
+                const defaultName = csv.filename || (_TABLE_MODAL.edit.name + "_master.csv");
+                const result = await window.bunSaveGenericFile({
+                    content: text,
+                    defaultName: defaultName,
+                    ext: "csv",
+                });
+                if (result && result.ok && result.path) {
+                    showToast("ダウンロードしました: " + result.path);
+                }
+                // result.cancelled === true の場合は何もしない（エラーなし）
             } catch (e) {
                 showVjaAlert("ダウンロードに失敗しました: " + e.message);
             }
@@ -4799,7 +4801,7 @@
         async function tblDeleteMasterCsv() {
             const confirmed = await vja.app.showConfirm("マスターCSVを削除しますか？");
             if (!confirmed) return;
-            delete getModalContext().tblEdit.masterCsv;
+            delete _TABLE_MODAL.edit.masterCsv;
             renderTableEditModal();
             showToast("マスターCSVを削除しました");
         }
@@ -4833,51 +4835,51 @@
         }
 
         function tblColUpdate(idx, key, val) {
-            if (!getModalContext().tblEdit || !getModalContext().tblEdit.columns[idx]) return;
-            getModalContext().tblEdit.columns[idx][key] = val;
+            if (!_TABLE_MODAL.edit || !_TABLE_MODAL.edit.columns[idx]) return;
+            _TABLE_MODAL.edit.columns[idx][key] = val;
             if (key === "pk" && val) {
                 // PKの場合はNOT NULLも自動ON
-                getModalContext().tblEdit.columns[idx].notNull = true;
+                _TABLE_MODAL.edit.columns[idx].notNull = true;
             }
         }
 
         // PK設定（1つのみ許可）
         function tblColUpdatePk(idx, val) {
-            if (!getModalContext().tblEdit) return;
-            getModalContext().tblEdit.columns.forEach((c, i) => {c.pk = (i === idx && val);});
+            if (!_TABLE_MODAL.edit) return;
+            _TABLE_MODAL.edit.columns.forEach((c, i) => {c.pk = (i === idx && val);});
             // 再描画
             renderTableEditModal();
         }
 
         // カラム追加
         function tblColAdd() {
-            if (!getModalContext().tblEdit) return;
+            if (!_TABLE_MODAL.edit) return;
             // 現在のDOMから値を同期
             tblSyncFromDOM();
-            getModalContext().tblEdit.columns.push(defaultColumn());
+            _TABLE_MODAL.edit.columns.push(defaultColumn());
             renderTableEditModal();
         }
 
         // カラム挿入（指定行の前に追加）
         function tblColInsert(idx) {
-            if (!getModalContext().tblEdit) return;
+            if (!_TABLE_MODAL.edit) return;
             tblSyncFromDOM();
-            getModalContext().tblEdit.columns.splice(idx, 0, defaultColumn());
+            _TABLE_MODAL.edit.columns.splice(idx, 0, defaultColumn());
             renderTableEditModal();
         }
 
         // カラム削除
         function tblColDelete(idx) {
-            if (!getModalContext().tblEdit) return;
+            if (!_TABLE_MODAL.edit) return;
             tblSyncFromDOM();
-            getModalContext().tblEdit.columns.splice(idx, 1);
-            if (getModalContext().tblEdit.columns.length === 0) getModalContext().tblEdit.columns.push(defaultColumn());
+            _TABLE_MODAL.edit.columns.splice(idx, 1);
+            if (_TABLE_MODAL.edit.columns.length === 0) _TABLE_MODAL.edit.columns.push(defaultColumn());
             renderTableEditModal();
         }
 
         // DOMから現在の入力値を同期
         function tblSyncFromDOM() {
-            const tbl = getModalContext().tblEdit;
+            const tbl = _TABLE_MODAL.edit;
             if (!tbl) return;
             const nameIn = $("tbl-name-in");
             const descIn = $("tbl-desc-in");
@@ -4905,7 +4907,7 @@
         // DDLプレビュー表示
         function tblShowDdl() {
             tblSyncFromDOM();
-            const tbl = getModalContext().tblEdit;
+            const tbl = _TABLE_MODAL.edit;
             const pre = $("tbl-ddl-preview");
             if (!pre) return;
             pre.style.display = pre.style.display === "none" ? "block" : "none";
@@ -4944,8 +4946,8 @@
         function tblTypeOpen(idx, btn) {
             const float = $("col-type-float");
             if (!float) {return;}
-            if (!getModalContext().tblEdit || !getModalContext().tblEdit.columns[idx]) return;
-            const curType = getModalContext().tblEdit.columns[idx].type || "TEXT";
+            if (!_TABLE_MODAL.edit || !_TABLE_MODAL.edit.columns[idx]) return;
+            const curType = _TABLE_MODAL.edit.columns[idx].type || "TEXT";
             // 既に開いていて同じインデックスならclose
             if (float.classList.contains("open") && float.dataset.colidx == idx) {
                 float.classList.remove("open");
@@ -4976,8 +4978,8 @@
         // カラム型の選択
         function tblTypeSelect(idx, type) {
             const t = type.trim();
-            if (!getModalContext().tblEdit || !getModalContext().tblEdit.columns[idx]) return;
-            getModalContext().tblEdit.columns[idx].type = t;
+            if (!_TABLE_MODAL.edit || !_TABLE_MODAL.edit.columns[idx]) return;
+            _TABLE_MODAL.edit.columns[idx].type = t;
             // ボタンラベル更新
             const btn = document.querySelector(".col-type-btn[data-colidx='" + idx + "'] .col-type-lbl");
             if (btn) btn.textContent = t;
@@ -4989,12 +4991,12 @@
         // テーブル保存
         function tblSave() {
             tblSyncFromDOM();
-            const tbl = getModalContext().tblEdit;
+            const tbl = _TABLE_MODAL.edit;
             if (!tbl.name.trim()) {showVjaAlert("テーブル名を入力してください"); return;}
             // テーブル名重複チェック（自分自身は除外）
-            const dupIdx = getProjectData().tables.findIndex((t, i) => t.name === tbl.name.trim() && i !== getModalContext().tblEditIdx);
+            const dupIdx = getProjectData().tables.findIndex((t, i) => t.name === tbl.name.trim() && i !== _TABLE_MODAL.editIdx);
             if (dupIdx >= 0) {showVjaAlert("テーブル名「" + tbl.name + "」は既に存在します"); return;}
-            // 空カラムを除去（バリデーション用。getModalContext().tblEdit.columnsはまだ書き換えない）
+            // 空カラムを除去（バリデーション用。_TABLE_MODAL.edit.columnsはまだ書き換えない）
             const validCols = (tbl.columns || []).filter(c => c.name.trim());
             if (validCols.length === 0) {showVjaAlert("カラムを1つ以上定義してください"); return;}
             // DEFAULTバリデーション
@@ -5019,10 +5021,10 @@
             tbl.name = tbl.name.trim();
             tbl.columns = validCols; // バリデーション通過後に空カラムを除去して代入
             tbl.updatedAt = new Date().toISOString(); // テーブル更新時刻を記録
-            if (getModalContext().tblEditIdx < 0) {
+            if (_TABLE_MODAL.editIdx < 0) {
                 getProjectData().tables.push(tbl);
             } else {
-                getProjectData().tables[getModalContext().tblEditIdx] = tbl;
+                getProjectData().tables[_TABLE_MODAL.editIdx] = tbl;
             }
             pushUndo();
             showToast("テーブル「" + tbl.name + "」を保存しました");

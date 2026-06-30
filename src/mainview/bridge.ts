@@ -8,6 +8,7 @@ import { makeFetchMaps, makeVjaFetch, makeFetchResultHandlers, type Pending } fr
 const pending = {
     openFile: null as Pending<{ content: string | null; path: string | null }> | null,
     saveFile: null as Pending<{ ok: boolean; path: string | null; cancelled: boolean }> | null,
+    saveGenericFile: null as Pending<{ ok: boolean; path: string | null; cancelled: boolean }> | null,
     dbQuery: null as Pending<{ ok: boolean; rows: DbRow[]; error?: string }> | null,
     dbExecute: null as Pending<{ ok: boolean; result: DbResult; error?: string }> | null,
     dbTransaction: null as Pending<{ ok: boolean; error?: string }> | null,
@@ -62,6 +63,7 @@ const rpc = Electroview.defineRPC({
         messages: {
             openFileResult: (v: any) => resolve("openFile", v),
             saveFileResult: (v: any) => resolve("saveFile", v),
+            saveGenericFileResult: (v: any) => resolve("saveGenericFile", v),
             dbQueryResult: (v: any) => resolve("dbQuery", v),
             dbExecuteResult: (v: any) => resolve("dbExecute", v),
             dbTransactionResult: (v: any) => resolve("dbTransaction", v),
@@ -120,6 +122,7 @@ const w = window as any;
 
 w.bunOpenFile = (a: any) => mkPromise("openFile", () => s.openFileRequest(a));
 w.bunSaveProject = (a: any) => mkPromise("saveFile", () => s.saveFileRequest(a));
+w.bunSaveGenericFile = (a: any) => mkPromise("saveGenericFile", () => s.saveGenericFileRequest(a));
 w.bunCloseApp = () => s.closeAppRequest({});
 w.bunToggleDevTools = () => s.toggleDevToolsRequest({});
 w.bunSaveCloudInfras = (infras: any[]) => mkPromise("saveCloudInfras", () => s.saveCloudInfrasRequest({ infras }));
