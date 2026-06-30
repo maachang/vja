@@ -818,9 +818,6 @@
                 constRows:    [],
                 tblEdit:      null,
                 tblEditIdx:   -1,
-                coldefWid:    null,
-                coldefRows:   [],
-                coldefMaxRows:0,
                 validEdit:    null,
             },
             // YAMLエディタの入力状態
@@ -885,6 +882,12 @@
         // 確認ダイアログ専用の一時状態
         var _CONFIRM_MODAL = {
             okCb: null,
+        };
+        // カラム定義エディタ専用の一時状態
+        var _COLDEF_MODAL = {
+            wid:     null,
+            rows:    [],
+            maxRows: 0,
         };
 
         // _CTX._project の初期データを設定
@@ -5894,13 +5897,13 @@
                 return {label: parts[0] || "", width: parts[1] || "20", displayName: parts[2] || ""};
             });
             if (rows.length === 0) rows.push({label: "", width: "20", displayName: ""});
-            getModalContext().coldefWid = wid;
-            getModalContext().coldefRows = rows;
-            getModalContext().coldefMaxRows = w.props.maxRows || 0;
+            _COLDEF_MODAL.wid = wid;
+            _COLDEF_MODAL.rows = rows;
+            _COLDEF_MODAL.maxRows = w.props.maxRows || 0;
             renderColDefModal();
         }
         function renderColDefModal() {
-            const rows = getModalContext().coldefRows || [];
+            const rows = _COLDEF_MODAL.rows || [];
             let tbody = "";
             rows.forEach((r, i) => {
                 tbody += "<tr>"
@@ -5920,7 +5923,7 @@
                 + "<div class='infobox'>カラム名と幅(%)を定義します。Noは自動採番。</div>"
                 + "<div style='display:flex;align-items:center;gap:8px;padding:4px 0'>"
                 + "<label style='font-size:12px;color:var(--text2);white-space:nowrap'>最大表示件数（0=無制限）:</label>"
-                + "<input type='number' id='coldef-maxrows' value='" + (getModalContext().coldefMaxRows || 0) + "' min='0' class='pv-input' style='width:80px'>"
+                + "<input type='number' id='coldef-maxrows' value='" + (_COLDEF_MODAL.maxRows || 0) + "' min='0' class='pv-input' style='width:80px'>"
                 + "</div>"
                 + "<div class='coldef-scroll'>"
                 + "<table class='coldef-table'>"
@@ -5937,22 +5940,22 @@
                 + "</div>");
         }
         function coldefUpdate(idx, key, val) {
-            if (getModalContext().coldefRows) getModalContext().coldefRows[idx][key] = val;
+            if (_COLDEF_MODAL.rows) _COLDEF_MODAL.rows[idx][key] = val;
         }
         function coldefAddRow() {
-            _rowAdd(() => getModalContext().coldefRows, () => ({label: "", width: "20", displayName: ""}), renderColDefModal, 100);
+            _rowAdd(() => _COLDEF_MODAL.rows, () => ({label: "", width: "20", displayName: ""}), renderColDefModal, 100);
         }
         function coldefInsertRow(idx) {
-            _rowInsert(() => getModalContext().coldefRows, idx, () => ({label: "", width: "20", displayName: ""}), renderColDefModal, 100);
+            _rowInsert(() => _COLDEF_MODAL.rows, idx, () => ({label: "", width: "20", displayName: ""}), renderColDefModal, 100);
         }
         function coldefDelRow(idx) {
-            _rowDel(() => getModalContext().coldefRows, idx, () => ({label: "", width: "80"}), renderColDefModal);
+            _rowDel(() => _COLDEF_MODAL.rows, idx, () => ({label: "", width: "80"}), renderColDefModal);
         }
         function coldefSave() {
-            const wid = getModalContext().coldefWid;
+            const wid = _COLDEF_MODAL.wid;
             const w = getWidget(wid);
             if (!w) return;
-            const valid = (getModalContext().coldefRows || []).filter(r => r.label.trim());
+            const valid = (_COLDEF_MODAL.rows || []).filter(r => r.label.trim());
             if (valid.length === 0) {showVjaAlert("カラム名を1つ以上入力してください"); return;}
             w.props.columns = valid.map(r => r.label.trim() + ":" + (parseInt(r.width) || 20) + (r.displayName?.trim() ? ":" + r.displayName.trim() : "")).join("\n");
             w.props.maxRows = parseInt($("coldef-maxrows")?.value) || 0;
