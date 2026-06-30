@@ -5508,112 +5508,127 @@
 
         function _cloudSelId(prefix, i) {return prefix + "_" + i;}
 
-        function _cloudInfraRow(inf, i) {
-            const preset = CLOUD_PRESETS.find(p => p.name === inf.name) || CLOUD_PRESETS[CLOUD_PRESETS.length - 1];
-            // creds は {name, key, secret} の配列
-            const credDefs = inf.credDefs && inf.credDefs.length ? inf.credDefs
-                : (preset.creds || []);
-            const credKeys = credDefs.map(c => typeof c === "string" ? c : c.name);
-            const curSvc = inf.service || (preset.services[0]?.label || "");
-            const isCustomCloud = inf.name === "カスタム";
-            const isCustomSvc = curSvc === "カスタム";
-
-            // クラウド種別セレクト
-            const csid = _cloudSelId("cs", i);
-            const cloudOpts = CLOUD_PRESETS.map(p =>
+        // クラウド種別セレクトの選択肢HTML生成
+        function _cloudOptsHtml(inf, csid, i) {
+            return CLOUD_PRESETS.map(p =>
                 `<div class="pv-sel-opt ${inf.name === p.name ? "active" : ""}"
                     ${evtAttr("onmousedown", "pvSelPick('" + csid + "','" + esc(p.name) + "',event);selectCloudPreset(" + i + ",'" + esc(p.name) + "')")}>${esc(p.name)}</div>`
             ).join("");
+        }
 
-            // サービスセレクト
-            const ssid = _cloudSelId("ss", i);
-            const svcOpts = preset.services.map(s =>
+        // サービスセレクトの選択肢HTML生成
+        function _cloudSvcOptsHtml(preset, curSvc, ssid, i) {
+            return preset.services.map(s =>
                 `<div class="pv-sel-opt ${curSvc === s.label ? "active" : ""}"
                     ${evtAttr("onmousedown", "pvSelPick('" + ssid + "','" + esc(s.label) + "',event);selectCloudService(" + i + ",'" + esc(s.label) + "')")}>${esc(s.label)}</div>`
             ).join("");
+        }
 
-            // SDK URL 入力欄: service の input:true の場合のみ編集可（カスタム等）
+        // SDK URL入力欄HTML生成
+        // service の input:true の場合のみ編集可（カスタム等）。
+        // baseUrl がある場合は固定prefixとして表示し、続きのみ入力させる。
+        function _cloudUrlFieldHtml(preset, curSvc, isCustomSvc, inf, i) {
             const curSvcDef = preset.services.find(s => s.label === curSvc);
             const urlEditable = curSvcDef ? curSvcDef.input : isCustomSvc;
-            // カスタムでinput:trueの場合はbaseUrlをprefixとして表示
             const baseUrl = curSvcDef?.url || "";
             const editVal = urlEditable && baseUrl && inf.sdkUrl?.startsWith(baseUrl)
                 ? inf.sdkUrl.slice(baseUrl.length)
                 : (urlEditable ? inf.sdkUrl || "" : inf.sdkUrl || "");
-            const urlField = urlEditable
-                ? (baseUrl
-                    ? `<div style="display:flex;align-items:center;flex:1;min-width:160px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;overflow:hidden">
+            if (!urlEditable) {
+                return `<input class="pv-input" style="flex:1;min-width:160px;color:var(--text3)" readonly
+                    value="${esc(inf.sdkUrl || "")}" title="サービス選択で自動入力されます">`;
+            }
+            if (baseUrl) {
+                return `<div style="display:flex;align-items:center;flex:1;min-width:160px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;overflow:hidden">
                         <span style="padding:0 4px;font-size:11px;color:var(--text3);white-space:nowrap;border-right:1px solid var(--border)">${esc(baseUrl)}</span>
                         <input class="pv-input" style="flex:1;min-width:80px" placeholder="続きを入力"
                             value="${esc(editVal)}"
                             ${evtAttr("oninput", "updateCloudField(" + i + ",'sdkUrl','" + esc(baseUrl) + "'+this.value)")}>
-                       </div>`
-                    : `<input class="pv-input" style="flex:1;min-width:160px" placeholder="SDK URL を入力"
+                       </div>`;
+            }
+            return `<input class="pv-input" style="flex:1;min-width:160px" placeholder="SDK URL を入力"
                         value="${esc(inf.sdkUrl || "")}"
-                        ${evtAttr("oninput", "updateCloudField(" + i + ",'sdkUrl',this.value)")}>`)
-                : `<input class="pv-input" style="flex:1;min-width:160px;color:var(--text3)" readonly
-                    value="${esc(inf.sdkUrl || "")}" title="サービス選択で自動入力されます">`;
+                        ${evtAttr("oninput", "updateCloudField(" + i + ",'sdkUrl',this.value)")}>`;
+        }
 
-            // クレデンシャル欄
-            // カスタム×カスタムの場合はJSONで一括入力
-            let credFields = "";
+        // クレデンシャル欄HTML生成
+        // カスタム×カスタムの場合はJSON一括入力欄、それ以外は credDefs の定義に従って
+        // テキスト入力・パスワード入力・セレクト形式のいずれかを生成する。
+        function _cloudCredFieldsHtml(inf, credDefs, isCustomCloud, i) {
             if (isCustomCloud) {
                 const jsonVal = inf.credentialsJson || JSON.stringify(inf.credentials || {});
-                credFields = `<div style="margin-top:6px">
+                return `<div style="margin-top:6px">
                     <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Credentials (JSON形式: {"key":"value",...})</div>
                     <textarea class="pv-input pv-textarea" style="height:60px;resize:vertical"
                         placeholder='{"accessKeyId":"xxx","secretAccessKey":"yyy"}'
                         ${evtAttr("oninput", "updateCloudCredsJson(" + i + ",this.value)")}>${esc(jsonVal)}</textarea>
                 </div>`;
-            } else {
-                credFields = credDefs.map((cd, ci) => {
-                    const k = typeof cd === "string" ? cd : cd.name;
-                    const isSecret = typeof cd === "object" && cd.secret;
-                    const appInput = !!(inf.appInput?.[k]);
-                    const selOpts = typeof cd === "object" && Array.isArray(cd.select) ? cd.select : null;
-                    const curVal = (inf.credentials && k in inf.credentials) ? inf.credentials[k] : null;
-                    let inputHtml;
-                    if (selOpts) {
-                        const selId = "cloud-cred-sel-" + i + "-" + ci;
-                        const selDef = selOpts.find(o => o.selected) || selOpts[0];
-                        // o.value が存在する場合は保存値として使い、o.name は表示名として使う
-                        const selDefVal = selDef ? (selDef.value ?? selDef.name ?? "") : "";
-                        // curVal が null（未設定）の場合のみデフォルト値を使う
-                        const selCur = curVal !== null ? curVal : selDefVal;
-                        const opts = selOpts.map(o => {
-                            const optVal = o.value ?? o.name ?? "";
-                            const optDisp = (o.name !== undefined && o.name !== "") ? o.name : "&nbsp;";
-                            const pickArg3 = optDisp === "&nbsp;" ? "" : esc(optDisp);
-                            return `<div class="pv-sel-opt ${(selCur === optVal || selCur === o.name) ? "active" : ""}"
-                                ${evtAttr("onmousedown", "pvSelPick('" + selId + "','" + esc(optVal) + "','" + pickArg3 + "',event);updateCloudCred(" + i + ",'" + esc(k) + "','" + esc(optVal) + "')")}>${optDisp === "&nbsp;" ? "&nbsp;" : esc(optDisp)}</div>`;
-                        }).join("");
-                        // ボタン表示は現在の保存値に対応する表示名を探す
-                        const selDispName = (selOpts.find(o => (o.value ?? o.name) === selCur || o.name === selCur) || {}).name ?? selCur;
-                        inputHtml = `<div class="pv-sel" id="${selId}" style="flex:1">
-                            <div class="pv-sel-btn" ${evtAttr("onmousedown", "pvSelOpen('" + selId + "',event)")}>
-                                <span>${esc(selDispName)}</span><span class="arr">▼</span>
-                            </div>
-                            <div class="pv-sel-list">${opts}</div>
-                        </div>`;
-                    } else {
-                        inputHtml = `<input type="${isSecret ? "password" : "text"}" class="pv-input"
-                            style="flex:1;${appInput ? "opacity:0.5" : ""}"
-                            placeholder="${appInput ? "（アプリ側で入力）" : esc(k)}"
-                            value="${esc(curVal ?? "")}"
-                            ${appInput ? "disabled" : ""}
-                            ${evtAttr("oninput", "updateCloudCred(" + i + ",'" + esc(k) + "',this.value)")}>`;
-                    }
-                    return `<div style="display:flex;align-items:center;gap:6px;margin-top:4px">
-                        <span style="width:110px;font-size:11px;color:var(--text3);flex-shrink:0">${esc(k)}${isSecret ? " 🔒" : ""}</span>
-                        ${inputHtml}
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--text3);white-space:nowrap;cursor:pointer"
-                            title="チェックON: アプリ実行時にウィジェットから入力&#10;チェックOFF: ここで設定した値を使用">
-                            <input type="checkbox" ${appInput ? "checked" : ""}
-                                ${evtAttr("onchange", "updateCloudAppInput(" + i + ",'" + esc(k) + "',this.checked)")}>アプリ側入力
-                        </label>
-                    </div>`;
-                }).join("");
             }
+            return credDefs.map((cd, ci) => {
+                const k = typeof cd === "string" ? cd : cd.name;
+                const isSecret = typeof cd === "object" && cd.secret;
+                const appInput = !!(inf.appInput?.[k]);
+                const selOpts = typeof cd === "object" && Array.isArray(cd.select) ? cd.select : null;
+                const curVal = (inf.credentials && k in inf.credentials) ? inf.credentials[k] : null;
+                let inputHtml;
+                if (selOpts) {
+                    const selId = "cloud-cred-sel-" + i + "-" + ci;
+                    const selDef = selOpts.find(o => o.selected) || selOpts[0];
+                    // o.value が存在する場合は保存値として使い、o.name は表示名として使う
+                    const selDefVal = selDef ? (selDef.value ?? selDef.name ?? "") : "";
+                    // curVal が null（未設定）の場合のみデフォルト値を使う
+                    const selCur = curVal !== null ? curVal : selDefVal;
+                    const opts = selOpts.map(o => {
+                        const optVal = o.value ?? o.name ?? "";
+                        const optDisp = (o.name !== undefined && o.name !== "") ? o.name : "&nbsp;";
+                        const pickArg3 = optDisp === "&nbsp;" ? "" : esc(optDisp);
+                        return `<div class="pv-sel-opt ${(selCur === optVal || selCur === o.name) ? "active" : ""}"
+                            ${evtAttr("onmousedown", "pvSelPick('" + selId + "','" + esc(optVal) + "','" + pickArg3 + "',event);updateCloudCred(" + i + ",'" + esc(k) + "','" + esc(optVal) + "')")}>${optDisp === "&nbsp;" ? "&nbsp;" : esc(optDisp)}</div>`;
+                    }).join("");
+                    // ボタン表示は現在の保存値に対応する表示名を探す
+                    const selDispName = (selOpts.find(o => (o.value ?? o.name) === selCur || o.name === selCur) || {}).name ?? selCur;
+                    inputHtml = `<div class="pv-sel" id="${selId}" style="flex:1">
+                        <div class="pv-sel-btn" ${evtAttr("onmousedown", "pvSelOpen('" + selId + "',event)")}>
+                            <span>${esc(selDispName)}</span><span class="arr">▼</span>
+                        </div>
+                        <div class="pv-sel-list">${opts}</div>
+                    </div>`;
+                } else {
+                    inputHtml = `<input type="${isSecret ? "password" : "text"}" class="pv-input"
+                        style="flex:1;${appInput ? "opacity:0.5" : ""}"
+                        placeholder="${appInput ? "（アプリ側で入力）" : esc(k)}"
+                        value="${esc(curVal ?? "")}"
+                        ${appInput ? "disabled" : ""}
+                        ${evtAttr("oninput", "updateCloudCred(" + i + ",'" + esc(k) + "',this.value)")}>`;
+                }
+                return `<div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                    <span style="width:110px;font-size:11px;color:var(--text3);flex-shrink:0">${esc(k)}${isSecret ? " 🔒" : ""}</span>
+                    ${inputHtml}
+                    <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--text3);white-space:nowrap;cursor:pointer"
+                        title="チェックON: アプリ実行時にウィジェットから入力&#10;チェックOFF: ここで設定した値を使用">
+                        <input type="checkbox" ${appInput ? "checked" : ""}
+                            ${evtAttr("onchange", "updateCloudAppInput(" + i + ",'" + esc(k) + "',this.checked)")}>アプリ側入力
+                    </label>
+                </div>`;
+            }).join("");
+        }
+
+        function _cloudInfraRow(inf, i) {
+            const preset = CLOUD_PRESETS.find(p => p.name === inf.name) || CLOUD_PRESETS[CLOUD_PRESETS.length - 1];
+            // creds は {name, key, secret} の配列
+            const credDefs = inf.credDefs && inf.credDefs.length ? inf.credDefs
+                : (preset.creds || []);
+            const curSvc = inf.service || (preset.services[0]?.label || "");
+            const isCustomCloud = inf.name === "カスタム";
+            const isCustomSvc = curSvc === "カスタム";
+
+            const csid = _cloudSelId("cs", i);
+            const ssid = _cloudSelId("ss", i);
+
+            const cloudOpts = _cloudOptsHtml(inf, csid, i);
+            const svcOpts = _cloudSvcOptsHtml(preset, curSvc, ssid, i);
+            const urlField = _cloudUrlFieldHtml(preset, curSvc, isCustomSvc, inf, i);
+            const credFields = _cloudCredFieldsHtml(inf, credDefs, isCustomCloud, i);
 
             // 有効チェックボックスのラベル
             const enabledLabel = inf.enabled
