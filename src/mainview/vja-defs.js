@@ -434,44 +434,6 @@ const WIDGET_DEFS = {
             return html;
         },
     },
-    treeview: {
-        label: "treeView", icon: "🌲",
-        def: {
-            w: 200, h: 160,
-            items: "親1\n  子1-1\n  子1-2\n親2\n  子2-1",
-            bg: "#fff", fg: "#000",
-            fontSize: 12, fontFamily: "", fontBold: false,
-            borderSize: 1, borderColor: "#cccccc",
-            visible: true, description: "",
-        },
-        events: ["NodeClick", "NodeExpand", "NodeCollapse", "Click"],
-        pdefs: [
-            ...PP_POS,
-            { sep: "外観" },
-            { k: "items", lb: "Items", t: "area" },
-            { k: "bg", lb: "BackColor", t: "color" },
-            { k: "fg", lb: "ForeColor", t: "color" },
-            ...PP_FONT,
-            ...PP_BORDER,
-            ...PP_TAIL,
-        ],
-        preview: (p, base, vis) => {
-            const buildTree = (lines) => {
-                let html = "<ul style='list-style:none;padding-left:14px;margin:0'>";
-                lines.forEach(l => {
-                    const indent = l.match(/^(\s*)/)[1].length;
-                    const text = l.trim();
-                    if (!text) return;
-                    const hasChildren = indent === 0;
-                    html += `<li style="line-height:20px;white-space:nowrap">${hasChildren ? "▶ " : "• "}${esc(text)}</li>`;
-                });
-                html += "</ul>";
-                return html;
-            };
-            const treeLines = (p.items || "").split("\n");
-            return `<div style="${base}background:${p.bg || "#fff"};color:${p.fg || "#000"};font-size:${p.fontSize || 12}px;border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};overflow:auto;padding:4px;box-sizing:border-box;${vis}">${buildTree(treeLines)}</div>`;
-        },
-    },
     progressbar: {
         label: "progress", icon: "📊",
         def: {
