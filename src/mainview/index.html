@@ -512,6 +512,7 @@
                     {k: "disabled", lb: "Disabled", t: "bool"},
                     ...PP_TAIL,
                 ],
+                preview: (p, base, vis) => `<button style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};border-radius:${p.borderRadius || 2}px;cursor:default;pointer-events:none;${vis}">${esc(p.text)}</button>`,
             },
             label: {
                 label: "label", icon: "🏷️",
@@ -534,6 +535,7 @@
                     {k: "align", lb: "Align", t: "sel", opts: ["left", "center", "right"]},
                     ...PP_TAIL,
                 ],
+                preview: (p, base, vis) => `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};text-align:${p.align || "left"};display:flex;align-items:center;overflow:hidden;padding:0 2px;${vis}">${esc(p.text)}</div>`,
             },
             inputtype: {
                 label: "text", icon: "📝",
@@ -568,6 +570,33 @@
                     {k: "required", lb: "Required", t: "bool"},
                     ...PP_TAIL,
                 ],
+                preview: (p, base, vis) => {
+                    const itype = p.inputType || "text";
+                    const typeIcons = {
+                        password: "🔒 password",
+                        email: "📧 email",
+                        number: "🔢 number",
+                        tel: "📞 tel",
+                        url: "🌐 url",
+                        search: "🔍 search",
+                        date: "📅 date",
+                        time: "⏰ time",
+                        month: "📆 month",
+                        week: "🗓 week",
+                        "datetime-local": "📅🕐 datetime",
+                        color: "🎨 color",
+                        range: "↔ range",
+                        file: "📁 file",
+                        text: "📝 text",
+                    };
+                    const needsPreview = [
+                        "date", "time", "month", "week", "datetime-local", "color", "range", "file",
+                    ].includes(itype);
+                    if (needsPreview) {
+                        return `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};display:flex;align-items:center;padding:0 6px;gap:6px;pointer-events:none;${vis}"><span style="font-size:11px;opacity:.7">${typeIcons[itype] || itype}</span></div>`;
+                    }
+                    return `<input type="${itype}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" ${p.maxLength ? `maxlength="${p.maxLength}"` : ""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px;pointer-events:none;${vis}">`;
+                },
             },
             textarea: {
                 label: "textarea", icon: "📄",
@@ -595,6 +624,7 @@
                     {k: "readonly", lb: "ReadOnly", t: "bool"},
                     ...PP_TAIL,
                 ],
+                preview: (p, base, vis) => `<textarea style="${base}background:${p.bg || "#fff"};color:${p.fg || "#000"};font-size:${p.fontSize || 12}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};resize:none;padding:4px;box-sizing:border-box;pointer-events:none;${vis}" placeholder="${esc(p.placeholder || "")}">${esc(p.text || "")}</textarea>`,
             },
             checkbox: {
                 label: "checkbox", icon: "☑️",
@@ -616,6 +646,7 @@
                     {k: "checked", lb: "Checked", t: "bool"},
                     ...PP_TAIL,
                 ],
+                preview: (p, base, vis) => `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};pointer-events:none;${vis}"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
             },
             radio: {
                 label: "radioButton", icon: "🔘",
@@ -638,6 +669,7 @@
                     {k: "checked", lb: "Checked", t: "bool"},
                     ...PP_TAIL,
                 ],
+                preview: (p, base, vis) => `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};pointer-events:none;${vis}"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
             },
             selectBox: {
                 label: "selectBox", icon: "🔽",
@@ -660,6 +692,12 @@
                     ...PP_BORDER,
                     ...PP_TAIL,
                 ],
+                preview: (p, base, vis) => `<select style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};pointer-events:none;${vis}">${(
+                    p.items || ""
+                )
+                    .split("\n")
+                    .map((s) => {const idx = s.indexOf("="); const label = idx > 0 ? s.slice(0, idx).trim() : s.trim(); const val = idx > 0 ? s.slice(idx + 1).trim() : s.trim(); return `<option value="${esc(val)}">${esc(label)}</option>`;})
+                    .join("")}</select>`,
             },
             listbox: {
                 label: "listBox", icon: "📋",
@@ -682,6 +720,12 @@
                     ...PP_BORDER,
                     ...PP_TAIL,
                 ],
+                preview: (p, base, vis) => `<select multiple style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};pointer-events:none;${vis}">${(
+                    p.items || ""
+                )
+                    .split("\n")
+                    .map((s) => {const idx = s.indexOf("="); const label = idx > 0 ? s.slice(0, idx).trim() : s.trim(); const val = idx > 0 ? s.slice(idx + 1).trim() : s.trim(); return `<option value="${esc(val)}">${esc(label)}</option>`;})
+                    .join("")}</select>`,
             },
             datagrid: {
                 label: "テーブル", icon: "🗃️",
@@ -716,6 +760,44 @@
                     {k: "headerHeight", lb: "HeaderHeight", t: "num"},
                     ...PP_TAIL,
                 ],
+                preview: (p) => {
+                    const cols = (p.columns || "ID:20\n名前:50\n値:30").split(/[;\n]/).filter(s => s.trim()).map((c, ci) => {
+                        const parts = c.trim().split(":");
+                        const label = parts[0] || ("列" + (ci + 1));
+                        const width = parseInt(parts[1]) || 20;
+                        const displayName = parts[2] || "";
+                        return {key: "col" + ci, label, width, displayName};
+                    });
+                    const maxR = p.maxRows || 5;
+                    const hbg = p.headerBg || "#4a4a6a";
+                    const hfg = p.headerFg || "#ffffff";
+                    const rbg = p.rowBg || "#ffffff";
+                    const rabg = p.rowAltBg || "#f5f5f5";
+                    const rfg = p.rowFg || "#000000";
+                    const bc = p.borderColor || "#cccccc";
+                    const fs = p.fontSize || 12;
+                    const vis2 = p.visible === false ? "visibility:hidden" : "";
+                    const ff = p.fontFamily || "";
+                    const fw = p.fontBold ? "bold" : "normal";
+                    const fontStyle = (ff ? `font-family:${ff};` : "") + `font-weight:${fw};`;
+                    let html = `<div style="width:100%;height:100%;overflow:auto;border:1px solid ${bc};box-sizing:border-box;font-size:${fs}px;${fontStyle}${vis2}">`;
+                    html += `<table style="width:100%;border-collapse:collapse;table-layout:fixed">`;
+                    html += `<thead><tr style="background:${hbg};color:${hfg}">`;
+                    cols.forEach(c => {
+                        html += `<th style="width:${c.width}%;padding:3px 6px;border:1px solid ${bc};text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${fontStyle}">${esc(c.displayName || c.label)}</th>`;
+                    });
+                    html += `</tr></thead><tbody>`;
+                    for (let r = 0; r < Math.min(maxR, 5); r++) {
+                        const bg2 = r % 2 === 0 ? rbg : rabg;
+                        html += `<tr style="background:${bg2};color:${rfg}">`;
+                        cols.forEach(c => {
+                            html += `<td style="padding:2px 6px;border:1px solid ${bc};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${fontStyle}">${r === 0 ? "(データ)" : ""}</td>`;
+                        });
+                        html += `</tr>`;
+                    }
+                    html += `</tbody></table></div>`;
+                    return html;
+                },
             },
             treeview: {
                 label: "treeView", icon: "🌲",
@@ -738,6 +820,22 @@
                     ...PP_BORDER,
                     ...PP_TAIL,
                 ],
+                preview: (p, base, vis) => {
+                    const buildTree = (lines) => {
+                        let html = "<ul style='list-style:none;padding-left:14px;margin:0'>";
+                        lines.forEach(l => {
+                            const indent = l.match(/^(\s*)/)[1].length;
+                            const text = l.trim();
+                            if (!text) return;
+                            const hasChildren = indent === 0;
+                            html += `<li style="line-height:20px;white-space:nowrap">${hasChildren ? "▶ " : "• "}${esc(text)}</li>`;
+                        });
+                        html += "</ul>";
+                        return html;
+                    };
+                    const treeLines = (p.items || "").split("\n");
+                    return `<div style="${base}background:${p.bg || "#fff"};color:${p.fg || "#000"};font-size:${p.fontSize || 12}px;border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};overflow:auto;padding:4px;box-sizing:border-box;${vis}">${buildTree(treeLines)}</div>`;
+                },
             },
             progressbar: {
                 label: "progress", icon: "📊",
@@ -761,6 +859,10 @@
                     ...PP_BORDER,
                     ...PP_TAIL,
                 ],
+                preview: (p, base, vis) => {
+                    const pval = Math.min(100, Math.max(0, ((p.value || 0) - (p.min || 0)) / ((p.max || 100) - (p.min || 0)) * 100));
+                    return `<div style="${base}background:${p.bg || "#e0e0e0"};border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};border-radius:3px;overflow:hidden;${vis}"><div style="width:${pval}%;height:100%;background:${p.fg || "#5b7bfa"};transition:width 0.2s;border-radius:3px"></div></div>`;
+                },
             },
             groupbox: {
                 label: "groupBox", icon: "🗂️",
@@ -783,6 +885,7 @@
                     ...PP_BORDER,
                     ...PP_TAIL,
                 ],
+                preview: (p, base, vis) => `<fieldset style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};${vis}"><legend style="padding:0 4px;font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"}">${esc(p.text)}</legend></fieldset>`,
             },
             picture: {
                 label: "image", icon: "🖼️",
@@ -802,6 +905,7 @@
                     ...PP_BORDER,
                     ...PP_TAIL,
                 ],
+                preview: (p, base, vis) => `<div style="${base}background:${p.bg};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};display:flex;align-items:center;justify-content:center;color:#888;font-size:11px;${vis}">${p.src ? `<img src="${esc(p.src)}" style="max-width:100%;max-height:100%;object-fit:${p.objectFit || "contain"}">` : "📷"}</div>`,
             },
             datepicker: {
                 label: "日付/時刻", icon: "📅",
@@ -832,6 +936,10 @@
                     {k: "readonly", lb: "ReadOnly", t: "bool"},
                     ...PP_TAIL,
                 ],
+                preview: (p, base, vis) => {
+                    const _itype = p.inputType || "date";
+                    return `<input type="${_itype}" value="${esc(p.value || "")}" ${p.min ? `min="${esc(p.min)}"` : ""}  ${p.max ? `max="${esc(p.max)}"` : ""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px;pointer-events:none;${vis}">`;
+                },
             },
             slider: {
                 label: "スライダー", icon: "🎚️",
@@ -856,6 +964,7 @@
                     {k: "disabled", lb: "Disabled", t: "bool"},
                     ...PP_TAIL,
                 ],
+                preview: (p, base, vis) => `<div style="${base}display:flex;align-items:center;${vis}"><input type="range" min="${p.min || 0}" max="${p.max || 100}" value="${p.value || 0}" step="${p.step || 1}" style="width:100%;pointer-events:none;accent-color:#5b7bfa"></div>`,
             },
             hscroll: {
                 label: "水平scroll", icon: "↔️",
@@ -873,6 +982,7 @@
                     {k: "val", lb: "Value", t: "num"},
                     ...PP_TAIL,
                 ],
+                preview: (p, base, vis) => `<div style="${base}background:${p.bg || "#ddd"};border:1px solid #999;border-radius:2px;display:flex;align-items:center;justify-content:space-between;padding:0 2px;${vis}"><span style="font-size:9px">◀</span><div style="flex:1;height:50%;background:#999;margin:0 3px;border-radius:1px"></div><span style="font-size:9px">▶</span></div>`,
             },
             vscroll: {
                 label: "垂直scroll", icon: "↕️",
@@ -890,6 +1000,7 @@
                     {k: "val", lb: "Value", t: "num"},
                     ...PP_TAIL,
                 ],
+                preview: (p, base, vis) => `<div style="${base}background:${p.bg || "#ddd"};border:1px solid #999;border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;${vis}"><span style="font-size:9px">▲</span><div style="width:50%;flex:1;background:#999;margin:3px 0;border-radius:1px"></div><span style="font-size:9px">▼</span></div>`,
             },
             // フォーム自体（ツールボックスには表示されないため label/icon/def は持たない）
             form: {
@@ -1238,145 +1349,7 @@
             const p = w.props;
             const vis = p.visible === false ? "visibility:hidden" : "";
             const base = `width:100%;height:100%;box-sizing:border-box;font-family:'Yu Gothic UI','Meiryo UI','Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased;`;
-            switch (w.tag) {
-                case "button":
-                    return `<button style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};border-radius:${p.borderRadius || 2}px;cursor:default;pointer-events:none;${vis}">${esc(p.text)}</button>`;
-                case "label":
-                    return `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};text-align:${p.align || "left"};display:flex;align-items:center;overflow:hidden;padding:0 2px;${vis}">${esc(p.text)}</div>`;
-                case "inputtype": {
-                    const itype = p.inputType || "text";
-                    // type別のプレビュー表示
-                    const typeIcons = {
-                        password: "🔒 password",
-                        email: "📧 email",
-                        number: "🔢 number",
-                        tel: "📞 tel",
-                        url: "🌐 url",
-                        search: "🔍 search",
-                        date: "📅 date",
-                        time: "⏰ time",
-                        month: "📆 month",
-                        week: "🗓 week",
-                        "datetime-local": "📅🕐 datetime",
-                        color: "🎨 color",
-                        range: "↔ range",
-                        file: "📁 file",
-                        text: "📝 text",
-                    };
-                    const needsPreview = [
-                        "date",
-                        "time",
-                        "month",
-                        "week",
-                        "datetime-local",
-                        "color",
-                        "range",
-                        "file",
-                    ].includes(itype);
-                    if (needsPreview) {
-                        return `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};display:flex;align-items:center;padding:0 6px;gap:6px;pointer-events:none;${vis}"><span style="font-size:11px;opacity:.7">${typeIcons[itype] || itype}</span></div>`;
-                    }
-                    return `<input type="${itype}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" ${p.maxLength ? `maxlength="${p.maxLength}"` : ""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px;pointer-events:none;${vis}">`;
-                }
-                case "input":
-                    if (p.multiline)
-                        return `<textarea style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};resize:none;padding:2px 4px;pointer-events:none;${vis}">${esc(p.text)}</textarea>`;
-                    return `<input type="text" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px;pointer-events:none;${vis}">`;
-                case "checkbox":
-                    return `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};pointer-events:none;${vis}"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`;
-                case "radio":
-                    return `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};pointer-events:none;${vis}"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`;
-                case "listbox":
-                    return `<select multiple style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};pointer-events:none;${vis}">${(
-                        p.items || ""
-                    )
-                        .split("\n")
-                        .map((s) => {const idx = s.indexOf("="); const label = idx > 0 ? s.slice(0, idx).trim() : s.trim(); const val = idx > 0 ? s.slice(idx + 1).trim() : s.trim(); return `<option value="${esc(val)}">${esc(label)}</option>`;})
-                        .join("")}</select>`;
-                case "selectBox":
-                    return `<select style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};pointer-events:none;${vis}">${(
-                        p.items || ""
-                    )
-                        .split("\n")
-                        .map((s) => {const idx = s.indexOf("="); const label = idx > 0 ? s.slice(0, idx).trim() : s.trim(); const val = idx > 0 ? s.slice(idx + 1).trim() : s.trim(); return `<option value="${esc(val)}">${esc(label)}</option>`;})
-                        .join("")}</select>`;
-                case "groupbox":
-                    return `<fieldset style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};${vis}"><legend style="padding:0 4px;font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"}">${esc(p.text)}</legend></fieldset>`;
-                case "picture":
-                    return `<div style="${base}background:${p.bg};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};display:flex;align-items:center;justify-content:center;color:#888;font-size:11px;${vis}">${p.src ? `<img src="${esc(p.src)}" style="max-width:100%;max-height:100%;object-fit:${p.objectFit || "contain"}">` : "📷"}</div>`;
-                case "datagrid": {
-                    const cols = (p.columns || "ID:20\n名前:50\n値:30").split(/[;\n]/).filter(s => s.trim()).map((c, ci) => {
-                        const parts = c.trim().split(":");
-                        const label = parts[0] || ("列" + (ci + 1));
-                        const width = parseInt(parts[1]) || 20;
-                        const displayName = parts[2] || "";
-                        return {key: "col" + ci, label, width, displayName};
-                    });
-                    const maxR = p.maxRows || 5;
-                    const hbg = p.headerBg || "#4a4a6a";
-                    const hfg = p.headerFg || "#ffffff";
-                    const rbg = p.rowBg || "#ffffff";
-                    const rabg = p.rowAltBg || "#f5f5f5";
-                    const rfg = p.rowFg || "#000000";
-                    const bc = p.borderColor || "#cccccc";
-                    const fs = p.fontSize || 12;
-                    const vis2 = p.visible === false ? "visibility:hidden" : "";
-                    const ff = p.fontFamily || "";
-                    const fw = p.fontBold ? "bold" : "normal";
-                    const fontStyle = (ff ? `font-family:${ff};` : "") + `font-weight:${fw};`;
-                    let html = `<div style="width:100%;height:100%;overflow:auto;border:1px solid ${bc};box-sizing:border-box;font-size:${fs}px;${fontStyle}${vis2}">`;
-                    html += `<table style="width:100%;border-collapse:collapse;table-layout:fixed">`;
-                    html += `<thead><tr style="background:${hbg};color:${hfg}">`;
-                    cols.forEach(c => {
-                        html += `<th style="width:${c.width}%;padding:3px 6px;border:1px solid ${bc};text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${fontStyle}">${esc(c.displayName || c.label)}</th>`;
-                    });
-                    html += `</tr></thead><tbody>`;
-                    for (let r = 0; r < Math.min(maxR, 5); r++) {
-                        const bg2 = r % 2 === 0 ? rbg : rabg;
-                        html += `<tr style="background:${bg2};color:${rfg}">`;
-                        cols.forEach(c => {
-                            html += `<td style="padding:2px 6px;border:1px solid ${bc};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${fontStyle}">${r === 0 ? "(データ)" : ""}</td>`;
-                        });
-                        html += `</tr>`;
-                    }
-                    html += `</tbody></table></div>`;
-                    return html;
-                }
-                case "hscroll":
-                    return `<div style="${base}background:${p.bg || "#ddd"};border:1px solid #999;border-radius:2px;display:flex;align-items:center;justify-content:space-between;padding:0 2px;${vis}"><span style="font-size:9px">◀</span><div style="flex:1;height:50%;background:#999;margin:0 3px;border-radius:1px"></div><span style="font-size:9px">▶</span></div>`;
-                case "vscroll":
-                    return `<div style="${base}background:${p.bg || "#ddd"};border:1px solid #999;border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;${vis}"><span style="font-size:9px">▲</span><div style="width:50%;flex:1;background:#999;margin:3px 0;border-radius:1px"></div><span style="font-size:9px">▼</span></div>`;
-                case "datepicker": {
-                    const _itype = p.inputType || "date";
-                    return `<input type="${_itype}" value="${esc(p.value || "")}" ${p.min ? `min="${esc(p.min)}"` : ""}  ${p.max ? `max="${esc(p.max)}"` : ""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px;pointer-events:none;${vis}">`;
-                }
-                case "textarea":
-                    return `<textarea style="${base}background:${p.bg || "#fff"};color:${p.fg || "#000"};font-size:${p.fontSize || 12}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};resize:none;padding:4px;box-sizing:border-box;pointer-events:none;${vis}" placeholder="${esc(p.placeholder || "")}">${esc(p.text || "")}</textarea>`;
-                case "progressbar": {
-                    const pval = Math.min(100, Math.max(0, ((p.value || 0) - (p.min || 0)) / ((p.max || 100) - (p.min || 0)) * 100));
-                    return `<div style="${base}background:${p.bg || "#e0e0e0"};border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};border-radius:3px;overflow:hidden;${vis}"><div style="width:${pval}%;height:100%;background:${p.fg || "#5b7bfa"};transition:width 0.2s;border-radius:3px"></div></div>`;
-                }
-                case "treeview": {
-                    const buildTree = (lines) => {
-                        let html = "<ul style='list-style:none;padding-left:14px;margin:0'>";
-                        lines.forEach(l => {
-                            const indent = l.match(/^(\s*)/)[1].length;
-                            const text = l.trim();
-                            if (!text) return;
-                            const hasChildren = indent === 0;
-                            html += `<li style="line-height:20px;white-space:nowrap">${hasChildren ? "▶ " : "• "}${esc(text)}</li>`;
-                        });
-                        html += "</ul>";
-                        return html;
-                    };
-                    const treeLines = (p.items || "").split("\n");
-                    return `<div style="${base}background:${p.bg || "#fff"};color:${p.fg || "#000"};font-size:${p.fontSize || 12}px;border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};overflow:auto;padding:4px;box-sizing:border-box;${vis}">${buildTree(treeLines)}</div>`;
-                }
-                case "slider":
-                    return `<div style="${base}display:flex;align-items:center;${vis}"><input type="range" min="${p.min || 0}" max="${p.max || 100}" value="${p.value || 0}" step="${p.step || 1}" style="width:100%;pointer-events:none;accent-color:#5b7bfa"></div>`;
-                default:
-                    return "";
-            }
+            return WIDGET_DEFS[w.tag]?.preview?.(p, base, vis) || "";
         }
 
         const RHS = ["tl", "tm", "tr", "ml", "mr", "bl", "bm", "br"]
