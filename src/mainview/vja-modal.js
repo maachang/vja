@@ -5,6 +5,7 @@
    【依存】vja-defs.js, vja-designer.js
    【提供するもの】
      - showModal() / closeModal() / showLoadingModal()（全モーダル共通の土台）
+     - mhdrHTML() / mfootHTML()（モーダル共通ヘッダー/フッターHTML）
      - コンテキストメニュー（右クリックメニュー）
      - pushUndo() / actUndo() / actRedo() / snapshot()（デザイナーのUndo/Redo）
      - actDelete() / actDuplicate()（ウィジェット削除・複製）

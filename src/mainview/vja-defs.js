@@ -10,7 +10,8 @@
      - WIDGET_DEFS（全ウィジェットの定義: label/icon/def/events/pdefs/preview）
      - POINTER_TOOL, getToolById()
      - PP_POS / PP_FONT / PP_BORDER / PP_TAIL（プロパティ定義の共通パーツ）
-     - esc(), $(), fb(), evtAttr(), pvRegister()/pvCall() 等の共通ユーティリティ
+     - esc(), $(), fb(), evtAttr(), pvRegister()/pvCall(), showToast()
+       等の共通ユーティリティ
      - makeFormData()（フォーム1枚分のデータ構造生成）
    このファイルは他のどのファイルにも依存しない。
    他の全ファイルがこのファイルの中身に依存する。
@@ -64,6 +65,12 @@
         （_INIT_PARAMS という間接的な名前空間は撤廃済み。使わない）
    - 関数・純粋なロジック
      → 各機能別ファイル
+   - 特定ドメインに属さない汎用UI部品（トースト通知・モーダル共通
+     パーツ等、ほぼ全ファイルから呼ばれるもの）
+     → vja-defs.js（基盤ヘルパー）または vja-modal.js（モーダル
+       共通土台）。「純粋関数だから」という理由だけでドメイン横断
+       的な新規ファイル（例: vja-logic.js）を作るのは禁止。ドメイン
+       別ファイル分割の原則（②）を崩すため。
 
    ⑤ HTML文字列内のイベント属性について（重要・必須ルール）
    HTML文字列の中に oninput / onmousedown / onchange 等のイベント
