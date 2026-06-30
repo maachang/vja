@@ -815,7 +815,6 @@
             },
             // モーダル編集中の一時データ
             _modal: {
-                constRows:    [],
                 tblEdit:      null,
                 tblEditIdx:   -1,
                 validEdit:    null,
@@ -888,6 +887,10 @@
             wid:     null,
             rows:    [],
             maxRows: 0,
+        };
+        // 定数編集モーダル専用の一時状態
+        var _CONST_MODAL = {
+            rows: [],
         };
 
         // _CTX._project の初期データを設定
@@ -4249,8 +4252,8 @@
 
         /* ── 定数エディタ ── */
         function openConstEditor() {
-            getModalContext().constRows = getProjectData().constants.map(c => ({name: c.name || "", value: c.value || ""}));
-            if (getModalContext().constRows.length === 0) getModalContext().constRows.push({name: "", value: ""});
+            _CONST_MODAL.rows = getProjectData().constants.map(c => ({name: c.name || "", value: c.value || ""}));
+            if (_CONST_MODAL.rows.length === 0) _CONST_MODAL.rows.push({name: "", value: ""});
             renderConstModal();
         }
 
@@ -4259,12 +4262,13 @@
                 "📌 定数エディタ",
                 "イベントのYAMLから参照できる定数を定義します。プロジェクトファイルに保存されます。",
                 "constAddRow()",
-                "constSave()"
+                "constSave()",
+                "renderConstModal"
             );
         }
 
-        function renderConstModalBase(title, infoText, addAction, saveAction) {
-            const rows = getModalContext().constRows || [];
+        function renderConstModalBase(title, infoText, addAction, saveAction, delRenderFn) {
+            const rows = _CONST_MODAL.rows || [];
             let tbody = "";
             rows.forEach((r, i) => {
                 const oi_n = "constUpdate(" + i + ",'name',this.value)";
@@ -4273,7 +4277,7 @@
                     + "<td>" + (i + 1) + "</td>"
                     + "<td><input type='text' value='" + esc(r.name) + "' oninput='" + oi_n + "' placeholder='定数名'></td>"
                     + "<td><input type='text' value='" + esc(r.value) + "' oninput='" + oi_v + "' placeholder='値'></td>"
-                    + "<td><button class='del-btn' onmousedown='constDelRow(" + i + ")' title='削除'>✕</button></td>"
+                    + "<td><button class='del-btn' onmousedown='constDelRow(" + i + ",\"" + delRenderFn + "\")' title='削除'>✕</button></td>"
                     + "</tr>";
             });
             showModal("<div id='const-modal'>"
@@ -4295,44 +4299,44 @@
                 + "</div>");
         }
 
-        // DOM から現在の入力値を getModalContext().constRows に同期する
+        // DOM から現在の入力値を _CONST_MODAL.rows に同期する
         function syncConstFromDOM() {
             const tbody = document.querySelector("#const-modal .const-table tbody");
-            if (!tbody || !getModalContext().constRows) return;
+            if (!tbody || !_CONST_MODAL.rows) return;
             const rows = tbody.querySelectorAll("tr");
             rows.forEach((tr, i) => {
                 const inputs = tr.querySelectorAll("input");
-                if (inputs.length >= 2 && getModalContext().constRows[i]) {
-                    getModalContext().constRows[i].name = inputs[0].value;
-                    getModalContext().constRows[i].value = inputs[1].value;
+                if (inputs.length >= 2 && _CONST_MODAL.rows[i]) {
+                    _CONST_MODAL.rows[i].name = inputs[0].value;
+                    _CONST_MODAL.rows[i].value = inputs[1].value;
                 }
             });
         }
 
         function constUpdate(idx, key, val) {
-            if (getModalContext().constRows) getModalContext().constRows[idx][key] = val;
+            if (_CONST_MODAL.rows) _CONST_MODAL.rows[idx][key] = val;
         }
 
         function constAddRow() {
-            if (!getModalContext().constRows) return;
+            if (!_CONST_MODAL.rows) return;
             syncConstFromDOM(); // 現在の入力値を先に保存
-            getModalContext().constRows.push({name: "", value: ""});
+            _CONST_MODAL.rows.push({name: "", value: ""});
             renderConstModal();
         }
 
-        function constDelRow(idx) {
-            if (!getModalContext().constRows) return;
+        function constDelRow(idx, renderFnName) {
+            if (!_CONST_MODAL.rows) return;
             syncConstFromDOM(); // 現在の入力値を先に保存
-            getModalContext().constRows.splice(idx, 1);
-            if (getModalContext().constRows.length === 0) getModalContext().constRows.push({name: "", value: ""});
-            renderConstModal();
+            _CONST_MODAL.rows.splice(idx, 1);
+            if (_CONST_MODAL.rows.length === 0) _CONST_MODAL.rows.push({name: "", value: ""});
+            (renderFnName ? window[renderFnName] : renderConstModal)();
         }
 
         // ── 定数保存共通ヘルパー ──────────────────────────────────
         // target=null → グローバル定数、target=フォームオブジェクト → フォーム定数
         function _constSaveBase(target) {
             syncConstFromDOM();
-            const valid = (getModalContext().constRows || []).filter(r => r.name.trim());
+            const valid = (_CONST_MODAL.rows || []).filter(r => r.name.trim());
             const names = valid.map(r => r.name.trim());
             const dup = names.find((n, i) => names.indexOf(n) !== i);
             if (dup) {showVjaAlert("定数名「" + dup + "」が重複しています"); return;}
@@ -5250,8 +5254,8 @@
             const f = getProjectData().forms[getProjectData().curFormIdx];
             if (!f) return;
             if (!f.constants) f.constants = [];
-            getModalContext().constRows = f.constants.map(c => ({name: c.name || "", value: c.value || ""}));
-            if (getModalContext().constRows.length === 0) getModalContext().constRows.push({name: "", value: ""});
+            _CONST_MODAL.rows = f.constants.map(c => ({name: c.name || "", value: c.value || ""}));
+            if (_CONST_MODAL.rows.length === 0) _CONST_MODAL.rows.push({name: "", value: ""});
             renderFormConstModal();
         }
 
@@ -5262,13 +5266,15 @@
                 "📌 フォーム定数 — " + esc(formTitle),
                 "このフォーム（" + esc(formTitle) + "）専用の定数を定義します。グローバル定数と合わせてYAMLから参照できます。",
                 "formConstAddRow()",
-                "saveFormConst()"
+                "saveFormConst()",
+                "renderFormConstModal"
             );
         }
 
         function formConstAddRow() {
-            if (!getModalContext().constRows) return;
-            getModalContext().constRows.push({name: "", value: ""});
+            if (!_CONST_MODAL.rows) return;
+            syncConstFromDOM(); // 現在の入力値を先に保存
+            _CONST_MODAL.rows.push({name: "", value: ""});
             renderFormConstModal();
         }
 
