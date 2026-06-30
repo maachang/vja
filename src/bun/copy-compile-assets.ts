@@ -20,6 +20,7 @@ export const COPY_BUILD_FILES: [string, string][] = [
     ["bun/project-runner.ts", "bun/project-runner.ts"],
     ["shared/types.ts", "shared/types.ts"],
     ["mainview/project-bridge.ts", "mainview/project-bridge.ts"],
+    ["mainview/bridge-common.ts", "mainview/bridge-common.ts"],
     ["mainview/vja-runtime.js", "mainview/vja-runtime.js"],
 ];
 
