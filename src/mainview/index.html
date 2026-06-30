@@ -4297,9 +4297,9 @@
                 const oi_v = "constUpdate(" + i + ",'value',this.value)";
                 tbody += "<tr>"
                     + "<td>" + (i + 1) + "</td>"
-                    + "<td><input type='text' value='" + esc(r.name) + "' oninput=\"" + oi_n + "\" placeholder='定数名'></td>"
-                    + "<td><input type='text' value='" + esc(r.value) + "' oninput=\"" + oi_v + "\" placeholder='値'></td>"
-                    + "<td><button class='del-btn' onmousedown='constDelRow(" + i + ",\"" + delRenderFn + "\")' title='削除'>✕</button></td>"
+                    + "<td><input type='text' value='" + esc(r.name) + "'" + evtAttr("oninput", oi_n) + " placeholder='定数名'></td>"
+                    + "<td><input type='text' value='" + esc(r.value) + "'" + evtAttr("oninput", oi_v) + " placeholder='値'></td>"
+                    + "<td><button class='del-btn'" + evtAttr("onmousedown", "constDelRow(" + i + ",'" + delRenderFn + "')") + " title='削除'>✕</button></td>"
                     + "</tr>";
             });
             showModal("<div id='const-modal'>"
@@ -4312,11 +4312,11 @@
                 + "<tbody>" + tbody + "</tbody>"
                 + "</table>"
                 + "</div>"
-                + "<button class='add-row-btn' onmousedown='" + addAction + "'>＋ 行を追加</button>"
+                + "<button class='add-row-btn'" + evtAttr("onmousedown", addAction) + ">＋ 行を追加</button>"
                 + "</div>"
                 + "<div class='mfoot'>"
                 + mfootHTML([{label: "キャンセル", action: "closeModal()"}])
-                + "<button class='pri' onmousedown='" + saveAction + "'>保存</button>"
+                + "<button class='pri'" + evtAttr("onmousedown", saveAction) + ">保存</button>"
                 + "</div>"
                 + "</div>");
         }
