@@ -5256,11 +5256,11 @@
                 + "<tbody>" + tbody + "</tbody>"
                 + "</table>"
                 + "</div>"
-                + (!opts.maxLen || rows.length < opts.maxLen ? "<button class='add-row-btn' onmousedown='" + opts.addAction + "'>＋ 行を追加</button>" : "")
+                + (!opts.maxLen || rows.length < opts.maxLen ? "<button class='add-row-btn'" + evtAttr("onmousedown", opts.addAction) + ">＋ 行を追加</button>" : "")
                 + "</div>"
                 + "<div class='mfoot'>"
                 + mfootHTML([{label: "キャンセル", action: "closeModal()"}])
-                + "<button class='pri' onmousedown='" + opts.saveAction + "'>保存</button>"
+                + "<button class='pri'" + evtAttr("onmousedown", opts.saveAction) + ">保存</button>"
                 + "</div>"
                 + "</div>");
         }
@@ -5974,12 +5974,12 @@
                 headerHtml: "<th style='width:36px'>No</th><th>カラム名</th><th>表示名</th><th style='width:80px'>幅(%)</th><th style='width:56px'></th>",
                 rowHtmlFn: (r, i) => "<tr>"
                     + "<td>" + (i + 1) + "</td>"
-                    + "<td><input type='text' value='" + esc(r.label) + "' oninput=\"coldefUpdate(" + i + ",'label',this.value)\" placeholder='カラム名'></td>"
-                    + "<td><input type='text' value='" + esc(r.displayName || "") + "' oninput=\"coldefUpdate(" + i + ",'displayName',this.value)\" placeholder='表示名（省略可）'></td>"
-                    + "<td><input type='number' value='" + esc(r.width) + "' oninput=\"coldefUpdate(" + i + ",'width',this.value)\" style='width:70px' min='1' max='100'></td>"
+                    + "<td><input type='text' value='" + esc(r.label) + "'" + evtAttr("oninput", "coldefUpdate(" + i + ",'label',this.value)") + " placeholder='カラム名'></td>"
+                    + "<td><input type='text' value='" + esc(r.displayName || "") + "'" + evtAttr("oninput", "coldefUpdate(" + i + ",'displayName',this.value)") + " placeholder='表示名（省略可）'></td>"
+                    + "<td><input type='number' value='" + esc(r.width) + "'" + evtAttr("oninput", "coldefUpdate(" + i + ",'width',this.value)") + " style='width:70px' min='1' max='100'></td>"
                     + "<td style='white-space:nowrap'>"
-                    + "<button class='del-btn' onmousedown='coldefInsertRow(" + i + ")' title='この行の前に挿入' style='margin-right:2px'>＋</button>"
-                    + "<button class='del-btn' onmousedown='coldefDelRow(" + i + ")' title='削除'>✕</button>"
+                    + "<button class='del-btn'" + evtAttr("onmousedown", "coldefInsertRow(" + i + ")") + " title='この行の前に挿入' style='margin-right:2px'>＋</button>"
+                    + "<button class='del-btn'" + evtAttr("onmousedown", "coldefDelRow(" + i + ")") + " title='削除'>✕</button>"
                     + "</td></tr>",
                 addAction: "coldefAddRow()",
                 saveAction: "coldefSave()",
@@ -6040,11 +6040,11 @@
                 headerHtml: "<th style='width:36px'>No</th><th>表示名</th><th>Value（省略可）</th><th style='width:56px'></th>",
                 rowHtmlFn: (r, i) => "<tr>"
                     + "<td>" + (i + 1) + "</td>"
-                    + "<td><input type='text' class='pv-input' value='" + esc(r.label) + "' oninput=\"_ITEMSDEF_EDITOR.rows[" + i + "].label=this.value\" placeholder='表示名'></td>"
-                    + "<td><input type='text' class='pv-input' value='" + esc(r.value || "") + "' oninput=\"_ITEMSDEF_EDITOR.rows[" + i + "].value=this.value\" placeholder='Value（省略可）'></td>"
+                    + "<td><input type='text' class='pv-input' value='" + esc(r.label) + "'" + evtAttr("oninput", "_ITEMSDEF_EDITOR.rows[" + i + "].label=this.value") + " placeholder='表示名'></td>"
+                    + "<td><input type='text' class='pv-input' value='" + esc(r.value || "") + "'" + evtAttr("oninput", "_ITEMSDEF_EDITOR.rows[" + i + "].value=this.value") + " placeholder='Value（省略可）'></td>"
                     + "<td style='white-space:nowrap'>"
-                    + "<button class='del-btn' onmousedown='itemsdefInsertRow(" + i + ")' title='この行の前に挿入' style='margin-right:2px'>＋</button>"
-                    + "<button class='del-btn' onmousedown='itemsdefDelRow(" + i + ")' title='削除'>✕</button>"
+                    + "<button class='del-btn'" + evtAttr("onmousedown", "itemsdefInsertRow(" + i + ")") + " title='この行の前に挿入' style='margin-right:2px'>＋</button>"
+                    + "<button class='del-btn'" + evtAttr("onmousedown", "itemsdefDelRow(" + i + ")") + " title='削除'>✕</button>"
                     + "</td></tr>",
                 addAction: "itemsdefAddRow()",
                 saveAction: "itemsdefSave()",
