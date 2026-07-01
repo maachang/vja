@@ -7,7 +7,9 @@
    【提供するもの】
      - _CTX（状態管理オブジェクト本体）と getDesignerState() 等のgetter群
      - 機能別ローカル状態オブジェクト（_CLOUD_MODAL, _TABLE_MODAL 等）
-     - WIDGET_DEFS（全ウィジェットの定義: label/icon/def/events/pdefs/preview）
+     - WIDGET_DEFS（全ウィジェットの定義: label/icon/def/events/pdefs/preview。
+       themeSync: ["font","color"]等でフォームテーマ連動対象を明示。
+       未指定＝連動対象外。"font"未指定でも"color"のみのタグもある）
      - POINTER_TOOL, getToolById()
      - PP_POS / PP_FONT / PP_BORDER / PP_TAIL（プロパティ定義の共通パーツ）
      - esc(), $(), fb(), evtAttr(), pvRegister()/pvCall(), showToast()
@@ -73,6 +75,11 @@
        共通土台）。「純粋関数だから」という理由だけでドメイン横断
        的な新規ファイル（例: vja-logic.js）を作るのは禁止。ドメイン
        別ファイル分割の原則（②）を崩すため。
+   - フォームテーマ連動の対象タグ判定
+     → WIDGET_DEFS[tag].themeSync（例: ["font","color"]）に必ず
+       明示する。"borderColor" in props のような、propsの中身から
+       間接的に対象タグを推測するコードは書かないこと（過去に
+       datagrid/picture等が意図せず連動対象に混入した原因）。
 
    ⑤ HTML文字列内のイベント属性について（重要・必須ルール）
    HTML文字列の中に oninput / onmousedown / onchange 等のイベント
@@ -138,6 +145,7 @@ const POINTER_TOOL = { id: "pointer", label: "ポインタ", icon: "🖱️" };
 const WIDGET_DEFS = {
     button: {
         label: "button", icon: "⬜",
+        themeSync: ["font", "color"],
         def: {
             w: 96, h: 28,
             text: "Button1",
@@ -164,6 +172,7 @@ const WIDGET_DEFS = {
     },
     label: {
         label: "label", icon: "🏷️",
+        themeSync: ["font"],
         def: {
             w: 100, h: 24,
             text: "Label1",
@@ -180,6 +189,7 @@ const WIDGET_DEFS = {
             { k: "fg", lb: "ForeColor", t: "color" },
             { k: "bg", lb: "BackColor", t: "color" },
             ...PP_FONT,
+            { k: "baseColor", lb: "テーマ", t: "themeReset" },
             { k: "align", lb: "Align", t: "sel", opts: ["left", "center", "right"] },
             ...PP_TAIL,
         ],
@@ -187,6 +197,7 @@ const WIDGET_DEFS = {
     },
     inputtype: {
         label: "text", icon: "📝",
+        themeSync: ["font", "color"],
         def: {
             w: 140, h: 28,
             inputType: "text", text: "", placeholder: "",
@@ -248,6 +259,7 @@ const WIDGET_DEFS = {
     },
     textarea: {
         label: "textarea", icon: "📄",
+        themeSync: ["font", "color"],
         def: {
             w: 200, h: 80,
             text: "", placeholder: "",
@@ -276,6 +288,7 @@ const WIDGET_DEFS = {
     },
     checkbox: {
         label: "checkbox", icon: "☑️",
+        themeSync: ["font"],
         def: {
             w: 100, h: 22,
             text: "CheckBox1", checked: false,
@@ -290,6 +303,7 @@ const WIDGET_DEFS = {
             { k: "text", lb: "Text", t: "text" },
             { k: "fg", lb: "ForeColor", t: "color" },
             ...PP_FONT,
+            { k: "baseColor", lb: "テーマ", t: "themeReset" },
             { sep: "状態" },
             { k: "checked", lb: "Checked", t: "bool" },
             ...PP_TAIL,
@@ -298,6 +312,7 @@ const WIDGET_DEFS = {
     },
     radio: {
         label: "radioButton", icon: "🔘",
+        themeSync: ["font"],
         def: {
             w: 100, h: 22,
             text: "RadioButton1", checked: false, group: "Group1",
@@ -313,6 +328,7 @@ const WIDGET_DEFS = {
             { k: "group", lb: "GroupName", t: "text" },
             { k: "fg", lb: "ForeColor", t: "color" },
             ...PP_FONT,
+            { k: "baseColor", lb: "テーマ", t: "themeReset" },
             { sep: "状態" },
             { k: "checked", lb: "Checked", t: "bool" },
             ...PP_TAIL,
@@ -321,6 +337,7 @@ const WIDGET_DEFS = {
     },
     selectBox: {
         label: "selectBox", icon: "🔽",
+        themeSync: ["font", "color"],
         def: {
             w: 120, h: 24,
             items: "項目1\n項目2\n項目3",
@@ -349,6 +366,7 @@ const WIDGET_DEFS = {
     },
     listbox: {
         label: "listBox", icon: "📋",
+        themeSync: ["font", "color"],
         def: {
             w: 120, h: 80,
             items: "項目1\n項目2\n項目3",
@@ -377,6 +395,7 @@ const WIDGET_DEFS = {
     },
     datagrid: {
         label: "テーブル", icon: "🗃️",
+        themeSync: ["font", "color"],
         def: {
             w: 320, h: 160,
             columns: "ID:20\n名前:50\n値:30",
@@ -446,6 +465,7 @@ const WIDGET_DEFS = {
     },
     progressbar: {
         label: "progress", icon: "📊",
+        themeSync: ["color"],
         def: {
             w: 200, h: 20,
             value: 50, min: 0, max: 100,
@@ -473,6 +493,7 @@ const WIDGET_DEFS = {
     },
     groupbox: {
         label: "groupBox", icon: "🗂️",
+        themeSync: ["font", "color"],
         def: {
             w: 160, h: 100,
             text: "GroupBox1",
@@ -496,6 +517,7 @@ const WIDGET_DEFS = {
     },
     picture: {
         label: "image", icon: "🖼️",
+        themeSync: ["color"],
         def: {
             w: 100, h: 80,
             src: "", bg: "#ddd", objectFit: "contain",
@@ -516,6 +538,7 @@ const WIDGET_DEFS = {
     },
     datepicker: {
         label: "日付/時刻", icon: "📅",
+        themeSync: ["font", "color"],
         def: {
             w: 160, h: 28,
             inputType: "date", value: "", min: "", max: "",

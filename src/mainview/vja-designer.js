@@ -314,12 +314,17 @@ function makeThemedProps(tool) {
     // w,h は def から除いて別管理
     delete props.w;
     delete props.h;
+    const sync = WIDGET_DEFS[tool.tag]?.themeSync || [];
+    if (sync.length === 0) return props; // このタグはテーマ連動対象外
     const theme = getFormTheme();
-    if ("fontFamily" in props) props.fontFamily = theme.fontFamily;
-    if ("fontSize" in props) props.fontSize = theme.fontSize;
-    if ("fg" in props) props.fg = theme.fg;
-    if ("borderColor" in props) {
-        props.baseColor = theme.baseColor;
+    if (sync.includes("font")) {
+        if ("fontFamily" in props) props.fontFamily = theme.fontFamily;
+        if ("fontSize" in props) props.fontSize = theme.fontSize;
+        if ("fg" in props) props.fg = theme.fg;
+    }
+    // baseColorは「テーマに連動しているか」の共通フラグ（font/colorいずれか対象なら持たせる）
+    props.baseColor = theme.baseColor;
+    if (sync.includes("color")) {
         props.borderColor = darkenColor(theme.baseColor, 0.911);
         if (tool.tag === "button") props.bg = theme.baseColor;
     }
@@ -767,14 +772,19 @@ function setProp(k, sp, val, wid) {
 // フォント/borderColor/bgを再計算する。個別カスタマイズ済み（baseColor===null）は対象外。
 function resetWidgetTheme(wid) {
     const w = getWidget(wid);
-    if (!w || !("borderColor" in w.props)) return;
+    const sync = w ? (WIDGET_DEFS[w.tag]?.themeSync || []) : [];
+    if (!w || sync.length === 0) return;
     const theme = getFormTheme();
-    if ("fontFamily" in w.props) w.props.fontFamily = theme.fontFamily;
-    if ("fontSize" in w.props) w.props.fontSize = theme.fontSize;
-    if ("fg" in w.props) w.props.fg = theme.fg;
+    if (sync.includes("font")) {
+        if ("fontFamily" in w.props) w.props.fontFamily = theme.fontFamily;
+        if ("fontSize" in w.props) w.props.fontSize = theme.fontSize;
+        if ("fg" in w.props) w.props.fg = theme.fg;
+    }
     w.props.baseColor = theme.baseColor;
-    w.props.borderColor = darkenColor(theme.baseColor, 0.911);
-    if (w.tag === "button") w.props.bg = theme.baseColor;
+    if (sync.includes("color")) {
+        w.props.borderColor = darkenColor(theme.baseColor, 0.911);
+        if (w.tag === "button") w.props.bg = theme.baseColor;
+    }
     commitWidget(w, { props: true });
 }
 
@@ -782,13 +792,19 @@ function resetWidgetTheme(wid) {
 function applyThemeToWidgets() {
     const theme = getFormTheme();
     getProjectData().widgets.forEach((w) => {
-        if (w.props.baseColor == null || !("borderColor" in w.props)) return;
-        if ("fontFamily" in w.props) w.props.fontFamily = theme.fontFamily;
-        if ("fontSize" in w.props) w.props.fontSize = theme.fontSize;
-        if ("fg" in w.props) w.props.fg = theme.fg;
+        if (w.props.baseColor == null) return;
+        const sync = WIDGET_DEFS[w.tag]?.themeSync || [];
+        if (sync.length === 0) return;
+        if (sync.includes("font")) {
+            if ("fontFamily" in w.props) w.props.fontFamily = theme.fontFamily;
+            if ("fontSize" in w.props) w.props.fontSize = theme.fontSize;
+            if ("fg" in w.props) w.props.fg = theme.fg;
+        }
         w.props.baseColor = theme.baseColor;
-        w.props.borderColor = darkenColor(theme.baseColor, 0.911);
-        if (w.tag === "button") w.props.bg = theme.baseColor;
+        if (sync.includes("color")) {
+            w.props.borderColor = darkenColor(theme.baseColor, 0.911);
+            if (w.tag === "button") w.props.bg = theme.baseColor;
+        }
         renderWidget(w, false);
     });
 }
