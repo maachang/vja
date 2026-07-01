@@ -11,9 +11,10 @@
      - フォームボディの mousedown ハンドラ（VBスタイル描画）
      - addWidget()（ウィジェット追加。getFormTheme()で取得したフォームの
        テーマ値をfontFamily/fontSize/fg/baseColor/borderColor/bgに適用する）
-     - resetWidgetTheme() / applyThemeBaseColorToWidgets()
-       （baseColor連動ウィジェットのテーマ再適用・一括反映。setProp()で
-       bg/borderColorを個別編集するとbaseColorがnullになり連動対象から外れる）
+     - resetWidgetTheme() / applyThemeToWidgets()
+       （baseColor連動ウィジェットへのテーマ再適用・一括反映。フォント/fg/
+       baseColor派生色すべてが対象。setProp()でこれらを個別編集すると
+       baseColorがnullになり連動対象から外れる）
      - ウィジェットの選択・移動・リサイズ
      - renderProps() / pinput()（プロパティパネル）
    このファイルは vja-defs.js にのみ依存する。
@@ -584,9 +585,9 @@ function setProp(k, sp, val, wid) {
     else if (sp === "w") w.w = +val;
     else if (sp === "h") w.h = +val;
     else {
-        // bg/borderColorを個別編集した場合、以後フォームのベースカラー変更に
-        // 追従させない（baseColorをnullにして「カスタム済み」を示す）
-        if ((k === "bg" || k === "borderColor") && w.props.baseColor != null) {
+        // bg/borderColor/フォント関連を個別編集した場合、以後フォームの
+        // テーマ変更に追従させない（baseColorをnullにして「カスタム済み」を示す）
+        if (["bg", "borderColor", "fontFamily", "fontSize", "fg"].includes(k) && w.props.baseColor != null) {
             w.props.baseColor = null;
         }
         w.props[k] = val;
@@ -595,24 +596,31 @@ function setProp(k, sp, val, wid) {
 }
 
 // フォームのベースカラーに連動しているウィジェット（baseColorが非null）の
-// borderColor/bgを再計算する。個別カスタマイズ済み（baseColor===null）は対象外。
+// フォント/borderColor/bgを再計算する。個別カスタマイズ済み（baseColor===null）は対象外。
 function resetWidgetTheme(wid) {
     const w = getWidget(wid);
     if (!w || !("borderColor" in w.props)) return;
     const theme = getFormTheme();
+    if ("fontFamily" in w.props) w.props.fontFamily = theme.fontFamily;
+    if ("fontSize" in w.props) w.props.fontSize = theme.fontSize;
+    if ("fg" in w.props) w.props.fg = theme.fg;
     w.props.baseColor = theme.baseColor;
     w.props.borderColor = darkenColor(theme.baseColor, 0.911);
     if (w.tag === "button") w.props.bg = theme.baseColor;
     commitWidget(w, { props: true });
 }
 
-// フォームのベースカラー変更時、連動中（baseColor非null）の全ウィジェットに反映する
-function applyThemeBaseColorToWidgets(baseColor) {
+// フォームのテーマ変更時、連動中（baseColor非null）の全ウィジェットに反映する
+function applyThemeToWidgets() {
+    const theme = getFormTheme();
     getProjectData().widgets.forEach((w) => {
         if (w.props.baseColor == null || !("borderColor" in w.props)) return;
-        w.props.baseColor = baseColor;
-        w.props.borderColor = darkenColor(baseColor, 0.911);
-        if (w.tag === "button") w.props.bg = baseColor;
+        if ("fontFamily" in w.props) w.props.fontFamily = theme.fontFamily;
+        if ("fontSize" in w.props) w.props.fontSize = theme.fontSize;
+        if ("fg" in w.props) w.props.fg = theme.fg;
+        w.props.baseColor = theme.baseColor;
+        w.props.borderColor = darkenColor(theme.baseColor, 0.911);
+        if (w.tag === "button") w.props.bg = theme.baseColor;
         renderWidget(w, false);
     });
 }
@@ -709,9 +717,9 @@ function setFormCfg(k, v) {
     }
     getProjectData().formCfg[k] = v;
     getProjectData().forms[getProjectData().curFormIdx].cfg[k] = v;
-    if (k === "themeBaseColor") {
-        applyThemeBaseColorToWidgets(v);
-        renderProps(); // 選択中ウィジェットのプロパティ表示（bg/borderColor欄）を更新
+    if (k === "themeFontFamily" || k === "themeFontSize" || k === "themeFg" || k === "themeBaseColor") {
+        applyThemeToWidgets();
+        renderProps(); // 選択中ウィジェットのプロパティ表示を更新
     }
     buildFormSelect();
     applyForm();
