@@ -619,6 +619,8 @@ const WIDGET_DEFS = {
             { k: "h", lb: "Height", t: "num", sp: "formH" },
             { k: "bg", lb: "背景色", t: "color", sp: "formBg" },
             { k: "description", lb: "説明（任意）", t: "area", sp: "formDesc" },
+            { sep: "AI" },
+            { k: "_aiDesign", lb: "画面デザイン", t: "formAiDesign" },
             { sep: "テーマ（新規配置ウィジェットの初期値）" },
             { k: "themeFontFamily", lb: "フォント", t: "fontsel", sp: "formThemeFontFamily" },
             { k: "themeFontSize", lb: "文字サイズ", t: "num", sp: "formThemeFontSize" },
@@ -696,6 +698,7 @@ var _CTX = {
         tables: [],
         cloudInfras: [],
         extRuntime: { js: "", doc: "" },
+        formDesignDraft: "",
         // 現在編集中フォームへのショートカット（syncCurForm()で都度更新される）
         widgets: [],
         formCfg: {},
@@ -780,6 +783,10 @@ var _APPEVENT_MODAL = {
 var _EXTRT_EDITOR = {
     jsUndo: { stack: [], idx: -1, busy: false },
     docUndo: { stack: [], idx: -1, busy: false },
+};
+// AIフォーム設計エディタ専用のUndo状態
+var _FORMDESIGN_EDITOR = {
+    taUndo: { stack: [], idx: -1, busy: false },
 };
 // 項目定義エディタ専用の一時状態
 var _ITEMSDEF_EDITOR = {
@@ -967,7 +974,7 @@ Object.assign(window, {
     getDesignerState, getProjectData, getEditHistory,
     getEditorContext, getAiContext, getUiConfig,
     // 機能別ローカル状態オブジェクト
-    _CLOUD_MODAL, _APPEVENT_MODAL, _EXTRT_EDITOR, _ITEMSDEF_EDITOR,
+    _CLOUD_MODAL, _APPEVENT_MODAL, _EXTRT_EDITOR, _ITEMSDEF_EDITOR, _FORMDESIGN_EDITOR,
     _CONFIRM_MODAL, _COLDEF_MODAL, _CONST_MODAL, _VALID_MODAL, _TABLE_MODAL,
     // ウィジェット定義
     PP_POS, PP_FONT, PP_BORDER, PP_TAIL,

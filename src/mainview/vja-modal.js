@@ -143,7 +143,7 @@ async function runAiGenerate(options) {
             const text = raw.replace(/<think>[\s\S]*?<\/think>/gi, "");
             // コードブロック(```js等)が存在すればその中身を抽出
             // 存在しない場合はそのままtrimして使用
-            const m = text.match(/```(?:javascript|js|yaml)?\n?([\s\S]*?)```/i);
+            const m = text.match(/```(?:javascript|js|yaml|json)?\n?([\s\S]*?)```/i);
             return m ? m[1].trim() : text.trim();
         })();
         if (!generated) {
@@ -241,6 +241,7 @@ function snapshot() {
         showGrid: getDesignerState().showGrid,
         projectInfo: p.projectInfo,
         extRuntime: p.extRuntime,
+        formDesignDraft: p.formDesignDraft || "",
     };
 }
 // 現在の状態を undoStack に積む。redoStack はクリアする。
@@ -271,6 +272,7 @@ function applyProjectData(d) {
     getProjectData().constants = d.constants || [];
     getProjectData().startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
     getProjectData().tables = d.tables || [];
+    getProjectData().formDesignDraft = d.formDesignDraft || "";
     getDesignerState().snapOn = d.snapOn !== undefined ? d.snapOn : true;
     getDesignerState().showGrid = d.showGrid !== undefined ? d.showGrid : false;
     // editorConfigはvja設定ファイルで管理するためプロジェクトからは読み込まない

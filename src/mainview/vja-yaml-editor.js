@@ -10,6 +10,11 @@
      - buildYamlEditorHTML()（エディタモーダルのHTML生成）
      - yamlBuildRightPanel() と _rpBuildXxxSection() 系（右パネルの5セクション）
      - openAiConfig() / yamlAiGenerate() / runAiGenerate()（AI生成）
+     - buildTablesCtxText()（テーブルのカラム定義をAI向けテキスト化。
+       yamlAiGenerate()とformDesignAiGenerate()で共有）
+     - openFormDesignAi() / formDesignAiGenerate()（AIによる画面デザイン
+       自動生成。ウィジェット構成JSON配列を生成しapplyAiFormDesign()
+       ［vja-designer.js］へ渡して現在フォームに一括反映する）
      - editorKeyHandler() 等のエディタ内キー操作
    このファイルは vja-defs.js / vja-designer.js / vja-modal.js に依存する。
 ═══════════════════════════════════════════════════════════════ */
@@ -385,6 +390,29 @@ function yamlInsert(text) {
 // YAML仕様からイベントの JavaScript コードを AI 生成する。
 // プロジェクト情報・ウィジェット・テーブル定義をコンテキストとして渡す。
 // 生成完了後に openYaml を再表示し、JS タブにコードをセットする。
+// 指定テーブル一覧から、AIへ渡すカラム定義テキストを生成する
+// （PK/NOT NULL/DEFAULT/INDEXフラグ付き）。yamlAiGenerate()と
+// formDesignAiGenerate()の両方から共有される。
+function buildTablesCtxText(targetTables) {
+    return targetTables.length > 0
+        ? targetTables.map(t => {
+            const cols = (t.columns || []).map(c => {
+                let def = "    - " + c.name + " (" + c.type + ")";
+                if (c.pk) def += " PK";
+                if (c.notNull) def += " NOT NULL";
+                if (c.useDefault) {
+                    const dv = (c.default && c.default.trim() !== "") ? c.default.trim() : defaultValueForType(c.type);
+                    def += " DEFAULT " + dv;
+                }
+                if (c.index) def += " INDEX";
+                return def;
+            }).join("\n");
+            const desc = t.description ? " // " + t.description : "";
+            return "  " + t.name + desc + ":\n" + cols;
+        }).join("\n")
+        : "  （テーブル未定義）";
+}
+
 async function yamlAiGenerate(wid, evName) {
     const isAppEvent = (wid === "appev");
     const isFormEvent = (wid === "form");
@@ -457,23 +485,7 @@ async function yamlAiGenerate(wid, evName) {
     const targetTables = mentionedTables.length > 0
         ? getProjectData().tables.filter(t => mentionedTables.includes(t.name))
         : []; // 未指定の場合は何も渡さない
-    const tablesCtx = targetTables.length > 0
-        ? targetTables.map(t => {
-            const cols = (t.columns || []).map(c => {
-                let def = "    - " + c.name + " (" + c.type + ")";
-                if (c.pk) def += " PK";
-                if (c.notNull) def += " NOT NULL";
-                if (c.useDefault) {
-                    const dv = (c.default && c.default.trim() !== "") ? c.default.trim() : defaultValueForType(c.type);
-                    def += " DEFAULT " + dv;
-                }
-                if (c.index) def += " INDEX";
-                return def;
-            }).join("\n");
-            const desc = t.description ? " // " + t.description : "";
-            return "  " + t.name + desc + ":\n" + cols;
-        }).join("\n")
-        : "  （テーブル未定義）";
+    const tablesCtx = buildTablesCtxText(targetTables);
 
     // ── ⑥ システムプロンプト ──
     const sysPrompt = _PROMPT_DEF.YAML_TO_JS_SYS_PROMPT(
@@ -568,6 +580,162 @@ async function yamlAiGenerate(wid, evName) {
     if (btn) btn.disabled = false;
 }
 
+/* ═══════════════════════════════════════════
+  AIによる画面デザイン自動生成
+  「説明/入力項目/参照テーブル」を書いた依頼テキストをAIに渡し、
+  ウィジェット構成JSON配列を生成→applyAiFormDesign()で現在フォームへ反映する。
+═══════════════════════════════════════════ */
+function openFormDesignAi() {
+    if (!getProjectData().aiConfig.enabled) {
+        vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？").then((yes) => {
+            if (yes) openAiConfig();
+        });
+        return;
+    }
+    const template = getProjectData().formDesignDraft ||
+        "説明: \"\"\n" +
+        "入力項目:\n" +
+        "  - ログイン名: text\n" +
+        "  - パスワード: password\n" +
+        "# 省略可：参照するテーブル名（このテーブルの列定義のみAIへ渡す）\n" +
+        "参照テーブル:\n" +
+        "  - users\n";
+
+    const tabConfig = {
+        tabs: [
+            { id: "fd", label: "📋 画面デザイン依頼", type: "yaml", val: template },
+        ],
+        aiBar:
+            "<input id='fd-prompt-in' placeholder='追加指示（任意）例：入力欄は必須のものだけにしてほしい' style='flex:1'>" +
+            "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "formDesignAiGenerate()") + " id='fd-gen-btn'>🤖 生成</button>",
+        saveAction: "saveFormDesignDraft()",
+    };
+    showModal(buildYamlEditorHTML("", "", false, mhdrHTML("🤖 AIでフォーム設計"), "", tabConfig));
+    requestAnimationFrame(() => {
+        applyEditorConfig();
+        _hlUpdate("ta-fd", "hl-fd", yamlTokenize);
+        editorUpdateGutter("ta-fd", "gutter-fd");
+        const ta = $("ta-fd");
+        if (ta) {
+            ta.addEventListener("keydown", editorKeyHandler);
+            ta.addEventListener("mousedown", editorMouseDownHandler2);
+            ta.addEventListener("dblclick", editorDblClickHandler);
+            ta.addEventListener("input", () => { _hlUpdate("ta-fd", "hl-fd", yamlTokenize); editorUpdateGutter("ta-fd", "gutter-fd"); });
+            ta.addEventListener("scroll", () => _hlSync("ta-fd", "hl-fd"));
+            editorUndoInit("ta-fd", _FORMDESIGN_EDITOR.taUndo, ta.value);
+        }
+    });
+}
+
+// 依頼テキストの下書きを保存して閉じる（既存の拡張ランタイム設定と同じ「保存」の考え方）
+function saveFormDesignDraft() {
+    getProjectData().formDesignDraft = $("ta-fd")?.value || "";
+    closeModal();
+}
+
+// 「説明:」「入力項目:」「参照テーブル:」の3セクションを正規表現で抽出する
+// （このプロジェクトはYAMLを厳密パースせず、既存の「利用テーブル:」抽出と同じ
+//  軽量な正規表現方式に統一している）
+function _parseFormDesignYaml(text) {
+    const descM = text.match(/説明\s*:\s*(.*)$/m);
+    let desc = descM ? descM[1].trim().replace(/^["']|["']$/g, "") : "";
+    const itemsM = text.match(/入力項目\s*:\s*\n([\s\S]*?)(?:\n\S|\n\n|$)/);
+    const items = [];
+    if (itemsM) {
+        itemsM[1].split("\n").forEach((l) => {
+            const m = l.match(/^\s*-\s*(.+?)\s*:\s*(.*)$/);
+            if (m) items.push({ name: m[1].trim(), type: m[2].trim() });
+            else {
+                const name = l.replace(/^\s*-\s*/, "").replace(/#.*$/, "").trim();
+                if (name) items.push({ name, type: "" });
+            }
+        });
+    }
+    const tblM = text.match(/参照テーブル\s*:\s*\n([\s\S]*?)(?:\n\S|\n\n|$)/);
+    const tables = [];
+    if (tblM) {
+        tblM[1].split("\n").forEach((l) => {
+            const name = l.replace(/^\s*-\s*/, "").replace(/#.*$/, "").trim();
+            if (name) tables.push(name);
+        });
+    }
+    return { desc, items, tables };
+}
+
+async function formDesignAiGenerate() {
+    if (getProjectData().widgets.length > 0) {
+        const ok = await vja.app.showConfirm(
+            "AI生成を実行すると、現在のフォームの\n" +
+            "全ウィジェットが削除されます。\n" +
+            "設定済みのイベント処理（コード）も\n" +
+            "全て失われます。\n" +
+            "（Ctrl+Zで元に戻すことは可能です）\n\n" +
+            "続行しますか？"
+        );
+        if (!ok) return;
+    }
+    const ta = $("ta-fd");
+    const rawText = ta?.value || "";
+    const { desc, items, tables } = _parseFormDesignYaml(rawText);
+    const curForm = getProjectData().forms[getProjectData().curFormIdx];
+    const finalDesc = desc || curForm?.cfg?.description || "";
+
+    const targetTables = getProjectData().tables.filter((t) => tables.includes(t.name));
+    const tablesCtx = buildTablesCtxText(targetTables);
+
+    // AIに渡す依頼テキストを組み立て直す（説明のフォールバックを反映するため）
+    const designText =
+        "説明: " + finalDesc + "\n" +
+        "入力項目:\n" +
+        (items.length > 0 ? items.map((it) => "  - " + it.name + (it.type ? ": " + it.type : "")).join("\n") : "  （なし）");
+
+    const addPrompt = $("fd-prompt-in")?.value || "";
+    const btn = $("fd-gen-btn");
+    if (btn) btn.disabled = true;
+
+    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_SYS_PROMPT({
+        formW: getProjectData().formCfg.w,
+        formH: getProjectData().formCfg.h,
+        tablesCtx,
+    });
+    const userPrompt = _PROMPT_DEF.FORM_DESIGN_USER_PROMPT(designText, addPrompt);
+
+    // AI生成前に依頼テキストを下書き保存（モーダルは閉じない）
+    getProjectData().formDesignDraft = rawText;
+
+    await runAiGenerate({
+        systemPrompt: sysPrompt,
+        userPrompt: userPrompt,
+        loadingMsg: "画面デザインを生成中…",
+        onSuccess: async (generated) => {
+            let items2;
+            try {
+                items2 = JSON.parse(generated);
+            } catch (e) {
+                showToast("AI出力の解析に失敗しました（JSON形式ではありません）", 5000);
+                window.vja?.log?.warn?.("[FormDesignAi] JSON parse failed: " + e.message + " raw=" + generated.slice(0, 300));
+                if (btn) btn.disabled = false;
+                return;
+            }
+            // 既存ウィジェットを全削除してからAI結果を配置する
+            // （削除前の状態をpushUndo()で退避＝Ctrl+Zで復元可能）
+            if (getProjectData().widgets.length > 0) {
+                pushUndo();
+                getProjectData().widgets = [];
+                getProjectData().forms[getProjectData().curFormIdx].widgets = getProjectData().widgets;
+                getDesignerState().selId = null;
+                const po = $("prop-obj");
+                if (po) po.textContent = getProjectData().formCfg.title;
+                fullRedraw();
+            }
+            applyAiFormDesign(items2);
+            closeModal();
+        },
+        onCancel: async () => { },
+        onError: async () => { },
+    });
+    if (btn) btn.disabled = false;
+}
 
 /* ── エディタ共通キーハンドラ ── */
 function editorKeyHandler(e) {
@@ -580,7 +748,8 @@ function editorKeyHandler(e) {
     const state = ta.id === "js-ta" ? getEditorContext().ju
         : ta.id === "ta-extrt-js" ? _EXTRT_EDITOR.jsUndo
             : ta.id === "ta-extrt-doc" ? _EXTRT_EDITOR.docUndo
-                : getEditorContext().yu;
+                : ta.id === "ta-fd" ? _FORMDESIGN_EDITOR.taUndo
+                    : getEditorContext().yu;
 
     // ── Mac: Ctrl+C / Ctrl+V を無効化（OS側のEmacsキーバインド干渉防止）──
     if (navigator.platform.startsWith("Mac") && e.ctrlKey && !e.metaKey && (e.key === "c" || e.key === "v")) {
@@ -797,6 +966,7 @@ function editorHlUpdate(taId) {
     else if (taId === "js-ta") { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
     else if (taId === "ta-extrt-js") { _hlUpdate("ta-extrt-js", "hl-extrt-js", jsTokenize); editorUpdateGutter("ta-extrt-js", "gutter-extrt-js"); }
     else if (taId === "ta-extrt-doc") { _hlUpdate("ta-extrt-doc", "hl-extrt-doc", yamlTokenize); editorUpdateGutter("ta-extrt-doc", "gutter-extrt-doc"); }
+    else if (taId === "ta-fd") { _hlUpdate("ta-fd", "hl-fd", yamlTokenize); editorUpdateGutter("ta-fd", "gutter-fd"); }
 }
 
 
@@ -1163,5 +1333,5 @@ Object.assign(window, {
     buildYamlEditorHTML, initYamlEditorModal,
     openAiConfig, aiCfgModelListHtml, aiCfgToggleRouter, aiCfgToggleEnabled,
     aiCfgFetchModels, saveAiConfig,
-    editorSearch,
+    editorSearch, openFormDesignAi, formDesignAiGenerate, saveFormDesignDraft,
 });

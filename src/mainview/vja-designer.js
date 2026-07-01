@@ -11,6 +11,11 @@
      - フォームボディの mousedown ハンドラ（VBスタイル描画）
      - addWidget()（ウィジェット追加。getFormTheme()で取得したフォームの
        テーマ値をfontFamily/fontSize/fg/baseColor/borderColor/bgに適用する）
+     - makeThemedProps() / buildWidgetObject()（addWidget()の共通部分。
+       ウィジェット生成のみ行い描画/Undo/選択は行わない。一括配置で共有）
+     - applyAiFormDesign()（AI生成のウィジェット構成JSON配列を一括配置。
+       vja-yaml-editor.js の formDesignAiGenerate() から呼ばれる。
+       起動元はフォームプロパティ「画面デザイン」ボタン→openFormDesignAi()）
      - setFontFamilyProp() / setFontFamilyChoice()（フォント選択。
        wid===null＝フォームテーマ編集時はsetProp()経由でsetFormCfg()へ、
        ウィジェット編集時は従来通りsetFontFamilyProp()へ振り分ける）
@@ -248,31 +253,33 @@ function initFormBodyEvents() {
 /* ═══════════════════════════════════════════
   ADD WIDGET
 ═══════════════════════════════════════════ */
-function addWidget(tool, x, y, w, h) {
-    const sameTag = getProjectData().widgets.filter(
-        (ww) => ww.tag === tool.tag,
-    ).length;
-    const label = tool.id[0].toUpperCase() + tool.id.slice(1);
-    const name = label + (sameTag > 0 ? sameTag + 1 : "");
+// toolの規定値にフォームテーマを適用したprops（fontFamily/fontSize/fg/
+// baseColor/borderColor/bg）を生成する。addWidget()と一括配置系で共有。
+function makeThemedProps(tool) {
     const props = { ...tool.def };
     // w,h は def から除いて別管理
     delete props.w;
     delete props.h;
-
-    // ── フォームテーマの適用 ──────────────────────────────
-    // fontFamily/fontSize/fg は全ウィジェット共通（該当propsが存在する場合のみ上書き）
     const theme = getFormTheme();
     if ("fontFamily" in props) props.fontFamily = theme.fontFamily;
     if ("fontSize" in props) props.fontSize = theme.fontSize;
     if ("fg" in props) props.fg = theme.fg;
-    // baseColorを持つウィジェット（button/inputtype/textarea/selectBox/listbox）は
-    // borderColorをbaseColorから計算し、buttonのみbgもbaseColorをそのまま使う
     if ("borderColor" in props) {
         props.baseColor = theme.baseColor;
         props.borderColor = darkenColor(theme.baseColor, 0.911);
         if (tool.tag === "button") props.bg = theme.baseColor;
     }
+    return props;
+}
 
+// ウィジェットオブジェクトを生成しプロジェクトへ追加する（描画/Undo/選択は行わない）。
+// addWidget()（手動配置・都度Undo）と、AI一括配置（まとめて1回Undo）で共有する。
+function buildWidgetObject(tool, x, y, w, h) {
+    const sameTag = getProjectData().widgets.filter(
+        (ww) => ww.tag === tool.tag,
+    ).length;
+    const label = tool.id[0].toUpperCase() + tool.id.slice(1);
+    const name = label + (sameTag > 0 ? sameTag + 1 : "");
     const widget = {
         id: getProjectData().idCnt++,
         name,
@@ -282,15 +289,83 @@ function addWidget(tool, x, y, w, h) {
         w: Math.max(w, 16),
         h: Math.max(h, 10),
         z: getProjectData().widgets.length,
-        props,
+        props: makeThemedProps(tool),
         events: {},
     };
     getProjectData().widgets.push(widget);
     commitIdCnt();
+    return widget;
+}
+
+function addWidget(tool, x, y, w, h) {
+    const widget = buildWidgetObject(tool, x, y, w, h);
     renderWidget(widget, true);
     pushUndo();
     select(widget.id);
     updateCount();
+    return widget;
+}
+
+// AIが生成したウィジェット構成JSON配列（tag/name/label/inputType）を
+// 現在フォームへ一括配置する。座標・色・フォントはここで自動計算し、
+// AI側の出力には含まれない（テーマ機能に委譲、座標はグリッド積み上げ）。
+// 対応タグ以外はスキップしてカウントする。まとめて1回だけUndo登録する。
+const AI_FORM_DESIGN_TAGS = ["inputtype", "textarea", "checkbox", "button", "label"];
+const AI_FORM_DESIGN_INPUT_TYPES = ["text", "password", "number", "email", "tel", "date", "time", "url"];
+function applyAiFormDesign(items) {
+    if (!Array.isArray(items) || items.length === 0) {
+        showToast("AIの出力にウィジェットが含まれていませんでした");
+        return;
+    }
+    const existingNames = new Set(getProjectData().widgets.map((w) => w.name));
+    const uniqueName = (base) => {
+        const n = String(base || "Widget").replace(/[^a-zA-Z0-9_]/g, "") || "Widget";
+        let cand = n, i = 1;
+        while (existingNames.has(cand)) cand = n + (++i);
+        existingNames.add(cand);
+        return cand;
+    };
+
+    const formW = getProjectData().formCfg.w;
+    const MARGIN = 16, GAP = 10, LABEL_W = 110, LABEL_GAP = 8;
+    let y = MARGIN, skipped = 0;
+
+    items.forEach((item) => {
+        if (!item || !AI_FORM_DESIGN_TAGS.includes(item.tag)) { skipped++; return; }
+        const label = String(item.label ?? "");
+
+        if (item.tag === "inputtype" || item.tag === "textarea") {
+            const h = item.tag === "textarea" ? 80 : 28;
+            const lbl = buildWidgetObject(getToolById("label"), MARGIN, y + Math.max(0, (h - 24) / 2), LABEL_W, 24);
+            lbl.name = uniqueName("Lbl" + (item.name || item.tag));
+            lbl.props.text = label;
+            const inputW = Math.max(120, formW - MARGIN - LABEL_W - LABEL_GAP - MARGIN);
+            const inp = buildWidgetObject(getToolById(item.tag), MARGIN + LABEL_W + LABEL_GAP, y, inputW, h);
+            inp.name = uniqueName(item.name);
+            if (item.tag === "inputtype") {
+                inp.props.inputType = AI_FORM_DESIGN_INPUT_TYPES.includes(item.inputType) ? item.inputType : "text";
+            }
+            renderWidget(lbl, true);
+            renderWidget(inp, true);
+            y += h + GAP;
+        } else {
+            // checkbox / button / label：自身にキャプションを持つため単独配置
+            const h = item.tag === "checkbox" ? 22 : (item.tag === "label" ? 24 : 28);
+            const w = item.tag === "button" ? 96 : (item.tag === "checkbox" ? 160 : 200);
+            const widget = buildWidgetObject(getToolById(item.tag), MARGIN, y, w, h);
+            widget.name = uniqueName(item.name);
+            widget.props.text = label;
+            renderWidget(widget, true);
+            y += h + GAP;
+        }
+    });
+
+    pushUndo();
+    updateCount();
+    renderProps();
+    showToast(skipped > 0
+        ? "AIによる画面デザインを反映しました（" + skipped + "件は未対応タグのためスキップ）"
+        : "AIによる画面デザインを反映しました");
 }
 
 /* ═══════════════════════════════════════════
@@ -531,6 +606,8 @@ function pinput(d, val, wid) {
             return `<button${evtAttr("onmousedown", "openItemsDefEditor(" + w2 + ")")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ 項目編集…</button>`;
         case "themeReset":
             return `<button${evtAttr("onmousedown", "resetWidgetTheme(" + w2 + ")")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">↺ テーマに戻す${val == null ? "" : "（連動中）"}</button>`;
+        case "formAiDesign":
+            return `<button${evtAttr("onmousedown", "openFormDesignAi()")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">🤖 AIでフォーム設計…</button>`;
         case "area":
             return `<textarea class="pv-textarea" style="height:56px"${evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")")}>${esc(val || "")}</textarea>`;
         case "img": {
@@ -793,7 +870,7 @@ function renderEvents() {
 Object.assign(window, {
     buildTools, setTool, applyForm, makeInner, renderWidget,
     applyWPos, fullRedraw, updateSelVisual, select, deselect,
-    updateStatusSel, initFormBodyEvents, addWidget, bindWidget,
+    updateStatusSel, initFormBodyEvents, addWidget, bindWidget, applyAiFormDesign,
     startMove, startResize, renderProps, makeSec, makeProw,
     pinput, setProp, openImgUpload, clearImg, resetWidgetTheme,
     commitWidget, getWidget, pvNumStep, setFontFamilyProp,

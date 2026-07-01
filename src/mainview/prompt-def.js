@@ -1516,6 +1516,61 @@ Include the function name, description, arguments, return value, and exceptions.
         );
     };
 
+    // [プロンプト]画面デザイン自動生成（YAML風の依頼文からウィジェット構成JSONを生成）
+    // - formW/formH: [任意]対象フォームの幅・高さ（参考情報として渡すのみ、AIには座標計算をさせない）
+    // - tablesCtx: [任意]参照テーブルのカラム定義（見出し・型・制約の推測材料）
+    // 戻り値: システムプロンプトが返却されます.
+    const FORM_DESIGN_SYS_PROMPT = function ({ formW, formH, tablesCtx }) {
+        return (`
+You are a VJA form layout design AI specializing in Japanese business applications.
+Based on a short Japanese description of a screen's purpose and a rough list of input items, decide which widgets to place on the form.
+
+[Output Rules — STRICT]
+---
+- Output ONLY a raw JSON array. No \`\`\`json fences, no prose, no explanation, no trailing comments.
+- Each element must be an object with exactly these keys:
+  - "tag": one of "inputtype" | "textarea" | "checkbox" | "button" | "label"
+  - "name": a short PascalCase widget name using VB6-style hungarian prefixes:
+    "txt" for inputtype, "txa" for textarea, "chk" for checkbox, "btn" for button, "lbl" for label
+    (e.g. "txtLoginId", "btnLogin"). Names must be unique within the array.
+  - "label": the caption text to display (Japanese). For "inputtype"/"textarea" this becomes
+    a separate label placed beside the field. For "button"/"checkbox"/"label" this is the
+    widget's own caption text.
+  - "inputType": REQUIRED only when "tag" is "inputtype". One of:
+    "text" | "password" | "number" | "email" | "tel" | "date" | "time" | "url"
+- Do NOT include x, y, w, h, color, font, or any styling. Layout and styling are applied
+  automatically by the application afterward — you only decide WHICH widgets and WHAT ORDER.
+- Do NOT invent database columns that are not listed in [Table Definitions] below.
+- Always include exactly one "button" for the primary action implied by the description
+  (e.g. login, save, search, submit), unless the description clearly describes a
+  read-only/display-only screen.
+- Keep the widget count reasonable (typically 3〜12 widgets) and in a natural top-to-bottom order.
+---
+
+[Table Definitions]
+---
+${tablesCtx || "  （参照テーブル未指定）"}
+---
+
+[Form Size (reference only, do not output coordinates)]
+---
+width: ${formW}, height: ${formH}
+---
+`.trim() + "\n");
+    };
+
+    // [プロンプト]画面デザイン自動生成 ユーザープロンプト.
+    // - designText: [必須]「説明/入力項目/参照テーブル」を含む依頼テキスト（正規表現で抽出済みの生テキスト）.
+    // - addPrompt: [任意]ユーザー設定の追加指示.
+    // 戻り値: ユーザープロンプトが返却されます.
+    const FORM_DESIGN_USER_PROMPT = function (designText, addPrompt) {
+        return (
+            "以下の画面デザイン依頼に基づいて、配置するウィジェット構成のJSON配列のみを出力してください。\n\n" +
+            "[画面デザイン依頼]\n---\n" + designText.trim() + "\n---\n" +
+            (addPrompt ? "\n追加指示: " + addPrompt + "\n" : "")
+        );
+    };
+
     //////////////////
     // グローバル展開.
     //////////////////
@@ -1545,4 +1600,8 @@ Include the function name, description, arguments, return value, and exceptions.
 
     // イベント用yamlエディタ初期値.
     o.DEFAULT_YAML_VALUE = DEFAULT_YAML_VALUE;
+
+    // [プロンプト]画面デザイン自動生成（YAML風の依頼文からウィジェット構成JSONを生成）.
+    o.FORM_DESIGN_SYS_PROMPT = FORM_DESIGN_SYS_PROMPT;
+    o.FORM_DESIGN_USER_PROMPT = FORM_DESIGN_USER_PROMPT;
 })();
