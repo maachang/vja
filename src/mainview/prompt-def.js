@@ -1517,50 +1517,51 @@ Include the function name, description, arguments, return value, and exceptions.
     };
 
     // [プロンプト]画面デザイン自動生成（YAML風の依頼文からウィジェット構成JSONを生成）
-    // - formW/formH: [任意]対象フォームの幅・高さ（参考情報として渡すのみ、AIには座標計算をさせない）
+    // - formW/formH: [必須]対象フォームの幅・高さ（AIが座標をこの範囲内に収めるための基準値）
     // - tablesCtx: [任意]参照テーブルのカラム定義（見出し・型・制約の推測材料）
     // 戻り値: システムプロンプトが返却されます.
+    // 【日本語版・雛形】まずローカルLLMでの実用性を確認するため日本語で作成。英語化は別途対応予定。
     const FORM_DESIGN_SYS_PROMPT = function ({ formW, formH, tablesCtx }) {
         return (`
-You are a VJA form layout design AI specializing in Japanese business applications.
-Based on a short Japanese description of a screen's purpose and a rough list of input items, decide which widgets to place on the form.
+あなたはVJA（業務アプリ向けフォームデザイナー）の画面レイアウト設計を行うAIです。
+ユーザーが日本語で書いた画面の目的・入力項目・アクション項目の説明を読み取り、
+配置するウィジェットを決定し、各ウィジェットの位置（座標）まで含めて出力してください。
 
-[Output Rules — STRICT]
+[出力ルール — 厳守]
 ---
-- Output ONLY a raw JSON array. No \`\`\`json fences, no prose, no explanation, no trailing comments.
-- Each element must be an object with exactly these keys:
-  - "tag": one of "inputtype" | "textarea" | "checkbox" | "button" | "label"
-  - "name": a short PascalCase widget name using VB6-style hungarian prefixes:
-    "txt" for inputtype, "txa" for textarea, "chk" for checkbox, "btn" for button, "lbl" for label
-    (e.g. "txtLoginId", "btnLogin"). Names must be unique within the array.
-  - "label": the caption text to display (Japanese). For "inputtype"/"textarea" this becomes
-    a separate label placed beside the field. For "button"/"checkbox"/"label" this is the
-    widget's own caption text.
-  - "inputType": REQUIRED only when "tag" is "inputtype". One of:
+- 出力は生のJSON配列のみ。\`\`\`json のようなコードフェンス、説明文、コメントは一切付けないこと。
+- 配列の各要素は、以下のキーを持つオブジェクトとする。
+  - "tag": 次のいずれか1つ： "inputtype" | "textarea" | "checkbox" | "radio" | "selectBox" | "listbox" | "button" | "label"
+  - "name": ウィジェット名。VB6風のハンガリアン記法（例: txtLoginId, btnLogin, lblLoginId, chkAgree,
+    radMale, cmbCategory, lstItems, txaMemo）。配列内で重複しないこと。
+  - "x", "y", "w", "h": 配置座標とサイズ（整数、単位はピクセル）。
+    フォームの幅は ${formW}、高さは ${formH} である。この範囲に収まるように配置すること。
+    ウィジェット同士が重ならないよう、実用的なフォームレイアウト（上から下、または左右に整列）を意識すること。
+  - "text": ウィジェット自身に表示する文言（下記タグ別ルール参照）。
+  - "inputType": "tag"が"inputtype"のときのみ指定。次のいずれか：
     "text" | "password" | "number" | "email" | "tel" | "date" | "time" | "url"
-- Do NOT include x, y, w, h, color, font, or any styling. Layout and styling are applied
-  automatically by the application afterward — you only decide WHICH widgets and WHAT ORDER.
-- Do NOT invent database columns that are not listed in [Table Definitions] below.
-- Always include exactly one "button" for the primary action implied by the description
-  (e.g. login, save, search, submit), unless the description clearly describes a
-  read-only/display-only screen.
-- Keep the widget count reasonable (typically 3〜12 widgets) and in a natural top-to-bottom order.
+  - "placeholder": "tag"が"inputtype"または"textarea"のとき、任意で指定できる入力例文言。
+  - "group": "tag"が"radio"のとき必須。同じ選択肢グループに属するradio同士に同じ値を設定すること
+    （例: 性別なら"Gender"、会員種別なら"MemberType"など、項目ごとに異なるグループ名を使うこと）。
+- タグ別の"text"の意味：
+  - "label" / "button" / "checkbox" / "radio": ウィジェット自身のキャプション文言
+  - "inputtype" / "textarea": 使わない（省略してよい）。ラベルが必要な場合は別途"label"タグの
+    ウィジェットを1つ用意し、隣接する位置に配置すること。
+- "selectBox" / "listbox" の選択肢一覧はアプリ側で仮の初期値が設定されるため、出力しないこと。
+- [参照テーブル定義]に記載のない列名を勝手に作らないこと。
+- ボタンの数は、依頼内容に書かれたアクション項目の数に従うこと（1個に限定しない。書かれていない
+  アクションを勝手に追加しないこと）。
 ---
 
-[Table Definitions]
+[参照テーブル定義]
 ---
 ${tablesCtx || "  （参照テーブル未指定）"}
----
-
-[Form Size (reference only, do not output coordinates)]
----
-width: ${formW}, height: ${formH}
 ---
 `.trim() + "\n");
     };
 
     // [プロンプト]画面デザイン自動生成 ユーザープロンプト.
-    // - designText: [必須]「説明/入力項目/参照テーブル」を含む依頼テキスト（正規表現で抽出済みの生テキスト）.
+    // - designText: [必須]「説明/入力項目/アクション項目/参照テーブル」を含む依頼テキスト.
     // - addPrompt: [任意]ユーザー設定の追加指示.
     // 戻り値: ユーザープロンプトが返却されます.
     const FORM_DESIGN_USER_PROMPT = function (designText, addPrompt) {

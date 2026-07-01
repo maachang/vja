@@ -14,6 +14,7 @@
      - makeThemedProps() / buildWidgetObject()（addWidget()の共通部分。
        ウィジェット生成のみ行い描画/Undo/選択は行わない。一括配置で共有）
      - applyAiFormDesign()（AI生成のウィジェット構成JSON配列を一括配置。
+       座標(x/y/w/h)はAI側が出力し、フォーム範囲外・不正値のみ補正する。
        vja-yaml-editor.js の formDesignAiGenerate() から呼ばれる。
        起動元はフォームプロパティ「画面デザイン」ボタン→openFormDesignAi()）
      - setFontFamilyProp() / setFontFamilyChoice()（フォント選択。
@@ -306,11 +307,11 @@ function addWidget(tool, x, y, w, h) {
     return widget;
 }
 
-// AIが生成したウィジェット構成JSON配列（tag/name/label/inputType）を
-// 現在フォームへ一括配置する。座標・色・フォントはここで自動計算し、
-// AI側の出力には含まれない（テーマ機能に委譲、座標はグリッド積み上げ）。
+// AIが生成したウィジェット構成JSON配列（tag/name/x/y/w/h/text/inputType/
+// placeholder/group）を現在フォームへ一括配置する。座標はAI出力をそのまま使い、
+// フォーム範囲外・不正値のみVJA側で補正する（色・フォントはテーマ機能に委譲）。
 // 対応タグ以外はスキップしてカウントする。まとめて1回だけUndo登録する。
-const AI_FORM_DESIGN_TAGS = ["inputtype", "textarea", "checkbox", "button", "label"];
+const AI_FORM_DESIGN_TAGS = ["inputtype", "textarea", "checkbox", "radio", "selectBox", "listbox", "button", "label"];
 const AI_FORM_DESIGN_INPUT_TYPES = ["text", "password", "number", "email", "tel", "date", "time", "url"];
 function applyAiFormDesign(items) {
     if (!Array.isArray(items) || items.length === 0) {
@@ -327,37 +328,42 @@ function applyAiFormDesign(items) {
     };
 
     const formW = getProjectData().formCfg.w;
-    const MARGIN = 16, GAP = 10, LABEL_W = 110, LABEL_GAP = 8;
-    let y = MARGIN, skipped = 0;
+    const formH = getProjectData().formCfg.h;
+    const MARGIN = 8;
+    let skipped = 0;
 
     items.forEach((item) => {
         if (!item || !AI_FORM_DESIGN_TAGS.includes(item.tag)) { skipped++; return; }
-        const label = String(item.label ?? "");
+        const tool = getToolById(item.tag);
+        if (!tool) { skipped++; return; }
 
-        if (item.tag === "inputtype" || item.tag === "textarea") {
-            const h = item.tag === "textarea" ? 80 : 28;
-            const lbl = buildWidgetObject(getToolById("label"), MARGIN, y + Math.max(0, (h - 24) / 2), LABEL_W, 24);
-            lbl.name = uniqueName("Lbl" + (item.name || item.tag));
-            lbl.props.text = label;
-            const inputW = Math.max(120, formW - MARGIN - LABEL_W - LABEL_GAP - MARGIN);
-            const inp = buildWidgetObject(getToolById(item.tag), MARGIN + LABEL_W + LABEL_GAP, y, inputW, h);
-            inp.name = uniqueName(item.name);
-            if (item.tag === "inputtype") {
-                inp.props.inputType = AI_FORM_DESIGN_INPUT_TYPES.includes(item.inputType) ? item.inputType : "text";
-            }
-            renderWidget(lbl, true);
-            renderWidget(inp, true);
-            y += h + GAP;
-        } else {
-            // checkbox / button / label：自身にキャプションを持つため単独配置
-            const h = item.tag === "checkbox" ? 22 : (item.tag === "label" ? 24 : 28);
-            const w = item.tag === "button" ? 96 : (item.tag === "checkbox" ? 160 : 200);
-            const widget = buildWidgetObject(getToolById(item.tag), MARGIN, y, w, h);
-            widget.name = uniqueName(item.name);
-            widget.props.text = label;
-            renderWidget(widget, true);
-            y += h + GAP;
+        // ── サイズ：不正値はtool.defの規定サイズにフォールバック ──
+        let w = Number(item.w);
+        if (!Number.isFinite(w) || w <= 0) w = tool.def.w || 100;
+        let h = Number(item.h);
+        if (!Number.isFinite(h) || h <= 0) h = tool.def.h || 24;
+        // フォーム内に収まる上限まで縮める（隠れウィジェット防止）
+        w = Math.min(w, Math.max(40, formW - MARGIN * 2));
+        h = Math.min(h, Math.max(20, formH - MARGIN * 2));
+
+        // ── 座標：不正値はMARGINにフォールバックし、範囲外ははみ出さない位置へ補正 ──
+        let x = Number(item.x);
+        if (!Number.isFinite(x)) x = MARGIN;
+        x = Math.max(MARGIN, Math.min(x, formW - MARGIN - w));
+        let y = Number(item.y);
+        if (!Number.isFinite(y)) y = MARGIN;
+        y = Math.max(MARGIN, Math.min(y, Math.max(MARGIN, formH - MARGIN - h)));
+
+        const widget = buildWidgetObject(tool, x, y, w, h);
+        widget.name = uniqueName(item.name || item.tag);
+        if (item.text != null && "text" in widget.props) widget.props.text = String(item.text);
+        if (item.tag === "inputtype") {
+            widget.props.inputType = AI_FORM_DESIGN_INPUT_TYPES.includes(item.inputType) ? item.inputType : "text";
         }
+        if (item.placeholder != null && "placeholder" in widget.props) widget.props.placeholder = String(item.placeholder);
+        if (item.tag === "radio" && item.group) widget.props.group = String(item.group);
+
+        renderWidget(widget, true);
     });
 
     pushUndo();

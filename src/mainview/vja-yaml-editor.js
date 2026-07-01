@@ -597,6 +597,9 @@ function openFormDesignAi() {
         "入力項目:\n" +
         "  - ログイン名: text\n" +
         "  - パスワード: password\n" +
+        "アクション項目:\n" +
+        "  - ログイン処理: ログイン名・パスワードでログイン確認するためのボタン\n" +
+        "  - キャンセル: 入力内容をクリアするためのボタン\n" +
         "# 省略可：参照するテーブル名（このテーブルの列定義のみAIへ渡す）\n" +
         "参照テーブル:\n" +
         "  - users\n";
@@ -651,6 +654,18 @@ function _parseFormDesignYaml(text) {
             }
         });
     }
+    const actionsM = text.match(/アクション項目\s*:\s*\n([\s\S]*?)(?:\n\S|\n\n|$)/);
+    const actions = [];
+    if (actionsM) {
+        actionsM[1].split("\n").forEach((l) => {
+            const m = l.match(/^\s*-\s*(.+?)\s*:\s*(.*)$/);
+            if (m) actions.push({ name: m[1].trim(), desc: m[2].trim() });
+            else {
+                const name = l.replace(/^\s*-\s*/, "").replace(/#.*$/, "").trim();
+                if (name) actions.push({ name, desc: "" });
+            }
+        });
+    }
     const tblM = text.match(/参照テーブル\s*:\s*\n([\s\S]*?)(?:\n\S|\n\n|$)/);
     const tables = [];
     if (tblM) {
@@ -659,7 +674,7 @@ function _parseFormDesignYaml(text) {
             if (name) tables.push(name);
         });
     }
-    return { desc, items, tables };
+    return { desc, items, actions, tables };
 }
 
 async function formDesignAiGenerate() {
@@ -676,7 +691,7 @@ async function formDesignAiGenerate() {
     }
     const ta = $("ta-fd");
     const rawText = ta?.value || "";
-    const { desc, items, tables } = _parseFormDesignYaml(rawText);
+    const { desc, items, actions, tables } = _parseFormDesignYaml(rawText);
     const curForm = getProjectData().forms[getProjectData().curFormIdx];
     const finalDesc = desc || curForm?.cfg?.description || "";
 
@@ -687,7 +702,9 @@ async function formDesignAiGenerate() {
     const designText =
         "説明: " + finalDesc + "\n" +
         "入力項目:\n" +
-        (items.length > 0 ? items.map((it) => "  - " + it.name + (it.type ? ": " + it.type : "")).join("\n") : "  （なし）");
+        (items.length > 0 ? items.map((it) => "  - " + it.name + (it.type ? ": " + it.type : "")).join("\n") : "  （なし）") + "\n" +
+        "アクション項目:\n" +
+        (actions.length > 0 ? actions.map((a) => "  - " + a.name + (a.desc ? ": " + a.desc : "")).join("\n") : "  （なし）");
 
     const addPrompt = $("fd-prompt-in")?.value || "";
     const btn = $("fd-gen-btn");

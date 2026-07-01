@@ -143,7 +143,7 @@ async function runAiGenerate(options) {
             const text = raw.replace(/<think>[\s\S]*?<\/think>/gi, "");
             // コードブロック(```js等)が存在すればその中身を抽出
             // 存在しない場合はそのままtrimして使用
-            const m = text.match(/```(?:javascript|js|yaml|json)?\n?([\s\S]*?)```/i);
+            const m = text.match(/```(?:javascript|json|yaml|js)?\n?([\s\S]*?)```/i);
             return m ? m[1].trim() : text.trim();
         })();
         if (!generated) {
