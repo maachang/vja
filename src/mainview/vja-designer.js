@@ -960,7 +960,7 @@ function renderEvents() {
 ═══════════════════════════════════════════ */
 Object.assign(window, {
     buildTools, setTool, applyForm, makeInner, renderWidget,
-    applyWPos, fullRedraw, updateSelVisual, select, deselect,
+    applyWPos, fullRedraw, updateSelVisual, select, deselect, selectMultiple,
     updateStatusSel, initFormBodyEvents, addWidget, bindWidget, applyAiFormDesign,
     startMove, startResize, renderProps, makeSec, makeProw,
     pinput, setProp, openImgUpload, clearImg, resetWidgetTheme,

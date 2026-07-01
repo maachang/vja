@@ -8,8 +8,9 @@
      - mhdrHTML() / mfootHTML()（モーダル共通ヘッダー/フッターHTML）
      - コンテキストメニュー（右クリックメニュー）
      - pushUndo() / actUndo() / actRedo() / snapshot()（デザイナーのUndo/Redo）
-     - actDelete() / actDuplicate()（ウィジェット削除・複製。actDelete()は
-       _state.selIds全件を一括削除しUndoは1回にまとめる。複製は単体のみ対応）
+     - actDelete() / actDuplicate()（ウィジェット削除・複製。どちらも
+       _state.selIds全件を一括処理しUndoは1回にまとめる。複製後は
+       新規に複製された側をまとめて選択状態にする）
    このファイルは vja-defs.js / vja-designer.js に依存する。
    vja-yaml-editor.js 以降の「モーダルを開く」全ての機能が、
    このファイルの showModal/closeModal に依存するため、
@@ -183,20 +184,26 @@ function hideCtx() {
 }
 function ctxYaml() {
     hideCtx();
-    const w = getWidget(getDesignerState().ctxId);
+    const cid = getDesignerState().ctxId;
+    getDesignerState().ctxId = null;
+    const w = getWidget(cid);
     if (!w) return;
     openYaml(w.id, (WIDGET_DEFS[w.tag]?.events || ["Click"])[0]);
 }
 function ctxFront() {
     hideCtx();
-    const w = getWidget(getDesignerState().ctxId);
+    const cid = getDesignerState().ctxId;
+    getDesignerState().ctxId = null;
+    const w = getWidget(cid);
     if (!w) return;
     w.z = (w.z || 0) + 1;
     applyWPos($("w" + w.id), w);
 }
 function ctxBack() {
     hideCtx();
-    const w = getWidget(getDesignerState().ctxId);
+    const cid = getDesignerState().ctxId;
+    getDesignerState().ctxId = null;
+    const w = getWidget(cid);
     if (!w) return;
     w.z = Math.max(0, (w.z || 0) - 1);
     applyWPos($("w" + w.id), w);
@@ -337,21 +344,28 @@ function actDelete() {
 }
 function actDuplicate() {
     hideCtx();
-    const src = getWidget(getDesignerState().ctxId ?? getDesignerState().selIds[0]);
-    if (!src) return;
-    const nw = {
-        ...src,
-        id: getProjectData().idCnt++,
-        x: src.x + SNAP * 2,
-        y: src.y + SNAP * 2,
-        props: { ...src.props },
-        events: { ...src.events },
-        name: src.name + "_2",
-    };
-    getProjectData().widgets.push(nw);
-    renderWidget(nw, true);
+    const cid = getDesignerState().ctxId;
+    getDesignerState().ctxId = null;
+    const srcIds = cid != null ? [cid] : getDesignerState().selIds;
+    const srcs = srcIds.map((id) => getWidget(id)).filter(Boolean);
+    if (srcs.length === 0) return;
+    const newIds = [];
+    srcs.forEach((src) => {
+        const nw = {
+            ...src,
+            id: getProjectData().idCnt++,
+            x: src.x + SNAP * 2,
+            y: src.y + SNAP * 2,
+            props: { ...src.props },
+            events: { ...src.events },
+            name: src.name + "_2",
+        };
+        getProjectData().widgets.push(nw);
+        renderWidget(nw, true);
+        newIds.push(nw.id);
+    });
     pushUndo();
-    select(nw.id);
+    selectMultiple(newIds);
     updateCount();
 }
 
