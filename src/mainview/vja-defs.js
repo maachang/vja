@@ -12,7 +12,9 @@
      - PP_POS / PP_FONT / PP_BORDER / PP_TAIL（プロパティ定義の共通パーツ）
      - esc(), $(), fb(), evtAttr(), pvRegister()/pvCall(), showToast()
        等の共通ユーティリティ
-     - makeFormData()（フォーム1枚分のデータ構造生成）
+     - getFormTheme()（フォームのテーマ設定取得、旧プロジェクトは規定値補完）
+     - darkenColor()（#rrggbb を指定比率で暗くする共通色計算）
+     - makeFormData()（フォーム1枚分のデータ構造生成。cfgにtheme*項目を含む）
    このファイルは他のどのファイルにも依存しない。
    他の全ファイルがこのファイルの中身に依存する。
 ═══════════════════════════════════════════════════════════════ */
@@ -113,6 +115,7 @@ const PP_FONT = [
 const PP_BORDER = [
     { k: "borderSize", lb: "BorderSize", t: "num" },
     { k: "borderColor", lb: "BorderColor", t: "color" },
+    { k: "baseColor", lb: "ベースカラー", t: "themeReset" },
 ];
 // 表示・説明（全ウィジェット共通）
 const PP_TAIL = [
@@ -616,6 +619,11 @@ const WIDGET_DEFS = {
             { k: "h", lb: "Height", t: "num", sp: "formH" },
             { k: "bg", lb: "背景色", t: "color", sp: "formBg" },
             { k: "description", lb: "説明（任意）", t: "area", sp: "formDesc" },
+            { sep: "テーマ（新規配置ウィジェットの初期値）" },
+            { k: "themeFontFamily", lb: "フォント", t: "fontsel", sp: "formThemeFontFamily" },
+            { k: "themeFontSize", lb: "文字サイズ", t: "num", sp: "formThemeFontSize" },
+            { k: "themeFg", lb: "文字色", t: "color", sp: "formThemeFg" },
+            { k: "themeBaseColor", lb: "ベースカラー", t: "color", sp: "formThemeBaseColor" },
         ],
     },
 };
@@ -639,7 +647,12 @@ function makeFormData(title = "Form1") {
             "f" +
             Date.now() +
             Math.random().toString(36).slice(2, 6),
-        cfg: { title, name: title, w: 640, h: 420, bg: "#ececec", description: "" },
+        cfg: {
+            title, name: title, w: 640, h: 420, bg: "#ececec", description: "",
+            // フォーム共通テーマ（新規ウィジェット作成時の初期値として使用。
+            // 既存プロジェクトはこの値が無いため getFormTheme() 側で規定値を補完する）
+            themeFontFamily: "", themeFontSize: 12, themeFg: "#000", themeBaseColor: "#e0e0e0",
+        },
         widgets: [],
         idCnt: 1,
         constants: [], // フォーム単位の定数
@@ -895,6 +908,30 @@ function evtAttr(eventName, jsCode) {
     return " " + eventName + '="' + jsCode.replace(/"/g, "&quot;") + '"';
 }
 
+// フォームのテーマ設定を取得する（既存プロジェクト＝theme*未保存の場合は規定値を補完）
+function getFormTheme() {
+    const cfg = getProjectData().formCfg || {};
+    return {
+        fontFamily: cfg.themeFontFamily || "",
+        fontSize: cfg.themeFontSize || 12,
+        fg: cfg.themeFg || "#000",
+        baseColor: cfg.themeBaseColor || "#e0e0e0",
+    };
+}
+
+// #rrggbb を指定比率(0〜1)で暗くする。比率は「その色をそのまま残す割合」
+// （例: 0.911 なら各チャンネルを 91.1% に落とす＝約8.9%暗くする）
+function darkenColor(hex, ratio) {
+    const m = /^#([0-9a-fA-F]{6})$/.exec(hex || "");
+    if (!m) return hex;
+    const n = parseInt(m[1], 16);
+    const clamp = (v) => Math.max(0, Math.min(255, Math.round(v * ratio)));
+    const r = clamp((n >> 16) & 0xff);
+    const g = clamp((n >> 8) & 0xff);
+    const b = clamp(n & 0xff);
+    return "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("");
+}
+
 // トースト通知（#toast-root で管理、z-index:9000）
 // 全ドメインから共通利用される汎用UI部品のためここに集約
 function showToast(msg, duration = 2500) {
@@ -939,6 +976,7 @@ Object.assign(window, {
     UI_FONT_LIST, SNAP, sn,
     // 共通ユーティリティ
     esc, $, fb, evtAttr, _pvRegistry, pvRegister, pvCall, rAfBind, showToast,
+    getFormTheme, darkenColor,
     // フォームデータ生成・現在フォームのショートカット同期関数
     makeFormData, refreshAll, syncCurForm, commitIdCnt,
 });
