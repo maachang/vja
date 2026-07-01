@@ -1532,25 +1532,22 @@ Include the function name, description, arguments, return value, and exceptions.
 - 出力は生のJSON配列のみ。\`\`\`json のようなコードフェンス、説明文、コメントは一切付けないこと。
 - 配列の各要素は、以下のキーを持つオブジェクトとする。
   - "tag": 次のいずれか1つ： "inputtype" | "textarea" | "checkbox" | "radio" | "selectBox" | "listbox" | "button" | "label"
-  - "name": ウィジェット名。VB6風のハンガリアン記法（例: txtLoginId, btnLogin, lblLoginId, chkAgree,
-    radMale, cmbCategory, lstItems, txaMemo）。配列内で重複しないこと。
-  - "x", "y", "w", "h": 配置座標とサイズ（整数、単位はピクセル）。
-    フォームの幅は ${formW}、高さは ${formH} である。この範囲に収まるように配置すること。
-    ウィジェット同士が重ならないよう、実用的なフォームレイアウト（上から下、または左右に整列）を意識すること。
+  - "name": ウィジェット名。VB6風のハンガリアン記法（例: txtLoginId, btnLogin, lblLoginId, chkAgree, radMale, cmbCategory, lstItems, txaMemo）。配列内で重複しないこと。
   - "text": ウィジェット自身に表示する文言（下記タグ別ルール参照）。
-  - "inputType": "tag"が"inputtype"のときのみ指定。次のいずれか：
-    "text" | "password" | "number" | "email" | "tel" | "date" | "time" | "url"
+  - "inputType": "tag"が"inputtype"のときのみ指定。次のいずれか："text" | "password" | "number" | "email" | "tel" | "date" | "time" | "url"
   - "placeholder": "tag"が"inputtype"または"textarea"のとき、任意で指定できる入力例文言。
-  - "group": "tag"が"radio"のとき必須。同じ選択肢グループに属するradio同士に同じ値を設定すること
-    （例: 性別なら"Gender"、会員種別なら"MemberType"など、項目ごとに異なるグループ名を使うこと）。
+  - "group": "tag"が"radio"のとき必須。同じ選択肢グループに属するradio同士に同じ値を設定すること（例: 性別なら"Gender"、会員種別なら"MemberType"など、項目ごとに異なるグループ名を使うこと）。
+  - "x", "y", "w", "h": 配置座標とサイズ（整数、単位はピクセル）
+    - フォームの幅は ${formW}、高さは ${formH} でこの範囲に収まるように配置すること
+    - ウィジェット同士が重ならないよう、実用的な[フォームレイアウト]（上から下、または左右に整列）を意識する
+    - [フォームレイアウト]内容に従い、ウィジェットの配置座標(x, y, w, h)を決定することを厳守
+    - ウィジェットの配置座標(x, y, w, h)は「見た目を意識して」配置する
 - タグ別の"text"の意味：
   - "label" / "button" / "checkbox" / "radio": ウィジェット自身のキャプション文言
-  - "inputtype" / "textarea": 使わない（省略してよい）。ラベルが必要な場合は別途"label"タグの
-    ウィジェットを1つ用意し、隣接する位置に配置すること。
+  - "inputtype" / "textarea": 使わない（省略してよい）。ラベルが必要な場合は別途"label"タグのウィジェットを1つ用意し、隣接する位置に配置すること。
 - "selectBox" / "listbox" の選択肢一覧はアプリ側で仮の初期値が設定されるため、出力しないこと。
-- [参照テーブル定義]に記載のない列名を勝手に作らないこと。
-- ボタンの数は、依頼内容に書かれたアクション項目の数に従うこと（1個に限定しない。書かれていない
-  アクションを勝手に追加しないこと）。
+- 参照テーブル: 記載のない列名を勝手に作らないこと。
+- ボタンの数: 依頼内容に書かれたアクション項目の数に従うこと（1個に限定しない。書かれていないアクションを勝手に追加しないこと）。
 ---
 
 [参照テーブル定義]
@@ -1571,6 +1568,19 @@ ${tablesCtx || "  （参照テーブル未指定）"}
             (addPrompt ? "\n追加指示: " + addPrompt + "\n" : "")
         );
     };
+
+    // フォームデザインにおけるYAMLが存在しない場合にセット
+    const DEFAULT_FORM_DESIGN_YAML = `
+# フォームデザイン定義.
+
+説明:
+フォームレイアウト:
+#参照テーブル:
+入力項目:
+  -
+アクション項目:
+  -
+`.trim() + "\n\n\n\n\n";
 
     //////////////////
     // グローバル展開.
@@ -1605,4 +1615,7 @@ ${tablesCtx || "  （参照テーブル未指定）"}
     // [プロンプト]画面デザイン自動生成（YAML風の依頼文からウィジェット構成JSONを生成）.
     o.FORM_DESIGN_SYS_PROMPT = FORM_DESIGN_SYS_PROMPT;
     o.FORM_DESIGN_USER_PROMPT = FORM_DESIGN_USER_PROMPT;
+
+    // フォームデザイン用yamlエディタ初期値.
+    o.DEFAULT_FORM_DESIGN_YAML = DEFAULT_FORM_DESIGN_YAML;
 })();
