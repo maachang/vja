@@ -50,26 +50,38 @@ document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && e.key === "w") { e.preventDefault(); showCloseConfirm(); }
     if (e.ctrlKey && e.key === "d") { e.preventDefault(); actDuplicate(); }
     if (e.key === "F4" && e.altKey) { e.preventDefault(); showCloseConfirm(); }
-    if ((e.key === "Delete" || e.key === "Backspace") && getDesignerState().selId) { e.preventDefault(); actDelete(); }
+    if ((e.key === "Delete" || e.key === "Backspace") && getDesignerState().selIds.length) { e.preventDefault(); actDelete(); }
     if (e.key === "Escape") {
         if (document.getElementById("close-confirm").classList.contains("show")) {
             hideCloseConfirm(); return;
         }
-        getDesignerState().selId ? deselect() : setTool("pointer");
+        getDesignerState().selIds.length ? deselect() : setTool("pointer");
     }
-    if (getDesignerState().selId && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+    if (getDesignerState().selIds.length && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
         e.preventDefault();
-        const w = getWidget(getDesignerState().selId);
-        if (!w) return;
+        const targets = getDesignerState().selIds.map(getWidget).filter(Boolean);
+        if (targets.length === 0) return;
         const d = e.shiftKey ? SNAP : 1;
-        if (e.key === "ArrowLeft") w.x = Math.max(0, w.x - d);
-        if (e.key === "ArrowRight") w.x = Math.min(getProjectData().formCfg.w - w.w, w.x + d);
-        if (e.key === "ArrowUp") w.y = Math.max(0, w.y - d);
-        if (e.key === "ArrowDown") w.y = Math.min(getProjectData().formCfg.h - w.h, w.y + d);
-        const el = $("w" + w.id);
-        if (el) { el.style.left = w.x + "px"; el.style.top = w.y + "px"; }
-        updateStatusSel(w);
-        syncPropXY(w);
+        let dx = 0, dy = 0;
+        if (e.key === "ArrowLeft") dx = -d;
+        if (e.key === "ArrowRight") dx = d;
+        if (e.key === "ArrowUp") dy = -d;
+        if (e.key === "ArrowDown") dy = d;
+        // グループ全体で、いずれか1つでもフォーム外に出る場合はその方向の移動量を丸める
+        targets.forEach((w) => {
+            dx = dx < 0 ? Math.max(dx, -w.x) : Math.min(dx, getProjectData().formCfg.w - w.w - w.x);
+            dy = dy < 0 ? Math.max(dy, -w.y) : Math.min(dy, getProjectData().formCfg.h - w.h - w.y);
+        });
+        targets.forEach((w) => {
+            w.x += dx;
+            w.y += dy;
+            const el = $("w" + w.id);
+            if (el) { el.style.left = w.x + "px"; el.style.top = w.y + "px"; }
+        });
+        if (targets.length === 1) {
+            updateStatusSel(targets[0]);
+            syncPropXY(targets[0]);
+        }
     }
 });
 
@@ -280,7 +292,7 @@ function initFormResize() {
     makeResizer("form-resize-b", false, true);
 }
 function syncFormPropWH() {
-    if (getDesignerState().selId) return; // フォームのプロパティ表示中のみ
+    if (getDesignerState().selIds.length === 1) return; // ウィジェット単体選択中以外はフォームのプロパティを同期
     const rows = [...$("plist").querySelectorAll(".prow")];
     rows.forEach((r) => {
         const inp = r.querySelector("input[type=number]");

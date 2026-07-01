@@ -586,6 +586,9 @@ async function yamlAiGenerate(wid, evName) {
   ウィジェット構成JSON配列を生成→applyAiFormDesign()で現在フォームへ反映する。
 ═══════════════════════════════════════════ */
 function openFormDesignAi() {
+    // 複数選択中にAI設計ボタンを操作した場合は選択を解除する
+    // （deselect()でハイライト・ヘッダー表示も含めて更新する）
+    if (getDesignerState().selIds.length > 1) deselect();
     if (!getProjectData().aiConfig.enabled) {
         vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？").then((yes) => {
             if (yes) openAiConfig();
@@ -708,7 +711,7 @@ async function formDesignAiGenerate() {
                 pushUndo();
                 getProjectData().widgets = [];
                 getProjectData().forms[getProjectData().curFormIdx].widgets = getProjectData().widgets;
-                getDesignerState().selId = null;
+                getDesignerState().selIds = [];
                 const po = $("prop-obj");
                 if (po) po.textContent = getProjectData().formCfg.title;
                 fullRedraw();

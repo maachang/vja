@@ -29,7 +29,7 @@ function actNew() {
 function _doActNew() {
     getProjectData().forms = [makeFormData("Form1")];
     getProjectData().curFormIdx = 0;
-    getDesignerState().selId = null;
+    getDesignerState().selIds = [];
     getEditHistory().undoStack = [];
     getEditHistory().redoStack = [];
     getEditHistory().lastSavePath = null;
@@ -63,7 +63,7 @@ function loadProjectData(jsonStr) {
             getProjectData().curFormIdx = d.curFormIdx || 0;
         }
         applyProjectData(d);
-        getDesignerState().selId = null;
+        getDesignerState().selIds = [];
         getEditHistory().undoStack = [];
         getEditHistory().redoStack = [];
         refreshAll();
@@ -325,7 +325,7 @@ function switchForm(idx) {
     if (idx === getProjectData().curFormIdx) return;
     commitIdCnt();
     getProjectData().curFormIdx = idx;
-    getDesignerState().selId = null;
+    getDesignerState().selIds = [];
     refreshAll();
     requestAnimationFrame(drawRulers);
 }
@@ -343,7 +343,7 @@ function formNew() {
         const f = makeFormData(title);
         getProjectData().forms.push(f);
         getProjectData().curFormIdx = getProjectData().forms.length - 1;
-        getDesignerState().selId = null;
+        getDesignerState().selIds = [];
         refreshAll();
     });
 }
@@ -359,7 +359,7 @@ async function formDelete() {
     commitAndPush();
     getProjectData().forms.splice(getProjectData().curFormIdx, 1);
     getProjectData().curFormIdx = Math.min(getProjectData().curFormIdx, getProjectData().forms.length - 1);
-    getDesignerState().selId = null;
+    getDesignerState().selIds = [];
     refreshAll();
 }
 

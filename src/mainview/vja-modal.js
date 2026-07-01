@@ -8,7 +8,8 @@
      - mhdrHTML() / mfootHTML()（モーダル共通ヘッダー/フッターHTML）
      - コンテキストメニュー（右クリックメニュー）
      - pushUndo() / actUndo() / actRedo() / snapshot()（デザイナーのUndo/Redo）
-     - actDelete() / actDuplicate()（ウィジェット削除・複製）
+     - actDelete() / actDuplicate()（ウィジェット削除・複製。actDelete()は
+       _state.selIds全件を一括削除しUndoは1回にまとめる。複製は単体のみ対応）
    このファイルは vja-defs.js / vja-designer.js に依存する。
    vja-yaml-editor.js 以降の「モーダルを開く」全ての機能が、
    このファイルの showModal/closeModal に依存するため、
@@ -303,7 +304,7 @@ function restoreSnap(s) {
     });
     getProjectData().curFormIdx = d.curFormIdx;
     applyProjectData(d);
-    getDesignerState().selId = null;
+    getDesignerState().selIds = [];
     refreshAll();
 }
 // Undo 実行。現在の状態を getEditHistory().redoStack に退避してから直前のスナップに戻す。
@@ -323,19 +324,20 @@ function actRedo() {
   DELETE / DUPLICATE
 ═══════════════════════════════════════════ */
 function actDelete() {
-    if (!getDesignerState().selId) return;
+    const ids = getDesignerState().selIds;
+    if (!ids.length) return;
     pushUndo();
-    $("w" + getDesignerState().selId)?.remove();
-    getProjectData().widgets = getProjectData().widgets.filter((x) => x.id !== getDesignerState().selId);
+    ids.forEach((id) => $("w" + id)?.remove());
+    getProjectData().widgets = getProjectData().widgets.filter((x) => !ids.includes(x.id));
     getProjectData().forms[getProjectData().curFormIdx].widgets = getProjectData().widgets;
-    getDesignerState().selId = null;
+    getDesignerState().selIds = [];
     $("prop-obj").textContent = getProjectData().formCfg.title;
     renderProps();
     updateCount();
 }
 function actDuplicate() {
     hideCtx();
-    const src = getWidget(getDesignerState().ctxId ?? getDesignerState().selId);
+    const src = getWidget(getDesignerState().ctxId ?? getDesignerState().selIds[0]);
     if (!src) return;
     const nw = {
         ...src,

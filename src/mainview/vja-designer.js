@@ -7,8 +7,13 @@
      - buildTools() / setTool()（ツールボックス）
      - applyForm() 系（フォーム設定の反映）
      - makeInner()（ウィジェットプレビューHTML生成）
-     - renderWidget() / select() / deselect()（描画・選択）
-     - フォームボディの mousedown ハンドラ（VBスタイル描画）
+     - renderWidget() / select() / deselect() / selectMultiple()（描画・選択。
+       選択状態は_state.selIds配列で管理＝単体は要素数1、複数選択は2以上。
+       Ctrl/Cmdクリックでウィジェット単位の追加/除外選択も可能）
+     - フォームボディの mousedown ハンドラ（VBスタイル描画。ポインタツール
+       時は矩形（ラバーバンド）選択で複数選択を行う）
+     - startMove()（ドラッグ移動。単体ID/複数ID配列の両方を受け付け、
+       複数選択時はグループ全体を一律移動し壁判定も全体で行う）
      - addWidget()（ウィジェット追加。getFormTheme()で取得したフォームの
        テーマ値をfontFamily/fontSize/fg/baseColor/borderColor/bgに適用する）
      - makeThemedProps() / buildWidgetObject()（addWidget()の共通部分。
@@ -121,7 +126,7 @@ function renderWidget(w, isNew) {
 
 function applyWPos(el, w) {
     el.style.cssText = `left:${w.x}px;top:${w.y}px;width:${w.w}px;height:${w.h}px;z-index:${w.z || 0}`;
-    el.className = "widget" + (w.id === getDesignerState().selId ? " sel" : "");
+    el.className = "widget" + (getDesignerState().selIds.includes(w.id) ? " sel" : "");
 }
 
 function fullRedraw() {
@@ -137,7 +142,7 @@ function updateSelVisual() {
     document.querySelectorAll(".widget").forEach((el) => {
         el.classList.toggle(
             "sel",
-            parseInt(el.id.slice(1)) === getDesignerState().selId,
+            getDesignerState().selIds.includes(parseInt(el.id.slice(1))),
         );
     });
 }
@@ -145,8 +150,9 @@ function updateSelVisual() {
 /* ═══════════════════════════════════════════
   SELECT / DESELECT
 ═══════════════════════════════════════════ */
+// 単体選択（既存の呼び出し元との互換のため単体専用のまま維持）
 function select(id) {
-    getDesignerState().selId = id;
+    getDesignerState().selIds = [id];
     updateSelVisual();
     const w = getWidget(id);
     $("prop-obj").textContent = w ? (WIDGET_DEFS[w.tag]?.label ?? w.tag) : getProjectData().formCfg.title;
@@ -154,8 +160,20 @@ function select(id) {
     renderProps();
 }
 
+// 複数選択（矩形選択の確定時に呼ばれる）。0件の場合はdeselect()と同じ扱い。
+function selectMultiple(ids) {
+    if (!ids || ids.length === 0) { deselect(); return; }
+    if (ids.length === 1) { select(ids[0]); return; }
+    getDesignerState().selIds = ids;
+    updateSelVisual();
+    $("prop-obj").textContent = ids.length + "個選択中";
+    $("st-pos").innerHTML = `X:<b>-</b> Y:<b>-</b>`;
+    $("st-size").innerHTML = `W:<b>-</b> H:<b>-</b>`;
+    renderProps();
+}
+
 function deselect() {
-    getDesignerState().selId = null;
+    getDesignerState().selIds = [];
     updateSelVisual();
     $("prop-obj").textContent = getProjectData().formCfg.title;
     $("st-size").innerHTML = `W:<b>-</b> H:<b>-</b>`;
@@ -184,7 +202,42 @@ function initFormBodyEvents() {
         if (e.target !== body && e.target.id !== "rubber") return;
 
         if (getDesignerState().activeTool === "pointer") {
-            deselect();
+            // ── 矩形選択（ラバーバンド）開始 ──
+            e.preventDefault();
+            const rect0 = body.getBoundingClientRect();
+            const sx0 = sn(e.clientX - rect0.left);
+            const sy0 = sn(e.clientY - rect0.top);
+            const rb0 = $("rubber");
+            rb0.style.cssText = `display:block;left:${sx0}px;top:${sy0}px;width:0;height:0`;
+            let sx = sx0, sy = sy0, sw = 0, sh = 0;
+            let moved = false;
+
+            function onSelMove(ev) {
+                const nx = sn(ev.clientX - rect0.left);
+                const ny = sn(ev.clientY - rect0.top);
+                sx = Math.min(sx0, nx);
+                sy = Math.min(sy0, ny);
+                sw = Math.abs(nx - sx0);
+                sh = Math.abs(ny - sy0);
+                if (sw > 2 || sh > 2) moved = true;
+                rb0.style.left = sx + "px";
+                rb0.style.top = sy + "px";
+                rb0.style.width = sw + "px";
+                rb0.style.height = sh + "px";
+            }
+            function onSelUp() {
+                document.removeEventListener("mousemove", onSelMove);
+                document.removeEventListener("mouseup", onSelUp);
+                rb0.style.display = "none";
+                if (!moved) { deselect(); return; }
+                // 矩形と重なっているウィジェットを選択する
+                const hitIds = getProjectData().widgets
+                    .filter((w) => w.x < sx + sw && w.x + w.w > sx && w.y < sy + sh && w.y + w.h > sy)
+                    .map((w) => w.id);
+                selectMultiple(hitIds);
+            }
+            document.addEventListener("mousemove", onSelMove);
+            document.addEventListener("mouseup", onSelUp);
             return;
         }
 
@@ -243,7 +296,7 @@ function initFormBodyEvents() {
 
     // マウス位置ステータス
     body.addEventListener("mousemove", (e) => {
-        if (getDesignerState().selId) return;
+        if (getDesignerState().selIds.length) return;
         const r = body.getBoundingClientRect();
         const x = sn(e.clientX - r.left),
             y = sn(e.clientY - r.top);
@@ -394,12 +447,29 @@ function bindWidget(el, wid) {
         if (getDesignerState().activeTool !== "pointer") return;
         e.stopPropagation();
         e.preventDefault();
-        select(wid);
-        startMove(e, wid);
+
+        // Ctrl(Win)/Cmd(Mac)クリック：個別に選択の追加/除外を行う（ドラッグ移動はしない）
+        if (e.ctrlKey || e.metaKey) {
+            const cur = getDesignerState().selIds;
+            const next = cur.includes(wid) ? cur.filter((id) => id !== wid) : [...cur, wid];
+            selectMultiple(next);
+            return;
+        }
+
+        // 既に複数選択されているウィジェットの1つをドラッグした場合は
+        // 選択状態を維持したままグループ移動する。それ以外は単体選択に切り替える。
+        if (getDesignerState().selIds.length > 1 && getDesignerState().selIds.includes(wid)) {
+            startMove(e, getDesignerState().selIds);
+        } else {
+            select(wid);
+            startMove(e, wid);
+        }
     });
 
     el.addEventListener("dblclick", (e) => {
         if (getDesignerState().activeTool !== "pointer") return;
+        // 複数選択中はダブルクリックによるYAMLエディタ表示を無効化
+        if (getDesignerState().selIds.length > 1) return;
         e.stopPropagation();
         e.preventDefault();
         const w = getWidget(wid);
@@ -420,31 +490,42 @@ function bindWidget(el, wid) {
 }
 
 /* ─ MOVE ─ */
+// wid: 単体の場合はウィジェットID、複数選択の場合はID配列
 function startMove(e, wid) {
-    const w = getWidget(wid);
-    if (!w) return;
-    const ox = w.x,
-        oy = w.y;
+    const ids = Array.isArray(wid) ? wid : [wid];
+    const targets = ids.map((id) => getWidget(id)).filter(Boolean);
+    if (targets.length === 0) return;
+    const origins = targets.map((w) => ({ w, ox: w.x, oy: w.y }));
     const sx = e.clientX,
         sy = e.clientY;
 
     function onMove(ev) {
-        const dx = ev.clientX - sx,
-            dy = ev.clientY - sy;
-        w.x = sn(Math.max(0, Math.min(ox + dx, getProjectData().formCfg.w - w.w)));
-        w.y = sn(Math.max(0, Math.min(oy + dy, getProjectData().formCfg.h - w.h)));
-        const el = $("w" + wid);
-        if (el) {
-            el.style.left = w.x + "px";
-            el.style.top = w.y + "px";
+        let dx = ev.clientX - sx;
+        let dy = ev.clientY - sy;
+        // グループ全体で、いずれか1つでもフォーム外に出る場合はその方向の移動量を丸める
+        origins.forEach(({ w, ox, oy }) => {
+            dx = Math.max(-ox, Math.min(dx, getProjectData().formCfg.w - w.w - ox));
+            dy = Math.max(-oy, Math.min(dy, getProjectData().formCfg.h - w.h - oy));
+        });
+        origins.forEach(({ w, ox, oy }) => {
+            w.x = sn(ox + dx);
+            w.y = sn(oy + dy);
+            const el = $("w" + w.id);
+            if (el) {
+                el.style.left = w.x + "px";
+                el.style.top = w.y + "px";
+            }
+        });
+        if (targets.length === 1) {
+            updateStatusSel(targets[0]);
+            syncPropXY(targets[0]);
         }
-        updateStatusSel(w);
-        syncPropXY(w);
     }
     function onUp() {
         document.removeEventListener("mousemove", onMove);
         document.removeEventListener("mouseup", onUp);
-        if (w.x !== ox || w.y !== oy) pushUndo();
+        const moved = origins.some(({ w, ox, oy }) => w.x !== ox || w.y !== oy);
+        if (moved) pushUndo();
     }
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
@@ -518,8 +599,9 @@ function renderProps() {
         return;
     }
 
-    if (!getDesignerState().selId) {
+    if (getDesignerState().selIds.length !== 1) {
         // フォームプロパティをWIDGET_DEFS.form.pdefsで共通描画
+        // （未選択、または複数選択中も同じ画面を表示する）
         const defs = WIDGET_DEFS.form?.pdefs || [];
         defs.forEach((d) => {
             if (d.sep) { pl.appendChild(makeSec(d.sep)); return; }
@@ -538,7 +620,7 @@ function renderProps() {
         });
         return;
     }
-    const w = getWidget(getDesignerState().selId);
+    const w = getWidget(getDesignerState().selIds[0]);
     if (!w) return;
     const defs = WIDGET_DEFS[w.tag]?.pdefs || [];
     defs.forEach((d) => {
@@ -801,6 +883,9 @@ function syncPropXY(w) { _syncPropValues({ "Left": w.x, "Top": w.y }); }
 function syncPropWH(w) { _syncPropValues({ "Width": w.w, "Height": w.h }); }
 
 function setFormCfg(k, v) {
+    // 複数選択中にフォームプロパティを操作した場合は選択を解除する
+    // （deselect()でハイライト・ヘッダー表示も含めて更新する）
+    if (getDesignerState().selIds.length > 1) deselect();
     if (k === "name") {
         if (!v || !/^[a-zA-Z0-9_\-\.]+$/.test(v)) {
             showToast("名前は英数字・アンダースコア・ハイフン・ドットのみ使用できます", 5000);
@@ -834,8 +919,8 @@ async function deleteYaml(wid, evName) {
 function renderEvents() {
     const el = $("elist");
     el.innerHTML = "";
-    if (!getDesignerState().selId) {
-        // ウィジェット未選択時はフォームイベントを表示
+    if (getDesignerState().selIds.length !== 1) {
+        // ウィジェット未選択、または複数選択中はフォームイベントを表示
         const formEvs = WIDGET_DEFS.form?.events || [];
         const fev = getProjectData().forms[getProjectData().curFormIdx]?.events || {};
         const hdr = document.createElement("div");
@@ -855,7 +940,7 @@ function renderEvents() {
         });
         return;
     }
-    const w = getWidget(getDesignerState().selId);
+    const w = getWidget(getDesignerState().selIds[0]);
     if (!w) return;
     (WIDGET_DEFS[w.tag]?.events || []).forEach((ev) => {
         const hasY = w.events?.[ev]?.trim().length > 0;

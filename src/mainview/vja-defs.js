@@ -682,7 +682,7 @@ function makeFormData(title = "Form1") {
 var _CTX = {
     // デザイナーのUI操作状態
     _state: {
-        selId: null,
+        selIds: [],
         activeTool: "pointer",
         snapOn: true,
         showGrid: false,
