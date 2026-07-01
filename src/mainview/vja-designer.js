@@ -11,6 +11,9 @@
      - フォームボディの mousedown ハンドラ（VBスタイル描画）
      - addWidget()（ウィジェット追加。getFormTheme()で取得したフォームの
        テーマ値をfontFamily/fontSize/fg/baseColor/borderColor/bgに適用する）
+     - setFontFamilyProp() / setFontFamilyChoice()（フォント選択。
+       wid===null＝フォームテーマ編集時はsetProp()経由でsetFormCfg()へ、
+       ウィジェット編集時は従来通りsetFontFamilyProp()へ振り分ける）
      - resetWidgetTheme() / applyThemeToWidgets()
        （baseColor連動ウィジェットへのテーマ再適用・一括反映。フォント/fg/
        baseColor派生色すべてが対象。setProp()でこれらを個別編集すると
@@ -553,7 +556,7 @@ function pinput(d, val, wid) {
             const fid = "pv-ff-" + w2;
             const fopts = WIDGET_FONTS.map((f, i) =>
                 `<div class="pv-sel-opt ${f.value === curFF ? "active" : ""}"` +
-                evtAttr("onmousedown", "pvSelPick('" + fid + "','" + esc(f.label) + "',event);setFontFamilyProp(" + i + "," + w2 + ")") + `>${esc(f.label)}</div>`
+                evtAttr("onmousedown", "pvSelPick('" + fid + "','" + esc(f.label) + "',event);setFontFamilyChoice(" + i + ",'" + d.k + "','" + (d.sp || "") + "'," + w2 + ")") + `>${esc(f.label)}</div>`
             ).join("");
             return `<div class="pv-sel" id="${fid}">` +
                 `<div class="pv-sel-btn"` + evtAttr("onmousedown", "pvSelOpen('" + fid + "',event)") + `>` +
@@ -690,8 +693,16 @@ function pvNumStep(nid, dir, k, sp, wid, min, max) {
 function setFontFamilyProp(idx, wid) {
     const w = getWidget(wid);
     if (!w) return;
+    if (w.props.baseColor != null) w.props.baseColor = null; // 個別カスタマイズ扱いにし連動対象から外す
     w.props.fontFamily = (WIDGET_FONTS[idx] || WIDGET_FONTS[0]).value;
     commitWidget(w, { props: false });
+}
+// fontsel共通ディスパッチャ：wid===null（フォームプロパティ編集時）はsetProp()経由で
+// setFormCfg()へ、それ以外（ウィジェット編集時）は従来通りsetFontFamilyProp()へ振り分ける
+function setFontFamilyChoice(idx, k, sp, wid) {
+    const val = (WIDGET_FONTS[idx] || WIDGET_FONTS[0]).value;
+    if (wid == null) { setProp(k, sp, val, wid); return; }
+    setFontFamilyProp(idx, wid);
 }
 
 // ── プロパティパネルの数値を直接更新（ドラッグ中のlive update） ──
@@ -787,7 +798,7 @@ Object.assign(window, {
     pinput, setProp, openImgUpload, clearImg, resetWidgetTheme,
     commitWidget, getWidget, pvNumStep, setFontFamilyProp,
     syncPropXY, syncPropWH, setFormCfg, deleteYaml, renderEvents,
-    switchTab,
+    switchTab, setFontFamilyChoice,
 });
 
 function switchTab(t) {
