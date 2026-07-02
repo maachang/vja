@@ -142,7 +142,11 @@ async function runAiGenerate(options) {
 
         const generated = (() => {
             // <think>ブロックを除去
-            const text = raw.replace(/<think>[\s\S]*?<\/think>/gi, "");
+            let text = raw.replace(/<think>[\s\S]*?<\/think>/gi, "");
+            // チャットテンプレートの特殊トークン（<|im_end|> 等）を除去。
+            // ローカルLLMサーバー（llama.cpp/mlx-lm等）側でstopトークンとして
+            // 正しく扱われず、生成結果にそのまま混入することがあるための対策。
+            text = text.replace(/<\|[a-zA-Z0-9_]+\|>/g, "");
             // コードブロック(```js等)が存在すればその中身を抽出
             // 存在しない場合はそのままtrimして使用
             const m = text.match(/```(?:javascript|json|yaml|js)?\n?([\s\S]*?)```/i);
