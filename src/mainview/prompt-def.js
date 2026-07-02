@@ -1505,6 +1505,7 @@ Include the function name, description, arguments, return value, and exceptions.
         return (
             `
 # イベント: ${eventName} (${wname})
+
 説明:
 #利用テーブル:
 #検証:
@@ -1520,39 +1521,113 @@ Include the function name, description, arguments, return value, and exceptions.
     // - formW/formH: [必須]対象フォームの幅・高さ（AIが座標をこの範囲内に収めるための基準値）
     // - tablesCtx: [任意]参照テーブルのカラム定義（見出し・型・制約の推測材料）
     // 戻り値: システムプロンプトが返却されます.
-    // 【日本語版・雛形】まずローカルLLMでの実用性を確認するため日本語で作成。英語化は別途対応予定。
     const FORM_DESIGN_SYS_PROMPT = function ({ formW, formH, tablesCtx }) {
         return (`
-あなたはVJA（業務アプリ向けフォームデザイナー）の画面レイアウト設計を行うAIです。
-ユーザーが日本語で書いた画面の目的・入力項目・アクション項目の説明を読み取り、
-配置するウィジェットを決定し、各ウィジェットの位置（座標）まで含めて出力してください。
+あなたは業務アプリケーション向けフォームデザイナー（VJA）の画面レイアウト設計を行う専門のAIです。
+ユーザーが日本語で記述したYAML形式の画面定義（画面の目的、フォームレイアウト方針、入力項目、アクション項目）を読み取り、配置するウィジェットを決定し、各ウィジェットの具体的な配置座標（x, y, w, h）を含んだレイアウトJSON配列を出力してください。
 
-[出力ルール — 厳守]
+[レイアウト配置の原則]
+- 「フォームレイアウト」指示の最優先: YAML内に「フォームレイアウト」（または formLayout）という項目がある場合、そこに書かれた画面レイアウトのコンセプトやデザイン補助指示（例：「2カラム構成」「ラベルと入力を上下に配置」「ボタンは右下に寄せる」など）を最優先の制約として解釈し、指示に完全に合致する座標計算を行ってください。
+- フォームサイズ: 幅 = ${formW}px、高さ = ${formH}px。すべてのウィジェットはこの範囲内に収めてください（x + w <= ${formW}、y + h <= ${formH}）。
+- 配置の流れ: 特に「フォームレイアウト」で並び順の指定がない場合は、ユーザーからの要求（YAML）に記載されている項目の順序に従って、原則として上から下へ順番に要素を配置してください。
+- 重なりの絶対禁止: 任意の2つのウィジェットにおいて、それぞれの矩形領域（x, y, w, hで定義される範囲）が互いに重なったり交差したりしてはなりません。
+
+[出力フォーマット・厳守事項]
+- 出力は生のJSON配列のみとしてください。
+- \`\`\`json のようなマークダウンのコードブロックで囲んではいけません。応答の最初の文字を [ 、最後の文字を ] としてください。
+- 説明文、導入文、コメント等は一切出力しないでください。
+
+[JSONスキーマ（要素ごとのキー定義）]
+各オブジェクトは以下のキーを必ず保持してください。
+- "tag": "inputtype" | "textarea" | "checkbox" | "radio" | "selectBox" | "listbox" | "button" | "label"
+- "name": 配列内で重複しないVB6風のハンガリアン記法（例: txtUserId, lblUserId, btnSubmit, chkAgree, radMale, cmbCategory, lstItems, txaMemo）
+- "text": 表示文言（"label", "button", "checkbox", "radio" の場合は必須。"inputtype", "textarea" の場合は空文字 "" または省略）
+- "inputType": "tag" が "inputtype" の場合のみ必須。"text" | "password" | "number" | "email" | "tel" | "date" | "time" | "url"
+- "placeholder": （任意）"inputtype" または "textarea" のときの入力例
+- "group": "tag" が "radio" の場合のみ必須。同一グループのラジオボタンには同じグループ名（例: "Gender", "MemberType"）を指定
+- "x", "y", "w", "h": 配置座標とサイズ（整数、単位ピクセル）。「フォームレイアウト」のコンセプト指示を満たしつつ、実用的な大きさで決定してください。
+
+- "selectBox" / "listbox" の選択肢一覧はアプリ側で初期設定されるため、ここでは出力しないでください。
+- 参照テーブルに記載のない列名を勝手に作成して含めないでください。
+- ボタンの数は、ユーザーが指定したアクション項目の数と一致させてください（勝手に追加・削減しないこと）。
+
+[出力例（Few-Shot）]
+入力YAMLの例:
 ---
-- 出力は生のJSON配列のみ。\`\`\`json のようなコードフェンス、説明文、コメントは一切付けないこと。
-- 配列の各要素は、以下のキーを持つオブジェクトとする。
-  - "tag": 次のいずれか1つ： "inputtype" | "textarea" | "checkbox" | "radio" | "selectBox" | "listbox" | "button" | "label"
-  - "name": ウィジェット名。VB6風のハンガリアン記法（例: txtLoginId, btnLogin, lblLoginId, chkAgree, radMale, cmbCategory, lstItems, txaMemo）。配列内で重複しないこと。
-  - "text": ウィジェット自身に表示する文言（下記タグ別ルール参照）。
-  - "inputType": "tag"が"inputtype"のときのみ指定。次のいずれか："text" | "password" | "number" | "email" | "tel" | "date" | "time" | "url"
-  - "placeholder": "tag"が"inputtype"または"textarea"のとき、任意で指定できる入力例文言。
-  - "group": "tag"が"radio"のとき必須。同じ選択肢グループに属するradio同士に同じ値を設定すること（例: 性別なら"Gender"、会員種別なら"MemberType"など、項目ごとに異なるグループ名を使うこと）。
-  - "x", "y", "w", "h": 配置座標とサイズ（整数、単位はピクセル）
-    - フォームの幅は ${formW}、高さは ${formH} でこの範囲に収まるように配置すること
-    - ウィジェット同士が重ならないよう、実用的な[フォームレイアウト]（上から下、または左右に整列）を意識する
-    - [フォームレイアウト]内容に従い、ウィジェットの配置座標(x, y, w, h)を決定することを厳守
-    - ウィジェットの配置座標(x, y, w, h)は「見た目を意識して」配置する
-- タグ別の"text"の意味：
-  - "label" / "button" / "checkbox" / "radio": ウィジェット自身のキャプション文言
-  - "inputtype" / "textarea": 使わない（省略してよい）。ラベルが必要な場合は別途"label"タグのウィジェットを1つ用意し、隣接する位置に配置すること。
-- "selectBox" / "listbox" の選択肢一覧はアプリ側で仮の初期値が設定されるため、出力しないこと。
-- 参照テーブル: 記載のない列名を勝手に作らないこと。
-- ボタンの数: 依頼内容に書かれたアクション項目の数に従うこと（1個に限定しない。書かれていないアクションを勝手に追加しないこと）。
+title: ログイン
+フォームレイアウト: ラベルと入力欄は横並び（同Y座標）にし、ボタンは右下に配置する。
+inputs:
+  - name: ID
+    type: text
+actions:
+  - name: 実行
 ---
+出力JSONの例:
+[
+  {"tag": "label", "name": "lblID", "text": "ID", "x": 20, "y": 20, "w": 100, "h": 25},
+  {"tag": "inputtype", "name": "txtID", "text": "", "inputType": "text", "x": 130, "y": 20, "w": 200, "h": 25},
+  {"tag": "button", "name": "btnExecute", "text": "実行", "x": 240, "y": 60, "w": 90, "h": 30}
+]
 
 [参照テーブル定義]
 ---
-${tablesCtx || "  （参照テーブル未指定）"}
+${tablesCtx || "（参照テーブル未指定）"}
+---
+`.trim() + "\n");
+    };
+
+    // [英語:プロンプト]画面デザイン自動生成（YAML風の依頼文からウィジェット構成JSONを生成）
+    const ENG_FORM_DESIGN_SYS_PROMPT = function ({ formW, formH, tablesCtx }) {
+        return (`
+You are an AI specializing in screen layout design for VJA (a form designer for business applications).
+Your task is to read a Japanese YAML screen definition (including screen purpose, form layout policy, input fields, and action items) provided by the user, determine the widgets to be placed, and output a layout JSON array containing specific coordinates (x, y, w, h) for each widget.
+
+[Layout Generation Rules]
+- Highest Priority of "フォームレイアウト" (Form Layout): If the YAML contains a "フォームレイアウト" (or formLayout) field, you MUST interpret the layout concept or design assistance instructions specified there (e.g., "2-column composition", "place labels above inputs", "align buttons to the bottom right") as the highest priority constraint. Calculate coordinates in strict accordance with these instructions.
+- Form Size: Width = ${formW}px, Height = ${formH}px. All widgets must fit within these dimensions (x + w <= ${formW}, y + h <= ${formH}).
+- Layout Flow: Unless otherwise specified in the "フォームレイアウト" field, arrange elements sequentially from top to bottom based on the order of fields in the user's request.
+- Strict No-Overlap: For any two widgets, their rectangular areas (defined by x, y, w, h) must never intersect or overlap.
+
+[Output Format Rules - Strict Adherence Required]
+- Output MUST be a raw JSON array only.
+- Do NOT wrap the JSON in markdown code blocks (e.g., do not use \`\`\`json). Start your response directly with [ and end with ].
+- Do not include any explanations, introduction, or comments.
+
+[JSON Schema per Element]
+Each object in the array must have the following keys:
+- "tag": "inputtype" | "textarea" | "checkbox" | "radio" | "selectBox" | "listbox" | "button" | "label"
+- "name": Unique VB6-style Hungarian notation (e.g., txtUserId, lblUserId, btnSubmit, chkAgree, radMale, cmbCategory, lstItems, txaMemo). Ensure names are unique within the array.
+- "text": Caption text. Required for "label", "button", "checkbox", "radio". Omit or leave empty "" for "inputtype" and "textarea".
+- "inputType": (Required only when tag is "inputtype") "text" | "password" | "number" | "email" | "tel" | "date" | "time" | "url"
+- "placeholder": (Optional) Sample input text for "inputtype" or "textarea".
+- "group": (Required only when tag is "radio") Group name string. Assign the same value to radio buttons belonging to the same selection group (e.g., "Gender", "MemberType").
+- "x", "y", "w", "h": Integers (pixels). Determine these values to satisfy the "フォームレイアウト" concept while ensuring practical widget dimensions.
+
+- Do not output the list of options for "selectBox" or "listbox" components, as the application itself sets the initial default values.
+- Reference tables: Do not arbitrarily create column names that are not listed in the reference table definition.
+- Number of buttons: Adhere strictly to the number of action items specified in the request (do not arbitrarily add or reduce actions).
+
+[Few-Shot Example]
+Input YAML Example:
+---
+title: ログイン
+フォームレイアウト: ラベルと入力欄は横並び（同Y座標）にし、ボタンは右下に配置する。
+inputs:
+  - name: ID
+    type: text
+actions:
+  - name: 実行
+---
+Output JSON Example:
+[
+  {"tag": "label", "name": "lblID", "text": "ID", "x": 20, "y": 20, "w": 100, "h": 25},
+  {"tag": "inputtype", "name": "txtID", "text": "", "inputType": "text", "x": 130, "y": 20, "w": 200, "h": 25},
+  {"tag": "button", "name": "btnExecute", "text": "実行", "x": 240, "y": 60, "w": 90, "h": 30}
+]
+
+[Reference Table Definition]
+---
+${tablesCtx || "(No reference table specified)"}
 ---
 `.trim() + "\n");
     };
@@ -1563,9 +1638,24 @@ ${tablesCtx || "  （参照テーブル未指定）"}
     // 戻り値: ユーザープロンプトが返却されます.
     const FORM_DESIGN_USER_PROMPT = function (designText, addPrompt) {
         return (
-            "以下の画面デザイン依頼に基づいて、配置するウィジェット構成のJSON配列のみを出力してください。\n\n" +
-            "[画面デザイン依頼]\n---\n" + designText.trim() + "\n---\n" +
-            (addPrompt ? "\n追加指示: " + addPrompt + "\n" : "")
+            "以下のYAML形式の画面デザイン依頼に基づいて、配置するウィジェット構成のJSON配列を生成してください。\n\n" +
+            "[画面デザイン依頼 (YAML)]\n---\n" + designText.trim() + "\n---\n" +
+            (addPrompt ? "\n[追加指示]\n" + addPrompt.trim() + "\n※上記の依頼内容とシステム指示に加えて、この追加指示も満たすレイアウトを計算してください。\n" : "") +
+            "\n" +
+            "【重要】応答は、システム指示で定義されたスキーマに従う生のJSON配列（ [ から始まり ] で終わる形式）のみとしてください。\n" +
+            "\`\`\`json などのマークダウンのコードブロックや、解説、挨拶、コメントなどは一切含めずに、JSONデータだけを直接出力してください。"
+        );
+    };
+
+    // [英語:プロンプト]画面デザイン自動生成 ユーザープロンプト.
+    const ENG_FORM_DESIGN_USER_PROMPT = function (designText, addPrompt) {
+        return (
+            "Based on the following screen design request written in YAML, generate the layout JSON array for the widget configuration.\n\n" +
+            "[Screen Design Request (YAML)]\n---\n" + designText.trim() + "\n---\n" +
+            (addPrompt ? "\n[Additional Instructions]\n" + addPrompt.trim() + "\n*In addition to the request above and the system rules, satisfy these instructions when calculating coordinates.\n" : "") +
+            "\n" +
+            "[CRITICAL] Output MUST be a raw JSON array only, strictly adhering to the schema defined in the system prompt.\n" +
+            "Do NOT wrap the response in markdown code blocks (e.g., \`\`\`json). Do not include any explanations, introduction, or comments. Start directly with [ and end with ]."
         );
     };
 
@@ -1613,8 +1703,8 @@ ${tablesCtx || "  （参照テーブル未指定）"}
     o.DEFAULT_YAML_VALUE = DEFAULT_YAML_VALUE;
 
     // [プロンプト]画面デザイン自動生成（YAML風の依頼文からウィジェット構成JSONを生成）.
-    o.FORM_DESIGN_SYS_PROMPT = FORM_DESIGN_SYS_PROMPT;
-    o.FORM_DESIGN_USER_PROMPT = FORM_DESIGN_USER_PROMPT;
+    o.FORM_DESIGN_SYS_PROMPT = ENG_FORM_DESIGN_SYS_PROMPT;
+    o.FORM_DESIGN_USER_PROMPT = ENG_FORM_DESIGN_USER_PROMPT;
 
     // フォームデザイン用yamlエディタ初期値.
     o.DEFAULT_FORM_DESIGN_YAML = DEFAULT_FORM_DESIGN_YAML;
