@@ -216,4 +216,21 @@
             "credential": []
         }
     ];
+
+    // 画面デザイン自動生成YAML（AIでフォーム設計）で指定可能なウィジェットタグ一覧
+    // （旧 vja-yaml-editor.js の右パネル「🧩 ウィジェット種別」セクション用。
+    //  prompt-def.js の FORM_DESIGN_SYS_PROMPT で定義しているタグ体系と一致させること）
+    window.FORM_DESIGN_TAGS = [
+        { tag: "label", label: "ラベル" },
+        {
+            tag: "inputtype", label: "テキスト入力", detailLabel: "inputType",
+            options: ["text", "password", "number", "email", "tel", "date", "time", "url"],
+        },
+        { tag: "textarea", label: "複数行入力" },
+        { tag: "checkbox", label: "チェックボックス" },
+        { tag: "radio", label: "ラジオボタン", note: "同一グループのラジオボタンには同じ group 名を指定する" },
+        { tag: "selectBox", label: "ドロップダウン選択" },
+        { tag: "listbox", label: "リスト選択" },
+        { tag: "button", label: "ボタン" },
+    ];
 })();

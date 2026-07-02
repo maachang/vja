@@ -8,7 +8,12 @@
      - deleteYaml() / deleteFormYaml()
      - openApiRef()（APIリファレンス表示）
      - buildYamlEditorHTML()（エディタモーダルのHTML生成）
-     - yamlBuildRightPanel() と _rpBuildXxxSection() 系（右パネルの5セクション）
+     - yamlBuildRightPanel() と _rpBuildXxxSection() 系（通常YAML/JSエディタ
+       右パネルの5セクション）
+     - yamlBuildFormDesignRightPanel() / _rpBuildWidgetTagSection()（フォーム
+       デザインエディタ専用の右パネル。定数・テーブル一覧・ウィジェット種別
+       （FORM_DESIGN_TAGS）の3セクションを表示。buildYamlEditorHTML()の
+       tabConfig.rightPanel==="formDesign" のときのみ有効化される）
      - openAiConfig() / yamlAiGenerate() / runAiGenerate()（AI生成）
      - buildTablesCtxText()（テーブルのカラム定義をAI向けテキスト化。
        yamlAiGenerate()とformDesignAiGenerate()で共有）
@@ -274,6 +279,35 @@ function _rpBuildValidationSection() {
         : "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>検証定義なし</div>";
 }
 
+// ── 右パネル: ウィジェット種別セクション（フォームデザインエディタ専用） ──
+// AIによる画面デザイン自動生成YAMLで指定可能なウィジェットタグ（FORM_DESIGN_TAGS）の
+// 一覧を表示する。タグ名クリックでタグ名そのものを挿入。detail情報がある場合は
+// 折りたたみを展開すると詳細選択肢（inputType等）が表示され、クリックでその値を挿入する。
+function _rpBuildWidgetTagSection() {
+    return "<div>" + FORM_DESIGN_TAGS.map(d => {
+        const tn = esc(d.tag);
+        const optRows = (d.options || []).map(o => {
+            const on = esc(o);
+            return "<tr class='rp-insert' data-insert='" + on + "'>"
+                + "<td class='col-name'>" + on + "</td>"
+                + "<td class='col-type'>" + (d.detailLabel ? esc(d.detailLabel) : "") + "</td>"
+                + "<td></td></tr>";
+        }).join("");
+        const noteRow = d.note
+            ? "<tr><td colspan='3' style='white-space:normal;color:var(--text3)'>" + esc(d.note) + "</td></tr>"
+            : "";
+        const hasExtra = optRows || noteRow;
+        return "<div class='rp-tbl-row'>"
+            + "<div class='rp-tbl-header'>"
+            + "<span class='rp-tbl-name rp-insert' data-insert='" + tn + "'>" + tn + "</span>"
+            + "<span class='rp-tbl-desc'>" + esc(d.label) + "</span>"
+            + (hasExtra ? "<button class='rp-tbl-expand' " + evtAttr("onmousedown", "event.stopPropagation();yamlToggleTblCols(this)") + ">▶</button>" : "")
+            + "</div>"
+            + (hasExtra ? "<div class='rp-tbl-cols'><table>" + optRows + noteRow + "</table></div>" : "")
+            + "</div>";
+    }).join("") + "</div>";
+}
+
 function yamlBuildRightPanel(showWidgets = true) {
     return [
         yamlRpSection("📌 定数", _rpBuildConstSection(), true),
@@ -281,6 +315,17 @@ function yamlBuildRightPanel(showWidgets = true) {
         showWidgets ? yamlRpSection("🔲 現在フォームのウィジェット", _rpBuildWidgetSection(), true) : "",
         yamlRpSection("✅ 検証", _rpBuildValidationSection(), true),
         yamlRpSection("🗄 テーブル一覧", _rpBuildTableSection(), true),
+    ].join("");
+}
+
+// フォームデザインエディタ（AIでフォーム設計）専用の右パネル。
+// 「定数」「テーブル一覧」に加え、AI画面デザイン生成YAML特有の
+// 「ウィジェット種別」セクションを表示する。
+function yamlBuildFormDesignRightPanel() {
+    return [
+        yamlRpSection("📌 定数", _rpBuildConstSection(), true),
+        yamlRpSection("🗄 テーブル一覧", _rpBuildTableSection(), true),
+        yamlRpSection("🧩 ウィジェット種別", _rpBuildWidgetTagSection(), true),
     ].join("");
 }
 
@@ -373,17 +418,20 @@ function yamlInitResize() {
 }
 
 // YAMLエリアにテキストを挿入
+// 通常のYAML/JSエディタ（yaml-ta / js-ta）に加えて、tabConfig構成のエディタ
+// （フォームデザインエディタ ta-fd 等）のアクティブなペインにも対応する汎用実装。
+// アクティブなペイン（.yaml-pane.active）内のテキストエリアを探して挿入する。
 function yamlInsert(text) {
-    // アクティブなタブのテキストエリアに挿入
-    const isJs = $("pane-js")?.classList.contains("active");
-    const ta = isJs ? $("js-ta") : $("yaml-ta");
+    const activePane = document.querySelector(".yaml-pane.active");
+    const ta = activePane ? activePane.querySelector("textarea.yaml") : null;
     if (!ta) return;
     const s = ta.selectionStart, e = ta.selectionEnd;
     ta.value = ta.value.slice(0, s) + text + ta.value.slice(e);
     ta.selectionStart = ta.selectionEnd = s + text.length;
     ta.focus();
-    if (isJs) jsHlUpdate();
-    else yamlHlUpdate();
+    if (ta.id === "yaml-ta") yamlHlUpdate();
+    else if (ta.id === "js-ta") jsHlUpdate();
+    else if (ta.id.startsWith("ta-")) _hlUpdate(ta.id, "hl-" + ta.id.slice(3), yamlTokenize);
 }
 
 // AI生成（llama-server 経由）
@@ -604,6 +652,7 @@ function openFormDesignAi() {
             "<input id='fd-prompt-in' placeholder='追加指示（任意）例：入力欄は必須のものだけにしてほしい' style='flex:1'>" +
             "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "formDesignAiGenerate()") + " id='fd-gen-btn'>🤖 生成</button>",
         saveAction: "saveFormDesignDraft()",
+        rightPanel: "formDesign",
     };
     showModal(buildYamlEditorHTML("", "", false, mhdrHTML("🤖 AIでフォーム設計"), "", tabConfig));
     requestAnimationFrame(() => {
@@ -619,6 +668,8 @@ function openFormDesignAi() {
             ta.addEventListener("scroll", () => _hlSync("ta-fd", "hl-fd"));
             editorUndoInit("ta-fd", _FORMDESIGN_EDITOR.taUndo, ta.value);
         }
+        yamlInitResize();
+        yamlInitRpanelEvents();
     });
 }
 
@@ -991,6 +1042,12 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         const saveBtn = tabConfig.saveAction
             ? `<button class='pri'${evtAttr("onmousedown", tabConfig.saveAction)}>保存</button>`
             : "";
+        // rightPanel: tabConfig利用画面のうち、フォームデザインエディタのみ右パネルを表示する
+        // （拡張ランタイムエディタ等、他のtabConfig利用箇所には影響させない）
+        const rightPanelHtml = tabConfig.rightPanel === "formDesign"
+            ? "<div class='yaml-resize-handle' id='yaml-rhandle'></div>" +
+              "<div class='yaml-editor-right' id='yaml-rpanel'>" + yamlBuildFormDesignRightPanel() + "</div>"
+            : "<div class='yaml-editor-right' style='display:none'></div>";
         return (
             "<div class='modal-yaml'>" +
             headerHTML +
@@ -1001,7 +1058,7 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
             panes +
             (aiBar ? aiBar : "<div class='yaml-ai-bar'></div>") +
             "</div>" +
-            "<div class='yaml-editor-right' style='display:none'></div>" +
+            rightPanelHtml +
             "</div>" +
             "</div>" +
             "<div class='mfoot'>" +
@@ -1315,7 +1372,7 @@ function editorSearch() {
 ═══════════════════════════════════════════ */
 Object.assign(window, {
     _parseApiRefNav, openApiRef, openYaml,
-    yamlBuildRightPanel, yamlRpSection, yamlToggleRpSection, yamlToggleTblCols,
+    yamlBuildRightPanel, yamlBuildFormDesignRightPanel, yamlRpSection, yamlToggleRpSection, yamlToggleTblCols,
     yamlInitRpanelEvents, yamlInitResize, yamlInsert, yamlAiGenerate,
     editorKeyHandler, editorMouseDownHandler2, editorDblClickHandler, editorHlUpdate,
     buildYamlEditorHTML, initYamlEditorModal,
