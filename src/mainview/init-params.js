@@ -229,8 +229,9 @@
         { tag: "textarea", label: "複数行入力" },
         { tag: "checkbox", label: "チェックボックス" },
         { tag: "radio", label: "ラジオボタン", note: "同一グループのラジオボタンには同じ group 名を指定する" },
-        { tag: "selectBox", label: "ドロップダウン選択" },
-        { tag: "listbox", label: "リスト選択" },
+        { tag: "selectBox", label: "ドロップダウン選択", note: "options に選択肢の配列を指定するとAIが選択肢も生成する" },
+        { tag: "listbox", label: "リスト選択", note: "options に選択肢の配列を指定するとAIが選択肢も生成する" },
         { tag: "button", label: "ボタン" },
+        { tag: "datagrid", label: "テーブル", note: "columns に {label, width} の配列を指定するとAIがカラム構成も生成する" },
     ];
 })();

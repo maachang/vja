@@ -1537,34 +1537,58 @@ ${js.trim()}
 
 [JSONスキーマ（要素ごとのキー定義）]
 各オブジェクトは以下のキーを必ず保持してください。
-- "tag": "inputtype" | "textarea" | "checkbox" | "radio" | "selectBox" | "listbox" | "button" | "label"
-- "name": 配列内で重複しないVB6風のハンガリアン記法（例: txtUserId, lblUserId, btnSubmit, chkAgree, radMale, cmbCategory, lstItems, txaMemo）
-- "text": 表示文言（"label", "button", "checkbox", "radio" の場合は必須。"inputtype", "textarea" の場合は空文字 "" または省略）
+- "tag": "inputtype" | "textarea" | "checkbox" | "radio" | "selectBox" | "listbox" | "button" | "label" | "datagrid"
+- "name": 配列内で重複しないVB6風のハンガリアン記法（例: txtUserId, lblUserId, btnSubmit, chkAgree, radMale, cmbCategory, lstItems, txaMemo, tblResult）
+- "text": 表示文言（"label", "button", "checkbox", "radio" の場合は必須。"inputtype", "textarea", "datagrid" の場合は空文字 "" または省略）
 - "inputType": "tag" が "inputtype" の場合のみ必須。"text" | "password" | "number" | "email" | "tel" | "date" | "time" | "url"
 - "placeholder": （任意）"inputtype" または "textarea" のときの入力例
 - "group": "tag" が "radio" の場合のみ必須。同一グループのラジオボタンには同じグループ名（例: "Gender", "MemberType"）を指定
+- "options": "tag" が "selectBox" または "listbox" の場合のみ必須。選択肢の配列。以下2種類の書き方が利用できます。
+  - 文字列のみ（表示名とValueが同じでよい場合）: 例 ["未処理", "処理中", "完了"]
+  - {"label": 表示名, "value": 内部値} オブジェクト（表示名とValueを分けたい場合。例えば依頼文に「馬名: name」のような「表示名: 内部値」の対応が明記されている場合は必ずこの形式を使うこと）: 例 [{"label": "馬名", "value": "name"}, {"label": "父馬", "value": "father"}]
+  - ユーザーの依頼文やフォームレイアウト、参照テーブルの内容から具体的な選択肢を推測して埋めてください（不明な場合も空配列にはせず、一般的な選択肢を作成すること）
+- "columns": "tag" が "datagrid" の場合のみ必須。表示するカラムの配列。各要素は {"name": 実データのカラム名（DBのカラム名。参照テーブルが指定されている場合はそのカラム名を使用）, "displayName": 画面に表示する見出し文言（省略時はnameがそのまま表示される。日本語の見出しにしたい場合は必ず指定すること）, "width": カラム幅の目安（整数、複数カラムの合計が概ね100になるよう配分）}。参照テーブルが指定されている場合は、そのカラム定義に基づいて作成してください
 - "x", "y", "w", "h": 配置座標とサイズ（整数、単位ピクセル）。「フォームレイアウト」のコンセプト指示を満たしつつ、実用的な大きさで決定してください。
 
-- "selectBox" / "listbox" の選択肢一覧はアプリ側で初期設定されるため、ここでは出力しないでください。
 - 参照テーブルに記載のない列名を勝手に作成して含めないでください。
 - ボタンの数は、ユーザーが指定したアクション項目の数と一致させてください（勝手に追加・削減しないこと）。
 
 [出力例（Few-Shot）]
 入力YAMLの例:
 ---
-title: ログイン
-フォームレイアウト: ラベルと入力欄は横並び（同Y座標）にし、ボタンは右下に配置する。
-inputs:
-  - name: ID
-    type: text
-actions:
-  - name: 実行
+説明: horse_info 内容を検索して表示するための画面
+フォームレイアウト: 検索条件は画面上部、検索結果の一覧は画面下部に表示する。
+参照テーブル:
+  - horse_info
+入力項目:
+  - 検索ワード: inputtype で text
+  - 検索条件選択項目: selectBox で key=表示名, value=Value
+    - 馬名: name
+    - 父馬: father
+    - 母馬: mother
+    - 性別: sex
+  - 検索結果表示枠: datagrid
+    - horse_info: テーブル項目を表示して、カラム名、表示名を設定する
+アクション項目:
+  - 検索ボタン
 ---
 出力JSONの例:
 [
-  {"tag": "label", "name": "lblID", "text": "ID", "x": 20, "y": 20, "w": 100, "h": 25},
-  {"tag": "inputtype", "name": "txtID", "text": "", "inputType": "text", "x": 130, "y": 20, "w": 200, "h": 25},
-  {"tag": "button", "name": "btnExecute", "text": "実行", "x": 240, "y": 60, "w": 90, "h": 30}
+  {"tag": "label", "name": "lblSearchWord", "text": "検索ワード", "x": 20, "y": 20, "w": 100, "h": 25},
+  {"tag": "inputtype", "name": "txtSearchWord", "text": "", "inputType": "text", "x": 130, "y": 20, "w": 150, "h": 25},
+  {"tag": "selectBox", "name": "cmbSearchCol", "options": [
+    {"label": "馬名", "value": "name"},
+    {"label": "父馬", "value": "father"},
+    {"label": "母馬", "value": "mother"},
+    {"label": "性別", "value": "sex"}
+  ], "x": 290, "y": 20, "w": 120, "h": 25},
+  {"tag": "button", "name": "btnSearch", "text": "検索ボタン", "x": 420, "y": 20, "w": 90, "h": 25},
+  {"tag": "datagrid", "name": "tblHorseInfo", "columns": [
+    {"name": "name", "displayName": "馬名", "width": 25},
+    {"name": "father", "displayName": "父馬", "width": 25},
+    {"name": "mother", "displayName": "母馬", "width": 25},
+    {"name": "sex", "displayName": "性別", "width": 25}
+  ], "x": 20, "y": 60, "w": 490, "h": 200}
 ]
 
 [参照テーブル定義]
@@ -1593,34 +1617,58 @@ Your task is to read a Japanese YAML screen definition (including screen purpose
 
 [JSON Schema per Element]
 Each object in the array must have the following keys:
-- "tag": "inputtype" | "textarea" | "checkbox" | "radio" | "selectBox" | "listbox" | "button" | "label"
-- "name": Unique VB6-style Hungarian notation (e.g., txtUserId, lblUserId, btnSubmit, chkAgree, radMale, cmbCategory, lstItems, txaMemo). Ensure names are unique within the array.
-- "text": Caption text. Required for "label", "button", "checkbox", "radio". Omit or leave empty "" for "inputtype" and "textarea".
+- "tag": "inputtype" | "textarea" | "checkbox" | "radio" | "selectBox" | "listbox" | "button" | "label" | "datagrid"
+- "name": Unique VB6-style Hungarian notation (e.g., txtUserId, lblUserId, btnSubmit, chkAgree, radMale, cmbCategory, lstItems, txaMemo, tblResult). Ensure names are unique within the array.
+- "text": Caption text. Required for "label", "button", "checkbox", "radio". Omit or leave empty "" for "inputtype", "textarea", and "datagrid".
 - "inputType": (Required only when tag is "inputtype") "text" | "password" | "number" | "email" | "tel" | "date" | "time" | "url"
 - "placeholder": (Optional) Sample input text for "inputtype" or "textarea".
 - "group": (Required only when tag is "radio") Group name string. Assign the same value to radio buttons belonging to the same selection group (e.g., "Gender", "MemberType").
+- "options": (Required only when tag is "selectBox" or "listbox") An array of selectable choices, in either of the following two forms:
+  - Plain strings, when the display label and the internal value should be the same (e.g., ["Pending", "In Progress", "Done"])
+  - {"label": display text, "value": internal value} objects, when the display label and internal value differ. If the request explicitly maps a display label to an internal value (e.g., a Japanese "表示名: 内部値" style mapping such as "馬名: name"), you MUST use this object form (e.g., [{"label": "馬名", "value": "name"}, {"label": "父馬", "value": "father"}])
+  - Infer concrete, realistic options from the request text, form layout, and reference table content. Never leave this an empty array; if the specific options are not stated, create reasonable general-purpose options instead.
+- "columns": (Required only when tag is "datagrid") An array of column definitions. Each element is {"name": the actual data column name (use the reference table's column name when a reference table is specified), "displayName": the header caption shown on screen (omit only if it should be identical to "name"; when a Japanese-style caption is expected, you MUST set this), "width": approximate relative width as an integer, with all columns in the same datagrid summing to roughly 100}. If a reference table is specified, base the columns on that table's column definitions.
 - "x", "y", "w", "h": Integers (pixels). Determine these values to satisfy the "フォームレイアウト" concept while ensuring practical widget dimensions.
 
-- Do not output the list of options for "selectBox" or "listbox" components, as the application itself sets the initial default values.
 - Reference tables: Do not arbitrarily create column names that are not listed in the reference table definition.
 - Number of buttons: Adhere strictly to the number of action items specified in the request (do not arbitrarily add or reduce actions).
 
 [Few-Shot Example]
 Input YAML Example:
 ---
-title: ログイン
-フォームレイアウト: ラベルと入力欄は横並び（同Y座標）にし、ボタンは右下に配置する。
-inputs:
-  - name: ID
-    type: text
-actions:
-  - name: 実行
+説明: horse_info 内容を検索して表示するための画面
+フォームレイアウト: 検索条件は画面上部、検索結果の一覧は画面下部に表示する。
+参照テーブル:
+  - horse_info
+入力項目:
+  - 検索ワード: inputtype で text
+  - 検索条件選択項目: selectBox で key=表示名, value=Value
+    - 馬名: name
+    - 父馬: father
+    - 母馬: mother
+    - 性別: sex
+  - 検索結果表示枠: datagrid
+    - horse_info: テーブル項目を表示して、カラム名、表示名を設定する
+アクション項目:
+  - 検索ボタン
 ---
 Output JSON Example:
 [
-  {"tag": "label", "name": "lblID", "text": "ID", "x": 20, "y": 20, "w": 100, "h": 25},
-  {"tag": "inputtype", "name": "txtID", "text": "", "inputType": "text", "x": 130, "y": 20, "w": 200, "h": 25},
-  {"tag": "button", "name": "btnExecute", "text": "実行", "x": 240, "y": 60, "w": 90, "h": 30}
+  {"tag": "label", "name": "lblSearchWord", "text": "検索ワード", "x": 20, "y": 20, "w": 100, "h": 25},
+  {"tag": "inputtype", "name": "txtSearchWord", "text": "", "inputType": "text", "x": 130, "y": 20, "w": 150, "h": 25},
+  {"tag": "selectBox", "name": "cmbSearchCol", "options": [
+    {"label": "馬名", "value": "name"},
+    {"label": "父馬", "value": "father"},
+    {"label": "母馬", "value": "mother"},
+    {"label": "性別", "value": "sex"}
+  ], "x": 290, "y": 20, "w": 120, "h": 25},
+  {"tag": "button", "name": "btnSearch", "text": "検索ボタン", "x": 420, "y": 20, "w": 90, "h": 25},
+  {"tag": "datagrid", "name": "tblHorseInfo", "columns": [
+    {"name": "name", "displayName": "馬名", "width": 25},
+    {"name": "father", "displayName": "父馬", "width": 25},
+    {"name": "mother", "displayName": "母馬", "width": 25},
+    {"name": "sex", "displayName": "性別", "width": 25}
+  ], "x": 20, "y": 60, "w": 490, "h": 200}
 ]
 
 [Reference Table Definition]

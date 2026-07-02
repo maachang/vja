@@ -369,8 +369,10 @@ function addWidget(tool, x, y, w, h) {
 // placeholder/group）を現在フォームへ一括配置する。座標はAI出力をそのまま使い、
 // フォーム範囲外・不正値のみVJA側で補正する（色・フォントはテーマ機能に委譲）。
 // 対応タグ以外はスキップしてカウントする。まとめて1回だけUndo登録する。
-const AI_FORM_DESIGN_TAGS = ["inputtype", "textarea", "checkbox", "radio", "selectBox", "listbox", "button", "label"];
+const AI_FORM_DESIGN_TAGS = ["inputtype", "textarea", "checkbox", "radio", "selectBox", "listbox", "button", "label", "datagrid"];
 const AI_FORM_DESIGN_INPUT_TYPES = ["text", "password", "number", "email", "tel", "date", "time", "url"];
+// datagridのカラム幅の既定値（AI出力のwidthが数値でない/未指定の場合のフォールバック）
+const AI_FORM_DESIGN_DEFAULT_COL_WIDTH = 20;
 function applyAiFormDesign(items) {
     if (!Array.isArray(items) || items.length === 0) {
         showToast("AIの出力にウィジェットが含まれていませんでした");
@@ -420,6 +422,30 @@ function applyAiFormDesign(items) {
         }
         if (item.placeholder != null && "placeholder" in widget.props) widget.props.placeholder = String(item.placeholder);
         if (item.tag === "radio" && item.group) widget.props.group = String(item.group);
+        // selectBox/listbox: AIが出力した選択肢配列(options)を、内部形式（改行区切り文字列 "表示名=Value"）に変換する。
+        // options の要素は「文字列（表示名のみ）」「{label, value}オブジェクト（Value省略可）」の両方を許容する。
+        if ((item.tag === "selectBox" || item.tag === "listbox") && Array.isArray(item.options) && item.options.length > 0) {
+            widget.props.items = item.options.map((o) => {
+                if (o && typeof o === "object") {
+                    const label = String(o.label ?? "").replace(/[\n=]/g, " ").trim();
+                    const value = String(o.value ?? "").replace(/[\n=]/g, " ").trim();
+                    if (!label) return "";
+                    return value && value !== label ? label + "=" + value : label;
+                }
+                return String(o).replace(/[\n=]/g, " ").trim();
+            }).filter(Boolean).join("\n");
+        }
+        // datagrid: AIが出力したカラム定義配列(columns)を、内部形式（改行区切り文字列 "カラム名:幅[:表示名]"）に変換する。
+        // name: 実データのカラム名（キー）、displayName: 画面表示名（省略時はnameがそのまま表示される）。
+        if (item.tag === "datagrid" && Array.isArray(item.columns) && item.columns.length > 0) {
+            widget.props.columns = item.columns.map((c) => {
+                const name = String(c?.name ?? c?.label ?? "").replace(/[\n:]/g, " ").trim() || "列";
+                const displayName = String(c?.displayName ?? "").replace(/[\n:]/g, " ").trim();
+                const width = Number(c?.width);
+                const widthStr = String(Number.isFinite(width) && width > 0 ? width : AI_FORM_DESIGN_DEFAULT_COL_WIDTH);
+                return name + ":" + widthStr + (displayName && displayName !== name ? ":" + displayName : "");
+            }).join("\n");
+        }
 
         renderWidget(widget, true);
     });
