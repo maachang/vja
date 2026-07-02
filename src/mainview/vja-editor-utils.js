@@ -283,7 +283,7 @@ function openFormYaml(evName) {
     const curJs = f.events["_js_" + evName] || "";
     pvRegister("yamlSave", () => saveFormYaml(evName));
     pvRegister("yamlAiGen", () => yamlAiGenerate("form", evName));
-    showModal(buildYamlEditorHTML(cur, curJs, false, mhdrHTML("📋 フォーム — " + esc(evName))));
+    showModal(buildYamlEditorHTML(cur, curJs, true, mhdrHTML("📋 フォーム — " + esc(evName))));
     initYamlEditorModal(cur, curJs);
 }
 
