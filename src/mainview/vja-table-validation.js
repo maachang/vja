@@ -934,12 +934,12 @@ function renderValidationEditModal() {
         mhdrHTML("✅ バリデーション編集") +
         "<div class='mbody tbl-edit-wrap' style='gap:6px'>" +
         "<div class='tbl-name-row'><label>定義名</label>" +
-        "<input id='valid-name' class='pv-input' value='" + esc(v.name || "") + "' placeholder='定義名'></div>" +
+        "<input id='valid-name' class='pv-input' value='" + esc(v.name || "") + "'" + evtAttr("oninput", "_VALID_MODAL.edit.name=this.value") + " placeholder='定義名'></div>" +
         "<div class='tbl-name-row'><label>説明（任意）</label>" +
-        "<input id='valid-desc' class='pv-input' value='" + esc(v.description || "") + "' placeholder='バリデーションの説明（任意）'></div>" +
+        "<input id='valid-desc' class='pv-input' value='" + esc(v.description || "") + "'" + evtAttr("oninput", "_VALID_MODAL.edit.description=this.value") + " placeholder='バリデーションの説明（任意）'></div>" +
         "<div style='display:flex;align-items:center;gap:8px;padding:4px 0'>" +
         "<label style='font-size:12px;color:var(--text2);white-space:nowrap'>トースト表示時間（ms）:</label>" +
-        "<input type='number' id='valid-toast-dur' class='pv-input' value='" + (v.toastDuration || 5000) + "' min='1000' max='30000' style='width:100px'>" +
+        "<input type='number' id='valid-toast-dur' class='pv-input' value='" + (v.toastDuration || 5000) + "'" + evtAttr("oninput", "_VALID_MODAL.edit.toastDuration=parseInt(this.value)||5000") + " min='1000' max='30000' style='width:100px'>" +
         "</div>" +
         "<div style='display:flex;justify-content:space-between;align-items:center'>" +
         "<span style='font-size:12px;color:var(--text2)'>ルール定義（" + rules.length + "件）</span>" +
