@@ -1374,15 +1374,24 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     }
     // フォームイベント
     const formEvs = form.events || {};
-    for (const [evName, js] of Object.entries(formEvs)) {
-        if (evName.startsWith("_js_") || !js || !(js as string).trim()) continue;
+    for (const evName of Object.keys(formEvs)) {
+        if (evName.startsWith("_js_")) continue;
+        const js = ((formEvs as Record<string, string>)["_js_" + evName] || "").trim();
+        if (!js) continue;
         const domEv = evNameToDom(evName);
         if (!domEv) continue;
-        const b64Form = Buffer.from((js as string).trim(), "utf-8").toString("base64");
+        const b64Form = Buffer.from(js, "utf-8").toString("base64");
         const keyForm = `form_${evName}`;
         lines.push(`  // form.${evName}`);
         lines.push(`  _vjaB64[${JSON.stringify(keyForm)}] = ${JSON.stringify(b64Form)};`);
-        lines.push(`  document.addEventListener(${JSON.stringify(domEv)}, function(event) { _vjaRun("form", ${JSON.stringify(evName)}, event); });`);
+        if (evName === "Load") {
+            // この処理自体が既にDOMContentLoaded後に実行されるため、
+            // ここで改めてDOMContentLoadedを購読しても二度と発火しない。
+            // そのためLoadだけはリスナー登録ではなくその場で直接実行する。
+            lines.push(`  _vjaRun("form", ${JSON.stringify(evName)}, null);`);
+        } else {
+            lines.push(`  document.addEventListener(${JSON.stringify(domEv)}, function(event) { _vjaRun("form", ${JSON.stringify(evName)}, event); });`);
+        }
     }
     lines.push("});");
     return lines.join("\n");

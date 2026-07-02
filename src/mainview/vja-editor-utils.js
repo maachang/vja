@@ -9,6 +9,10 @@
      - editorUndoPush() / editorUndo() / editorRedo()（エディタ内Undo/Redo）
      - editorSearch()（Ctrl+F検索）
      - jsTokenize() / yamlTokenize() 等のシンタックスハイライト
+     - _saveYamlData()（YAML/JS内容の保存。wid==="form"→フォーム
+       イベント、wid==="appev"→アプリイベント、それ以外→ウィジェット
+       イベントに分岐。saveYaml()/openFormYaml()/saveFormYaml()/
+       deleteFormYaml()も本ファイルで提供）
    このファイルは vja-defs.js / vja-yaml-editor.js に依存する。
 ═══════════════════════════════════════════════════════════════ */
 
@@ -243,6 +247,19 @@ function jsTokenize(code) {
 
 // YAMLデータをウィジェットに保存する（モーダルは閉じない）
 function _saveYamlData(wid, evName) {
+    if (wid === "form") {
+        const f = getProjectData().forms[getProjectData().curFormIdx];
+        if (!f.events) f.events = {};
+        f.events[evName] = $("yaml-ta")?.value || "";
+        f.events["_js_" + evName] = $("js-ta")?.value || "";
+        return;
+    }
+    if (wid === "appev") {
+        if (!getProjectData().projectInfo.appEvents) getProjectData().projectInfo.appEvents = {};
+        getProjectData().projectInfo.appEvents[evName + "_yaml"] = $("yaml-ta")?.value || "";
+        getProjectData().projectInfo.appEvents[evName] = $("js-ta")?.value || "";
+        return;
+    }
     const w = getWidget(wid);
     if (!w) return;
     if (!w.events) w.events = {};

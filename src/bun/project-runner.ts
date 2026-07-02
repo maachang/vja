@@ -505,6 +505,7 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
     });
 
     await _loadProjectURL(htmlPath);
+    _projectWindow.activate(); // LinuxのWMによるフォーカス盗み防止で、生成直後は入力フォーカスを持たないため明示的にアクティブ化する
 
     _projectWindow.on("close", () => { _onProjectWindowClosed(); });
 
