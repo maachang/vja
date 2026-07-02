@@ -855,19 +855,26 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
     // プログラム出力ルールを出力.
     const _program_rule = function (eng, isAppEvent) {
         const programType = _program_type(isAppEvent);
-        if (eng == true) {
+        const langLower = programType.toLowerCase();
+
+        if (eng === true) {
             // 英語.
-            return "- The AI's output must strictly consist solely of the `raw code` for " + programType + ".\n" +
-                "- Explanatory text, introductory remarks, and concluding statements are all prohibited.\n" +
-                "- Completely exclude any Markdown formatting, such as code blocks (```" + programType.toLowerCase() + " ... ```).\n" +
-                "- Just before outputting the code, mentally verify edge cases, type definitions, and exception handling in a single step, and output bug-free, complete code on the first attempt."
+            return [
+                `- The AI's output must strictly consist solely of the raw, executable code for ${programType}.`,
+                `- Explanatory text, introductory remarks, and concluding statements are all strictly prohibited.`,
+                `- NEVER wrap the output in markdown code blocks (e.g., do not use \`\`\` or \`\`\`${langLower}). Your response MUST start directly with the very first character of the actual code.`,
+                `- Before rendering the final code, perform a comprehensive internal check for potential bugs, edge cases, strict type compliance, and appropriate exception handling, then output flawless, production-ready code on the first attempt.`
+            ].join('\n');
         }
+
         // 日本語.
-        return "- AIの出力結果は「" + programType + " の生コードのみ」を厳守。\n" +
-            "- 説明文、前置き、結びの言葉はすべて出力禁止。\n" +
-            "- コードブロック（```" + programType.toLowerCase() + " ... ```）などのマークダウン装飾も完全に排除すること。\n" +
-            "- コードを出力する直前に、頭の中で「エッジケース」「型定義」「例外処理」を1ステップで検証し、バグのない完成されたコードを一発で出力してください。"
-    }
+        return [
+            `- AIの出力結果は「${programType} の生コードのみ」を厳守してください。`,
+            `- 説明文、解説、前置き、結びの言葉はすべて出力禁止です。`,
+            `- コードブロック（\`\`\`${langLower} や \`\`\`）などのマークダウン装飾は完全に排除してください。応答は、コードの最初の1文字目から直接開始する必要があります。`,
+            `- コードを出力する直前に、頭の中で「潜在的なバグ」「エッジケース」「型定義の整合性」「例外処理」を網羅的に検証し、バグのない完成された実用コードを一発で出力してください。`
+        ].join('\n');
+    };
 
     // YAMLからjsに変換する場合のシステムプロンプトを生成.
     // - isAppEvent: [必須]定義されている場合はアプリイベント(bunネイティブ実行)で、存在しない場合はイベント系(js)で実行.
@@ -900,84 +907,85 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
             extRuntimeDoc,
         },
     ) {
-        // isAppEvent で、フロントとバックのランタイム説明の切替を行う.
-        //   - true の場合、アプリイベント(bunネイティブ実行).
-        //   - falseの場合、ウィジットイベント(js).
         const vjaUseJsInfo = isAppEvent
             ? VJA_USE_BACK_JS_INFO
             : VJA_USE_FRONT_JS_INFO;
 
-        // ルールをバックエンド、フロントエンドで記載.
+        const codeType = isAppEvent ? "TypeScript" : "JavaScript";
+
         const rule = isAppEvent
-            ? // バックエンド.
+            ? // バックエンド (isAppEvent = true)
             `
 ## 構造
-- コードは必ずインラインで記述。
-- 変数は if/else・try/catch・その他あらゆるブロック（{ }）の外で宣言することを厳守する
-  - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params);
-  - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
-- 原則 "const" 利用禁止で "let" のみを利用する
-- ソースコードの1インデントは4スペース
-- ソースコードは "見やすく改行を入れる"
+- コードは必ずインラインで記述してください。
+- 変数は if/else、try/catch、その他あらゆるブロック（{ }）の外で宣言することを厳守してください。
+  - 悪い例: if (cond) { let params = [...]; } await vja.db.query(sql, params);
+  - 良い例: let params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
+- 原則として "const" の利用は禁止し、"let" のみを利用してください。
+- ソースコードの1インデントは4スペースとします。
+- ソースコードには見やすく改行を入れてください。
 
 ## vja API
-- 全ての vja.* 呼び出しは await を付ける
-- 画面遷移は vja.form.navigate('画面name') のみ使用（location禁止）
-- navigate() は別画面移動専用。現在画面の更新目的での使用は絶対禁止
+- 全ての vja.* 呼び出しには await を付けてください。ただし、同期処理である次の呼び出しは除きます: vja.event.* / vja.trigger.* / vja.widget.get / vja.widget.set / vja.widget.show / vja.widget.hide / vja.widget.enable / vja.widget.disable
+- Promise、.then()、.catch() を直接使用しないでください。代わりに await を使用してください。
+- 画面遷移は vja.form.navigate('画面name') のみを使用してください。（window.location等は禁止）
+- navigate() は別画面への移動専用です。現在画面のリロードや更新目的での使用は絶対禁止です。
 
 ## SQL
-- プレースホルダー(?) 必須（SQLインジェクション対策）
-- sqlite3専用のSQLで実装。必ず実行可能なSQL文で定義する
-- SQLの LIKE 検索では「部分一致: %カラム名%」「前方一致: カラム名%」「後方一致: %カラム名」で定義する
+- SQLインジェクション対策として、プレースホルダー（?）の利用は必須です。
+- sqlite3専用のSQLで実装してください。必ず実行可能なSQL文で定義する必要があります。
+- SQLの LIKE 検索では、SQL文の中に '?' を直接クォーテーションで囲んで配置してはなりません（悪い例: LIKE '%?%' はプレースホルダーが機能しなくなるため絶対禁止）。必ずJavaScript側の変数に '%' を結合してプレースホルダーに渡してください。
+  - 記述例: let pattern = '%' + txtSearch.value + '%'; let sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
 
 ## YAMLへの忠実性
-- YAMLに記載のない処理（navigate・setVisible・show/hide等）の追加は絶対禁止
-- YAMLの指示内容に従い実装を厳守
+- YAMLに記載のない処理（navigate、setVisible、show/hideなど）の追加は絶対禁止です。
+- 「YAML仕様」の指示内容に従い実装を厳守してください。
 
 ## その他
-- コメントは日本語で記述
+- コメントはすべて日本語で記述してください。
 `.trim()
-            : // フロントエンド.
+            : // フロントエンド (isAppEvent = false)
             `
 ## 構造
-- 生成するコードは必ず "インライン" で記述。ヘルパー関数の記載は絶対禁止で（例: handleXxx, doXxx, addEventListener 等の関数定義は絶対に禁止）
+- 生成するコードは必ず "インライン"（手続き型）で記述してください。ヘルパー関数の記載は絶対禁止です（例: handleXxx, doXxx, addEventListener などの関数定義は絶対に禁止）。
   - 悪い例: async function handleButtonClick() { ... }
-  - 良い例: const result = await vja.app.showConfirm("...");
-- 変数は if/else・try/catch・その他あらゆるブロック（{ }）の外で宣言することを厳守する
-  - 悪い例: if (cond) { const params = [...]; } vja.db.query(sql, params);
-  - 良い例: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
-- 原則 "const" や "let" の利用禁止。"var" のみを利用する
-- ソースコードの1インデントは4スペース
-- ソースコードは "見やすく改行を入れる"
+  - 良い例: var result = await vja.app.showConfirm("...");
+- 変数は if/else、try/catch、その他あらゆるブロック（{ }）の外で宣言することを厳守してください。
+  - 悪い例: if (cond) { var params = [...]; } await vja.db.query(sql, params);
+  - 良い例: var params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
+- 原則として "const" や "let" の利用は禁止し、"var" のみを利用してください。
+- ソースコードの1インデントは4スペースとします。
+- ソースコードには見やすく改行を入れてください。
 
 ## vja API
-- 全ての vja.* 呼び出しは await を付ける
-- 画面遷移は vja.form.navigate('画面name') のみ使用（location禁止）
-- navigate() は別画面移動専用。現在画面の更新目的での使用は絶対禁止
-- window.confirm/alert禁止（vja.app.showDialog/showConfirmを使用）
+- 全ての vja.* 呼び出しには await を付けてください。ただし、同期処理である次の呼び出しは除きます: vja.event.* / vja.trigger.* / vja.widget.get / vja.widget.set / vja.widget.show / vja.widget.hide / vja.widget.enable / vja.widget.disable
+- Promise、.then()、.catch() を直接使用しないでください。代わりに await を使用してください。
+- 画面遷移は vja.form.navigate('画面name') のみを使用してください。（window.location等は禁止）
+- navigate() は別画面への移動専用です。現在画面のリロードや更新目的での使用は絶対禁止です。
+- window.confirm や window.alert の使用は禁止です。代わりに vja.app.showDialog または vja.app.showConfirm を使用してください。
 
 ## SQL
-- プレースホルダー(?) 必須（SQLインジェクション対策）
-- sqlite3専用のSQLで実装。必ず実行可能なSQL文で定義する
-- SQLの LIKE 検索では「部分一致: %カラム名%」「前方一致: カラム名%」「後方一致: %カラム名」で定義する
+- SQLインジェクション対策として、プレースホルダー（?）の利用は必須です。
+- sqlite3専用のSQLで実装してください。必ず実行可能なSQL文で定義する必要があります。
+- SQLの LIKE 検索では、SQL文の中に '?' を直接クォーテーションで囲んで配置してはなりません（悪い例: LIKE '%?%' はプレースホルダーが機能しなくなるため絶対禁止）。必ずJavaScript側の変数に '%' を結合してプレースホルダーに渡してください。
+  - 記述例: var pattern = '%' + txtSearch.value + '%'; var sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
 
 ## YAMLへの忠実性
-- YAMLに記載のない処理（navigate・setVisible・show/hide等）の追加は絶対禁止
-- 「YAML仕様」の指示内容に従い実装を厳守
-- 「エラー終了」などで "エラーログ出力を行う" 指示がある場合「try {} catch(e)」のErrorオブジェクトのmessageを出力する実装を行うが、この時必ず「第２引数にErrorオブジェクトを設定= console.error(e.message, e)」としてください。
+- YAMLに記載のない処理（navigate、setVisible、show/hideなど）の追加は絶対禁止です。
+- 「エラー終了」などでエラーログ出力を行う指示がある場合、try {} catch(e) のErrorオブジェクトのmessageを出力する実装を行いますが、この時必ず第2引数にErrorオブジェクトを設定し、「console.error(e.message, e);」としてください。
 
 ## その他
-- コメントは日本語で記述
+- コメントはすべて日本語で記述してください。
 `.trim();
 
         return (`
 あなたは日本語を専門とするVJAフォームデザイナーのイベント処理コード生成AIです。
 あなたは超高速かつ正確なシニアソフトウェアエンジニアです。
-ユーザーが書いたYAMLを元に、JavaScriptの実装コードを生成します。
+ユーザーが書いたYAMLを元に、${codeType}の実装コードを生成します。
 
 [AI出力ルール]
 ---
-${_program_rule(false, isAppEvent)}
+${_program_rule(true, isAppEvent)}
 ---
 
 [コード生成ルール]
@@ -1025,42 +1033,35 @@ ${vjaUseJsInfo}
             extRuntimeDoc,
         },
     ) {
-        // [英語]isAppEvent で、フロントとバックのランタイム説明の切替を行う.
-        //   - true の場合、アプリイベント(bunネイティブ実行).
-        //   - falseの場合、ウィジットイベント(js).
         const vjaUseJsInfo = isAppEvent
             ? VJA_USE_BACK_JS_INFO_ENG
             : VJA_USE_FRONT_JS_INFO_ENG;
 
-        // コードタイプ.
         const codeType = isAppEvent ? "TypeScript" : "JavaScript";
 
-        // 出力基本ルール
-        //const baseRule = _program_rule(true, isAppEvent);
-
-        // ルールをバックエンド、フロントエンドで記載.
         const rule = isAppEvent
-            ? // バックエンド.
+            ? // バックエンド (isAppEvent = true)
             `
 ## Structure
 - Code must always be written inline.
 - Strictly adhere to the rule of declaring variables outside of if/else, try/catch, and any other blocks ({ }).
-  - Bad: if (cond) { const params = [...]; } vja.db.query(sql, params);
-  - Good: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
+  - Bad: if (cond) { let params = [...]; } await vja.db.query(sql, params);
+  - Good: let params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
 - As a general rule, do not use "const"; use only "let".
 - One indentation level in the source code is four spaces.
 - Insert line breaks in the source code to make it easier to read.
 
 ## vja API
-- All vja.* calls must use await, except vja.event.* / vja.trigger.* / vja.widget.get / vja.widget.set / vja.widget.show / vja.widget.hide / vja.widget.enable / vja.widget.disable (these are synchronous).
-- Never use Promise, .then(), .catch() directly. Use await instead.
-- Screen navigation must use vja.form.navigate('screen name') only. (location is prohibited)
+- All vja.* calls must use "await", except for the following synchronous calls: vja.event.*, vja.trigger.*, vja.widget.get, vja.widget.set, vja.widget.show, vja.widget.hide, vja.widget.enable, and vja.widget.disable.
+- Never use Promise, .then(), or .catch() directly. Use await instead.
+- Screen navigation must use vja.form.navigate('screen name') only. (window.location is prohibited)
 - navigate() is exclusively for navigating to a different screen. Using it to refresh or update the current screen is absolutely prohibited.
 
 ## SQL
-- Placeholders (?) are mandatory. (SQL injection prevention)
+- Placeholders (?) are mandatory for all variable inputs to prevent SQL injection.
 - Implemented using SQL specific to sqlite3. Must be defined using executable SQL statements.
-- In SQL LIKE searches, patterns are defined as follows: "partial match: %column_name%", "prefix match: column_name%", and "suffix match: %column_name".
+- For SQL LIKE searches, NEVER place the '?' placeholder inside quotes (e.g., LIKE '%?%' is STRICTLY PROHIBITED as it breaks the placeholder). Always concatenate the '%' wildcards to the JavaScript variable side.
+  - Example: let pattern = '%' + txtSearch.value + '%'; let sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
 
 ## Fidelity to YAML
 - Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.
@@ -1069,30 +1070,31 @@ ${vjaUseJsInfo}
 ## Other
 - All comments must be written in Japanese.
 `.trim()
-            : // フロントエンド.
+            : // フロントエンド (isAppEvent = false)
             `
 ## Structure
 - All generated code must be written "inline." The use of helper functions is strictly prohibited (e.g., defining functions such as "handleXxx", "doXxx", "addEventListener", etc., is absolutely forbidden).
   - Bad example: async function handleButtonClick() { ... }
-  - Good example: const result = await vja.app.showConfirm("...");
+  - Good example: var result = await vja.app.showConfirm("...");
 - Strictly adhere to the rule of declaring variables outside of if/else, try/catch, and any other blocks ({ }).
-  - Bad: if (cond) { const params = [...]; } vja.db.query(sql, params);
-  - Good: let params = []; if (cond) { params = [...]; } vja.db.query(sql, params);
+  - Bad: if (cond) { var params = [...]; } await vja.db.query(sql, params);
+  - Good: var params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
 - As a general rule, the use of "const" and "let" is prohibited; use only "var".
 - One indentation level in the source code is four spaces.
 - Insert line breaks in the source code to make it easier to read.
 
 ## vja API
-- All vja.* calls must use await, except vja.event.* / vja.trigger.* / vja.widget.get / vja.widget.set / vja.widget.show / vja.widget.hide / vja.widget.enable / vja.widget.disable (these are synchronous).
-- Never use Promise, .then(), .catch() directly. Use await instead.
-- Screen navigation must use vja.form.navigate('screen name') only. (location is prohibited)
+- All vja.* calls must use "await", except for the following synchronous calls: vja.event.*, vja.trigger.*, vja.widget.get, vja.widget.set, vja.widget.show, vja.widget.hide, vja.widget.enable, and vja.widget.disable.
+- Never use Promise, .then(), or .catch() directly. Use await instead.
+- Screen navigation must use vja.form.navigate('screen name') only. (window.location is prohibited)
 - navigate() is exclusively for navigating to a different screen. Using it to refresh or update the current screen is absolutely prohibited.
 - window.confirm/alert are prohibited. Use vja.app.showDialog/showConfirm instead.
 
 ## SQL
-- Placeholders (?) are mandatory. (SQL injection prevention)
+- Placeholders (?) are mandatory for all variable inputs to prevent SQL injection.
 - Implemented using SQL specific to sqlite3. Must be defined using executable SQL statements.
-- In SQL LIKE searches, patterns are defined as follows: "partial match: %column_name%", "prefix match: column_name%", and "suffix match: %column_name".
+- For SQL LIKE searches, NEVER place the '?' placeholder inside quotes (e.g., LIKE '%?%' is STRICTLY PROHIBITED as it breaks the placeholder). Always concatenate the '%' wildcards to the JavaScript variable side.
+  - Example: var pattern = '%' + txtSearch.value + '%'; var sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
 
 ## Fidelity to YAML
 - Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.
@@ -1124,7 +1126,7 @@ ${vjaUseJsInfo}
 ~~~
 ---
 `.trim() + "\n");
-    }
+    };
 
     // yamlのコメントを削除(AIによっては、コメントが逆に影響を及ぼす事になるため)
     const _removeYamlShComments = function (sourceCode) {
@@ -1176,30 +1178,30 @@ ${vjaUseJsInfo}
             extRuntimeDoc,
         },
     ) {
-        let ret;
+        const programType = isAppEvent ? "TypeScript" : "JavaScript";
+        const widgetLineJa = wname ? `- 対象ウィジェット: ${wname}\n` : "";
 
-        // フロント条件.
-        const widgetLine = wname ? `- 現在のウィジェット: ${wname}\n` : "";
+        // フロントエンド/ウィジェットイベント用のコンテキスト情報
         const frontInfo = isAppEvent
             ? ""
             : `
 ### プロジェクト情報
 ---
-- 現在のフォーム: ${formName}
-${widgetLine}- 現在のイベント: ${eventName}
+- 対象画面: ${formName}
+${widgetLineJa}- 対象イベント: ${eventName}
 ---
 
-### ウィジェット一覧（${formName}）
+### ウィジェット一覧 (${formName})
 ---
 ${allWidgetsCtx}
 ---
 
-### フォーム定数（${formName}）
+### 画面固有定数 (${formName})
 ---
 ${formConstCtx}
 ---
 
-### 入力パラメータ（${formName}）
+### 入力パラメータ (${formName})
 ---
 ${inputParamsCtx}
 ---
@@ -1224,54 +1226,43 @@ ${tablesCtx}
 ~~~yaml
 ${extRuntimeDoc}
 ~~~
----
-  `.trim();
+---`.trim();
 
-        // yaml定義が設定されている場合.
-        if (yamlDef.trim()) {
-            // isAppEvent: true の場合、アプリイベント(bunネイティブ実行).
-            if (isAppEvent) {
-                // アプリイベント: bun(rpc実行先）の生成処理(ts).
-                ret =
-                    "アプリイベントをBun.jsで実行するTypeScriptコードとして、以下の `YAML仕様` に基づいて生成してください。\n" +
-                    "vja.db.query() / vja.session.get()等のAPIが利用可能です。";
-            } else {
-                // ウィジットイベント(js).
-                ret =
-                    frontInfo +
-                    "\n\n\nイベント処理に対するインライン実装を、以下の `YAML仕様` に基づいてJavaScriptコードを生成してください。";
-            }
-            // yaml仕様をセット
-            ret =
-                ret +
-                "\n[YAML仕様]" +
-                "---\n~~~yaml\n" +
-                _removeYamlShComments(yamlDef) + // yamlのコメントを除去.
-                "\n~~~\n---\n";
+        let instructions = "";
+        if (isAppEvent) {
+            instructions = `Bun.jsを使用してアプリイベントを実行するための、${programType}の実行コードを生成してください。\nvja.db.query() や vja.session.get() などのAPIが利用可能です。`;
+        } else {
+            instructions = `${frontInfo}\n\nイベント処理をインラインで実装するための、${programType}コードを生成してください。`;
         }
-        // yaml定義が存在しない場合.
-        else {
-            // isAppEvent: true の場合、アプリイベント(bunネイティブ実行).
-            if (isAppEvent) {
-                // アプリイベント: bun(rpc実行先）の生成処理.(ts).
-                ret =
-                    "アプリイベントをBun.jsで実行されるTypeScriptコードとして生成してください。\n" +
-                    "vja.db.query() / vja.session.get()等のAPIが利用可能です。";
-            } else {
-                // ウィジットイベント(js).
-                ret =
-                    frontInfo +
-                    "\n\n\nイベント処理に対するインライン実装の、JavaScriptコードを生成してください。";
-            }
+
+        // YAML定義が指定されている場合
+        if (yamlDef && yamlDef.trim()) {
+            instructions += `\n\nロジックの実装にあたっては、以下の[YAML仕様]に記載された内容に必ず従ってください。
+
+[YAML仕様]
+---
+~~~yaml
+${_removeYamlShComments(yamlDef)}
+~~~
+---`;
         }
-        // 追加指示がある場合はセット.
-        return ret +
-            // 一旦最後にもAI出力厳守条件をセット.
-            (addPrompt ? "\n\n追加指示: " + addPrompt + "\n" : "") +
-            //"\n\n[AI出力厳守]\n---\n" +
-            //_program_rule(false, isAppEvent) +
-            //"\n---";
-            "";
+
+        // 追加指示がある場合
+        if (addPrompt && addPrompt.trim()) {
+            instructions += `\n\n[追加指示]\n${addPrompt.trim()}\n※システム指示の基本ルールに加えて、上記の追加指示も必ず満たすコードにしてください。`;
+        }
+
+        // ローカルLLMのコードブロック出力を力技で防ぐための最終厳守ブロック
+        const finalEnforcement = `
+【最重要要件】
+- 出力結果は「${programType} の生コードのみ」としてください。
+- 前置き、コードの解説、結びの言葉などは一切出力しないでください。
+- マークダウンのコードブロック（\`\`\` や \`\`\`${programType.toLowerCase()}）で絶対に囲まないでください。コードの最初の1文字目から直接出力を開始してください。`;
+
+        // 末尾フレーズ（日本語環境用の定数名、無ければそのままENG用を利用）
+        const lastPhrase = typeof TO_LAST_PHRASE_JP !== 'undefined' ? TO_LAST_PHRASE_JP : ENG_TO_LAST_PHRASE_JP;
+
+        return `${instructions.trim()}\n${finalEnforcement.trim()}\n\n${lastPhrase}`;
     };
 
     // [英語]YAMLからjsに変換する場合のユーザプロンプトを生成.
@@ -1310,10 +1301,10 @@ ${extRuntimeDoc}
             extRuntimeDoc,
         },
     ) {
-        let ret;
-
-        // フロント条件.
+        const programType = isAppEvent ? "TypeScript" : "JavaScript";
         const widgetLineEn = wname ? `- Current widget: ${wname}\n` : "";
+
+        // Context information for Frontend/Widget events
         const frontInfo = isAppEvent
             ? ""
             : `
@@ -1358,146 +1349,153 @@ ${tablesCtx}
 ~~~yaml
 ${extRuntimeDoc}
 ~~~
----
-`.trim();
+---`.trim();
 
-        // yaml定義が設定されている場合.
-        if (yamlDef.trim()) {
-            // isAppEvent: true の場合、アプリイベント(bunネイティブ実行).
-            if (isAppEvent) {
-                // アプリイベント: bun(rpc実行先）の生成処理(ts).
-                ret =
-                    "Please generate TypeScript code to execute the app event using Bun.js, based on `the following YAML` specification.\n" +
-                    "APIs such as vja.db.query() / vja.session.get() are available.";
-            } else {
-                // ウィジットイベント(js).
-                ret =
-                    frontInfo +
-                    "\n\n\nGenerate JavaScript code for inline implementation of event handling based on `the following YAML` specification.";
-            }
-            // yaml仕様をセット
-            ret =
-                ret +
-                "\n[The Following YAML]\n" +
-                "---\n~~~yaml\n" +
-                _removeYamlShComments(yamlDef) + // yamlのコメントを除去.
-                "\n~~~\n---\n";
+        let instructions = "";
+        if (isAppEvent) {
+            instructions = `Please generate execution code for the app event as ${programType} using Bun.js.\nAPIs such as vja.db.query() / vja.session.get() are available.`;
+        } else {
+            instructions = `${frontInfo}\n\nGenerate ${programType} code for inline implementation of event handling.`;
         }
-        // 「利用テーブル」定義が存在しない場合.
-        else {
-            // isAppEvent: true の場合、アプリイベント(bunネイティブ実行).
-            if (isAppEvent) {
-                // アプリイベント: bun(rpc実行先）の生成処理.(ts).
-                ret =
-                    "Please generate the app event as TypeScript code to be executed with Bun.js.\n" +
-                    "APIs such as vja.db.query() / vja.session.get() are available.";
-            } else {
-                // ウィジットイベント(js).
-                ret =
-                    frontInfo +
-                    "\n\n\nGenerate JavaScript code for inline implementation of event handling.";
-            }
+
+        // If YAML specification is provided
+        if (yamlDef && yamlDef.trim()) {
+            instructions += `\n\nFollow the specifications provided in [The Following YAML] to implement the logic.
+
+[The Following YAML]
+---
+~~~yaml
+${_removeYamlShComments(yamlDef)}
+~~~
+---`;
         }
-        // 追加指示がある場合はセット.
-        return (
-            ret +
-            // 一旦最後にもAI出力厳守条件をセット.
-            (addPrompt
-                ? "\n\nAdditional instructions: " + addPrompt + "\n"
-                : "") +
-            //"\n\n[Strict adherence to AI output]\n---\n" +
-            //_program_rule(true, isAppEvent) +
-            //"- " + ENG_TO_LAST_PHRASE_JP +
-            //"\n---\n"
-            "\n" + ENG_TO_LAST_PHRASE_JP
-        );
+
+        // If additional user prompts exist
+        if (addPrompt && addPrompt.trim()) {
+            instructions += `\n\n[Additional Instructions]\n${addPrompt.trim()}\n*Strictly apply these instructions along with the system rules.`;
+        }
+
+        // Final formatting enforcement directly before LLM starts generation
+        const finalEnforcement = `
+[CRITICAL REQUIREMENT]
+- Output MUST consist entirely of the raw ${programType} code.
+- Absolutely NO introductory text, NO explanations, and NO concluding remarks.
+- Do NOT wrap the code in markdown blocks (e.g., do not use \`\`\` or \`\`\`${programType.toLowerCase()}). Start your response directly with the very first character of the actual code.`;
+
+        return `${instructions.trim()}\n${finalEnforcement.trim()}\n\n${ENG_TO_LAST_PHRASE_JP}`;
     };
 
     // 拡張ランタイム用システムプロンプト.
     const EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT = function () {
-        // システムプロンプト.
         return `
-あなたは日本語を専門とするJavaScriptコードのドキュメント生成アシスタントです。
-以下の yamlルールに則って、対象javascriptの利用可能な関数一覧を作成してください。
+あなたはJavaScriptコードを解析し、開発者向けのドキュメントを生成する専門のAIアシスタントです。
+提示されるJavaScriptコードから外部から利用可能な関数（API）の一覧を抽出し、以下の[YAMLスキーマ]に厳密に準拠したYAML形式のドキュメントを生成してください。
 
-~~~yaml
-# 拡張ランタイム説明
+【言語に関する重要ルール】
+- YAMLのキー名（項目名）は、以下に定義された英語のキーを完全に維持してください。
+- ただし、各キーに対応する値（説明文、引数の詳細など）は、すべて日本語で記述してください。
 
-- 関数名: await 関数名(args1, args2, args3, .... ):
-  - 説明: 関数の目的や利用用途を簡潔に説明
-  - 引数:
-    - args1 の型や説明
-    - args2 の型や説明
-    - args3 の型や説明
-  - 戻り値: 戻り値の型や説明
-  - 例外: 発生する例外に関する説明(無ければ不要)
-  - 使用例: 簡単な使用例を記載.
-  - 使用例説明: 使用例に対する簡単な説明.
-~~~
-※ await が必要な function は必ず await をつけて下さい。
+[YAMLスキーマ]
+以下の構造を完全に維持して出力してください。複数関数がある場合は、トップレベルの「- function:」から始まるリストを連続させてください。
 
-## yaml生成ルール(原則)
-- 日本語で説明
-- yamlのみを返す（説明文・マークダウン・ソースコード不要）
-`.trim();
+- function: await 関数名(args1, args2, ...) # 非同期関数の場合は必ず先頭に await を付与、同期関数の場合は不要
+  description: "関数の目的や利用用途の簡潔な日本語説明"
+  arguments:
+    - args1: "args1の型と日本語説明"
+    - args2: "args2の型と日本語説明"
+  returns: "戻り値の型と日本語説明"
+  exception: "発生する例外（エラー）に関する日本語説明（無ければ項目ごと省略してよい）"
+  example: |
+    // 実際の実装コードに即した簡単なJavaScriptでの使用例
+  example_description: "使用例に対する簡単な補足日本語説明"
+
+【出力フォーマット・厳守事項】
+- 出力は生のYAMLデータのみとしてください。
+- \`\`\`yaml や \`\`\` のようなマークダウンのコードブロックで絶対に囲まないでください。
+- 説明文、解説、前置き、結びの言葉などは一切出力禁止です。応答は、YAMLデータの最初の1文字目（具体的にはハイフン「-」）から直接開始してください。
+`.trim() + "\n";
     };
+
 
     // 拡張ランタイム用システムプロンプト.
     const ENG_EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT = function () {
-        // システムプロンプト.
-        // これに対して出力は英語で行う(この方がAIとして都合が良いため).
-        return (
-            `
-You are a JavaScript code documentation generation assistant specializing in English.
-Please create a list of available functions for the target JavaScript, following the YAML rules below.
-~~~YAML
-# Extended Runtime Description
-- Function Name: await function name(args1, args2, args3, ....):
-  - Description: Briefly describe the function's purpose and usage.
-  - Arguments:
-    - Type and description of args1
-    - Type and description of args2
-    - Type and description of args3
-  - Return Value: Type and description of the return value
-  - Exceptions: Description of any exceptions that may occur (not required if none)
-~~~
-*Please be sure to include "await" for functions that require it.
+        return `
+You are an expert AI assistant specializing in JavaScript code analysis and developer documentation generation.
+Your task is to analyze the provided JavaScript code, extract all publicly available functions, and generate a documentation in a strict YAML format based on the following schema.
 
-## YAML Generation Rules (Principles)
-- Explanation in English
-- Return only YAML (no explanation, Markdown, or source code required)
-`.trim() +
-            "\n\n" +
-            ENG_TO_LAST_PHRASE_ENG
-        );
+[CRITICAL REQUIREMENT FOR LANGUAGE]
+- The keys of the YAML must be in English as defined below.
+- However, all the values (such as descriptions, explanations, and arguments details) MUST be written in Japanese based on your understanding of the code.
+
+[YAML Schema]
+Strictly follow this structure. If there are multiple functions, repeat the list starting from the top-level "- function:" key.
+
+- function: await functionName(args1, args2, ...) # Include 'await' if the function is asynchronous; omit if synchronous.
+  description: "Brief Japanese explanation of the function's purpose and usage."
+  arguments:
+    - args1: "Type and Japanese description of args1."
+    - args2: "Type and Japanese description of args2."
+  returns: "Return type and Japanese explanation."
+  exception: "Japanese description of potential exceptions or errors thrown. (Omit this entire key if none)"
+  example: |
+    // A simple, realistic JavaScript example of how to use this function
+  example_description: "Brief Japanese explanation corresponding to the usage example."
+
+[Output Format Rules - Strict Adherence Required]
+- Output MUST consist entirely of the raw YAML data only.
+- Do NOT wrap the output in markdown code blocks (e.g., do not use \`\`\`yaml or \`\`\`).
+- Absolutely NO introductory text, NO explanations, and NO concluding remarks. Your response MUST start directly with the very first character of the actual YAML data (the hyphen "-").
+`.trim() + "\n";
     };
 
     // 拡張ランタイム用ユーザプロンプト.
     const EXT_RUNTIME_JS_TO_YAML_USER_PROMPT = function (js) {
         // ユーザプロンプト.
-        const ret = `
-以下のJavaScriptコード（vja拡張ランタイム）の使い方をYAML形式で説明してください。
-関数名・説明・引数・戻り値・例外・使用例を含めてください。
-`;
-        // 最後に対象とするJSファイル内容をセット.
-        return ret.trim() + "\n\n---\n~~~javascript\n" + js + "~~~\n---\n";
+        const instructions = `
+以下のJavaScriptコード（VJA拡張ランタイム）を構造解析し、システム指示で定義されたスキーマに従ってAPIドキュメントをYAML形式で生成してください。
+
+YAMLのキー名（項目名）は指定された英語（function, description, arguments, returns, exception, example, example_description）を厳守し、それに対応する各説明文（値）はすべて日本語で記述してください。
+
+[対象JavaScriptコード]
+---
+\`\`\`javascript
+${js.trim()}
+\`\`\`
+---`.trim();
+
+        // ターゲットコードの直後に最重要ルールを配置することで、出力フォーマットの破綻を防ぐ
+        const finalEnforcement = `
+【最重要要件】
+- 出力は生のYAMLデータのみとしてください。
+- マークダウンのコードブロック（\`\`\`yaml や \`\`\`）で絶対に囲まないでください。
+- 前置き文や解説、結びの言葉などは一切含めず、YAMLデータの最初の1文字目（ハイフン「-」）から直接出力を開始してください。`;
+
+        return `${instructions}\n${finalEnforcement.trim()}\n`;
     };
 
-    // 拡張ランタイム用ユーザプロンプト.
+    // [英語]拡張ランタイム用ユーザプロンプト.
     const ENG_EXT_RUNTIME_JS_TO_YAML_USER_PROMPT = function (js) {
         // ユーザプロンプト.
-        const ret = `
-Please explain how to use the following JavaScript code (vja extended runtime) in YAML format.
-Include the function name, description, arguments, return value, and exceptions.
-`;
-        // 最後に対象とするJSファイル内容をセット.
-        return (
-            ret.trim() +
-            "\n\n---\n~~~javascript\n" +
-            js +
-            "~~~\n---\n\n" +
-            ENG_TO_LAST_PHRASE_ENG
-        );
+        const instructions = `
+Please analyze the following JavaScript code (VJA extended runtime) and generate its API documentation in the exact YAML format specified in the system rules.
+
+Ensure that the YAML strictly utilizes the predefined English keys (function, description, arguments, returns, exception, example, example_description) while their respective values and explanations are written in Japanese.
+
+[Target JavaScript Code]
+---
+\`\`\`javascript
+${js.trim()}
+\`\`\`
+---`.trim();
+
+        // Final reinforcement placed at the absolute end to override LLM's default code block habits.
+        const finalEnforcement = `
+[CRITICAL REQUIREMENT]
+- Output MUST consist entirely of the raw YAML data only.
+- Absolutely NO markdown code blocks (do not wrap in \`\`\`yaml or \`\`\`).
+- No introductory text, explanations, or commentary. Start your response directly with the first character of the YAML data (the hyphen "-").`;
+
+        return `${instructions}\n${finalEnforcement.trim()}\n`;
     };
 
     // プログラム生成におけるYAMLが存在しない場合にセット
