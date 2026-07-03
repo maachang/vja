@@ -217,24 +217,6 @@
             });
         },
 
-        // treeView ノード操作
-        getSelectedNode(name) {
-            const el = _getEl(name);
-            return el ? el.dataset.lastSelected ?? null : null;
-        },
-        expandAll(name) {
-            const el = _getEl(name);
-            if (!el) return;
-            el.querySelectorAll("[data-children]").forEach(c => { c.style.display = "block"; });
-            el.querySelectorAll(".tv-arrow").forEach(a => { a.textContent = "▼"; });
-        },
-        collapseAll(name) {
-            const el = _getEl(name);
-            if (!el) return;
-            el.querySelectorAll("[data-children]").forEach(c => { c.style.display = "none"; });
-            el.querySelectorAll(".tv-arrow").forEach(a => { a.textContent = "▶"; });
-        },
-
         // progressBar 操作
         setProgress(name, value) { this.setValue(name, value); },
         getProgress(name) { return this.getValue(name); },

@@ -696,6 +696,48 @@ function _parseFormDesignYaml(text) {
     return { desc, tables };
 }
 
+// AI（フォームデザイン）出力テキストを配列としてパースする。
+// 1. まずそのままJSON.parseを試みる
+// 2. 失敗した場合、AIが前後に説明文を付けてしまうケースを救うため、
+//    最初の "[" ～ 最後の "]" を抜き出して再度パースを試みる
+// 成功時はウィジェット配列を、失敗時（配列でない場合含む）はnullを返す。
+function parseFormDesignJson(text) {
+    const tryParse = (s) => {
+        try {
+            const v = JSON.parse(s);
+            return Array.isArray(v) ? v : null;
+        } catch (e) {
+            return null;
+        }
+    };
+    const direct = tryParse(text);
+    if (direct) return direct;
+    const s = text.indexOf("[");
+    const e = text.lastIndexOf("]");
+    if (s !== -1 && e !== -1 && e > s) {
+        const extracted = tryParse(text.slice(s, e + 1));
+        if (extracted) return extracted;
+    }
+    return null;
+}
+
+// AI出力の解析に失敗した際、生データを確認できるモーダルを表示する。
+// テキストエリアに生データを表示し、コピーして原因調査できるようにする。
+function openAiRawOutputModal(rawText) {
+    showModal(
+        mhdrHTML("⚠ AI出力の解析に失敗しました") +
+        "<div class='mbody' style='display:flex;flex-direction:column;gap:8px'>" +
+        "<div style='color:var(--text2);font-size:13px'>" +
+        "AIの生データ（JSON形式として解釈できませんでした）。内容を確認・コピーできます。" +
+        "</div>" +
+        "<textarea readonly style='width:100%;height:320px;font-family:monospace;font-size:12px'>" +
+        esc(rawText) +
+        "</textarea>" +
+        "</div>" +
+        mfootHTML([{ label: "閉じる", action: "closeModal()" }])
+    );
+}
+
 async function formDesignAiGenerate() {
     if (getProjectData().widgets.length > 0) {
         const ok = await vja.app.showConfirm(
@@ -747,12 +789,11 @@ async function formDesignAiGenerate() {
         userPrompt: userPrompt,
         loadingMsg: "画面デザインを生成中…",
         onSuccess: async (generated) => {
-            let items2;
-            try {
-                items2 = JSON.parse(generated);
-            } catch (e) {
+            const items2 = parseFormDesignJson(generated);
+            if (!items2) {
                 showToast("AI出力の解析に失敗しました（JSON形式ではありません）", 5000);
-                window.vja?.log?.warn?.("[FormDesignAi] JSON parse failed: " + e.message + " raw=" + generated.slice(0, 300));
+                window.vja?.log?.warn?.("[FormDesignAi] JSON parse failed. raw=" + generated.slice(0, 300));
+                openAiRawOutputModal(generated);
                 if (btn) btn.disabled = false;
                 return;
             }
@@ -1379,4 +1420,5 @@ Object.assign(window, {
     openAiConfig, aiCfgModelListHtml, aiCfgToggleRouter, aiCfgToggleEnabled,
     aiCfgFetchModels, saveAiConfig,
     editorSearch, openFormDesignAi, formDesignAiGenerate, saveFormDesignDraft,
+    parseFormDesignJson, openAiRawOutputModal,
 });
