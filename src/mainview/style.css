@@ -6,12 +6,12 @@
 
 /* ── 注記: .modal-btn クラスについて ──
    JS側の複数箇所（vja-app-config.js, vja-modal.js, vja-table-validation.js等）で
-   class="modal-btn" が使われているが、本CSSファイルに専用のスタイル定義は存在しない。
-   これはCSS側の記載漏れではなく、ブラウザ標準のボタン外観（ネイティブスタイル）で
-   意図的に表示している箇所であり、クリック等の機能には問題がない。
-   「未定義だから壊れている」と早合点して修正しないこと（過去にAIがこれを
-   不具合と誤認した実績があるため、念のため明記しておく）。
-   ダークテーマに合わせた見た目にしたい場合のみ、専用スタイルを追加すること。 */
+   class="modal-btn" が使われている。以前は本CSSファイルに専用のスタイル定義が
+   存在しない状態だったが、それにより「ゾンビのように未スタイルのボタンが
+   繰り返し出現する」問題が起きたため、共通スタイルを定義した
+   （実体は下記 .modal-btn ルールを参照）。
+   新たに.modal-btnを使う箇所を追加する際は、このルールがベースになる前提で
+   個別の style 上書き（色変更等）のみ行うこと。 */
 
 /* ── フォーカス時の枠線（全入力要素で統一） ── */
 input:focus, textarea:focus, select:focus {
@@ -1112,6 +1112,25 @@ body {
 
 .mfoot button.pri:hover {
     background: #5a7ef0;
+}
+
+/* ── .modal-btn: モーダル内の汎用ボタン（.mfoot外で使う単発ボタン用） ──
+   vja-app-config.js/vja-modal.js/vja-table-validation.js等、複数箇所で
+   使い回される想定の共通クラス。個別に style='color:...' 等で上書きされる
+   ことがあるが、そのベースとなる見た目（枠線・背景・余白）をここで定義する。
+   新しく modal-btn を使う箇所を追加する場合、ここにスタイルがあることを
+   前提にしてよい（無いと誤認して都度別クラス/インラインで対応しないこと）。 */
+.modal-btn {
+    padding: 5px 16px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--text);
+    cursor: pointer;
+    font-size: var(--ui-font-size);
+}
+.modal-btn:hover {
+    background: var(--bg4);
 }
 
 textarea.yaml::selection {
