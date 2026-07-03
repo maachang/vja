@@ -606,10 +606,8 @@ await vja.db.query: { scope: DB_SELECT, args: [sql:string, params?:any[]], retur
 await vja.db.execute: { scope: DB_WRITE, args: [sql:string, params?:any[]], return: "{changes:number, lastInsertRowid:number}|null", desc: "SQL INSERT/UPDATE/DELETE." }
 await vja.db.transaction: { scope: DB_TRANSACTION, args: [statements:object[]], return: "boolean", desc: "Multiple SQLs. Rollback and returns false on failure." }
 
-vja.widget.get: { scope: UI_WIDGET_GET, args: [name:string], return: "string|number|boolean|null", desc: "Gets current value from UI Widget. Alias: getValue" }
-vja.widget.getValue: { scope: UI_WIDGET_GET, args: [name:string], return: "string|number|boolean|null", desc: "Gets current value from UI Widget." }
-vja.widget.set: { scope: UI_WIDGET_SET, args: [name:string, value:any, options?:object], return: "void", desc: "Sets value to UI Widget (text:str, checkbox:bool, select:array, datagrid:object[]). Alias: setValue" }
-vja.widget.setValue: { scope: UI_WIDGET_SET, args: [name:string, value:any, options?:object], return: "void", desc: "Sets value to UI Widget." }
+vja.widget.get: { scope: UI_WIDGET_GET, args: [name:string], return: "string|number|boolean|null", desc: "Sets value to UI Widget (text:str, checkbox:bool, select:array, datagrid:object[]). MANDATORY: This is the ONLY way to update UI data. Never mutate objects retrieved from get()." }
+vja.widget.set: { scope: UI_WIDGET_SET, args: [name:string, value:any, options?:object], return: "void", desc: "Sets value to UI Widget (text:str, checkbox:bool, select:array, datagrid:object[]). MANDATORY: This is the ONLY way to update UI data. Never mutate objects retrieved from get()." }
 vja.widget.getAllInputs: { scope: UI_WIDGET_ALL, args: [], return: "Record<string,any>", desc: "Gets all active UI inputs in a form as {name: value}." }
 vja.widget.setVisible: { scope: UI_WIDGET_VISIBILITY, args: [name:string, visible:boolean], return: "void", desc: "Toggles UI display (true=show, false=hide)." }
 vja.widget.show: { scope: UI_WIDGET_STATE, args: [name:string], return: "void" }
