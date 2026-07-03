@@ -87,7 +87,7 @@ function cancelAiGenerate() {
 // - onCancel: キャンセル時のコールバック（省略可）
 // - onError: エラー時のコールバック（省略可）
 async function runAiGenerate(options) {
-    const { systemPrompt, userPrompt, onSuccess, onCancel, onError, loadingMsg } = options;
+    const { systemPrompt, userPrompt, onSuccess, onCancel, onError, loadingMsg, temperatureOverride } = options;
     const hasApiKey = !!getProjectData().aiConfig.apiKey;
     const isRouterOn = !!getProjectData().aiConfig.routerMode;
     const endpoint = hasApiKey ? "https://api.openai.com" : getProjectData().aiConfig.endpoint;
@@ -103,7 +103,13 @@ async function runAiGenerate(options) {
         ],
         stream: false
     };
-    if (getProjectData().aiConfig.temperature !== "" && getProjectData().aiConfig.temperature !== undefined) body.temperature = getProjectData().aiConfig.temperature;
+    // temperatureOverride: リトライ時など、その回だけ一時的にtemperatureを
+    // 上書きしたい場合に指定する（プロジェクト設定自体は変更しない）。
+    if (temperatureOverride !== undefined) {
+        body.temperature = temperatureOverride;
+    } else if (getProjectData().aiConfig.temperature !== "" && getProjectData().aiConfig.temperature !== undefined) {
+        body.temperature = getProjectData().aiConfig.temperature;
+    }
     if (getProjectData().aiConfig.maxTokens) body.max_tokens = getProjectData().aiConfig.maxTokens;
     if (modelName) body.model = modelName;
     // 推論モードOFFの場合、各サーバー向けのパラメータを付与

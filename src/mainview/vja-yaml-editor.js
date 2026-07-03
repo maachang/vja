@@ -20,6 +20,14 @@
      - openFormDesignAi() / formDesignAiGenerate()（AIによる画面デザイン
        自動生成。ウィジェット構成JSON配列を生成しapplyAiFormDesign()
        ［vja-designer.js］へ渡して現在フォームに一括反映する）
+     - validateGeneratedJs() / annotateUnknownApis() / manualRetryAiFix()
+       （yamlAiGenerate()生成結果の検証。構文チェックと、prompt-def.js の
+       VJA_USE_FRONT_JS_INFO/VJA_USE_BACK_JS_INFO から自動抽出した
+       APIホワイトリストとの照合を行う。フロント/バックエンドは必ず
+       分離して扱うこと＝混在させると誤検知の方向を誤る。
+       検証NG時は1回だけ自動修正を再試行し、それでもNGなら生成は
+       止めずに警告バナー［showAiValidationWarningBanner()］を表示して
+       人間の判断に委ねる）
      - editorKeyHandler() 等のエディタ内キー操作
    このファイルは vja-defs.js / vja-designer.js / vja-modal.js に依存する。
 ═══════════════════════════════════════════════════════════════ */
@@ -461,6 +469,265 @@ function buildTablesCtxText(targetTables) {
         : "  （テーブル未定義）";
 }
 
+/* ═══════════════════════════════════════════
+  生成JS検証（構文チェック・APIホワイトリスト検証）
+  yamlAiGenerate() のAI生成結果に対し、明らかな問題
+  （構文エラー・存在しないvja.*API呼び出し）を機械的に検出する。
+  ホワイトリストは prompt-def.js の VJA_USE_FRONT_JS_INFO /
+  VJA_USE_BACK_JS_INFO（AIに実際渡している説明文と同一ソース）
+  から自動抽出するため、APIの追加・変更・削除があっても
+  二重管理にならず自動的に追従する。
+  フロント/バックエンドで利用可能なAPIが異なるため、
+  ホワイトリストは絶対に混在させないこと（isAppEventで出し分ける）。
+═══════════════════════════════════════════ */
+// パース結果のキャッシュ（セッション中はprompt-def.jsの内容が変化しないため、
+// 初回のみ正規表現抽出を行い、以降は再利用する）
+let _vjaApiWhitelistCache = null; // { front: Set<string>, back: Set<string> }
+
+// VJA_USE_FRONT_JS_INFO / VJA_USE_BACK_JS_INFO のテキストから
+// "vja.xxx.yyy(" / "console.xxx(" のパターンを全て抽出しSetにする。
+// 「関数名:」行だけでなく、説明文・使用例中に登場するものも含めて拾う
+// （vja.trigger.click の説明文中にある vja.trigger.focus 等のバリエーションも
+//   これにより自動的にホワイトリスト対象となる）。
+function _extractVjaApiSet(text) {
+    const set = new Set();
+    const re = /\b((?:vja(?:\.\w+)+)|(?:console\.\w+))\s*\(/g;
+    let m;
+    while ((m = re.exec(text || "")) !== null) set.add(m[1]);
+    return set;
+}
+function _getVjaApiWhitelist() {
+    if (!_vjaApiWhitelistCache) {
+        _vjaApiWhitelistCache = {
+            front: _extractVjaApiSet(_PROMPT_DEF.VJA_USE_FRONT_JS_INFO),
+            back: _extractVjaApiSet(_PROMPT_DEF.VJA_USE_BACK_JS_INFO),
+        };
+    }
+    return _vjaApiWhitelistCache;
+}
+
+// 構文チェックのみ行う（実行はしない）。
+// async関数本体として構文解析させることで、トップレベルawaitを許容しつつ
+// 実際にコードが実行されることは無い（関数を生成するだけで呼び出さない）。
+function _checkJsSyntax(code) {
+    try {
+        new Function("return async function(){\n" + code + "\n}");
+        return null;
+    } catch (e) {
+        return e.message || String(e);
+    }
+}
+
+// コード内の vja.*/console.* 呼び出しを走査し、ホワイトリストに
+// 存在しないものを行番号付きで検出する。
+// 戻り値: [{ line: 1-indexed行番号, api: "vja.xxx.yyy" }, ...]
+function _findUnknownApis(code, isAppEvent) {
+    const whitelist = isAppEvent ? _getVjaApiWhitelist().back : _getVjaApiWhitelist().front;
+    const lines = code.split("\n");
+    const found = [];
+    const seen = new Set(); // 同一行・同一APIの重複検出を防ぐ
+    const re = /\b((?:vja(?:\.\w+)+)|(?:console\.\w+))\s*\(/g;
+    lines.forEach((line, idx) => {
+        let m;
+        re.lastIndex = 0;
+        while ((m = re.exec(line)) !== null) {
+            const api = m[1];
+            if (!whitelist.has(api)) {
+                const key = idx + ":" + api;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    found.push({ line: idx + 1, api });
+                }
+            }
+        }
+    });
+    return found;
+}
+
+// VJAのイベント処理コードとして構造的に禁止されているパターンを検出する。
+// システムプロンプト（prompt-def.js）で明示的に禁止している構造の中でも、
+// 機械的に検出可能なものを対象とする。
+// 戻り値: [{ line: 1-indexed行番号, message: string }, ...]
+const _FORBIDDEN_PATTERNS = [
+    { re: /\brequire\s*\(/, message: "require() の使用（VJAではNode.js形式のrequireは使用できません）" },
+    { re: /\bmodule\.exports\b/, message: "module.exports の使用（VJAではモジュール構文は不要です）" },
+    { re: /^\s*(?:async\s+)?function\s+\w+\s*\(/, message: "ヘルパー関数の定義（インライン記述ルール違反。関数定義は禁止されています）" },
+    { re: /\.then\s*\(/, message: ".then() の使用（Promiseチェーンは禁止。awaitを使用してください）" },
+    { re: /\.catch\s*\(/, message: ".catch() の使用（Promiseチェーンは禁止。try/catchとawaitを使用してください）" },
+];
+function _findForbiddenPatterns(code) {
+    const lines = code.split("\n");
+    const found = [];
+    lines.forEach((line, idx) => {
+        _FORBIDDEN_PATTERNS.forEach(({ re, message }) => {
+            if (re.test(line)) found.push({ line: idx + 1, message });
+        });
+    });
+    return found;
+}
+
+// 生成コードを検証する。戻り値: { ok, syntaxError, unknownApis, forbiddenPatterns }
+function validateGeneratedJs(code, isAppEvent) {
+    const syntaxError = _checkJsSyntax(code);
+    const unknownApis = _findUnknownApis(code, isAppEvent);
+    const forbiddenPatterns = _findForbiddenPatterns(code);
+    return {
+        ok: !syntaxError && unknownApis.length === 0 && forbiddenPatterns.length === 0,
+        syntaxError, unknownApis, forbiddenPatterns,
+    };
+}
+
+// 未知API・禁止パターンが検出された行の末尾に、指摘コメントを挿入する。
+// （構文エラーは行の特定精度が低いため、行コメント挿入の対象外とする）
+function annotateUnknownApis(code, unknownApis, forbiddenPatterns) {
+    const byLine = new Map();
+    (unknownApis || []).forEach(({ line, api }) => {
+        if (!byLine.has(line)) byLine.set(line, []);
+        byLine.get(line).push("未知のAPI: " + api + " は存在しません（VJAランタイムを確認してください）");
+    });
+    (forbiddenPatterns || []).forEach(({ line, message }) => {
+        if (!byLine.has(line)) byLine.set(line, []);
+        byLine.get(line).push(message);
+    });
+    if (byLine.size === 0) return code;
+    return code.split("\n").map((lineText, idx) => {
+        const msgs = byLine.get(idx + 1);
+        if (!msgs) return lineText;
+        return lineText + "  // ⚠ " + msgs.join(" / ");
+    }).join("\n");
+}
+
+// リトライ時に使うtemperatureを決定する。
+// 現在の設定が0（決め打ち・ブレなし）の場合のみ、リトライ時は0.5に引き上げて
+// 出力にブレを持たせる（＝同じ間違いを繰り返さないための「ガチャ」要素）。
+// 0以外の値が明示的に設定されている場合はユーザーの意図を尊重し、変更しない。
+// プロジェクト設定自体（aiConfig.temperature）は書き換えない、その場限りの上書き。
+function _getRetryTemperature() {
+    const t = getProjectData().aiConfig.temperature;
+    return (t === 0 || t === "0") ? 0.5 : undefined;
+}
+
+// 検証NG時、AIに修正を依頼するためのユーザープロンプトを組み立てる。
+// 元のユーザープロンプト＋検出した問題点＋直前の生成コードを添えて、
+// 修正後のコードのみを出力するよう指示する。
+function _buildAiFixPrompt(originalUserPrompt, code, validation) {
+    const issues = [];
+    if (validation.syntaxError) issues.push("- 構文エラー: " + validation.syntaxError);
+    validation.unknownApis.forEach(({ line, api }) => {
+        issues.push("- " + line + "行目付近: 存在しないAPI \"" + api + "\" が使用されています。VJAランタイムに実在するAPIのみを使用してください。");
+    });
+    validation.forbiddenPatterns.forEach(({ line, message }) => {
+        issues.push("- " + line + "行目付近: " + message);
+    });
+    return originalUserPrompt +
+        "\n\n[自動検証で以下の問題が検出されました。問題を修正し、修正後のコードのみを出力してください]\n" +
+        issues.join("\n") +
+        "\n\n[検出時のコード]\n```javascript\n" + code + "\n```";
+}
+
+// 検証NGのまま生成が確定した際の警告バナー用コンテキスト
+// （手動リトライボタンから参照するため保持しておく）
+let _lastAiValidationCtx = null;
+
+// 検証NG（構文エラー・未知API・禁止パターン）の内容をまとめた警告バナーを、
+// 現在開いているYAMLエディタモーダルの左ペイン上部に表示する。
+// トーストと異なり、ユーザーが閉じるまで表示され続ける。
+function showAiValidationWarningBanner(validation) {
+    const left = document.querySelector(".yaml-editor-left");
+    if (!left) return;
+    const old = document.getElementById("ai-validation-banner");
+    if (old) old.remove();
+    const banner = document.createElement("div");
+    banner.id = "ai-validation-banner";
+    if (validation.ok) {
+        // 検証OK：バナーは自動で消さず、再修正を依頼できる状態のまま維持する
+        banner.style.cssText = "background:#2a4a2e;color:#d8ffe0;padding:10px 14px;font-size:12px;border-bottom:1px solid #3a7a4a;flex-shrink:0";
+        banner.innerHTML =
+            "<div style='font-weight:bold;margin-bottom:8px'>✅ 検証OKになりました（未知のAPI・構文エラーは検出されていません）</div>" +
+            "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "manualRetryAiFix()") + ">🤖 もう一度AIに修正を依頼</button> " +
+            "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "dismissAiValidationBanner()") + ">閉じる</button>";
+        left.insertBefore(banner, left.firstChild);
+        return;
+    }
+    const items = [];
+    if (validation.syntaxError) items.push("・構文エラーの可能性: " + esc(validation.syntaxError));
+    validation.unknownApis.forEach(({ line, api }) => {
+        items.push("・" + line + "行目付近: 未知のAPI「" + esc(api) + "」");
+    });
+    validation.forbiddenPatterns.forEach(({ line, message }) => {
+        items.push("・" + line + "行目付近: " + esc(message));
+    });
+    banner.style.cssText = "background:#4a2a2a;color:#ffd8d8;padding:10px 14px;font-size:12px;border-bottom:1px solid #7a3a3a;flex-shrink:0";
+    banner.innerHTML =
+        "<div style='font-weight:bold;margin-bottom:4px'>⚠ 生成コードに問題の可能性があります（自動修正後も検出）</div>" +
+        "<div style='white-space:pre-line;margin-bottom:8px'>" + items.join("\n") + "</div>" +
+        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "manualRetryAiFix()") + ">🤖 もう一度AIに修正を依頼</button> " +
+        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "dismissAiValidationBanner()") + ">このまま閉じる</button>";
+    left.insertBefore(banner, left.firstChild);
+}
+function dismissAiValidationBanner() {
+    document.getElementById("ai-validation-banner")?.remove();
+}
+// 警告バナーの「もう一度AIに修正を依頼」ボタン用。
+// リトライ実行前に、前回付与済みの検証チェック処理の自動挿入行を取り除く。
+// （manualRetryAiFixは複数回呼ばれ得るため、無いと呼ぶたびに二重・三重に
+//   挿入されてしまう）
+function _stripValidationWrapper(code, validationName) {
+    if (!validationName) return code;
+    const prefix = "// 検証チェック処理(自動追加).\n" +
+        `if (!await vja.validate.run(${JSON.stringify(validationName)})) return;\n\n`;
+    return code.startsWith(prefix) ? code.slice(prefix.length) : code;
+}
+
+// 現在js-taに表示されている内容を対象に、再検証→修正依頼を1回実行する。
+async function manualRetryAiFix() {
+    if (!_lastAiValidationCtx) return;
+    const { sysPrompt, userPrompt, isAppEvent, wid, evName, isFormEvent, validationName } = _lastAiValidationCtx;
+    const jsTa = $("js-ta");
+    const currentCode = _stripValidationWrapper(jsTa?.value || "", validationName);
+    const validation = validateGeneratedJs(currentCode, isAppEvent);
+    if (validation.ok) { dismissAiValidationBanner(); return; }
+    const fixUserPrompt = _buildAiFixPrompt(userPrompt, currentCode, validation);
+    await runAiGenerate({
+        systemPrompt: sysPrompt,
+        userPrompt: fixUserPrompt,
+        loadingMsg: "検出した問題を自動修正中…",
+        temperatureOverride: _getRetryTemperature(),
+        onSuccess: async (fixed) => {
+            const revalidated = validateGeneratedJs(fixed, isAppEvent);
+            let codeForEditor = (revalidated.unknownApis.length > 0 || revalidated.forbiddenPatterns.length > 0)
+                ? annotateUnknownApis(fixed, revalidated.unknownApis, revalidated.forbiddenPatterns)
+                : fixed;
+            if (validationName) {
+                codeForEditor = "// 検証チェック処理(自動追加).\n" +
+                    `if (!await vja.validate.run(${JSON.stringify(validationName)})) return;\n\n${codeForEditor}`;
+            }
+            // runAiGenerate() 実行中に modal-root がローディング表示へ差し替えられ、
+            // 完了時に closeModal() されるため、YAMLエディタのモーダル自体が
+            // 一旦消えている。ここで開き直してから反映する必要がある。
+            if (isFormEvent) {
+                openFormYaml(evName);
+            } else if (isAppEvent) {
+                openAppEvents(evName);
+            } else {
+                const w2 = getWidget(wid);
+                if (!w2) return;
+                openYaml(wid, evName);
+            }
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                const newJsTa = $("js-ta");
+                if (newJsTa) newJsTa.value = codeForEditor;
+                yamlTabSwitch("js");
+                jsHlUpdate();
+                showAiValidationWarningBanner(revalidated);
+                if (revalidated.ok) showToast("✅ 修正が完了しました");
+            }));
+        },
+        onCancel: async () => { },
+        onError: async () => { },
+    });
+}
+
 async function yamlAiGenerate(wid, evName) {
     const isAppEvent = (wid === "appev");
     const isFormEvent = (wid === "form");
@@ -590,13 +857,45 @@ async function yamlAiGenerate(wid, evName) {
                     (_, inner) => inner.trim()
                 );
             };
-            const unwrapped = _unwrap(clean);
+            let unwrapped = _unwrap(clean);
+
+            // ── 生成結果の自動検証（構文チェック・APIホワイトリスト） ──
+            // 問題があれば1回だけAIに自動修正を依頼し、それでも解消しない場合は
+            // 警告バナーで人間に判断を委ねる（生成自体は止めない）。
+            let validation = validateGeneratedJs(unwrapped, isAppEvent);
+            if (!validation.ok) {
+                if (status) status.textContent = "⏳ 検出した問題を自動修正中…";
+                const fixUserPrompt = _buildAiFixPrompt(userPrompt, unwrapped, validation);
+                let retryCode = null;
+                await runAiGenerate({
+                    systemPrompt: sysPrompt,
+                    userPrompt: fixUserPrompt,
+                    loadingMsg: "検出した問題を自動修正中…",
+                    temperatureOverride: _getRetryTemperature(),
+                    onSuccess: async (fixed) => { retryCode = _unwrap(fixed); },
+                    onCancel: async () => { },
+                    onError: async () => { },
+                });
+                if (retryCode) {
+                    unwrapped = retryCode;
+                    validation = validateGeneratedJs(unwrapped, isAppEvent);
+                }
+                // retryCodeがnull（リトライ自体が失敗）の場合も、元のunwrapped/validationのまま続行し
+                // 後段の警告バナーでユーザーに通知する
+            }
+
+            // 未知API・禁止パターンが検出された行にのみ、指摘コメントを挿入する
+            // （構文エラーは行特定の精度が低いため行コメント対象外。バナーでのみ通知）
+            const codeForEditor = (validation.unknownApis.length > 0 || validation.forbiddenPatterns.length > 0)
+                ? annotateUnknownApis(unwrapped, validation.unknownApis, validation.forbiddenPatterns)
+                : unwrapped;
+
             // バリデーション定義がある場合、JSの先頭に呼び出しを挿入
             // vja.validate.run('定義名') → false=エラー時はreturnで処理中断
             const finalCode = validationName
                 ? "// 検証チェック処理(自動追加).\n" +
-                `if (!await vja.validate.run(${JSON.stringify(validationName)})) return;\n\n${unwrapped}`
-                : unwrapped;
+                `if (!await vja.validate.run(${JSON.stringify(validationName)})) return;\n\n${codeForEditor}`
+                : codeForEditor;
             // モーダルを再表示してJSタブに切り替え
             // ウィジェット/フォーム/アプリイベントで「開き直す」関数が異なるため出し分ける
             if (isFormEvent) {
@@ -616,6 +915,10 @@ async function yamlAiGenerate(wid, evName) {
                 if (status) status.textContent = "✅ 生成完了 (JavaScriptタブを確認)";
                 const elapsed = Math.round((Date.now() - aiStartTime) / 1000);
                 showToast("✅ AI生成完了（" + elapsed + "秒）", 5000);
+                if (!validation.ok) {
+                    _lastAiValidationCtx = { sysPrompt, userPrompt, isAppEvent, wid, evName, isFormEvent, validationName };
+                    showAiValidationWarningBanner(validation);
+                }
             }));
         },
         onCancel: async () => {
@@ -1421,4 +1724,6 @@ Object.assign(window, {
     aiCfgFetchModels, saveAiConfig,
     editorSearch, openFormDesignAi, formDesignAiGenerate, saveFormDesignDraft,
     parseFormDesignJson, openAiRawOutputModal,
+    validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
+    dismissAiValidationBanner, manualRetryAiFix,
 });

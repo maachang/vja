@@ -4,6 +4,15 @@
     padding: 0;
 }
 
+/* ── 注記: .modal-btn クラスについて ──
+   JS側の複数箇所（vja-app-config.js, vja-modal.js, vja-table-validation.js等）で
+   class="modal-btn" が使われているが、本CSSファイルに専用のスタイル定義は存在しない。
+   これはCSS側の記載漏れではなく、ブラウザ標準のボタン外観（ネイティブスタイル）で
+   意図的に表示している箇所であり、クリック等の機能には問題がない。
+   「未定義だから壊れている」と早合点して修正しないこと（過去にAIがこれを
+   不具合と誤認した実績があるため、念のため明記しておく）。
+   ダークテーマに合わせた見た目にしたい場合のみ、専用スタイルを追加すること。 */
+
 /* ── フォーカス時の枠線（全入力要素で統一） ── */
 input:focus, textarea:focus, select:focus {
     border-color: var(--accent) !important;
