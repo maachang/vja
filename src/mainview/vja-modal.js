@@ -125,7 +125,7 @@ async function runAiGenerate(options) {
     let res = null;
     try {
         // リクエスト送信前ログ
-        window.vja?.log?.debug?.("[AI] request: endpoint=" + endpoint + " model=" + (modelName || "none") + " systemLen=" + systemPrompt.length + " userLen=" + userPrompt.length);
+        window.vja?.log?.debug?.("[AI] request: endpoint=" + endpoint + " model=" + (modelName || "none") + " temperature=" + (body.temperature !== undefined ? body.temperature : "(server default)") + " systemLen=" + systemPrompt.length + " userLen=" + userPrompt.length);
         startTime = Date.now(); // 開始時間.
         const fetchReq = window.vja.fetch(endpoint + "/v1/chat/completions", {
             method: "POST",

@@ -129,6 +129,7 @@ function openYaml(wid, evName) {
     const isAppEvent = (wid === "appev");
     pvRegister("yamlSave", () => saveYaml(wid, evName));
     pvRegister("yamlAiGen", () => yamlAiGenerate(wid, evName));
+    pvRegister("yamlAiGenRandom", () => yamlAiGenerate(wid, evName, _getBoostedTemperature()));
     showModal(buildYamlEditorHTML(cur, curJs, true, mhdrHTML("📋 " + esc(w.name) + " — " + esc(evName)), "", null, isAppEvent));
     initYamlEditorModal(cur, curJs);
 }
@@ -597,14 +598,15 @@ function annotateUnknownApis(code, unknownApis, forbiddenPatterns) {
     }).join("\n");
 }
 
-// リトライ時に使うtemperatureを決定する。
-// 現在の設定が0（決め打ち・ブレなし）の場合のみ、リトライ時は0.5に引き上げて
-// 出力にブレを持たせる（＝同じ間違いを繰り返さないための「ガチャ」要素）。
-// 0以外の値が明示的に設定されている場合はユーザーの意図を尊重し、変更しない。
+// 「🎲 ランダム性を上げて再生成」ボタン用のtemperatureを決定する。
+// 現在の設定値に+0.3した値を返す（未設定の場合は0.7固定）。
+// 上限は一般的なAPIの上限に合わせ2.0でクランプする。
 // プロジェクト設定自体（aiConfig.temperature）は書き換えない、その場限りの上書き。
-function _getRetryTemperature() {
+function _getBoostedTemperature() {
     const t = getProjectData().aiConfig.temperature;
-    return (t === 0 || t === "0") ? 0.5 : undefined;
+    if (t === "" || t == null) return 0.7;
+    const n = Number(t);
+    return Number.isFinite(n) ? Math.min(n + 0.3, 2) : 0.7;
 }
 
 // 検証NG時、AIに修正を依頼するためのユーザープロンプトを組み立てる。
@@ -692,7 +694,6 @@ async function manualRetryAiFix() {
         systemPrompt: sysPrompt,
         userPrompt: fixUserPrompt,
         loadingMsg: "検出した問題を自動修正中…",
-        temperatureOverride: _getRetryTemperature(),
         onSuccess: async (fixed) => {
             const revalidated = validateGeneratedJs(fixed, isAppEvent);
             let codeForEditor = (revalidated.unknownApis.length > 0 || revalidated.forbiddenPatterns.length > 0)
@@ -728,7 +729,7 @@ async function manualRetryAiFix() {
     });
 }
 
-async function yamlAiGenerate(wid, evName) {
+async function yamlAiGenerate(wid, evName, temperatureOverride) {
     const isAppEvent = (wid === "appev");
     const isFormEvent = (wid === "form");
     const w = (isAppEvent || isFormEvent) ? null : getWidget(wid);
@@ -753,6 +754,7 @@ async function yamlAiGenerate(wid, evName) {
 
     const addPrompt = $("ai-prompt-in")?.value || "";
     const btn = $("ai-gen-btn");
+    const randomBtn = $("ai-gen-random-btn");
     const status = $("ai-status");
     const aiStartTime = Date.now(); // AI実行開始時刻を記録
 
@@ -836,18 +838,21 @@ async function yamlAiGenerate(wid, evName) {
         : "JavaScriptコードを生成しますか？\n※実行前に現在の内容を保存します。";
     if (!(await vja.app.showConfirm(confirmMsg))) {
         if (btn) btn.disabled = false;
+        if (randomBtn) randomBtn.disabled = false;
         if (status) status.textContent = "";
         return;
     }
     // AI生成前にデータを保存（モーダルは閉じない）
     _saveYamlData(wid, evName);
     if (btn) btn.disabled = true;
+    if (randomBtn) randomBtn.disabled = true;
     if (status) status.textContent = "⏳ コンテキスト収集中…";
     showLoadingModal("AI生成中…");
 
     await runAiGenerate({
         systemPrompt: sysPrompt,
         userPrompt: userPrompt,
+        temperatureOverride: temperatureOverride,
         onSuccess: async (clean) => {
             // async function handleXxx() { ... } のラッパーを自動除去
             // 3Bモデル等が関数ラッパーを生成してしまう場合の後処理
@@ -862,6 +867,9 @@ async function yamlAiGenerate(wid, evName) {
             // ── 生成結果の自動検証（構文チェック・APIホワイトリスト） ──
             // 問題があれば1回だけAIに自動修正を依頼し、それでも解消しない場合は
             // 警告バナーで人間に判断を委ねる（生成自体は止めない）。
+            // ※temperatureの自動引き上げは行わない（通常のtemperature設定を
+            //   そのまま使う）。ランダム性を上げて試したい場合は、エディタの
+            //   「🎲 ランダム性を上げて再生成」ボタンを使う。
             let validation = validateGeneratedJs(unwrapped, isAppEvent);
             if (!validation.ok) {
                 if (status) status.textContent = "⏳ 検出した問題を自動修正中…";
@@ -871,7 +879,7 @@ async function yamlAiGenerate(wid, evName) {
                     systemPrompt: sysPrompt,
                     userPrompt: fixUserPrompt,
                     loadingMsg: "検出した問題を自動修正中…",
-                    temperatureOverride: _getRetryTemperature(),
+                    temperatureOverride: temperatureOverride,
                     onSuccess: async (fixed) => { retryCode = _unwrap(fixed); },
                     onCancel: async () => { },
                     onError: async () => { },
@@ -929,6 +937,7 @@ async function yamlAiGenerate(wid, evName) {
         },
     });
     if (btn) btn.disabled = false;
+    if (randomBtn) randomBtn.disabled = false;
 }
 
 /* ═══════════════════════════════════════════
@@ -1453,6 +1462,8 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         "<input id='ai-prompt-in' placeholder='AIへの追加指示（任意）' style='flex:1'>" +
         "<button class='yaml-ai-btn' id='ai-gen-btn'" + evtAttr("onmousedown", "pvCall(\"yamlAiGen\")") + ">" +
         (aiEnabled ? "🤖 AI生成" : "🤖 AI生成（設定要）") + "</button>" +
+        "<button class='yaml-ai-btn' id='ai-gen-random-btn' title='temperatureを一時的に上げて再生成します（同じ間違いを繰り返す場合に）'" +
+        evtAttr("onmousedown", "pvCall(\"yamlAiGenRandom\")") + ">🎲 ランダム性を上げて再生成</button>" +
         "<span class='yaml-ai-right-spacer' id='ai-status'></span>" +
         "</div>" +
         "<div style='display:flex;align-items:center;gap:4px'>" +
