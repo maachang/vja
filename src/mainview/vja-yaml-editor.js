@@ -21,20 +21,26 @@
        自動生成。ウィジェット構成JSON配列を生成しapplyAiFormDesign()
        ［vja-designer.js］へ渡して現在フォームに一括反映する）
      - validateGeneratedJs() / annotateUnknownApis() / manualRetryAiFix()
-       （yamlAiGenerate()生成結果の検証。以下4種を検出する:
+       （yamlAiGenerate()生成結果の検証。以下を検出する:
        1. 構文エラー
        2. 未知API（prompt-def.js の VJA_USE_FRONT_JS_INFO/VJA_USE_BACK_JS_INFO
           から自動抽出したホワイトリストに無い vja系/console系 の呼び出し）
-       3. 禁止パターン（require/ヘルパー関数定義/.then/.catch等）
+       3. 禁止パターン（require/ヘルパー関数定義/.then/.catch/
+          window.alert・confirm・prompt/window.location/new Promise 等）
        4. await漏れ（同ドキュメントで「await付き」と明記されているAPIが
           await無しで呼ばれている）
        5. 未知のウィジェット名（vja.widget.get/set等に、現在のフォームに
           存在しないウィジェット名が文字列リテラルで渡されている）
        フロント/バックエンドのAPI一覧は必ず分離して扱うこと＝混在させると
        誤検知の方向を誤る。
-       検証NG時は1回だけ自動修正を再試行し、それでもNGなら生成は
-       止めずに警告バナー［showAiValidationWarningBanner()］を表示して
-       人間の判断に委ねる）
+       上記1〜5は検証NGとして扱い、1回だけ自動修正を再試行、それでもNGなら
+       生成は止めずに警告バナー［showAiValidationWarningBanner()］を表示して
+       人間の判断に委ねる。
+       別枠として styleWarnings（var/let/const の使い分けルール違反）も
+       検出するが、こちらは検証NG・自動リトライの対象に含めない
+       （生成コードは毎回新規スコープで実行されるため実害が無く、小型
+       モデルは指摘してもvarに直しきれないことが多いため）。行コメントの
+       挿入のみ行い、人間の目視修正に委ねる。）
      - editorKeyHandler() 等のエディタ内キー操作
    このファイルは vja-defs.js / vja-designer.js / vja-modal.js に依存する。
 ═══════════════════════════════════════════════════════════════ */
@@ -657,6 +663,9 @@ const _FORBIDDEN_PATTERNS = [
     { re: /^\s*(?:async\s+)?function\s+\w+\s*\(/, message: "ヘルパー関数の定義（インライン記述ルール違反。関数定義は禁止されています）" },
     { re: /\.then\s*\(/, message: ".then() の使用（Promiseチェーンは禁止。awaitを使用してください）" },
     { re: /\.catch\s*\(/, message: ".catch() の使用（Promiseチェーンは禁止。try/catchとawaitを使用してください）" },
+    { re: /\b(?:window\.)?(?:alert|confirm|prompt)\s*\(/, message: "window.alert/confirm/prompt の使用（VJAではvja.app.showDialog/showConfirmを使用してください）" },
+    { re: /\bwindow\.location\b/, message: "window.location の使用（画面遷移はvja.form.navigate()のみ使用してください）" },
+    { re: /\bnew\s+Promise\s*\(/, message: "new Promise() の使用（Promiseの明示的な生成は禁止。awaitを使用してください）" },
 ];
 function _findForbiddenPatterns(code) {
     const lines = code.split("\n");
@@ -669,6 +678,30 @@ function _findForbiddenPatterns(code) {
     return found;
 }
 
+// 変数宣言スタイル（var/let/const）の警告を検出する。
+// フロントエンド: varのみ許可（let/constは違反）
+// バックエンド: constのみ禁止（letは許可）
+// 【注意】これは検出のみを行い、AIへの自動修正リトライ・validation.ok判定には
+// 含めない（コメント挿入のみ。理由: 生成コードは毎回新規スコープで実行される
+// ため実害が無く、また小型モデルは指摘してもvarに直しきれないことが多く、
+// リトライしても改善しないケースがほとんどのため）。
+function _findStyleWarnings(code, isAppEvent) {
+    const lines = code.split("\n");
+    const found = [];
+    const re = isAppEvent ? /\bconst\s+\w/ : /\b(?:let|const)\s+\w/;
+    lines.forEach((line, idx) => {
+        if (re.test(line)) {
+            found.push({
+                line: idx + 1,
+                message: isAppEvent
+                    ? "変数宣言スタイル: constの使用（バックエンドではletのみ推奨）"
+                    : "変数宣言スタイル: let/constの使用（フロントエンドではvarのみ推奨）",
+            });
+        }
+    });
+    return found;
+}
+
 // 生成コードを検証する。戻り値: { ok, syntaxError, unknownApis, forbiddenPatterns }
 function validateGeneratedJs(code, isAppEvent) {
     const syntaxError = _checkJsSyntax(code);
@@ -676,16 +709,20 @@ function validateGeneratedJs(code, isAppEvent) {
     const forbiddenPatterns = _findForbiddenPatterns(code);
     const missingAwaits = _findMissingAwaits(code, isAppEvent);
     const unknownWidgets = _findUnknownWidgetNames(code);
+    // styleWarnings（変数宣言スタイル）はNG判定・自動リトライの対象に含めない。
+    // 実害が無く、リトライしても改善しないことが多いため、
+    // 行コメントでの指摘のみに留める。
+    const styleWarnings = _findStyleWarnings(code, isAppEvent);
     return {
         ok: !syntaxError && unknownApis.length === 0 && forbiddenPatterns.length === 0
             && missingAwaits.length === 0 && unknownWidgets.length === 0,
-        syntaxError, unknownApis, forbiddenPatterns, missingAwaits, unknownWidgets,
+        syntaxError, unknownApis, forbiddenPatterns, missingAwaits, unknownWidgets, styleWarnings,
     };
 }
 
 // 未知API・禁止パターンが検出された行の末尾に、指摘コメントを挿入する。
 // （構文エラーは行の特定精度が低いため、行コメント挿入の対象外とする）
-function annotateUnknownApis(code, unknownApis, forbiddenPatterns, missingAwaits, unknownWidgets) {
+function annotateUnknownApis(code, unknownApis, forbiddenPatterns, missingAwaits, unknownWidgets, styleWarnings) {
     const byLine = new Map();
     (unknownApis || []).forEach(({ line, api }) => {
         if (!byLine.has(line)) byLine.set(line, []);
@@ -702,6 +739,10 @@ function annotateUnknownApis(code, unknownApis, forbiddenPatterns, missingAwaits
     (unknownWidgets || []).forEach(({ line, api, name }) => {
         if (!byLine.has(line)) byLine.set(line, []);
         byLine.get(line).push("未知のウィジェット名: " + api + "('" + name + "') は現在のフォームに存在しません");
+    });
+    (styleWarnings || []).forEach(({ line, message }) => {
+        if (!byLine.has(line)) byLine.set(line, []);
+        byLine.get(line).push(message);
     });
     if (byLine.size === 0) return code;
     return code.split("\n").map((lineText, idx) => {
@@ -823,7 +864,7 @@ async function manualRetryAiFix() {
             const revalidated = validateGeneratedJs(fixed, isAppEvent);
             let codeForEditor = annotateUnknownApis(
                 fixed, revalidated.unknownApis, revalidated.forbiddenPatterns,
-                revalidated.missingAwaits, revalidated.unknownWidgets
+                revalidated.missingAwaits, revalidated.unknownWidgets, revalidated.styleWarnings
             );
             if (validationName) {
                 codeForEditor = "// 検証チェック処理(自動追加).\n" +
@@ -1022,7 +1063,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
             // （構文エラーは行特定の精度が低いため行コメント対象外。バナーでのみ通知）
             const codeForEditor = annotateUnknownApis(
                 unwrapped, validation.unknownApis, validation.forbiddenPatterns,
-                validation.missingAwaits, validation.unknownWidgets
+                validation.missingAwaits, validation.unknownWidgets, validation.styleWarnings
             );
 
             // バリデーション定義がある場合、JSの先頭に呼び出しを挿入
