@@ -21,10 +21,17 @@
        自動生成。ウィジェット構成JSON配列を生成しapplyAiFormDesign()
        ［vja-designer.js］へ渡して現在フォームに一括反映する）
      - validateGeneratedJs() / annotateUnknownApis() / manualRetryAiFix()
-       （yamlAiGenerate()生成結果の検証。構文チェックと、prompt-def.js の
-       VJA_USE_FRONT_JS_INFO/VJA_USE_BACK_JS_INFO から自動抽出した
-       APIホワイトリストとの照合を行う。フロント/バックエンドは必ず
-       分離して扱うこと＝混在させると誤検知の方向を誤る。
+       （yamlAiGenerate()生成結果の検証。以下4種を検出する:
+       1. 構文エラー
+       2. 未知API（prompt-def.js の VJA_USE_FRONT_JS_INFO/VJA_USE_BACK_JS_INFO
+          から自動抽出したホワイトリストに無い vja系/console系 の呼び出し）
+       3. 禁止パターン（require/ヘルパー関数定義/.then/.catch等）
+       4. await漏れ（同ドキュメントで「await付き」と明記されているAPIが
+          await無しで呼ばれている）
+       5. 未知のウィジェット名（vja.widget.get/set等に、現在のフォームに
+          存在しないウィジェット名が文字列リテラルで渡されている）
+       フロント/バックエンドのAPI一覧は必ず分離して扱うこと＝混在させると
+       誤検知の方向を誤る。
        検証NG時は1回だけ自動修正を再試行し、それでもNGなら生成は
        止めずに警告バナー［showAiValidationWarningBanner()］を表示して
        人間の判断に委ねる）
@@ -507,6 +514,101 @@ function _getVjaApiWhitelist() {
     return _vjaApiWhitelistCache;
 }
 
+// VJA_USE_FRONT_JS_INFO / VJA_USE_BACK_JS_INFO 内で「await vja.xxx.yyy(」の
+// ように "await " 付きで記載されているAPIを抽出する。
+// ドキュメント側は「awaitが必須のAPIは必ずawait付きで記載する」運用のため、
+// これも別途ホワイトリストを持たず、既存の説明文から自動抽出できる。
+let _vjaAwaitRequiredCache = null; // { front: Set<string>, back: Set<string> }
+function _extractAwaitRequiredApiSet(text) {
+    const set = new Set();
+    const re = /\bawait\s+((?:vja(?:\.\w+)+))\s*\(/g;
+    let m;
+    while ((m = re.exec(text || "")) !== null) set.add(m[1]);
+    return set;
+}
+function _getVjaAwaitRequiredSet() {
+    if (!_vjaAwaitRequiredCache) {
+        _vjaAwaitRequiredCache = {
+            front: _extractAwaitRequiredApiSet(_PROMPT_DEF.VJA_USE_FRONT_JS_INFO),
+            back: _extractAwaitRequiredApiSet(_PROMPT_DEF.VJA_USE_BACK_JS_INFO),
+        };
+    }
+    return _vjaAwaitRequiredCache;
+}
+// コード内で、await必須のAPIがawait無しで呼び出されている箇所を検出する。
+// 戻り値: [{ line: 1-indexed行番号, api: "vja.xxx.yyy" }, ...]
+function _findMissingAwaits(code, isAppEvent) {
+    const required = isAppEvent ? _getVjaAwaitRequiredSet().back : _getVjaAwaitRequiredSet().front;
+    const found = [];
+    const seen = new Set();
+    const re = /(await\s+)?\b(vja(?:\.\w+)+)\s*\(/g;
+    let m;
+    while ((m = re.exec(code)) !== null) {
+        const hasAwait = !!m[1];
+        const api = m[2];
+        if (!hasAwait && required.has(api)) {
+            const line = code.slice(0, m.index).split("\n").length;
+            const key = line + ":" + api;
+            if (!seen.has(key)) {
+                seen.add(key);
+                found.push({ line, api });
+            }
+        }
+    }
+    return found;
+}
+
+// 第1引数にウィジェット名（文字列リテラル）を取るAPIの一覧。
+// ここに列挙したAPIについて、指定されたウィジェット名が現在のフォームに
+// 実在するかを検証する。変数で渡されている場合（文字列リテラルでない場合）は
+// 判定不能なため対象外とする。
+const _WIDGET_NAME_ARG_APIS = [
+    "vja.widget.get", "vja.widget.set",
+    "vja.form.setParam", "vja.form.getParam",
+];
+// コード内で、上記API群に対して「現在のフォームに存在しないウィジェット名」が
+// 文字列リテラルで渡されている箇所を検出する。vja.trigger.* も対象に含める
+// （引数無し呼び出し＝全ウィジェット対象は除外）。
+// 戻り値: [{ line, api, name }, ...]
+function _findUnknownWidgetNames(code) {
+    const widgetNames = new Set((getProjectData().widgets || []).map((w) => w.name));
+    const found = [];
+    const seen = new Set();
+    // vja.widget.get/set, vja.form.setParam/getParam
+    _WIDGET_NAME_ARG_APIS.forEach((api) => {
+        const re = new RegExp(api.replace(/\./g, "\\.") + "\\s*\\(\\s*['\"]([^'\"]+)['\"]", "g");
+        let m;
+        while ((m = re.exec(code)) !== null) {
+            const name = m[1];
+            if (!widgetNames.has(name)) {
+                const line = code.slice(0, m.index).split("\n").length;
+                const key = line + ":" + api + ":" + name;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    found.push({ line, api, name });
+                }
+            }
+        }
+    });
+    // vja.trigger.xxx('ウィジェット名') 形式
+    {
+        const re = /\bvja\.trigger\.\w+\s*\(\s*['"]([^'"]+)['"]/g;
+        let m;
+        while ((m = re.exec(code)) !== null) {
+            const name = m[1];
+            if (!widgetNames.has(name)) {
+                const line = code.slice(0, m.index).split("\n").length;
+                const key = line + ":vja.trigger:" + name;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    found.push({ line, api: "vja.trigger.*", name });
+                }
+            }
+        }
+    }
+    return found;
+}
+
 // 構文チェックのみ行う（実行はしない）。
 // async関数本体として構文解析させることで、トップレベルawaitを許容しつつ
 // 実際にコードが実行されることは無い（関数を生成するだけで呼び出さない）。
@@ -572,15 +674,18 @@ function validateGeneratedJs(code, isAppEvent) {
     const syntaxError = _checkJsSyntax(code);
     const unknownApis = _findUnknownApis(code, isAppEvent);
     const forbiddenPatterns = _findForbiddenPatterns(code);
+    const missingAwaits = _findMissingAwaits(code, isAppEvent);
+    const unknownWidgets = _findUnknownWidgetNames(code);
     return {
-        ok: !syntaxError && unknownApis.length === 0 && forbiddenPatterns.length === 0,
-        syntaxError, unknownApis, forbiddenPatterns,
+        ok: !syntaxError && unknownApis.length === 0 && forbiddenPatterns.length === 0
+            && missingAwaits.length === 0 && unknownWidgets.length === 0,
+        syntaxError, unknownApis, forbiddenPatterns, missingAwaits, unknownWidgets,
     };
 }
 
 // 未知API・禁止パターンが検出された行の末尾に、指摘コメントを挿入する。
 // （構文エラーは行の特定精度が低いため、行コメント挿入の対象外とする）
-function annotateUnknownApis(code, unknownApis, forbiddenPatterns) {
+function annotateUnknownApis(code, unknownApis, forbiddenPatterns, missingAwaits, unknownWidgets) {
     const byLine = new Map();
     (unknownApis || []).forEach(({ line, api }) => {
         if (!byLine.has(line)) byLine.set(line, []);
@@ -589,6 +694,14 @@ function annotateUnknownApis(code, unknownApis, forbiddenPatterns) {
     (forbiddenPatterns || []).forEach(({ line, message }) => {
         if (!byLine.has(line)) byLine.set(line, []);
         byLine.get(line).push(message);
+    });
+    (missingAwaits || []).forEach(({ line, api }) => {
+        if (!byLine.has(line)) byLine.set(line, []);
+        byLine.get(line).push("await漏れ: " + api + " はawaitが必要です");
+    });
+    (unknownWidgets || []).forEach(({ line, api, name }) => {
+        if (!byLine.has(line)) byLine.set(line, []);
+        byLine.get(line).push("未知のウィジェット名: " + api + "('" + name + "') は現在のフォームに存在しません");
     });
     if (byLine.size === 0) return code;
     return code.split("\n").map((lineText, idx) => {
@@ -620,6 +733,12 @@ function _buildAiFixPrompt(originalUserPrompt, code, validation) {
     });
     validation.forbiddenPatterns.forEach(({ line, message }) => {
         issues.push("- " + line + "行目付近: " + message);
+    });
+    validation.missingAwaits.forEach(({ line, api }) => {
+        issues.push("- " + line + "行目付近: \"" + api + "\" はawaitを付けて呼び出す必要があります（await漏れ）。");
+    });
+    validation.unknownWidgets.forEach(({ line, api, name }) => {
+        issues.push("- " + line + "行目付近: \"" + api + "('" + name + "')\" のウィジェット名 \"" + name + "\" は現在のフォームに存在しません。実在するウィジェット名に修正してください。");
     });
     return originalUserPrompt +
         "\n\n[自動検証で以下の問題が検出されました。問題を修正し、修正後のコードのみを出力してください]\n" +
@@ -659,6 +778,12 @@ function showAiValidationWarningBanner(validation) {
     validation.forbiddenPatterns.forEach(({ line, message }) => {
         items.push("・" + line + "行目付近: " + esc(message));
     });
+    validation.missingAwaits.forEach(({ line, api }) => {
+        items.push("・" + line + "行目付近: await漏れ「" + esc(api) + "」");
+    });
+    validation.unknownWidgets.forEach(({ line, api, name }) => {
+        items.push("・" + line + "行目付近: 未知のウィジェット名「" + esc(name) + "」（" + esc(api) + "）");
+    });
     banner.style.cssText = "background:#4a2a2a;color:#ffd8d8;padding:10px 14px;font-size:12px;border-bottom:1px solid #7a3a3a;flex-shrink:0";
     banner.innerHTML =
         "<div style='font-weight:bold;margin-bottom:4px'>⚠ 生成コードに問題の可能性があります（自動修正後も検出）</div>" +
@@ -696,9 +821,10 @@ async function manualRetryAiFix() {
         loadingMsg: "検出した問題を自動修正中…",
         onSuccess: async (fixed) => {
             const revalidated = validateGeneratedJs(fixed, isAppEvent);
-            let codeForEditor = (revalidated.unknownApis.length > 0 || revalidated.forbiddenPatterns.length > 0)
-                ? annotateUnknownApis(fixed, revalidated.unknownApis, revalidated.forbiddenPatterns)
-                : fixed;
+            let codeForEditor = annotateUnknownApis(
+                fixed, revalidated.unknownApis, revalidated.forbiddenPatterns,
+                revalidated.missingAwaits, revalidated.unknownWidgets
+            );
             if (validationName) {
                 codeForEditor = "// 検証チェック処理(自動追加).\n" +
                     `if (!await vja.validate.run(${JSON.stringify(validationName)})) return;\n\n${codeForEditor}`;
@@ -892,11 +1018,12 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                 // 後段の警告バナーでユーザーに通知する
             }
 
-            // 未知API・禁止パターンが検出された行にのみ、指摘コメントを挿入する
+            // 検出された問題の行にのみ、指摘コメントを挿入する
             // （構文エラーは行特定の精度が低いため行コメント対象外。バナーでのみ通知）
-            const codeForEditor = (validation.unknownApis.length > 0 || validation.forbiddenPatterns.length > 0)
-                ? annotateUnknownApis(unwrapped, validation.unknownApis, validation.forbiddenPatterns)
-                : unwrapped;
+            const codeForEditor = annotateUnknownApis(
+                unwrapped, validation.unknownApis, validation.forbiddenPatterns,
+                validation.missingAwaits, validation.unknownWidgets
+            );
 
             // バリデーション定義がある場合、JSの先頭に呼び出しを挿入
             // vja.validate.run('定義名') → false=エラー時はreturnで処理中断
