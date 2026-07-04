@@ -53,7 +53,12 @@
     // evName: 生成対象のイベント名（例: "Click", "RowClick", "KeyDown"）
     // wtag  : 生成対象ウィジェットのタグ（例: "datagrid"）。フォーム/アプリ
     //         イベントの場合は undefined。
-    function _buildFrontMock(evName, wtag) {
+    // overrides: ユーザーが「⚙ モック値を編集」で明示的に指定した上書き値。
+    //   { widgets: {名前: 値}, event: 値|undefined, consts: {名前: 値},
+    //     session: {キー: 値}, util: {関数名: 値} }
+    //   未指定の項目は、従来通りのデフォルトのダミー値にフォールバックする。
+    function _buildFrontMock(evName, wtag, overrides) {
+        const ov = overrides || {};
         // vja.event.get() 等のコンテキスト判定。
         // ・RowClick / HeaderClick イベントなら、そのままの形を返す。
         // ・datagridの「Click」イベントは rowClick/headerClick どちらもあり得るため、
@@ -71,7 +76,11 @@
         // 「一律で文字列を返す」だけでは datagrid の rows[idx][col] アクセス等が
         // 偽陽性でクラッシュしてしまう。実際のウィジェット一覧と突き合わせて
         // 型ごとに妥当なダミー値を返す。
+        // ユーザーが明示的にウィジェット単位の上書き値を指定していれば、それを最優先する。
         function _widgetGetValue(name) {
+            if (ov.widgets && Object.prototype.hasOwnProperty.call(ov.widgets, name)) {
+                return ov.widgets[name];
+            }
             const w = (typeof getProjectData === "function"
                 ? (getProjectData().widgets || []).find((ww) => ww.name === name)
                 : null);
@@ -83,6 +92,27 @@
             // ウィジェット名が特定できない場合（変数名で渡された、未配置等）は
             // 従来通り安全側の文字列を返す。
             return "";
+        }
+        // vja.const.get('名前') も同様にユーザー上書きを最優先する。
+        function _constGetValue(name) {
+            if (ov.consts && Object.prototype.hasOwnProperty.call(ov.consts, name)) {
+                return ov.consts[name];
+            }
+            return "";
+        }
+        // vja.session.get('キー') も同様。
+        function _sessionGetValue(key) {
+            if (ov.session && Object.prototype.hasOwnProperty.call(ov.session, key)) {
+                return ov.session[key];
+            }
+            return "";
+        }
+        // vja.util.* はユーザーが関数名をキーにして上書きできる。
+        function _utilValue(fnName, fallback) {
+            if (ov.util && Object.prototype.hasOwnProperty.call(ov.util, fnName)) {
+                return ov.util[fnName];
+            }
+            return fallback;
         }
 
         return {
@@ -101,7 +131,7 @@
                 disable: () => {},
             },
             const: {
-                get: () => "",
+                get: (name) => _constGetValue(name),
                 getAll: () => ({}),
             },
             form: {
@@ -111,16 +141,16 @@
                 getParam: () => "",
             },
             session: {
-                get: async () => "",
+                get: async (key) => _sessionGetValue(key),
                 set: async () => true,
                 delete: async () => true,
                 clear: async () => true,
             },
             util: {
-                today: () => "2000-01-01",
-                formatDate: () => "2000-01-01",
-                formatNumber: () => "0",
-                uuid: () => "00000000-0000-0000-0000-000000000000",
+                today: () => _utilValue("today", "2000-01-01"),
+                formatDate: () => _utilValue("formatDate", "2000-01-01"),
+                formatNumber: () => _utilValue("formatNumber", "0"),
+                uuid: () => _utilValue("uuid", "00000000-0000-0000-0000-000000000000"),
                 copyToClipboard: async () => {},
             },
             io: {
@@ -160,6 +190,8 @@
             },
             event: {
                 get: () => {
+                    // ユーザーが「⚙ モック値を編集」で明示的に指定した場合は最優先する。
+                    if (ov.event !== undefined) return ov.event;
                     if (isRowClickCtx) return { type: "rowClick", row: 0, column: "" };
                     if (isHeaderClickCtx) return { type: "headerClick", column: "" };
                     // 新仕様: 全イベントで必ずオブジェクトを返す（nullにはならない）。
@@ -245,8 +277,9 @@
         // isAppEvent: true=バックエンド(アプリイベント) / false=フロントエンド
         // evName: 生成対象のイベント名（フロント/フォームイベント時のみ意味を持つ）
         // wtag: 生成対象ウィジェットのタグ（ウィジェットイベント時のみ意味を持つ）
-        build(isAppEvent, evName, wtag) {
-            return isAppEvent ? _buildBackMock() : _buildFrontMock(evName, wtag);
+        // overrides: ユーザーが「⚙ モック値を編集」で指定した上書き値（フロントのみ有効）
+        build(isAppEvent, evName, wtag, overrides) {
+            return isAppEvent ? _buildBackMock() : _buildFrontMock(evName, wtag, overrides);
         },
     };
 })();

@@ -152,7 +152,8 @@ function openYaml(wid, evName) {
     pvRegister("yamlSave", () => saveYaml(wid, evName));
     pvRegister("yamlAiGen", () => yamlAiGenerate(wid, evName));
     pvRegister("yamlAiGenRandom", () => yamlAiGenerate(wid, evName, _getBoostedTemperature()));
-    pvRegister("yamlMockCheck", () => manualMockCheck(false, evName, getWidget(wid)?.tag));
+    pvRegister("yamlMockCheck", () => manualMockCheck(false, evName, getWidget(wid)?.tag, wid));
+    pvRegister("yamlMockEdit", () => openMockOverrideEditor(wid, evName));
     showModal(buildYamlEditorHTML(cur, curJs, true, mhdrHTML("📋 " + esc(w.name) + " — " + esc(evName)), "", null, isAppEvent));
     initYamlEditorModal(cur, curJs);
 }
@@ -625,13 +626,176 @@ function _findUnknownWidgetNames(code) {
     return found;
 }
 
+/* ── モック上書き値（⚙ モック値を編集） ──
+   分岐カバレッジの限界を補うため、ユーザーが明示的に「このウィジェットは
+   この値」「このイベントはこの形」等を指定できるようにする。
+   保存先: getProjectData().mockOverrides[ "wid_evName" ] = [行の配列]
+   1行 = { type: "widget"|"event"|"const"|"session"|"util", target: string, json: string }
+   - widget/const: targetはウィジェット名/定数名（select）。重複時は最後を採用。
+   - event        : target="*"固定。複数行あれば最後を採用（マージしない）。
+   - session/util : target="*"固定。複数行あれば浅くマージ（後勝ち）。
+   - db操作は対象外（今回は非対応。プロンプト依存のSQL単位の複雑さを避けるため）。
+   - 「その他」枠は設けない（制御が難しいため5種類のみに限定）。 */
+function _getMockOverrideKey(wid, evName) {
+    return wid + "_" + evName;
+}
+function _getMockOverrideRows(wid, evName) {
+    const all = getProjectData().mockOverrides || {};
+    return all[_getMockOverrideKey(wid, evName)] || [];
+}
+function _saveMockOverrideRows(wid, evName, rows) {
+    if (!getProjectData().mockOverrides) getProjectData().mockOverrides = {};
+    getProjectData().mockOverrides[_getMockOverrideKey(wid, evName)] = rows;
+}
+// 保存済みの行から、VJA_MOCK_RUNTIME.build()に渡す overrides オブジェクトを
+// 組み立てる。不正なJSONの行は無視する（エラーには倒さない＝安全側）。
+function _computeMockOverrides(wid, evName) {
+    const rows = _getMockOverrideRows(wid, evName);
+    const overrides = { widgets: {}, event: undefined, consts: {}, session: {}, util: {} };
+    rows.forEach((row) => {
+        let parsed;
+        try { parsed = JSON.parse(row.json); } catch (e) { return; } // 不正なJSONはスキップ
+        if (row.type === "widget" && row.target) {
+            overrides.widgets[row.target] = parsed;
+        } else if (row.type === "const" && row.target) {
+            overrides.consts[row.target] = parsed;
+        } else if (row.type === "event") {
+            overrides.event = parsed; // 複数あれば最後の行が上書きするのでこれでよい
+        } else if (row.type === "session") {
+            Object.assign(overrides.session, parsed); // 浅いマージ（後勝ち）
+        } else if (row.type === "util") {
+            Object.assign(overrides.util, parsed); // 浅いマージ（後勝ち）
+        }
+    });
+    return overrides;
+}
+
+// ── 「⚙ モック値を編集」UI ──
+// 【重要・再発防止メモ】VJAのモーダル内ドロップダウンは、素の<select>タグでは
+// なく makePvSel()/pvSelOpen()（vja-table-validation.js定義）という専用部品で
+// 統一されている（AI接続設定の推論モードON/OFF等で使用実績あり）。
+// 新しいプルダウンUIを追加する際は、必ずこれを使うこと。<select>を使うと
+// 見た目が浮いてしまう不具合を過去に繰り返しているため、次にモーダル内へ
+// ドロップダウンを追加する時はまずこのメモと既存のmakePvSel使用例
+// （vja-yaml-editor.jsのAI接続設定、vja-app-config.jsのフォント選択等）を
+// 確認すること。
+// 【makePvSelの制約】表示ラベルと内部値が異なる場合（例: 表示"ウィジェット"/
+// 値"widget"）、選択中の値はボタンの表示テキストからは復元できない
+// （pvSelPickは表示ラベルしかDOMに残さないため）。そのため、値が必要な
+// 箇所ではonPickCode経由のコールバックで data-* 属性に値を保存しておき、
+// 保存時はDOMのテキストではなくdata-*属性から読み取ること
+// （下記_mockEditorOnTypeChange()のdata-type属性がその実装例）。
+const _MOCK_TYPE_LABELS = {
+    widget: "ウィジェット", event: "イベント", const: "定数",
+    session: "セッション", util: "ユーティリティ",
+};
+// type（モックタイプ）に応じた「対象名」欄のHTMLを生成する。
+// widget/const: 実在する名前をmakePvSelで選ばせる（表示ラベル＝値なので
+// 保存時もDOM表示テキストをそのまま使ってよい）。
+// event/session/util: 対象名の概念を持たないため "*" 固定（非活性表示）。
+function _mockEditorTargetCellHtml(type, selectedTarget, idx) {
+    const targetSelId = "mock-target-" + idx;
+    if (type === "widget") {
+        const names = (getProjectData().widgets || []).map((w) => w.name);
+        return makePvSel(targetSelId, names, selectedTarget || (names[0] || ""), "");
+    }
+    if (type === "const") {
+        const curForm = getProjectData().forms[getProjectData().curFormIdx];
+        const names = [...getProjectData().constants, ...(curForm?.constants || [])].map((c) => c.name);
+        return makePvSel(targetSelId, names, selectedTarget || (names[0] || ""), "");
+    }
+    // event/session/util: 対象名という概念を持たないため "*" 固定（非活性表示）
+    return "<div class='pv-sel-btn' id='" + targetSelId + "' style='opacity:0.5;cursor:default' onmousedown='event.stopPropagation()'><span>*</span></div>";
+}
+// 1行分の編集行HTMLを生成する。idxは行を一意に識別するための連番
+// （makePvSel等のDOM要素IDの衝突を避けるため、追加・削除しても使い回さない）。
+function _mockEditorRowHtml(row, idx) {
+    const type = (row && row.type) || "widget";
+    const target = (row && row.target) || "";
+    const json = (row && row.json) || "";
+    const typeOpts = Object.keys(_MOCK_TYPE_LABELS).map((t) => ({ value: t, label: _MOCK_TYPE_LABELS[t] }));
+    return "<div class='mock-editor-row' data-idx='" + idx + "' data-type='" + type + "' style='display:flex;gap:6px;margin-bottom:6px;align-items:flex-start'>" +
+        "<div style='width:120px;flex-shrink:0'>" +
+        makePvSel("mock-type-" + idx, typeOpts, type, "_mockEditorOnTypeChange(" + idx + ",{value})") +
+        "</div>" +
+        "<div class='mock-target-wrap' id='mock-target-wrap-" + idx + "' style='width:140px;flex-shrink:0'>" +
+        _mockEditorTargetCellHtml(type, target, idx) +
+        "</div>" +
+        "<textarea class='mock-json-ta pv-input' style='flex:1;height:50px;font-family:monospace;font-size:12px;resize:vertical' placeholder='JSON（例: \"検索したい文字\" / {\"type\":\"rowClick\",\"row\":2}）'>" + esc(json) + "</textarea>" +
+        "<button class='yaml-ai-btn' style='padding:4px 8px;flex-shrink:0'" + evtAttr("onmousedown", "this.closest('.mock-editor-row').remove()") + ">🗑</button>" +
+        "</div>";
+}
+// モックタイプが変更された時、対象名欄をそのタイプに応じたものに差し替え、
+// 選択中の値（英語キー）をdata-type属性に保存する（makePvSelの制約への対応）。
+function _mockEditorOnTypeChange(idx, newType) {
+    const row = document.querySelector(".mock-editor-row[data-idx='" + idx + "']");
+    if (!row) return;
+    row.dataset.type = newType;
+    const wrap = document.getElementById("mock-target-wrap-" + idx);
+    if (wrap) wrap.innerHTML = _mockEditorTargetCellHtml(newType, null, idx);
+}
+// 行を一意に識別するための連番。openMockOverrideEditor()を開く度にリセットする。
+let _mockEditorRowSeq = 0;
+// 「＋ 行を追加」ボタン用。既存行はそのまま保持し、末尾に空行を1つ追加する。
+function _mockEditorAddRow() {
+    const container = $("mock-editor-rows");
+    if (!container) return;
+    const idx = _mockEditorRowSeq++;
+    container.insertAdjacentHTML("beforeend", _mockEditorRowHtml({ type: "widget", target: "", json: "" }, idx));
+}
+// 「⚙ モック値を編集」ボタン用。現在保存されている上書き行を一覧表示する
+// モーダルを開く。
+function openMockOverrideEditor(wid, evName) {
+    const rows = _getMockOverrideRows(wid, evName);
+    _mockEditorRowSeq = 0;
+    const rowsHtml = rows.map((row) => _mockEditorRowHtml(row, _mockEditorRowSeq++)).join("");
+    showModal(
+        mhdrHTML("⚙ モック値を編集（" + esc(String(evName)) + "）") +
+        "<div class='mbody' style='display:flex;flex-direction:column;gap:8px'>" +
+        "<div style='font-size:12px;color:var(--text2)'>" +
+        "「🧪 モック実行」やAI生成後の自動検証で使うダミー値を、明示的に指定できます。" +
+        "対応するのはウィジェット・イベント・定数・セッション・ユーティリティの5種類のみです（DB操作は対象外）。" +
+        "</div>" +
+        "<div id='mock-editor-rows' style='max-height:min(50vh,420px);overflow-y:auto;padding-right:4px'>" + rowsHtml + "</div>" +
+        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "_mockEditorAddRow()") + ">＋ 行を追加</button>" +
+        "</div>" +
+        "<div class='mfoot'>" +
+        mfootHTML([{ label: "キャンセル", action: "closeModal()" }]) +
+        "<button class='pri'" + evtAttr("onmousedown", "saveMockOverrides(" + JSON.stringify(wid) + "," + JSON.stringify(evName) + ")") + ">保存</button>" +
+        "</div>"
+    );
+}
+// モーダル内の全行を読み取り、プロジェクトデータに保存する。
+// type: 行のdata-type属性から取得（makePvSelは表示ラベルしか残さないため）。
+// target: widget/constの場合はmakePvSelのボタン表示テキスト（＝値そのもの）、
+// それ以外は"*"固定。
+// JSONが空の行はスキップする（不正なJSONはそのまま保存し、実行時に無視される）。
+function saveMockOverrides(wid, evName) {
+    const container = $("mock-editor-rows");
+    const rows = [];
+    container?.querySelectorAll(".mock-editor-row").forEach((rowEl) => {
+        const type = rowEl.dataset.type || "widget";
+        const target = (type === "widget" || type === "const")
+            ? (rowEl.querySelector(".mock-target-wrap .pv-sel-btn span:first-child")?.textContent || "")
+            : "*";
+        const json = rowEl.querySelector(".mock-json-ta")?.value.trim() || "";
+        if (!json) return;
+        rows.push({ type, target, json });
+    });
+    _saveMockOverrideRows(wid, evName, rows);
+    closeModal();
+    showToast("✅ モック値を保存しました");
+}
+
 /* ── モック実行スモークテスト ──
    構文チェック・APIホワイトリスト検証では拾えない「明らかな実行時例外
    （TypeError等）」を検出するため、生成コードをモックランタイム
    （vja-mock-runtime.js）と一緒に実際に1回実行してみる。
    AI接続設定の「モック実行検証」がOFFの場合は実施しない。
    【スコープ】分岐(if/else)の全パターンは検証できない（モックは1パターンの
-   値しか返さないため）。あくまで「即座に落ちないか」の浅い確認。 */
+   値しか返さないため）。あくまで「即座に落ちないか」の浅い確認。
+   ユーザーが「⚙ モック値を編集」で上書き値を指定していれば、その値が
+   優先して使われるため、意図した分岐を通した確認もある程度可能。 */
 
 // 拡張ランタイム（プロジェクト独自関数）のモックを、現在のプロジェクトの
 // extRuntime.doc（EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT形式のYAML）から
@@ -651,11 +815,12 @@ function _buildExtRuntimeMock() {
 
 // 生成コードをモックランタイムと共に実際に1回実行し、実行時例外が
 // 発生しないかを確認する。例外が無ければnull、あれば例外メッセージを返す。
-async function _runMockSmokeTest(code, isAppEvent, evName, wtag) {
+async function _runMockSmokeTest(code, isAppEvent, evName, wtag, wid) {
     if (getProjectData().aiConfig.mockCheckEnabled === false) return null;
     if (!window.VJA_MOCK_RUNTIME) return null; // 読み込み失敗時は検証をスキップ
     try {
-        const vjaMock = window.VJA_MOCK_RUNTIME.build(isAppEvent, evName, wtag);
+        const overrides = wid !== undefined ? _computeMockOverrides(wid, evName) : undefined;
+        const vjaMock = window.VJA_MOCK_RUNTIME.build(isAppEvent, evName, wtag, overrides);
         const extMock = _buildExtRuntimeMock();
         const extNames = Object.keys(extMock);
         const extValues = extNames.map((n) => extMock[n]);
@@ -993,16 +1158,16 @@ function _stripValidationWrapper(code, validationName) {
     return code.startsWith(prefix) ? code.slice(prefix.length) : code;
 }
 
-// 現在js-taに表示されている内容を対象に、再検証→修正依頼を1回実行する。
 // 「🧪 モック実行」ボタン用。現在js-taに表示されている内容（AI生成直後・
 // 人間が手で修正した後のどちらでも可）に対して、AI生成を伴わずに
 // 検証（構文・API・await漏れ・ウィジェット名・ev.type・モック実行）だけを行う。
-async function manualMockCheck(isAppEvent, evName, wtag) {
+async function manualMockCheck(isAppEvent, evName, wtag, wid) {
     const jsTa = $("js-ta");
     const code = jsTa?.value || "";
     if (!code.trim()) { showToast("JavaScriptが入力されていません"); return; }
+    if (!(await vja.app.showConfirm("モックの実行を行います。よろしいですか？"))) return;
     let validation = validateGeneratedJs(code, isAppEvent, evName, wtag);
-    validation = await _augmentWithMockCheck(validation, code, isAppEvent, evName, wtag);
+    validation = await _augmentWithMockCheck(validation, code, isAppEvent, evName, wtag, wid);
     window.vja?.log?.debug?.("[AI検証] 手動モック実行: " + _formatValidationIssuesForLog(validation));
     if (validation.ok) {
         dismissAiValidationBanner();
@@ -1022,7 +1187,7 @@ async function manualRetryAiFix() {
     const jsTa = $("js-ta");
     const currentCode = _stripValidationWrapper(jsTa?.value || "", validationName);
     let validation = validateGeneratedJs(currentCode, isAppEvent, evName, wtag);
-    validation = await _augmentWithMockCheck(validation, currentCode, isAppEvent, evName, wtag);
+    validation = await _augmentWithMockCheck(validation, currentCode, isAppEvent, evName, wtag, wid);
     if (validation.ok) { dismissAiValidationBanner(); return; }
     window.vja?.log?.debug?.("[AI検証] 手動での修正依頼を実行します。検出内容: " + _formatValidationIssuesForLog(validation));
     const fixUserPrompt = _buildAiFixPrompt(userPrompt, currentCode, validation);
@@ -1032,7 +1197,7 @@ async function manualRetryAiFix() {
         loadingMsg: "検出した問題を自動修正中…",
         onSuccess: async (fixed) => {
             let revalidated = validateGeneratedJs(fixed, isAppEvent, evName, wtag);
-            revalidated = await _augmentWithMockCheck(revalidated, fixed, isAppEvent, evName, wtag);
+            revalidated = await _augmentWithMockCheck(revalidated, fixed, isAppEvent, evName, wtag, wid);
             window.vja?.log?.debug?.(revalidated.ok
                 ? "[AI検証] 手動修正で解消しました。"
                 : "[AI検証] 手動修正後も未解消: " + _formatValidationIssuesForLog(revalidated));
@@ -1074,8 +1239,8 @@ async function manualRetryAiFix() {
 
 // validateGeneratedJs()の結果に、モック実行スモークテストの結果を
 // マージする。mockErrorが検出された場合はokをfalseにする。
-async function _augmentWithMockCheck(validation, code, isAppEvent, evName, wtag) {
-    const mockError = await _runMockSmokeTest(code, isAppEvent, evName, wtag);
+async function _augmentWithMockCheck(validation, code, isAppEvent, evName, wtag, wid) {
+    const mockError = await _runMockSmokeTest(code, isAppEvent, evName, wtag, wid);
     if (!mockError) return validation;
     return { ...validation, ok: false, mockError };
 }
@@ -1222,7 +1387,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
             //   そのまま使う）。ランダム性を上げて試したい場合は、エディタの
             //   「🎲 ランダム性を上げて再生成」ボタンを使う。
             let validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag);
-            validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag);
+            validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid);
             if (!validation.ok) {
                 const issueLog = _formatValidationIssuesForLog(validation);
                 window.vja?.log?.debug?.("[AI検証] 自動修正リトライを実行します。検出内容: " + issueLog);
@@ -1241,7 +1406,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                 if (retryCode) {
                     unwrapped = retryCode;
                     validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag);
-                    validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag);
+                    validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid);
                     window.vja?.log?.debug?.(validation.ok
                         ? "[AI検証] 自動修正リトライで解消しました。"
                         : "[AI検証] 自動修正リトライ後も未解消: " + _formatValidationIssuesForLog(validation));
@@ -1796,7 +1961,11 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         "<div class='yaml-tab-bar'>" +
         "<div class='yaml-tab active' id='tab-yaml'>📋 YAML</div>" +
         "<div class='yaml-tab' id='tab-js'>📜 JavaScript</div>" +
-        "<button class='yaml-api-ref-btn'" + evtAttr("onmousedown", "openApiRef(" + isAppEvent + ")") + ">📖 API</button>" +
+        "<button class='yaml-api-ref-btn' style='margin-left:auto'" + evtAttr("onmousedown", "openApiRef(" + isAppEvent + ")") + ">📖 API</button>" +
+        "<button class='yaml-api-ref-btn' id='ai-mock-btn' style='margin-left:0' title='現在JavaScriptタブに表示されている内容を、モックVJAランタイムで試験実行します'" +
+        evtAttr("onmousedown", "pvCall(\"yamlMockCheck\")") + ">🧪 モック</button>" +
+        "<button class='yaml-api-ref-btn' id='ai-mock-edit-btn' style='margin-left:0' title='モック実行で使うダミー値を上書き設定します'" +
+        evtAttr("onmousedown", "pvCall(\"yamlMockEdit\")") + ">⚙ モック編集</button>" +
         "</div>" +
         "<div class='yaml-pane active' id='pane-yaml'>" +
         "<div class='editor-wrap'>" +
@@ -1823,8 +1992,6 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         "<div class='yaml-ai-bar' style='padding-bottom:8px;flex-direction:column;align-items:stretch;gap:4px'>" +
         "<div style='display:flex;align-items:center;gap:4px'>" +
         "<input id='ai-prompt-in' placeholder='AIへの追加指示（任意）' style='flex:1'>" +
-        "<button class='yaml-ai-btn' id='ai-mock-btn' title='現在JavaScriptタブに表示されている内容を、モックVJAランタイムで試験実行します'" +
-        evtAttr("onmousedown", "pvCall(\"yamlMockCheck\")") + ">🧪 モック実行</button>" +
         "<button class='yaml-ai-btn' id='ai-gen-random-btn' title='temperatureを一時的に上げて再生成します（同じ間違いを繰り返す場合に）'" +
         evtAttr("onmousedown", "pvCall(\"yamlAiGenRandom\")") + ">🎲 ランダム性を上げて再生成</button>" +
         "<button class='yaml-ai-btn' id='ai-gen-btn'" + evtAttr("onmousedown", "pvCall(\"yamlAiGen\")") + ">" +
@@ -2114,4 +2281,5 @@ Object.assign(window, {
     validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
     openAiValidationDetailModal,
     dismissAiValidationBanner, manualRetryAiFix, manualMockCheck,
+    openMockOverrideEditor, saveMockOverrides, _mockEditorAddRow, _mockEditorOnTypeChange,
 });
