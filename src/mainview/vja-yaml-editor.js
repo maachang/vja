@@ -1036,6 +1036,7 @@ async function manualRetryAiFix() {
                 if (newJsTa) newJsTa.value = codeForEditor;
                 yamlTabSwitch("js");
                 jsHlUpdate();
+                editorUpdateGutter("js-ta", "js-gutter");
                 showAiValidationWarningBanner(revalidated);
                 if (revalidated.ok) showToast("✅ 修正が完了しました");
             }));
@@ -1255,6 +1256,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                 if (jsTa) jsTa.value = finalCode;
                 yamlTabSwitch("js");
                 jsHlUpdate();
+                editorUpdateGutter("js-ta", "js-gutter");
                 if (status) status.textContent = "✅ 生成完了 (JavaScriptタブを確認)";
                 const elapsed = Math.round((Date.now() - aiStartTime) / 1000);
                 showToast("✅ AI生成完了（" + elapsed + "秒）", 5000);
