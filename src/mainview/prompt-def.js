@@ -623,78 +623,72 @@ getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ
     // 「vja ランタイムの追加・変更・削除がある場合は、反映が必要」
     // ※必須条件: 英語版は使用例、使用例説明は不要.
     const VJA_USE_FRONT_JS_INFO_ENG = `
-await vja.db.query: { scope: DB_SELECT, args: [sql:string, params?:any[]], return: "Record<string,any>[]", desc: "SQL SELECT. Use ? placeholder." }
-await vja.db.execute: { scope: DB_WRITE, args: [sql:string, params?:any[]], return: "{changes:number, lastInsertRowid:number}|null", desc: "SQL INSERT/UPDATE/DELETE." }
-await vja.db.transaction: { scope: DB_TRANSACTION, args: [statements:object[]], return: "boolean", desc: "Multiple SQLs. Rollback and returns false on failure." }
+await vja.db.query: { args: [sql:string, params?:any[]], return: "Record<string,any>[]", desc: "SQL SELECT. Use ? placeholder." }
+await vja.db.execute: { args: [sql:string, params?:any[]], return: "{changes:number, lastInsertRowid:number}|null", desc: "SQL INSERT/UPDATE/DELETE." }
+await vja.db.transaction: { args: [statements:object[]], return: "boolean", desc: "Multiple SQLs. Rollback and returns false on failure." }
 
-vja.widget.get: { scope: UI_WIDGET_GET, args: [name:string], return: "string|number|boolean|null", desc: "Gets current value from UI Widget. CRITICAL: The returned value is READ-ONLY. Modifying the returned object/array WILL NOT update the UI. To update, you MUST explicitly use vja.widget.set()." }
-vja.widget.set: { scope: UI_WIDGET_SET, args: [name:string, value:any, options?:object], return: "void", desc: "Sets value to UI Widget (text:str, checkbox:bool, select:array, datagrid:object[]). MANDATORY: This is the ONLY way to update UI data. Never mutate objects retrieved from get()." }
-vja.widget.getAllInputs: { scope: UI_WIDGET_ALL, args: [], return: "Record<string,any>", desc: "Gets all active UI inputs in a form as {name: value}." }
-vja.widget.setVisible: { scope: UI_WIDGET_VISIBILITY, args: [name:string, visible:boolean], return: "void", desc: "Toggles UI display (true=show, false=hide)." }
-vja.widget.show: { scope: UI_WIDGET_STATE, args: [name:string], return: "void" }
-vja.widget.hide: { scope: UI_WIDGET_STATE, args: [name:string], return: "void" }
-vja.widget.enable: { scope: UI_WIDGET_STATE, args: [name:string], return: "void" }
-vja.widget.disable: { scope: UI_WIDGET_STATE, args: [name:string], return: "void" }
+vja.widget.get: { args: [name:string], return: "string|number|boolean|null", desc: "Gets current value from UI Widget. CRITICAL: The returned value is READ-ONLY. Modifying the returned object/array WILL NOT update the UI. To update, you MUST explicitly use vja.widget.set()." }
+vja.widget.set: { args: [name:string, value:any, options?:object], return: "void", desc: "Sets value to UI Widget (text:str, checkbox:bool, select:array, datagrid:object[]). MANDATORY: This is the ONLY way to update UI data. Never mutate objects retrieved from get()." }
+vja.widget.getAllInputs: { args: [], return: "Record<string,any>", desc: "Gets all active UI inputs in a form as {name: value}." }
+vja.widget.setVisible: { args: [name:string, visible:boolean], return: "void", desc: "Toggles UI display (true=show, false=hide)." }
+vja.widget.show: { args: [name:string], return: "void", desc: "Shows the widget. Same argument pattern for vja.widget.hide(name), vja.widget.enable(name), vja.widget.disable(name)." }
 
-vja.const.get: { scope: CONFIG_CONSTANT, args: [key:string, default?:any], return: "any", desc: "Retrieves constant value. Form priority, then global." }
-vja.const.getAll: { scope: CONFIG_CONSTANT, args: [], return: "Record<string,any>", desc: "Retrieves all active config constants." }
+vja.const.get: { args: [key:string, default?:any], return: "any", desc: "Retrieves constant value. Form priority, then global." }
+vja.const.getAll: { args: [], return: "Record<string,any>", desc: "Retrieves all active config constants." }
 
-vja.form.navigate: { scope: SCREEN_TRANSITION, args: [formName:string, options?:object], return: "void", desc: "Navigates to form. options.save defaults to true." }
-vja.form.back: { scope: SCREEN_TRANSITION, args: [], return: "void" }
-vja.form.setParam: { scope: SCREEN_PARAMETER, args: [key:string, value:any], return: "void", desc: "Sets data parameter to pass to the next screen." }
-vja.form.getParam: { scope: SCREEN_PARAMETER, args: [key:string, default?:any], return: "any", desc: "Retrieves parameter passed from previous screen." }
+vja.form.navigate: { args: [formName:string, options?:object], return: "void", desc: "Navigates to form. options.save defaults to true." }
+vja.form.back: { args: [], return: "void" }
+vja.form.setParam: { args: [key:string, value:any], return: "void", desc: "Sets data parameter to pass to the next screen." }
+vja.form.getParam: { args: [key:string, default?:any], return: "any", desc: "Retrieves parameter passed from previous screen." }
 
-await vja.session.get: { scope: SESSION_STORAGE, args: [key:string, default?:any], return: "any", desc: "Retrieves persistent session data. MUST use await." }
-await vja.session.set: { scope: SESSION_STORAGE, args: [key:string, value:any], return: "boolean", desc: "Saves persistent session data (JSON)." }
-await vja.session.delete: { scope: SESSION_STORAGE, args: [key:string], return: "boolean", desc: "Deletes a session data entry. MUST use await." }
-await vja.session.clear: { scope: SESSION_STORAGE, args: [], return: "boolean", desc: "Clears all session data. MUST use await." }
+await vja.session.get: { args: [key:string, default?:any], return: "any", desc: "Retrieves persistent session data. MUST use await." }
+await vja.session.set: { args: [key:string, value:any], return: "boolean", desc: "Saves persistent session data (JSON)." }
+await vja.session.delete: { args: [key:string], return: "boolean", desc: "Deletes a session data entry. MUST use await." }
+await vja.session.clear: { args: [], return: "boolean", desc: "Clears all session data. MUST use await." }
 
-vja.util.today: { scope: UTIL_DATE, args: [], return: "string", desc: "Returns current date in YYYY-MM-DD format." }
-vja.util.formatDate: { scope: UTIL_DATE, args: [date:any, format?:string], return: "string", desc: "Formats Date object or string (default: YYYY-MM-DD)." }
-vja.util.formatNumber: { scope: UTIL_NUMBER, args: [n:number, decimals?:number], return: "string", desc: "Formats number with thousands separators." }
+vja.util.today: { args: [], return: "string", desc: "Returns current date in YYYY-MM-DD format." }
+vja.util.formatDate: { args: [date:any, format?:string], return: "string", desc: "Formats Date object or string (default: YYYY-MM-DD)." }
+vja.util.formatNumber: { args: [n:number, decimals?:number], return: "string", desc: "Formats number with thousands separators." }
 
-await vja.io.openCsv: { scope: FILE_DIALOG_READ, args: [], return: "Record<string,string>[]|null", desc: "Reads CSV via dialog. Returns null if canceled." }
-await vja.io.openJson: { scope: FILE_DIALOG_READ, args: [], return: "Promise<any|null>", desc: "Reads JSON via dialog. Throws on parse error." }
-await vja.io.saveCsv: { scope: FILE_DIALOG_WRITE, args: [csvRows:object[], filename:string], return: "void", desc: "Saves rows as a CSV file via save dialog. MUST use await." }
-await vja.io.saveJson: { scope: FILE_DIALOG_WRITE, args: [data:any, filename:string], return: "void", desc: "Saves data as a JSON file via save dialog. MUST use await." }
+await vja.io.openCsv: { args: [], return: "Record<string,string>[]|null", desc: "Reads CSV via dialog. Returns null if canceled." }
+await vja.io.openJson: { args: [], return: "Promise<any|null>", desc: "Reads JSON via dialog. Throws on parse error." }
+await vja.io.saveCsv: { args: [csvRows:object[], filename:string], return: "void", desc: "Saves rows as a CSV file via save dialog. MUST use await." }
+await vja.io.saveJson: { args: [data:any, filename:string], return: "void", desc: "Saves data as a JSON file via save dialog. MUST use await." }
 
-await vja.file.read: { scope: LOCAL_FILE_IO, args: [path:string], return: "string|null", desc: "Reads a text file. Returns null if not found. MUST use await." }
-await vja.file.write: { scope: LOCAL_FILE_IO, args: [path:string, content:string], return: "boolean", desc: "Writes text to a file. MUST use await." }
-await vja.file.readBytes: { scope: LOCAL_FILE_IO, args: [path:string], return: "Uint8Array|null", desc: "Reads a binary file. Returns null if not found. MUST use await." }
-await vja.file.writeBytes: { scope: LOCAL_FILE_IO, args: [path:string, data:Uint8Array], return: "boolean", desc: "Writes binary data to a file. MUST use await." }
-await vja.file.exists: { scope: LOCAL_FILE_IO, args: [path:string], return: "boolean", desc: "Checks whether a file exists. MUST use await." }
-await vja.file.delete: { scope: LOCAL_FILE_IO, args: [path:string], return: "boolean", desc: "Deletes a file. MUST use await." }
-await vja.file.copy: { scope: LOCAL_FILE_IO, args: [src:string, dest:string], return: "boolean", desc: "Copies a file. MUST use await." }
+await vja.file.read: { args: [path:string], return: "string|null", desc: "Reads a text file. Returns null if not found. MUST use await." }
+await vja.file.write: { args: [path:string, content:string], return: "boolean", desc: "Writes text to a file. MUST use await." }
+await vja.file.readBytes: { args: [path:string], return: "Uint8Array|null", desc: "Reads a binary file. Returns null if not found. MUST use await." }
+await vja.file.writeBytes: { args: [path:string, data:Uint8Array], return: "boolean", desc: "Writes binary data to a file. MUST use await." }
+await vja.file.exists: { args: [path:string], return: "boolean", desc: "Checks whether a file exists. Same argument pattern for vja.file.delete(path) [deletes file]. MUST use await." }
+await vja.file.copy: { args: [src:string, dest:string], return: "boolean", desc: "Copies a file. MUST use await." }
 
-await vja.dir.create: { scope: LOCAL_DIR_IO, args: [path:string], return: "boolean", desc: "Creates a directory (including parents). MUST use await." }
-await vja.dir.delete: { scope: LOCAL_DIR_IO, args: [path:string], return: "boolean", desc: "Deletes a directory. MUST use await." }
-await vja.dir.list: { scope: LOCAL_DIR_IO, args: [path:string], return: "string[]", desc: "Lists entries in a directory. MUST use await." }
-await vja.dir.exists: { scope: LOCAL_DIR_IO, args: [path:string], return: "boolean", desc: "Checks whether a directory exists. MUST use await." }
+await vja.dir.create: { args: [path:string], return: "boolean", desc: "Creates a directory (including parents). Same argument pattern for vja.dir.delete(path) [deletes directory], vja.dir.exists(path) [checks existence]. MUST use await." }
+await vja.dir.list: { args: [path:string], return: "string[]", desc: "Lists entries in a directory. MUST use await." }
 
-vja.notify.toast: { scope: UI_NOTIFICATION, args: [message:string, duration?:number], return: "void", desc: "Displays a bottom toast notification." }
+vja.notify.toast: { args: [message:string, duration?:number], return: "void", desc: "Displays a bottom toast notification." }
 
-vja.trigger.click: { scope: UI_TRIGGER, args: [name:string], return: "void", desc: "Triggers click on widget. name is the widget's NAME STRING (e.g. 'btnSearch'). For other events use same pattern: vja.trigger.focus(name), vja.trigger.blur(name), vja.trigger.change(name), vja.trigger.mouseDown(name), vja.trigger.mouseUp(name), vja.trigger.mouseEnter(name), vja.trigger.mouseLeave(name), vja.trigger.scroll(name)" }
+vja.trigger.click: { args: [name:string], return: "void", desc: "Triggers click on widget. name is the widget's NAME STRING (e.g. 'btnSearch'). For other events use same pattern: vja.trigger.focus(name), vja.trigger.blur(name), vja.trigger.change(name), vja.trigger.mouseDown(name), vja.trigger.mouseUp(name), vja.trigger.mouseEnter(name), vja.trigger.mouseLeave(name), vja.trigger.scroll(name)" }
 
-vja.event.getKey: { scope: EVENT_KEY, args: [], return: "string|null", desc: "KeyDown/KeyUp event ONLY. Returns key name ('Enter','Escape','ArrowUp' etc). Returns null in other events." }
-vja.event.get: { scope: EVENT_DATA, args: [], return: "object", desc: "MUST NOT use await or .then(). Synchronous function. Call directly: const ev = vja.event.get(); NEVER returns null — always returns an object. RowClick={type:'rowClick',row:rowIndex,column:'colName'}, HeaderClick={type:'headerClick',column:'colName'}, Click=returns rowClick or headerClick result based on clicked area (use ev.type to branch), ALL other events (KeyDown/KeyUp/TextChanged/CheckedChanged/etc.)={type: the event name with its first letter lowercased} (e.g. KeyDown->{type:'keyDown'}, TextChanged->{type:'textChanged'}). IMPORTANT: ev.type can ONLY be 'rowClick', 'headerClick', or the mechanically-derived lowerCamel event name — NEVER invent or guess any other value. To detect which key was pressed, use vja.event.getKey()/isEnter()/isEscape() etc. instead, NOT vja.event.get(). Example(RowClick): const ev=vja.event.get(); const rows=vja.widget.get('tableView'); const rowData=rows[ev.row];" }
+vja.event.getKey: { args: [], return: "string|null", desc: "KeyDown/KeyUp event ONLY. Returns key name ('Enter','Escape','ArrowUp' etc). Returns null in other events." }
+vja.event.get: { args: [], return: "object", desc: "MUST NOT use await or .then(). Synchronous function. Call directly: const ev = vja.event.get(); NEVER returns null — always returns an object. RowClick={type:'rowClick',row:rowIndex,column:'colName'}, HeaderClick={type:'headerClick',column:'colName'}, Click=returns rowClick or headerClick result based on clicked area (use ev.type to branch), ALL other events (KeyDown/KeyUp/TextChanged/CheckedChanged/etc.)={type: the event name with its first letter lowercased} (e.g. KeyDown->{type:'keyDown'}, TextChanged->{type:'textChanged'}). IMPORTANT: ev.type can ONLY be 'rowClick', 'headerClick', or the mechanically-derived lowerCamel event name — NEVER invent or guess any other value. To detect which key was pressed, use vja.event.getKey()/isEnter()/isEscape() etc. instead, NOT vja.event.get(). Example(RowClick): const ev=vja.event.get(); const rows=vja.widget.get('tableView'); const rowData=rows[ev.row];" }
 
-vja.event.isEnter: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Enter key." }
-vja.event.isEscape: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Escape key." }
-vja.event.isShift: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Shift key is held." }
-vja.event.isCtrl: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Ctrl key is held." }
+vja.event.isEnter: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Enter key." }
+vja.event.isEscape: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Escape key." }
+vja.event.isShift: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Shift key is held." }
+vja.event.isCtrl: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Ctrl key is held." }
 
-await vja.http.get: { scope: NETWORK_REST_API, args: [url:string, headers?:object], return: "any", desc: "HTTP GET. (vja.http.delete(url, headers) uses same args)" }
-await vja.http.post: { scope: NETWORK_REST_API, args: [url:string, body:any, headers?:object], return: "any", desc: "HTTP POST with JSON body. (vja.http.put(url, body, headers) uses same args)" }
-await vja.fetch: { scope: NETWORK_LOW_LEVEL, args: [url:string, options?:object], return: "any", desc: "Low-level fetch alternative for custom options." }
+await vja.http.get: { args: [url:string, headers?:object], return: "any", desc: "HTTP GET. (vja.http.delete(url, headers) uses same args)" }
+await vja.http.post: { args: [url:string, body:any, headers?:object], return: "any", desc: "HTTP POST with JSON body. (vja.http.put(url, body, headers) uses same args)" }
+await vja.fetch: { args: [url:string, options?:object], return: "any", desc: "Low-level fetch alternative for custom options." }
 
-vja.ui.loading: { scope: UI_OVERLAY, args: [show:boolean, message?:string], return: "void", desc: "Toggle loading overlay screen. MUST wrap the actual code in try{} finally{ vja.ui.loading(false); } structure to ensure turn off on errors." }
+vja.ui.loading: { args: [show:boolean, message?:string], return: "void", desc: "Toggle loading overlay screen. MUST wrap the actual code in try{} finally{ vja.ui.loading(false); } structure to ensure turn off on errors." }
 
-await vja.app.showDialog: { scope: UI_DIALOG, args: [message:string], return: "void", desc: "Shows a message dialog. MUST use await (e.g., await vja.app.showDialog('...')). Forgetting await is a common mistake — do not omit it." }
-await vja.app.showConfirm: { scope: UI_DIALOG, args: [message:string], return: "boolean", desc: "Confirm dialog. OK=true, Cancel=false." }
+await vja.app.showDialog: { args: [message:string], return: "void", desc: "Shows a message dialog. MUST use await (e.g., await vja.app.showDialog('...')). Forgetting await is a common mistake — do not omit it." }
+await vja.app.showConfirm: { args: [message:string], return: "boolean", desc: "Confirm dialog. OK=true, Cancel=false." }
 
-console.info: { scope: LOG_SYSTEM, args: [message:any], return: "void" }
-console.warn: { scope: LOG_SYSTEM, args: [message:any], return: "void" }
-console.error: { scope: LOG_SYSTEM, args: [message:any], return: "void" }
+console.info: { args: [message:any], return: "void" }
+console.warn: { args: [message:any], return: "void" }
+console.error: { args: [message:any], return: "void" }
 `.trim();
 
     // ### [AIP説明で利用]
