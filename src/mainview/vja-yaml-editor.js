@@ -754,27 +754,65 @@ function _findStyleWarnings(code, isAppEvent) {
     return found;
 }
 
-// 生成コードを検証する。戻り値: { ok, syntaxError, unknownApis, forbiddenPatterns }
-function validateGeneratedJs(code, isAppEvent) {
+// このイベント(evName/wtag)で vja.event.get().type に入り得る「正しい値」を
+// 機械的に算出する。不明な場合はnullを返す（チェック対象外）。
+function _expectedEventTypes(evName, wtag) {
+    if (!evName) return null;
+    if (evName === "RowClick") return ["rowClick"];
+    if (evName === "HeaderClick") return ["headerClick"];
+    if (evName === "Click" && wtag === "datagrid") return ["rowClick", "headerClick"];
+    return [evName.charAt(0).toLowerCase() + evName.slice(1)];
+}
+
+// vja.event.get()の戻り値の.typeと、実際にはあり得ない値を比較しているケースを
+// 検出する（例: KeyUpイベント用のコードなのに ev.type === 'keyDown' と誤記する）。
+// 正規表現による2段階抽出:
+//   1. "var/let/const 変数名 = vja.event.get()" から代入先変数名を特定
+//   2. "変数名.type === '値'" の比較を全て抜き出し、期待値と照合
+// 【制約】分割代入や、比較の左右が逆（'値' === 変数名.type）のケースは対象外。
+function _findEventTypeMismatch(code, evName, wtag) {
+    const expected = _expectedEventTypes(evName, wtag);
+    if (!expected) return [];
+    const found = [];
+    const declRe = /\b(?:var|let|const)\s+(\w+)\s*=\s*vja\.event\.get\s*\(\s*\)/g;
+    let dm;
+    while ((dm = declRe.exec(code)) !== null) {
+        const varName = dm[1];
+        const cmpRe = new RegExp("\\b" + varName + "\\.type\\s*(?:===|==)\\s*['\"]([^'\"]+)['\"]", "g");
+        let cm;
+        while ((cm = cmpRe.exec(code)) !== null) {
+            const actual = cm[1];
+            if (!expected.includes(actual)) {
+                const line = code.slice(0, cm.index).split("\n").length;
+                found.push({ line, expected, actual });
+            }
+        }
+    }
+    return found;
+}
+
+// 生成コードを検証する。戻り値: { ok, syntaxError, unknownApis, forbiddenPatterns, ... }
+function validateGeneratedJs(code, isAppEvent, evName, wtag) {
     const syntaxError = _checkJsSyntax(code);
     const unknownApis = _findUnknownApis(code, isAppEvent);
     const forbiddenPatterns = _findForbiddenPatterns(code);
     const missingAwaits = _findMissingAwaits(code, isAppEvent);
     const unknownWidgets = _findUnknownWidgetNames(code);
+    const eventTypeMismatches = _findEventTypeMismatch(code, evName, wtag);
     // styleWarnings（変数宣言スタイル）はNG判定・自動リトライの対象に含めない。
     // 実害が無く、リトライしても改善しないことが多いため、
     // 行コメントでの指摘のみに留める。
     const styleWarnings = _findStyleWarnings(code, isAppEvent);
     return {
         ok: !syntaxError && unknownApis.length === 0 && forbiddenPatterns.length === 0
-            && missingAwaits.length === 0 && unknownWidgets.length === 0,
-        syntaxError, unknownApis, forbiddenPatterns, missingAwaits, unknownWidgets, styleWarnings,
+            && missingAwaits.length === 0 && unknownWidgets.length === 0 && eventTypeMismatches.length === 0,
+        syntaxError, unknownApis, forbiddenPatterns, missingAwaits, unknownWidgets, eventTypeMismatches, styleWarnings,
     };
 }
 
 // 未知API・禁止パターンが検出された行の末尾に、指摘コメントを挿入する。
 // （構文エラーは行の特定精度が低いため、行コメント挿入の対象外とする）
-function annotateUnknownApis(code, unknownApis, forbiddenPatterns, missingAwaits, unknownWidgets, styleWarnings) {
+function annotateUnknownApis(code, unknownApis, forbiddenPatterns, missingAwaits, unknownWidgets, styleWarnings, eventTypeMismatches) {
     const byLine = new Map();
     (unknownApis || []).forEach(({ line, api }) => {
         if (!byLine.has(line)) byLine.set(line, []);
@@ -791,6 +829,10 @@ function annotateUnknownApis(code, unknownApis, forbiddenPatterns, missingAwaits
     (unknownWidgets || []).forEach(({ line, api, name }) => {
         if (!byLine.has(line)) byLine.set(line, []);
         byLine.get(line).push("未知のウィジェット名: " + api + "('" + name + "') は現在のフォームに存在しません");
+    });
+    (eventTypeMismatches || []).forEach(({ line, expected, actual }) => {
+        if (!byLine.has(line)) byLine.set(line, []);
+        byLine.get(line).push("ev.typeの比較値'" + actual + "'は、このイベントではあり得ません（正しくは" + expected.map((e) => "'" + e + "'").join(" または ") + "）");
     });
     (styleWarnings || []).forEach(({ line, message }) => {
         if (!byLine.has(line)) byLine.set(line, []);
@@ -847,6 +889,9 @@ function _buildAiFixPrompt(originalUserPrompt, code, validation) {
     validation.unknownWidgets.forEach(({ line, api, name }) => {
         issues.push("- " + line + "行目付近: \"" + api + "('" + name + "')\" のウィジェット名 \"" + name + "\" は現在のフォームに存在しません。実在するウィジェット名に修正してください。");
     });
+    (validation.eventTypeMismatches || []).forEach(({ line, expected, actual }) => {
+        issues.push("- " + line + "行目付近: ev.type === '" + actual + "' は誤りです。このイベントで実際にあり得る値は " + expected.map((e) => "'" + e + "'").join(" または ") + " のみです。");
+    });
     if (validation.mockError) {
         issues.push("- モック実行時に例外が発生しました: " + validation.mockError + "（ダミー値での試験実行のため、実際の実行結果とは異なる場合がありますが、コードの構造に問題がある可能性が高いです）");
     }
@@ -894,14 +939,41 @@ function showAiValidationWarningBanner(validation) {
     validation.unknownWidgets.forEach(({ line, api, name }) => {
         items.push("・" + line + "行目付近: 未知のウィジェット名「" + esc(name) + "」（" + esc(api) + "）");
     });
+    (validation.eventTypeMismatches || []).forEach(({ line, expected, actual }) => {
+        items.push("・" + line + "行目付近: ev.typeの値「" + esc(actual) + "」はあり得ません（正しくは " + expected.map((e) => "「" + esc(e) + "」").join(" または ") + "）");
+    });
     if (validation.mockError) items.push("・モック実行時に例外が発生: " + esc(validation.mockError));
-    banner.style.cssText = "background:#4a2a2a;color:#ffd8d8;padding:10px 14px;font-size:12px;border-bottom:1px solid #7a3a3a;flex-shrink:0";
+    // 検出件数が多い場合、バナーの高さが際限なく伸びてエディタ領域（ガター等）の
+    // 表示を崩すことがあるため、一覧部分は最大高さ＋内部スクロールに固定する。
+    // さらに、全件を落ち着いて確認したい場合向けに別モーダル表示も用意する。
+    _lastAiValidationItems = items;
+    const MAX_INLINE_ITEMS = 6;
+    const showDetailBtn = items.length > MAX_INLINE_ITEMS
+        ? " <button class='yaml-ai-btn'" + evtAttr("onmousedown", "openAiValidationDetailModal()") + ">🔍 全" + items.length + "件を別ウィンドウで見る</button>"
+        : "";
+    banner.style.cssText = "background:#4a2a2a;color:#ffd8d8;padding:10px 14px;font-size:12px;border-bottom:1px solid #7a3a3a;flex-shrink:0;max-height:220px;display:flex;flex-direction:column";
     banner.innerHTML =
-        "<div style='font-weight:bold;margin-bottom:4px'>⚠ 生成コードに問題の可能性があります（自動修正後も検出）</div>" +
-        "<div style='white-space:pre-line;margin-bottom:8px'>" + items.join("\n") + "</div>" +
+        "<div style='font-weight:bold;margin-bottom:4px;flex-shrink:0'>⚠ 生成コードに問題の可能性があります（自動修正後も検出、" + items.length + "件）" + showDetailBtn + "</div>" +
+        "<div style='white-space:pre-line;margin-bottom:8px;overflow-y:auto;flex:1;min-height:0'>" + items.join("\n") + "</div>" +
+        "<div style='flex-shrink:0'>" +
         "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "manualRetryAiFix()") + ">🤖 もう一度AIに修正を依頼</button> " +
-        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "dismissAiValidationBanner()") + ">このまま閉じる</button>";
+        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "dismissAiValidationBanner()") + ">このまま閉じる</button>" +
+        "</div>";
     left.insertBefore(banner, left.firstChild);
+}
+// 警告バナーの一覧が多い場合の、全件確認用モーダル。
+// 直前に表示したバナーの内容（_lastAiValidationItems）をそのまま表示する。
+let _lastAiValidationItems = [];
+function openAiValidationDetailModal() {
+    showModal(
+        mhdrHTML("⚠ 検出内容（全" + _lastAiValidationItems.length + "件）") +
+        "<div class='mbody' style='display:flex;flex-direction:column;gap:8px'>" +
+        "<div style='white-space:pre-line;max-height:60vh;overflow-y:auto;font-size:13px'>" +
+        _lastAiValidationItems.join("\n") +
+        "</div>" +
+        "</div>" +
+        mfootHTML([{ label: "閉じる", action: "closeModal()" }])
+    );
 }
 function dismissAiValidationBanner() {
     document.getElementById("ai-validation-banner")?.remove();
@@ -923,7 +995,7 @@ async function manualRetryAiFix() {
     const { sysPrompt, userPrompt, isAppEvent, wid, evName, isFormEvent, validationName, wtag } = _lastAiValidationCtx;
     const jsTa = $("js-ta");
     const currentCode = _stripValidationWrapper(jsTa?.value || "", validationName);
-    let validation = validateGeneratedJs(currentCode, isAppEvent);
+    let validation = validateGeneratedJs(currentCode, isAppEvent, evName, wtag);
     validation = await _augmentWithMockCheck(validation, currentCode, isAppEvent, evName, wtag);
     if (validation.ok) { dismissAiValidationBanner(); return; }
     window.vja?.log?.debug?.("[AI検証] 手動での修正依頼を実行します。検出内容: " + _formatValidationIssuesForLog(validation));
@@ -933,14 +1005,15 @@ async function manualRetryAiFix() {
         userPrompt: fixUserPrompt,
         loadingMsg: "検出した問題を自動修正中…",
         onSuccess: async (fixed) => {
-            let revalidated = validateGeneratedJs(fixed, isAppEvent);
+            let revalidated = validateGeneratedJs(fixed, isAppEvent, evName, wtag);
             revalidated = await _augmentWithMockCheck(revalidated, fixed, isAppEvent, evName, wtag);
             window.vja?.log?.debug?.(revalidated.ok
                 ? "[AI検証] 手動修正で解消しました。"
                 : "[AI検証] 手動修正後も未解消: " + _formatValidationIssuesForLog(revalidated));
             let codeForEditor = annotateUnknownApis(
                 fixed, revalidated.unknownApis, revalidated.forbiddenPatterns,
-                revalidated.missingAwaits, revalidated.unknownWidgets, revalidated.styleWarnings
+                revalidated.missingAwaits, revalidated.unknownWidgets, revalidated.styleWarnings,
+                revalidated.eventTypeMismatches
             );
             if (validationName) {
                 codeForEditor = "// 検証チェック処理(自動追加).\n" +
@@ -1121,7 +1194,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
             // ※temperatureの自動引き上げは行わない（通常のtemperature設定を
             //   そのまま使う）。ランダム性を上げて試したい場合は、エディタの
             //   「🎲 ランダム性を上げて再生成」ボタンを使う。
-            let validation = validateGeneratedJs(unwrapped, isAppEvent);
+            let validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag);
             validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag);
             if (!validation.ok) {
                 const issueLog = _formatValidationIssuesForLog(validation);
@@ -1140,7 +1213,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                 });
                 if (retryCode) {
                     unwrapped = retryCode;
-                    validation = validateGeneratedJs(unwrapped, isAppEvent);
+                    validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag);
                     validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag);
                     window.vja?.log?.debug?.(validation.ok
                         ? "[AI検証] 自動修正リトライで解消しました。"
@@ -1156,7 +1229,8 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
             // （構文エラーは行特定の精度が低いため行コメント対象外。バナーでのみ通知）
             const codeForEditor = annotateUnknownApis(
                 unwrapped, validation.unknownApis, validation.forbiddenPatterns,
-                validation.missingAwaits, validation.unknownWidgets, validation.styleWarnings
+                validation.missingAwaits, validation.unknownWidgets, validation.styleWarnings,
+                validation.eventTypeMismatches
             );
 
             // バリデーション定義がある場合、JSの先頭に呼び出しを挿入
@@ -2008,5 +2082,6 @@ Object.assign(window, {
     editorSearch, openFormDesignAi, formDesignAiGenerate, saveFormDesignDraft,
     parseFormDesignJson, openAiRawOutputModal,
     validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
+    openAiValidationDetailModal,
     dismissAiValidationBanner, manualRetryAiFix,
 });

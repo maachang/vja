@@ -606,6 +606,8 @@ getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ
   - 使用例: "console.info('処理が完了しました');"
   - 使用例説明: 処理完了をログに出力する
   - 類似関数:
+    - console.log(message):
+      - 説明: 通常のログを出力する（デバッグ用途）
     - console.warn(message):
       - 説明: WARNレベルのログを出力する
     - console.error(message, error?):
@@ -1335,6 +1337,32 @@ ${_removeYamlShComments(yamlDef)}
         const programType = isAppEvent ? "TypeScript" : "JavaScript";
         const widgetLineEn = wname ? `- Current widget: ${wname}\n` : "";
 
+        // このコード生成が対象とする具体的なイベント名に基づき、
+        // vja.event.get().type に入り得る「唯一の正しい値」をその場で計算し、
+        // プロンプトに動的に埋め込む。ドキュメント上の一般ルールだけでは、
+        // AIが「近い別のイベント名」を創作してしまう事例が実際にあったため
+        // （例: KeyUpイベント用のコードなのに ev.type === 'keyDown' と誤記する）、
+        // 抽象的なルールに加えて「今回はこの値だけが正しい」と具体的に
+        //念押しする形にしている。
+        const eventTypeHintEn = (() => {
+            if (isAppEvent || !eventName) return "";
+            if (eventName === "RowClick") {
+                return "\n- IMPORTANT: This code is for the \"RowClick\" event. If you call vja.event.get(), ev.type will ALWAYS be exactly 'rowClick'. Never use any other value.\n";
+            }
+            if (eventName === "HeaderClick") {
+                return "\n- IMPORTANT: This code is for the \"HeaderClick\" event. If you call vja.event.get(), ev.type will ALWAYS be exactly 'headerClick'. Never use any other value.\n";
+            }
+            if (eventName === "Click" && wtag === "datagrid") {
+                return "\n- IMPORTANT: This code is for the \"Click\" event on a datagrid. If you call vja.event.get(), ev.type will be either 'rowClick' or 'headerClick' — no other value is possible.\n";
+            }
+            if (eventName === "KeyDown" || eventName === "KeyUp") {
+                const correct = eventName.charAt(0).toLowerCase() + eventName.slice(1);
+                const wrongSibling = eventName === "KeyDown" ? "keyUp" : "keyDown";
+                return `\n- IMPORTANT: This code is specifically for the "${eventName}" event (NOT ${eventName === "KeyDown" ? "KeyUp" : "KeyDown"}). If you call vja.event.get(), ev.type will ALWAYS be exactly '${correct}' — NEVER '${wrongSibling}' or any other value. Do not confuse this with the other Key event. To check which key was pressed, use vja.event.getKey()/isEnter()/isEscape() etc. instead of comparing ev.type.\n`;
+            }
+            return "";
+        })();
+
         // Context information for Frontend/Widget events
         const frontInfo = isAppEvent
             ? ""
@@ -1343,7 +1371,7 @@ ${_removeYamlShComments(yamlDef)}
 ---
 - Current Form: ${formName}
 ${widgetLineEn}- Current Event: ${eventName}
----
+${eventTypeHintEn}---
 
 ### Widget List (${formName})
 ---
