@@ -169,10 +169,14 @@
                 },
                 getKey: () => (isKeyCtx ? "Enter" : null),
                 getKeyCode: () => (isKeyCtx ? 13 : null),
+                // KeyDown/KeyUpイベント時は、どのキー判定APIが使われても
+                // 「押された」側の分岐（本来のロジック）が実行されるよう、
+                // 全て true 相当を返す（実際の押下状態の整合性は問わない。
+                // スモークテストの目的は「その分岐の中身が動くか」の確認のため）。
                 isEnter: () => isKeyCtx,
-                isEscape: () => false,
-                isShift: () => false,
-                isCtrl: () => false,
+                isEscape: () => isKeyCtx,
+                isShift: () => isKeyCtx,
+                isCtrl: () => isKeyCtx,
             },
             http: {
                 get: async () => ({}),
