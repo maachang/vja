@@ -152,6 +152,7 @@ function openYaml(wid, evName) {
     pvRegister("yamlSave", () => saveYaml(wid, evName));
     pvRegister("yamlAiGen", () => yamlAiGenerate(wid, evName));
     pvRegister("yamlAiGenRandom", () => yamlAiGenerate(wid, evName, _getBoostedTemperature()));
+    pvRegister("yamlMockCheck", () => manualMockCheck(false, evName, getWidget(wid)?.tag));
     showModal(buildYamlEditorHTML(cur, curJs, true, mhdrHTML("📋 " + esc(w.name) + " — " + esc(evName)), "", null, isAppEvent));
     initYamlEditorModal(cur, curJs);
 }
@@ -908,19 +909,22 @@ let _lastAiValidationCtx = null;
 // 検証NG（構文エラー・未知API・禁止パターン）の内容をまとめた警告バナーを、
 // 現在開いているYAMLエディタモーダルの左ペイン上部に表示する。
 // トーストと異なり、ユーザーが閉じるまで表示され続ける。
-function showAiValidationWarningBanner(validation) {
+function showAiValidationWarningBanner(validation, canRetry = true) {
     const left = document.querySelector(".yaml-editor-left");
     if (!left) return;
     const old = document.getElementById("ai-validation-banner");
     if (old) old.remove();
     const banner = document.createElement("div");
     banner.id = "ai-validation-banner";
+    const retryBtnHtml = canRetry
+        ? "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "manualRetryAiFix()") + ">🤖 もう一度AIに修正を依頼</button> "
+        : "";
     if (validation.ok) {
         // 検証OK：バナーは自動で消さず、再修正を依頼できる状態のまま維持する
         banner.style.cssText = "background:#2a4a2e;color:#d8ffe0;padding:10px 14px;font-size:12px;border-bottom:1px solid #3a7a4a;flex-shrink:0";
         banner.innerHTML =
             "<div style='font-weight:bold;margin-bottom:8px'>✅ 検証OKになりました（未知のAPI・構文エラーは検出されていません）</div>" +
-            "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "manualRetryAiFix()") + ">🤖 もう一度AIに修正を依頼</button> " +
+            retryBtnHtml +
             "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "dismissAiValidationBanner()") + ">閉じる</button>";
         left.insertBefore(banner, left.firstChild);
         return;
@@ -956,7 +960,7 @@ function showAiValidationWarningBanner(validation) {
         "<div style='font-weight:bold;margin-bottom:4px;flex-shrink:0'>⚠ 生成コードに問題の可能性があります（自動修正後も検出、" + items.length + "件）" + showDetailBtn + "</div>" +
         "<div style='white-space:pre-line;margin-bottom:8px;overflow-y:auto;flex:1;min-height:0'>" + items.join("\n") + "</div>" +
         "<div style='flex-shrink:0'>" +
-        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "manualRetryAiFix()") + ">🤖 もう一度AIに修正を依頼</button> " +
+        retryBtnHtml +
         "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "dismissAiValidationBanner()") + ">このまま閉じる</button>" +
         "</div>";
     left.insertBefore(banner, left.firstChild);
@@ -990,6 +994,28 @@ function _stripValidationWrapper(code, validationName) {
 }
 
 // 現在js-taに表示されている内容を対象に、再検証→修正依頼を1回実行する。
+// 「🧪 モック実行」ボタン用。現在js-taに表示されている内容（AI生成直後・
+// 人間が手で修正した後のどちらでも可）に対して、AI生成を伴わずに
+// 検証（構文・API・await漏れ・ウィジェット名・ev.type・モック実行）だけを行う。
+async function manualMockCheck(isAppEvent, evName, wtag) {
+    const jsTa = $("js-ta");
+    const code = jsTa?.value || "";
+    if (!code.trim()) { showToast("JavaScriptが入力されていません"); return; }
+    let validation = validateGeneratedJs(code, isAppEvent, evName, wtag);
+    validation = await _augmentWithMockCheck(validation, code, isAppEvent, evName, wtag);
+    window.vja?.log?.debug?.("[AI検証] 手動モック実行: " + _formatValidationIssuesForLog(validation));
+    if (validation.ok) {
+        dismissAiValidationBanner();
+        showToast("✅ モック実行OK（問題は検出されませんでした）");
+        return;
+    }
+    // AI修正依頼に必要なコンテキスト（sysPrompt/userPrompt）が無い場合
+    // （このセッションでまだAI生成を1度も行っていない状態で、手動編集した
+    // コードに対してモック実行だけ行った場合等）は、「もう一度AIに修正を
+    // 依頼」ボタンを出さない（押してもmanualRetryAiFix()が何もできないため）。
+    showAiValidationWarningBanner(validation, !!_lastAiValidationCtx);
+}
+
 async function manualRetryAiFix() {
     if (!_lastAiValidationCtx) return;
     const { sysPrompt, userPrompt, isAppEvent, wid, evName, isFormEvent, validationName, wtag } = _lastAiValidationCtx;
@@ -1797,6 +1823,8 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         "<div class='yaml-ai-bar' style='padding-bottom:8px;flex-direction:column;align-items:stretch;gap:4px'>" +
         "<div style='display:flex;align-items:center;gap:4px'>" +
         "<input id='ai-prompt-in' placeholder='AIへの追加指示（任意）' style='flex:1'>" +
+        "<button class='yaml-ai-btn' id='ai-mock-btn' title='現在JavaScriptタブに表示されている内容を、モックVJAランタイムで試験実行します'" +
+        evtAttr("onmousedown", "pvCall(\"yamlMockCheck\")") + ">🧪 モック実行</button>" +
         "<button class='yaml-ai-btn' id='ai-gen-random-btn' title='temperatureを一時的に上げて再生成します（同じ間違いを繰り返す場合に）'" +
         evtAttr("onmousedown", "pvCall(\"yamlAiGenRandom\")") + ">🎲 ランダム性を上げて再生成</button>" +
         "<button class='yaml-ai-btn' id='ai-gen-btn'" + evtAttr("onmousedown", "pvCall(\"yamlAiGen\")") + ">" +
@@ -2085,5 +2113,5 @@ Object.assign(window, {
     parseFormDesignJson, openAiRawOutputModal,
     validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
     openAiValidationDetailModal,
-    dismissAiValidationBanner, manualRetryAiFix,
+    dismissAiValidationBanner, manualRetryAiFix, manualMockCheck,
 });

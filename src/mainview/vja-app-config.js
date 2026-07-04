@@ -73,6 +73,7 @@ function openAppEvents(evKey) {
     pvRegister("yamlSave", saveAppEvent);
     pvRegister("yamlAiGen", () => yamlAiGenerate("appev", evKey));
     pvRegister("yamlAiGenRandom", () => yamlAiGenerate("appev", evKey, _getBoostedTemperature()));
+    pvRegister("yamlMockCheck", () => manualMockCheck(true, evKey, undefined));
     const appEvHeader =
         "<div class='mhdr' style='flex-shrink:0'>" +
         "<div style='display:flex;align-items:center;gap:0;flex:1'>" +
