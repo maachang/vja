@@ -963,6 +963,7 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
 ## YAMLへの忠実性
 - YAMLに記載のない処理（navigate、setVisible、show/hideなど）の追加は絶対禁止です。
 - 「YAML仕様」の指示内容に従い実装を厳守してください。
+- イベント名（KeyUp、SelectedIndexChangedなど）は「どの操作をきっかけに実行されるか」を示す参考情報に過ぎません。イベント名から連想される典型的な実装（例: SelectedIndexChangedだから選択値を取得して表示する、等）を勝手に補って実装することは絶対禁止です。実装内容は必ず「アクション:」に明記された指示のみに基づいてください。
 
 ## その他
 - コメントはすべて日本語で記述してください。
@@ -1000,6 +1001,7 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
 ## YAMLへの忠実性
 - YAMLに記載のない処理（navigate、setVisible、show/hideなど）の追加は絶対禁止です。
 - 「エラー終了」などでエラーログ出力を行う指示がある場合、try {} catch(e) のErrorオブジェクトのmessageを出力する実装を行いますが、この時必ず第2引数にErrorオブジェクトを設定し、「console.error(e.message, e);」としてください。
+- イベント名（KeyUp、SelectedIndexChangedなど）は「どの操作をきっかけに実行されるか」を示す参考情報に過ぎません。イベント名から連想される典型的な実装（例: SelectedIndexChangedだから選択値を取得して表示する、等）を勝手に補って実装することは絶対禁止です。実装内容は必ず「アクション:」に明記された指示のみに基づいてください。
 
 ## その他
 - コメントはすべて日本語で記述してください。
@@ -1097,6 +1099,7 @@ ${vjaUseJsInfo}
 ## Fidelity to YAML
 - Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.
 - Strictly adhere to the implementation requirements specified in "the YAML specification".
+- The event name (e.g., KeyUp, SelectedIndexChanged) is merely reference information indicating what triggers the code — it is NOT an instruction. NEVER infer or add a "typical" implementation commonly associated with that event name (e.g., assuming SelectedIndexChanged implies "retrieve the selected value and display it"). The implementation must be based solely on what is explicitly specified under "アクション:" (Action).
 
 ## Other
 - All comments must be written in Japanese.
@@ -1134,6 +1137,7 @@ ${vjaUseJsInfo}
 ## Fidelity to YAML
 - Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.
 - When implementing logic to output an error log upon "error termination" (or similar events) using the "message" property of an "Error" object from a "try { } catch (e)" block, you must always set the "Error" object itself as the second argument—specifically, "console.error(e.message, e)".
+- The event name (e.g., KeyUp, SelectedIndexChanged) is merely reference information indicating what triggers the code — it is NOT an instruction. NEVER infer or add a "typical" implementation commonly associated with that event name (e.g., assuming SelectedIndexChanged implies "retrieve the selected value and display it"). The implementation must be based solely on what is explicitly specified under "アクション:" (Action).
 
 ## Other
 - All comments must be written in Japanese.
