@@ -416,15 +416,17 @@
 
 ## イベント情報 (vja.event.*)
 
-KeyDown / KeyUp イベント専用。それ以外のイベントでは null を返す。
+get() は全イベントで必ずオブジェクトを返す（nullにはならない）。
+getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ以外では null/false を返す。
 
 - 関数名: vja.event.get():
   - 説明: イベントデータを取得する（同期関数。awaitや.then()は使用禁止）
-  - 戻り値: object | null
+  - 戻り値: object（nullになることはありません。全てのイベントで必ずオブジェクトを返します）
   - RowClick時: {type:'rowClick', row:行インデックス, column:'カラム名'}
   - HeaderClick時: {type:'headerClick', column:'カラム名'}
   - Click時: テーブルの行クリックなら rowClick、ヘッダークリックなら headerClick の結果を返す。typeで判別して処理を分岐できる
-  - それ以外: null
+  - それ以外の全てのイベント（KeyDown/KeyUp/TextChanged/CheckedChanged等）: {type: そのイベント名の先頭文字を小文字にしたもの}（例: KeyDownイベントなら{type:'keyDown'}、TextChangedイベントなら{type:'textChanged'}）
+  - 【重要】ev.type の値は、上記のルール（rowClick/headerClick、またはイベント名の先頭を小文字にしたもの）以外には絶対に存在しません。実際のイベント名から機械的に導ける値以外（推測や創作した値）と比較してはいけません。なお、KeyDown/KeyUpイベントで押されたキーそのものを判定したい場合は、vja.event.get()ではなく vja.event.getKey() / vja.event.isEnter() 等を使用してください（下記参照）。
   - 使用例: "const ev = vja.event.get(); const rows = vja.widget.get('tableView'); const rowData = rows[ev.row];"
   - 使用例説明: RowClickイベントでクリックした行データを取得する
 
@@ -670,7 +672,7 @@ vja.notify.toast: { scope: UI_NOTIFICATION, args: [message:string, duration?:num
 vja.trigger.click: { scope: UI_TRIGGER, args: [name:string], return: "void", desc: "Triggers click on widget. For other events use same pattern: vja.trigger.focus(name), vja.trigger.blur(name), vja.trigger.change(name), vja.trigger.mouseDown(name), vja.trigger.mouseUp(name), vja.trigger.mouseEnter(name), vja.trigger.mouseLeave(name), vja.trigger.scroll(name)" }
 
 vja.event.getKey: { scope: EVENT_KEY, args: [], return: "string|null", desc: "KeyDown/KeyUp event ONLY. Returns key name ('Enter','Escape','ArrowUp' etc). Returns null in other events." }
-vja.event.get: { scope: EVENT_DATA, args: [], return: "object|null", desc: "MUST NOT use await or .then(). Synchronous function. Call directly: const ev = vja.event.get(); RowClick={type:'rowClick',row:rowIndex,column:'colName'}, HeaderClick={type:'headerClick',column:'colName'}, Click=returns rowClick or headerClick result based on clicked area (use ev.type to branch), others=null. Example(RowClick): const ev=vja.event.get(); const rows=vja.widget.get('tableView'); const rowData=rows[ev.row];" }
+vja.event.get: { scope: EVENT_DATA, args: [], return: "object", desc: "MUST NOT use await or .then(). Synchronous function. Call directly: const ev = vja.event.get(); NEVER returns null — always returns an object. RowClick={type:'rowClick',row:rowIndex,column:'colName'}, HeaderClick={type:'headerClick',column:'colName'}, Click=returns rowClick or headerClick result based on clicked area (use ev.type to branch), ALL other events (KeyDown/KeyUp/TextChanged/CheckedChanged/etc.)={type: the event name with its first letter lowercased} (e.g. KeyDown->{type:'keyDown'}, TextChanged->{type:'textChanged'}). IMPORTANT: ev.type can ONLY be 'rowClick', 'headerClick', or the mechanically-derived lowerCamel event name — NEVER invent or guess any other value. To detect which key was pressed, use vja.event.getKey()/isEnter()/isEscape() etc. instead, NOT vja.event.get(). Example(RowClick): const ev=vja.event.get(); const rows=vja.widget.get('tableView'); const rowData=rows[ev.row];" }
 
 vja.event.isEnter: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Enter key." }
 vja.event.isEscape: { scope: EVENT_KEY, args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Escape key." }

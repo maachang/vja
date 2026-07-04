@@ -447,20 +447,22 @@
     </script>
 
     <!-- ═══════════════════════════════════════════════════════════════
-         VJA デザイナー本体 — 9ファイルに分割（依存順に読み込むこと）
+         VJA デザイナー本体 — 10ファイルに分割（依存順に読み込むこと）
          詳しい依存関係は各ファイル冒頭のヘッダーコメントを参照。
          1. vja-defs.js             状態管理・ウィジェット定義（最も依存される）
          2. vja-designer.js         デザイナー本体（描画・選択・プロパティパネル）
-         3. vja-modal.js            モーダル基盤・Undo/Redo・削除/複製
-         4. vja-yaml-editor.js      YAML/JSエディタ本体
-         5. vja-editor-utils.js     エディタ共通ユーティリティ
-         6. vja-save.js             保存・開く・実行・マルチフォーム管理
-         7. vja-table-validation.js 定数・テーブル・バリデーション編集
-         8. vja-app-config.js       フォーム定数・アプリイベント・クラウド設定等
-         9. vja-ui.js               キーボード・ルーラー・INIT（必ず最後）
+         3. vja-mock-runtime.js     AI生成JS検証用モックランタイム（副作用なし）
+         4. vja-modal.js            モーダル基盤・Undo/Redo・削除/複製
+         5. vja-yaml-editor.js      YAML/JSエディタ本体
+         6. vja-editor-utils.js     エディタ共通ユーティリティ
+         7. vja-save.js             保存・開く・実行・マルチフォーム管理
+         8. vja-table-validation.js 定数・テーブル・バリデーション編集
+         9. vja-app-config.js       フォーム定数・アプリイベント・クラウド設定等
+         10. vja-ui.js              キーボード・ルーラー・INIT（必ず最後）
     ═══════════════════════════════════════════════════════════════ -->
     <script src="./vja-defs.js"></script>
     <script src="./vja-designer.js"></script>
+    <script src="./vja-mock-runtime.js"></script>
     <script src="./vja-modal.js"></script>
     <script src="./vja-yaml-editor.js"></script>
     <script src="./vja-editor-utils.js"></script>

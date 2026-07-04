@@ -388,14 +388,19 @@
 
     // ════════════════════════════════════════════════
     // vja.event.* — イベント情報取得
-    // KeyDown/KeyUp イベント時のみ有効。それ以外では null を返す。
+    // get(): 全イベントで必ずオブジェクトを返す（nullにはならない）。
+    //   RowClick/HeaderClick以外は _vjaRun() 側で自動的に
+    //   {type: イベント名の先頭を小文字にしたもの} が設定される
+    //   （例: KeyDown -> {type:'keyDown'}）。
+    // getKey()/getKeyCode()/isEnter() 等: KeyDown/KeyUp イベント時のみ有効。
+    //   それ以外のイベントでは null / false を返す。
     // ════════════════════════════════════════════════
     vja.event = {
 
-        // イベントデータを取得
+        // イベントデータを取得（常にオブジェクトを返す。nullにはならない）
         // RowClick: {type:'rowClick', row:rowIndex, column:colIndex}
         // HeaderClick: {type:'headerClick', column:'colName'}
-        // それ以外: null
+        // それ以外: {type: イベント名の先頭を小文字にしたもの}（例: {type:'keyDown'}）
         get() {
             return window._vjaCurrentEventData ?? null;
         },

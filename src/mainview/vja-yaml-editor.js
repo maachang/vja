@@ -41,6 +41,14 @@
        （生成コードは毎回新規スコープで実行されるため実害が無く、小型
        モデルは指摘してもvarに直しきれないことが多いため）。行コメントの
        挿入のみ行い、人間の目視修正に委ねる。）
+     - _runMockSmokeTest() / _augmentWithMockCheck()
+       （モック実行スモークテスト。生成コードを vja-mock-runtime.js の
+       ダミー実装と一緒に実際に1回実行し、構文・API・await漏れ等の
+       静的チェックでは拾えない実行時例外を検出する。AI接続設定の
+       「モック実行検証」がOFFの場合は実施しない。分岐(if/else)の全経路は
+       検証できない点に注意（1回の実行では1パターンの値しか通らない）。
+       拡張ランタイム関数は _buildExtRuntimeMock() でプロジェクトの
+       extRuntime.docから動的にモック生成する）
      - editorKeyHandler() 等のエディタ内キー操作
    このファイルは vja-defs.js / vja-designer.js / vja-modal.js に依存する。
 ═══════════════════════════════════════════════════════════════ */
@@ -615,6 +623,48 @@ function _findUnknownWidgetNames(code) {
     return found;
 }
 
+/* ── モック実行スモークテスト ──
+   構文チェック・APIホワイトリスト検証では拾えない「明らかな実行時例外
+   （TypeError等）」を検出するため、生成コードをモックランタイム
+   （vja-mock-runtime.js）と一緒に実際に1回実行してみる。
+   AI接続設定の「モック実行検証」がOFFの場合は実施しない。
+   【スコープ】分岐(if/else)の全パターンは検証できない（モックは1パターンの
+   値しか返さないため）。あくまで「即座に落ちないか」の浅い確認。 */
+
+// 拡張ランタイム（プロジェクト独自関数）のモックを、現在のプロジェクトの
+// extRuntime.doc（EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT形式のYAML）から
+// 動的に生成する。関数名だけを正規表現で抽出し、常に汎用的な非同期ダミー
+// 関数を割り当てる（同期関数として呼ばれても、戻り値のPromiseの未使用
+// プロパティアクセスはundefinedになるだけでクラッシュしないため問題ない）。
+function _buildExtRuntimeMock() {
+    const doc = getProjectData().extRuntime?.doc || "";
+    const mock = {};
+    const re = /^-\s*function:\s*(?:await\s+)?(\w+)\s*\(/gm;
+    let m;
+    while ((m = re.exec(doc)) !== null) {
+        mock[m[1]] = async () => ({});
+    }
+    return mock;
+}
+
+// 生成コードをモックランタイムと共に実際に1回実行し、実行時例外が
+// 発生しないかを確認する。例外が無ければnull、あれば例外メッセージを返す。
+async function _runMockSmokeTest(code, isAppEvent, evName, wtag) {
+    if (getProjectData().aiConfig.mockCheckEnabled === false) return null;
+    if (!window.VJA_MOCK_RUNTIME) return null; // 読み込み失敗時は検証をスキップ
+    try {
+        const vjaMock = window.VJA_MOCK_RUNTIME.build(isAppEvent, evName, wtag);
+        const extMock = _buildExtRuntimeMock();
+        const extNames = Object.keys(extMock);
+        const extValues = extNames.map((n) => extMock[n]);
+        const fn = new Function("vja", ...extNames, "return (async()=>{\n" + code + "\n})()");
+        await fn(vjaMock, ...extValues);
+        return null;
+    } catch (e) {
+        return (e && e.message) ? e.message : String(e);
+    }
+}
+
 // 構文チェックのみ行う（実行はしない）。
 // async関数本体として構文解析させることで、トップレベルawaitを許容しつつ
 // 実際にコードが実行されることは無い（関数を生成するだけで呼び出さない）。
@@ -781,6 +831,9 @@ function _buildAiFixPrompt(originalUserPrompt, code, validation) {
     validation.unknownWidgets.forEach(({ line, api, name }) => {
         issues.push("- " + line + "行目付近: \"" + api + "('" + name + "')\" のウィジェット名 \"" + name + "\" は現在のフォームに存在しません。実在するウィジェット名に修正してください。");
     });
+    if (validation.mockError) {
+        issues.push("- モック実行時に例外が発生しました: " + validation.mockError + "（ダミー値での試験実行のため、実際の実行結果とは異なる場合がありますが、コードの構造に問題がある可能性が高いです）");
+    }
     return originalUserPrompt +
         "\n\n[自動検証で以下の問題が検出されました。問題を修正し、修正後のコードのみを出力してください]\n" +
         issues.join("\n") +
@@ -825,6 +878,7 @@ function showAiValidationWarningBanner(validation) {
     validation.unknownWidgets.forEach(({ line, api, name }) => {
         items.push("・" + line + "行目付近: 未知のウィジェット名「" + esc(name) + "」（" + esc(api) + "）");
     });
+    if (validation.mockError) items.push("・モック実行時に例外が発生: " + esc(validation.mockError));
     banner.style.cssText = "background:#4a2a2a;color:#ffd8d8;padding:10px 14px;font-size:12px;border-bottom:1px solid #7a3a3a;flex-shrink:0";
     banner.innerHTML =
         "<div style='font-weight:bold;margin-bottom:4px'>⚠ 生成コードに問題の可能性があります（自動修正後も検出）</div>" +
@@ -850,10 +904,11 @@ function _stripValidationWrapper(code, validationName) {
 // 現在js-taに表示されている内容を対象に、再検証→修正依頼を1回実行する。
 async function manualRetryAiFix() {
     if (!_lastAiValidationCtx) return;
-    const { sysPrompt, userPrompt, isAppEvent, wid, evName, isFormEvent, validationName } = _lastAiValidationCtx;
+    const { sysPrompt, userPrompt, isAppEvent, wid, evName, isFormEvent, validationName, wtag } = _lastAiValidationCtx;
     const jsTa = $("js-ta");
     const currentCode = _stripValidationWrapper(jsTa?.value || "", validationName);
-    const validation = validateGeneratedJs(currentCode, isAppEvent);
+    let validation = validateGeneratedJs(currentCode, isAppEvent);
+    validation = await _augmentWithMockCheck(validation, currentCode, isAppEvent, evName, wtag);
     if (validation.ok) { dismissAiValidationBanner(); return; }
     const fixUserPrompt = _buildAiFixPrompt(userPrompt, currentCode, validation);
     await runAiGenerate({
@@ -861,7 +916,8 @@ async function manualRetryAiFix() {
         userPrompt: fixUserPrompt,
         loadingMsg: "検出した問題を自動修正中…",
         onSuccess: async (fixed) => {
-            const revalidated = validateGeneratedJs(fixed, isAppEvent);
+            let revalidated = validateGeneratedJs(fixed, isAppEvent);
+            revalidated = await _augmentWithMockCheck(revalidated, fixed, isAppEvent, evName, wtag);
             let codeForEditor = annotateUnknownApis(
                 fixed, revalidated.unknownApis, revalidated.forbiddenPatterns,
                 revalidated.missingAwaits, revalidated.unknownWidgets, revalidated.styleWarnings
@@ -894,6 +950,14 @@ async function manualRetryAiFix() {
         onCancel: async () => { },
         onError: async () => { },
     });
+}
+
+// validateGeneratedJs()の結果に、モック実行スモークテストの結果を
+// マージする。mockErrorが検出された場合はokをfalseにする。
+async function _augmentWithMockCheck(validation, code, isAppEvent, evName, wtag) {
+    const mockError = await _runMockSmokeTest(code, isAppEvent, evName, wtag);
+    if (!mockError) return validation;
+    return { ...validation, ok: false, mockError };
 }
 
 async function yamlAiGenerate(wid, evName, temperatureOverride) {
@@ -1038,6 +1102,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
             //   そのまま使う）。ランダム性を上げて試したい場合は、エディタの
             //   「🎲 ランダム性を上げて再生成」ボタンを使う。
             let validation = validateGeneratedJs(unwrapped, isAppEvent);
+            validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag);
             if (!validation.ok) {
                 if (status) status.textContent = "⏳ 検出した問題を自動修正中…";
                 const fixUserPrompt = _buildAiFixPrompt(userPrompt, unwrapped, validation);
@@ -1054,6 +1119,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                 if (retryCode) {
                     unwrapped = retryCode;
                     validation = validateGeneratedJs(unwrapped, isAppEvent);
+                    validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag);
                 }
                 // retryCodeがnull（リトライ自体が失敗）の場合も、元のunwrapped/validationのまま続行し
                 // 後段の警告バナーでユーザーに通知する
@@ -1092,7 +1158,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                 const elapsed = Math.round((Date.now() - aiStartTime) / 1000);
                 showToast("✅ AI生成完了（" + elapsed + "秒）", 5000);
                 if (!validation.ok) {
-                    _lastAiValidationCtx = { sysPrompt, userPrompt, isAppEvent, wid, evName, isFormEvent, validationName };
+                    _lastAiValidationCtx = { sysPrompt, userPrompt, isAppEvent, wid, evName, isFormEvent, validationName, wtag: w?.tag };
                     showAiValidationWarningBanner(validation);
                 }
             }));
@@ -1628,10 +1694,10 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         "<div class='yaml-ai-bar' style='padding-bottom:8px;flex-direction:column;align-items:stretch;gap:4px'>" +
         "<div style='display:flex;align-items:center;gap:4px'>" +
         "<input id='ai-prompt-in' placeholder='AIへの追加指示（任意）' style='flex:1'>" +
-        "<button class='yaml-ai-btn' id='ai-gen-btn'" + evtAttr("onmousedown", "pvCall(\"yamlAiGen\")") + ">" +
-        (aiEnabled ? "🤖 AI生成" : "🤖 AI生成（設定要）") + "</button>" +
         "<button class='yaml-ai-btn' id='ai-gen-random-btn' title='temperatureを一時的に上げて再生成します（同じ間違いを繰り返す場合に）'" +
         evtAttr("onmousedown", "pvCall(\"yamlAiGenRandom\")") + ">🎲 ランダム性を上げて再生成</button>" +
+        "<button class='yaml-ai-btn' id='ai-gen-btn'" + evtAttr("onmousedown", "pvCall(\"yamlAiGen\")") + ">" +
+        (aiEnabled ? "🤖 AI生成" : "🤖 AI生成（設定要）") + "</button>" +
         "<span class='yaml-ai-right-spacer' id='ai-status'></span>" +
         "</div>" +
         "<div style='display:flex;align-items:center;gap:4px'>" +
@@ -1693,10 +1759,12 @@ function openAiConfig() {
     if (!getProjectData().aiConfig.models) getProjectData().aiConfig.models = [];
     if (!getProjectData().aiConfig.endpoint) getProjectData().aiConfig.endpoint = "http://localhost:8080";
     if (getProjectData().aiConfig.thinking === undefined) getProjectData().aiConfig.thinking = true;
+    if (getProjectData().aiConfig.mockCheckEnabled === undefined) getProjectData().aiConfig.mockCheckEnabled = true;
 
     const isEnabled = getProjectData().aiConfig.enabled === true;
     const isRouter = getProjectData().aiConfig.routerMode === true;
     const isThinking = getProjectData().aiConfig.thinking !== false;
+    const isMockCheckEnabled = getProjectData().aiConfig.mockCheckEnabled !== false;
     const modelListHtml = aiCfgModelListHtml(getProjectData().aiConfig.models, getProjectData().aiConfig.model, isRouter);
 
     showModal(
@@ -1746,6 +1814,12 @@ function openAiConfig() {
         makePvSel("ai-thinking-sel", ["ON", "OFF"], isThinking ? "ON" : "OFF", "") +
         "</div>" +
         "<div class='infobox' style='font-size:11px'>推論モードOFFは llama.cpp / mlx-lm / Ollama / vLLM に対応。Foundry Local は非対応。</div>" +
+
+        // モック実行検証（生成JSをモックランタイムで試験実行し、明らかな実行時例外を検出する）
+        "<div class='ai-cfg-row'><label>モック実行検証</label>" +
+        makePvSel("ai-mockcheck-sel", ["ON", "OFF"], isMockCheckEnabled ? "ON" : "OFF", "") +
+        "</div>" +
+        "<div class='infobox' style='font-size:11px'>AI生成コードを、ダミー値を返すモックVJAランタイムで試験実行し、構文・APIチェックでは拾えない実行時例外を検出します（分岐網羅までは保証しません）。</div>" +
 
         "</div>" +
         "<div class='mfoot'>" +
@@ -1812,10 +1886,12 @@ function saveAiConfig() {
     const enaSel = document.querySelector("#ai-ena-sel    .pv-sel-btn span:first-child");
     const rtrSel = document.querySelector("#ai-router-sel .pv-sel-btn span:first-child");
     const thnSel = document.querySelector("#ai-thinking-sel .pv-sel-btn span:first-child");
+    const mckSel = document.querySelector("#ai-mockcheck-sel .pv-sel-btn span:first-child");
     const modSel = document.querySelector("#ai-model-label");
     const enabled = enaSel?.textContent === "ON";
     const routerMode = rtrSel?.textContent === "ON";
     const thinking = thnSel?.textContent !== "OFF";
+    const mockCheckEnabled = mckSel?.textContent !== "OFF";
     const model = modSel?.textContent || getProjectData().aiConfig.model || "";
     const maxTokensRaw = $("ai-max-tokens")?.value?.trim() || "";
     const maxTokens = maxTokensRaw !== "" ? parseInt(maxTokensRaw, 10) || "" : "";
@@ -1827,6 +1903,7 @@ function saveAiConfig() {
         enabled,
         routerMode,
         thinking,
+        mockCheckEnabled,
         model: routerMode ? model : "",
         models: getProjectData().aiConfig.models || [],
         maxTokens,

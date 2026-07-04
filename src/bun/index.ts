@@ -1192,12 +1192,20 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     // ── _vjaCache: 初回呼び出し時のみAsyncFunction化してキャッシュ ──
     lines.push('const _vjaCache = {};');
     // ── _vjaRun: 共通実行関数（遅延初期化・キャッシュ・ログ・エラー補足） ──
-    lines.push('const _vjaRun = async function(widgetName, eventName, event) {');
+    lines.push('const _vjaRun = async function(widgetName, eventName, event, eventData) {');
     lines.push('  const key = widgetName + "_" + eventName;');
     lines.push('  if (!_vjaB64[key]) return; // イベント未定義の場合はスキップ');
     lines.push('  const label = "[" + widgetName + "." + eventName + "]";');
     lines.push('  window._vjaLastError = null;');
     lines.push('  window._vjaCurrentEvent = event || null; // vja.event.*で参照するイベントオブジェクト');
+    lines.push('  // vja.event.get()で参照するイベントデータ。');
+    lines.push('  // eventDataが明示的に渡された場合はそれを使う（RowClick/HeaderClick等）。');
+    lines.push('  // 渡されない場合は、{type: イベント名の先頭を小文字にしたもの} を自動生成する');
+    lines.push('  // （例: KeyDown -> {type:"keyDown"}, TextChanged -> {type:"textChanged"}）。');
+    lines.push('  // これによりvja.event.get()は全イベントで必ずオブジェクトを返し、nullにはならない。');
+    lines.push('  window._vjaCurrentEventData = eventData !== undefined');
+    lines.push('    ? eventData');
+    lines.push('    : { type: eventName.charAt(0).toLowerCase() + eventName.slice(1) };');
     lines.push('  try {');
     lines.push('    if (!_vjaCache[key]) {');
     lines.push('      const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;');
@@ -1289,9 +1297,9 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
         lines.push(`        (function(colName) {`);
         lines.push(`          th.addEventListener("click", function(e) {`);
         lines.push(`            e.stopPropagation();`);
-        lines.push(`            window._vjaCurrentEventData = { type: "headerClick", column: colName };`);
-        lines.push(`            _vjaRun(el.id, "HeaderClick", e);`);
-        lines.push(`            _vjaRun(el.id, "Click", e);`);
+        lines.push(`            const _hcEventData = { type: "headerClick", column: colName };`);
+        lines.push(`            _vjaRun(el.id, "HeaderClick", e, _hcEventData);`);
+        lines.push(`            _vjaRun(el.id, "Click", e, _hcEventData);`);
         lines.push(`          });`);
         lines.push(`        })(cd.label);`);
         lines.push(`        headerRow.appendChild(th);`);
@@ -1313,9 +1321,9 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
         lines.push(`            e.stopPropagation();`);
         lines.push(`            const td = e.target.closest("td");`);
         lines.push(`            const colIdx = td ? Array.from(td.parentNode.children).indexOf(td) : 0;`);
-        lines.push(`            window._vjaCurrentEventData = { type: "rowClick", row: rowIdx, column: colDefs[colIdx] ? colDefs[colIdx].label : colIdx };`);
-        lines.push(`            _vjaRun(el.id, "RowClick", e);`);
-        lines.push(`            _vjaRun(el.id, "Click", e);`);
+        lines.push(`            const _rcEventData = { type: "rowClick", row: rowIdx, column: colDefs[colIdx] ? colDefs[colIdx].label : colIdx };`);
+        lines.push(`            _vjaRun(el.id, "RowClick", e, _rcEventData);`);
+        lines.push(`            _vjaRun(el.id, "Click", e, _rcEventData);`);
         lines.push(`          });`);
         lines.push(`        })(i);`);
         lines.push(`        colDefs.forEach(function(cd) {`);
