@@ -640,10 +640,10 @@ vja.form.back: { scope: SCREEN_TRANSITION, args: [], return: "void" }
 vja.form.setParam: { scope: SCREEN_PARAMETER, args: [key:string, value:any], return: "void", desc: "Sets data parameter to pass to the next screen." }
 vja.form.getParam: { scope: SCREEN_PARAMETER, args: [key:string, default?:any], return: "any", desc: "Retrieves parameter passed from previous screen." }
 
-await vja.session.get: { scope: SESSION_STORAGE, args: [key:string, default?:any], return: "any" }
+await vja.session.get: { scope: SESSION_STORAGE, args: [key:string, default?:any], return: "any", desc: "Retrieves persistent session data. MUST use await." }
 await vja.session.set: { scope: SESSION_STORAGE, args: [key:string, value:any], return: "boolean", desc: "Saves persistent session data (JSON)." }
-await vja.session.delete: { scope: SESSION_STORAGE, args: [key:string], return: "boolean" }
-await vja.session.clear: { scope: SESSION_STORAGE, args: [], return: "boolean" }
+await vja.session.delete: { scope: SESSION_STORAGE, args: [key:string], return: "boolean", desc: "Deletes a session data entry. MUST use await." }
+await vja.session.clear: { scope: SESSION_STORAGE, args: [], return: "boolean", desc: "Clears all session data. MUST use await." }
 
 vja.util.today: { scope: UTIL_DATE, args: [], return: "string", desc: "Returns current date in YYYY-MM-DD format." }
 vja.util.formatDate: { scope: UTIL_DATE, args: [date:any, format?:string], return: "string", desc: "Formats Date object or string (default: YYYY-MM-DD)." }
@@ -651,21 +651,21 @@ vja.util.formatNumber: { scope: UTIL_NUMBER, args: [n:number, decimals?:number],
 
 await vja.io.openCsv: { scope: FILE_DIALOG_READ, args: [], return: "Record<string,string>[]|null", desc: "Reads CSV via dialog. Returns null if canceled." }
 await vja.io.openJson: { scope: FILE_DIALOG_READ, args: [], return: "Promise<any|null>", desc: "Reads JSON via dialog. Throws on parse error." }
-await vja.io.saveCsv: { scope: FILE_DIALOG_WRITE, args: [csvRows:object[], filename:string], return: "void" }
-await vja.io.saveJson: { scope: FILE_DIALOG_WRITE, args: [data:any, filename:string], return: "void" }
+await vja.io.saveCsv: { scope: FILE_DIALOG_WRITE, args: [csvRows:object[], filename:string], return: "void", desc: "Saves rows as a CSV file via save dialog. MUST use await." }
+await vja.io.saveJson: { scope: FILE_DIALOG_WRITE, args: [data:any, filename:string], return: "void", desc: "Saves data as a JSON file via save dialog. MUST use await." }
 
-await vja.file.read: { scope: LOCAL_FILE_IO, args: [path:string], return: "string|null" }
-await vja.file.write: { scope: LOCAL_FILE_IO, args: [path:string, content:string], return: "boolean" }
-await vja.file.readBytes: { scope: LOCAL_FILE_IO, args: [path:string], return: "Uint8Array|null" }
-await vja.file.writeBytes: { scope: LOCAL_FILE_IO, args: [path:string, data:Uint8Array], return: "boolean" }
-await vja.file.exists: { scope: LOCAL_FILE_IO, args: [path:string], return: "boolean" }
-await vja.file.delete: { scope: LOCAL_FILE_IO, args: [path:string], return: "boolean" }
-await vja.file.copy: { scope: LOCAL_FILE_IO, args: [src:string, dest:string], return: "boolean" }
+await vja.file.read: { scope: LOCAL_FILE_IO, args: [path:string], return: "string|null", desc: "Reads a text file. Returns null if not found. MUST use await." }
+await vja.file.write: { scope: LOCAL_FILE_IO, args: [path:string, content:string], return: "boolean", desc: "Writes text to a file. MUST use await." }
+await vja.file.readBytes: { scope: LOCAL_FILE_IO, args: [path:string], return: "Uint8Array|null", desc: "Reads a binary file. Returns null if not found. MUST use await." }
+await vja.file.writeBytes: { scope: LOCAL_FILE_IO, args: [path:string, data:Uint8Array], return: "boolean", desc: "Writes binary data to a file. MUST use await." }
+await vja.file.exists: { scope: LOCAL_FILE_IO, args: [path:string], return: "boolean", desc: "Checks whether a file exists. MUST use await." }
+await vja.file.delete: { scope: LOCAL_FILE_IO, args: [path:string], return: "boolean", desc: "Deletes a file. MUST use await." }
+await vja.file.copy: { scope: LOCAL_FILE_IO, args: [src:string, dest:string], return: "boolean", desc: "Copies a file. MUST use await." }
 
-await vja.dir.create: { scope: LOCAL_DIR_IO, args: [path:string], return: "boolean" }
-await vja.dir.delete: { scope: LOCAL_DIR_IO, args: [path:string], return: "boolean" }
-await vja.dir.list: { scope: LOCAL_DIR_IO, args: [path:string], return: "string[]" }
-await vja.dir.exists: { scope: LOCAL_DIR_IO, args: [path:string], return: "boolean" }
+await vja.dir.create: { scope: LOCAL_DIR_IO, args: [path:string], return: "boolean", desc: "Creates a directory (including parents). MUST use await." }
+await vja.dir.delete: { scope: LOCAL_DIR_IO, args: [path:string], return: "boolean", desc: "Deletes a directory. MUST use await." }
+await vja.dir.list: { scope: LOCAL_DIR_IO, args: [path:string], return: "string[]", desc: "Lists entries in a directory. MUST use await." }
+await vja.dir.exists: { scope: LOCAL_DIR_IO, args: [path:string], return: "boolean", desc: "Checks whether a directory exists. MUST use await." }
 
 vja.notify.toast: { scope: UI_NOTIFICATION, args: [message:string, duration?:number], return: "void", desc: "Displays a bottom toast notification." }
 
@@ -685,7 +685,7 @@ await vja.fetch: { scope: NETWORK_LOW_LEVEL, args: [url:string, options?:object]
 
 vja.ui.loading: { scope: UI_OVERLAY, args: [show:boolean, message?:string], return: "void", desc: "Toggle loading overlay screen. MUST wrap the actual code in try{} finally{ vja.ui.loading(false); } structure to ensure turn off on errors." }
 
-await vja.app.showDialog: { scope: UI_DIALOG, args: [message:string], return: "void" }
+await vja.app.showDialog: { scope: UI_DIALOG, args: [message:string], return: "void", desc: "Shows a message dialog. MUST use await (e.g., await vja.app.showDialog('...')). Forgetting await is a common mistake — do not omit it." }
 await vja.app.showConfirm: { scope: UI_DIALOG, args: [message:string], return: "boolean", desc: "Confirm dialog. OK=true, Cancel=false." }
 
 console.info: { scope: LOG_SYSTEM, args: [message:any], return: "void" }

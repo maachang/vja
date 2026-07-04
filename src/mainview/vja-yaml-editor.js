@@ -818,6 +818,20 @@ function _getBoostedTemperature() {
 // 検証NG時、AIに修正を依頼するためのユーザープロンプトを組み立てる。
 // 元のユーザープロンプト＋検出した問題点＋直前の生成コードを添えて、
 // 修正後のコードのみを出力するよう指示する。
+// 検証結果を、デバッグログ出力用の人間可読な文字列に整形する。
+// リトライが発生した際、「なぜリトライされたか」を画面のログから
+// 確認できるようにするためのもの。
+function _formatValidationIssuesForLog(validation) {
+    const parts = [];
+    if (validation.syntaxError) parts.push("構文エラー: " + validation.syntaxError);
+    validation.unknownApis.forEach(({ line, api }) => parts.push(line + "行目: 未知のAPI " + api));
+    validation.forbiddenPatterns.forEach(({ line, message }) => parts.push(line + "行目: " + message));
+    validation.missingAwaits.forEach(({ line, api }) => parts.push(line + "行目: await漏れ " + api));
+    validation.unknownWidgets.forEach(({ line, api, name }) => parts.push(line + "行目: 未知のウィジェット名 " + name + "（" + api + "）"));
+    if (validation.mockError) parts.push("モック実行例外: " + validation.mockError);
+    return parts.length > 0 ? parts.join(" / ") : "(詳細なし)";
+}
+
 function _buildAiFixPrompt(originalUserPrompt, code, validation) {
     const issues = [];
     if (validation.syntaxError) issues.push("- 構文エラー: " + validation.syntaxError);
@@ -912,6 +926,7 @@ async function manualRetryAiFix() {
     let validation = validateGeneratedJs(currentCode, isAppEvent);
     validation = await _augmentWithMockCheck(validation, currentCode, isAppEvent, evName, wtag);
     if (validation.ok) { dismissAiValidationBanner(); return; }
+    window.vja?.log?.debug?.("[AI検証] 手動での修正依頼を実行します。検出内容: " + _formatValidationIssuesForLog(validation));
     const fixUserPrompt = _buildAiFixPrompt(userPrompt, currentCode, validation);
     await runAiGenerate({
         systemPrompt: sysPrompt,
@@ -920,6 +935,9 @@ async function manualRetryAiFix() {
         onSuccess: async (fixed) => {
             let revalidated = validateGeneratedJs(fixed, isAppEvent);
             revalidated = await _augmentWithMockCheck(revalidated, fixed, isAppEvent, evName, wtag);
+            window.vja?.log?.debug?.(revalidated.ok
+                ? "[AI検証] 手動修正で解消しました。"
+                : "[AI検証] 手動修正後も未解消: " + _formatValidationIssuesForLog(revalidated));
             let codeForEditor = annotateUnknownApis(
                 fixed, revalidated.unknownApis, revalidated.forbiddenPatterns,
                 revalidated.missingAwaits, revalidated.unknownWidgets, revalidated.styleWarnings
@@ -1106,6 +1124,8 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
             let validation = validateGeneratedJs(unwrapped, isAppEvent);
             validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag);
             if (!validation.ok) {
+                const issueLog = _formatValidationIssuesForLog(validation);
+                window.vja?.log?.debug?.("[AI検証] 自動修正リトライを実行します。検出内容: " + issueLog);
                 if (status) status.textContent = "⏳ 検出した問題を自動修正中…";
                 const fixUserPrompt = _buildAiFixPrompt(userPrompt, unwrapped, validation);
                 let retryCode = null;
@@ -1122,6 +1142,11 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                     unwrapped = retryCode;
                     validation = validateGeneratedJs(unwrapped, isAppEvent);
                     validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag);
+                    window.vja?.log?.debug?.(validation.ok
+                        ? "[AI検証] 自動修正リトライで解消しました。"
+                        : "[AI検証] 自動修正リトライ後も未解消: " + _formatValidationIssuesForLog(validation));
+                } else {
+                    window.vja?.log?.debug?.("[AI検証] 自動修正リトライ自体が失敗しました（キャンセル/エラー）。");
                 }
                 // retryCodeがnull（リトライ自体が失敗）の場合も、元のunwrapped/validationのまま続行し
                 // 後段の警告バナーでユーザーに通知する
