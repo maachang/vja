@@ -949,6 +949,10 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
 - sqlite3専用のSQLで実装してください。必ず実行可能なSQL文で定義する必要があります。
 - SQLの LIKE 検索では、SQL文の中に '?' を直接クォーテーションで囲んで配置してはなりません（悪い例: LIKE '%?%' はプレースホルダーが機能しなくなるため絶対禁止）。必ずJavaScript側の変数に '%' を結合してプレースホルダーに渡してください。
   - 記述例: let pattern = '%' + txtSearch.value + '%'; let sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
+- SQL文の中に、テンプレートリテラル（\`\${...}\`）で「値」を直接埋め込むことは絶対禁止です。検索文字列・数値・ID・JSON.stringify()した結果など、値は必ず\`?\`プレースホルダーとparams配列経由で渡してください（悪い例: \`WHERE id = \${id}\`、\`WHERE data = \${JSON.stringify(obj)}\`）。
+  - 悪い例: \`SELECT * FROM users WHERE name = \${name}\`
+  - 良い例: let sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]);
+  - ただし、カラム名・テーブル名など「識別子」（値ではないもの）をテンプレートリテラルで組み立てるのは問題ありません（例: \`SELECT * FROM t WHERE \${columnName} = ?\`。この場合も、実際に検索する値自体は\`?\`経由で渡すこと）。
 
 ## YAMLへの忠実性
 - YAMLに記載のない処理（navigate、setVisible、show/hideなど）の追加は絶対禁止です。
@@ -982,6 +986,10 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
 - sqlite3専用のSQLで実装してください。必ず実行可能なSQL文で定義する必要があります。
 - SQLの LIKE 検索では、SQL文の中に '?' を直接クォーテーションで囲んで配置してはなりません（悪い例: LIKE '%?%' はプレースホルダーが機能しなくなるため絶対禁止）。必ずJavaScript側の変数に '%' を結合してプレースホルダーに渡してください。
   - 記述例: var pattern = '%' + txtSearch.value + '%'; var sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
+- SQL文の中に、テンプレートリテラル（\`\${...}\`）で「値」を直接埋め込むことは絶対禁止です。検索文字列・数値・ID・JSON.stringify()した結果など、値は必ず\`?\`プレースホルダーとparams配列経由で渡してください（悪い例: \`WHERE id = \${id}\`、\`WHERE data = \${JSON.stringify(obj)}\`）。
+  - 悪い例: \`SELECT * FROM users WHERE name = \${name}\`
+  - 良い例: var sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]);
+  - ただし、カラム名・テーブル名など「識別子」（値ではないもの）をテンプレートリテラルで組み立てるのは問題ありません（例: \`SELECT * FROM t WHERE \${columnName} = ?\`。この場合も、実際に検索する値自体は\`?\`経由で渡すこと）。
 
 ## YAMLへの忠実性
 - YAMLに記載のない処理（navigate、setVisible、show/hideなど）の追加は絶対禁止です。
@@ -1075,6 +1083,10 @@ ${vjaUseJsInfo}
 - Implemented using SQL specific to sqlite3. Must be defined using executable SQL statements.
 - For SQL LIKE searches, NEVER place the '?' placeholder inside quotes (e.g., LIKE '%?%' is STRICTLY PROHIBITED as it breaks the placeholder). Always concatenate the '%' wildcards to the JavaScript variable side.
   - Example: let pattern = '%' + txtSearch.value + '%'; let sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
+- NEVER embed a data VALUE into the SQL string using a template literal (\`\${...}\`). Any value (search text, numbers, IDs, JSON.stringify() results, etc.) must always be passed through the \`?\` placeholder and the params array. Embedding a value directly (e.g., \`WHERE id = \${id}\` or \`WHERE data = \${JSON.stringify(obj)}\`) is STRICTLY PROHIBITED.
+  - Bad: \`SELECT * FROM users WHERE name = \${name}\`
+  - Good: let sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]);
+  - Embedding a column/table NAME (an identifier, not a data value) via template literal is acceptable when the identifier itself is fixed or comes from a controlled source (e.g., a dropdown of known column names) — e.g., \`SELECT * FROM t WHERE \${columnName} = ?\` is fine as long as columnName is an identifier and the actual searched value still goes through \`?\`.
 
 ## Fidelity to YAML
 - Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.
@@ -1108,6 +1120,10 @@ ${vjaUseJsInfo}
 - Implemented using SQL specific to sqlite3. Must be defined using executable SQL statements.
 - For SQL LIKE searches, NEVER place the '?' placeholder inside quotes (e.g., LIKE '%?%' is STRICTLY PROHIBITED as it breaks the placeholder). Always concatenate the '%' wildcards to the JavaScript variable side.
   - Example: var pattern = '%' + txtSearch.value + '%'; var sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
+- NEVER embed a data VALUE into the SQL string using a template literal (\`\${...}\`). Any value (search text, numbers, IDs, JSON.stringify() results, etc.) must always be passed through the \`?\` placeholder and the params array. Embedding a value directly (e.g., \`WHERE id = \${id}\` or \`WHERE data = \${JSON.stringify(obj)}\`) is STRICTLY PROHIBITED.
+  - Bad: \`SELECT * FROM users WHERE name = \${name}\`
+  - Good: var sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]);
+  - Embedding a column/table NAME (an identifier, not a data value) via template literal is acceptable when the identifier itself is fixed or comes from a controlled source (e.g., a dropdown of known column names) — e.g., \`SELECT * FROM t WHERE \${columnName} = ?\` is fine as long as columnName is an identifier and the actual searched value still goes through \`?\`.
 
 ## Fidelity to YAML
 - Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.
