@@ -813,8 +813,43 @@ function _buildExtRuntimeMock() {
     return mock;
 }
 
+// new Functionでのラップにより追加される行数のオフセット。
+// new Function(...)で生成した関数は、V8/JSC共通の既知の仕様により
+// 「引数リストと開き波括弧の間に改行が入る」形でソースが合成される。
+// 実際には以下の3行がcode本体の前に挿入される：
+//   1行目: function anonymous(vja
+//   2行目: ) {
+//   3行目: return (async()=>{   ← 自前で追加しているラップ行
+// そのため、e.line/e.stackから取れる行番号からはこの3行分を
+// 差し引く必要がある。
+const _MOCK_WRAP_LINE_OFFSET = 3;
+
+// 実行時例外オブジェクトから、可能な限り「発生行（コード上の1-indexed行番号）」
+// を推定する。取得できなければnullを返す（呼び出し側は行番号なしで表示する）。
+// - JavaScriptCore系（Electrobun/WKWebViewが使用）は非標準の e.line / e.column
+//   プロパティを直接持つことがあるため、まずこちらを優先する。
+// - 無ければ e.stack から "<anonymous>:LINE:COL" 等のパターンを正規表現で
+//   抽出するフォールバックを試みる（V8系のnew Function実行時のスタック表記）。
+// どちらも失敗した場合はnull（＝行番号は表示しない。誤った行番号を出す方が
+// 有害なので、確信が持てない場合は出さない方針とする）。
+function _extractMockErrorLine(e) {
+    if (e && typeof e.line === "number" && Number.isFinite(e.line)) {
+        const line = e.line - _MOCK_WRAP_LINE_OFFSET;
+        return line >= 1 ? line : null;
+    }
+    if (e && typeof e.stack === "string") {
+        const m = e.stack.match(/<anonymous>:(\d+):(\d+)/) || e.stack.match(/:(\d+):(\d+)\)?$/m);
+        if (m) {
+            const line = Number(m[1]) - _MOCK_WRAP_LINE_OFFSET;
+            if (Number.isFinite(line) && line >= 1) return line;
+        }
+    }
+    return null;
+}
+
 // 生成コードをモックランタイムと共に実際に1回実行し、実行時例外が
-// 発生しないかを確認する。例外が無ければnull、あれば例外メッセージを返す。
+// 発生しないかを確認する。例外が無ければnull、あれば
+// { message: 例外メッセージ, line: 推定行番号（取れない場合はnull） } を返す。
 async function _runMockSmokeTest(code, isAppEvent, evName, wtag, wid) {
     if (getProjectData().aiConfig.mockCheckEnabled === false) return null;
     if (!window.VJA_MOCK_RUNTIME) return null; // 読み込み失敗時は検証をスキップ
@@ -828,7 +863,10 @@ async function _runMockSmokeTest(code, isAppEvent, evName, wtag, wid) {
         await fn(vjaMock, ...extValues);
         return null;
     } catch (e) {
-        return (e && e.message) ? e.message : String(e);
+        return {
+            message: (e && e.message) ? e.message : String(e),
+            line: _extractMockErrorLine(e),
+        };
     }
 }
 
@@ -1036,7 +1074,7 @@ function _formatValidationIssuesForLog(validation) {
     validation.forbiddenPatterns.forEach(({ line, message }) => parts.push(line + "行目: " + message));
     validation.missingAwaits.forEach(({ line, api }) => parts.push(line + "行目: await漏れ " + api));
     validation.unknownWidgets.forEach(({ line, api, name }) => parts.push(line + "行目: 未知のウィジェット名 " + name + "（" + api + "）"));
-    if (validation.mockError) parts.push("モック実行例外: " + validation.mockError);
+    if (validation.mockError) parts.push("モック実行例外: " + (validation.mockError.line ? validation.mockError.line + "行目: " : "") + validation.mockError.message);
     return parts.length > 0 ? parts.join(" / ") : "(詳細なし)";
 }
 
@@ -1059,7 +1097,8 @@ function _buildAiFixPrompt(originalUserPrompt, code, validation) {
         issues.push("- " + line + "行目付近: ev.type === '" + actual + "' は誤りです。このイベントで実際にあり得る値は " + expected.map((e) => "'" + e + "'").join(" または ") + " のみです。");
     });
     if (validation.mockError) {
-        issues.push("- モック実行時に例外が発生しました: " + validation.mockError + "（ダミー値での試験実行のため、実際の実行結果とは異なる場合がありますが、コードの構造に問題がある可能性が高いです）");
+        const lineNote = validation.mockError.line ? (validation.mockError.line + "行目付近: ") : "";
+        issues.push("- モック実行時に例外が発生しました: " + lineNote + validation.mockError.message + "（ダミー値での試験実行のため、実際の実行結果とは異なる場合がありますが、コードの構造に問題がある可能性が高いです）");
     }
     return originalUserPrompt +
         "\n\n[自動検証で以下の問題が検出されました。問題を修正し、修正後のコードのみを出力してください]\n" +
@@ -1111,7 +1150,10 @@ function showAiValidationWarningBanner(validation, canRetry = true) {
     (validation.eventTypeMismatches || []).forEach(({ line, expected, actual }) => {
         items.push("・" + line + "行目付近: ev.typeの値「" + esc(actual) + "」はあり得ません（正しくは " + expected.map((e) => "「" + esc(e) + "」").join(" または ") + "）");
     });
-    if (validation.mockError) items.push("・モック実行時に例外が発生: " + esc(validation.mockError));
+    if (validation.mockError) {
+        const lineNote = validation.mockError.line ? (validation.mockError.line + "行目付近: ") : "";
+        items.push("・モック実行時に例外が発生: " + lineNote + esc(validation.mockError.message));
+    }
     // 検出件数が多い場合、バナーの高さが際限なく伸びてエディタ領域（ガター等）の
     // 表示を崩すことがあるため、一覧部分は最大高さ＋内部スクロールに固定する。
     // さらに、全件を落ち着いて確認したい場合向けに別モーダル表示も用意する。
@@ -1239,6 +1281,7 @@ async function manualRetryAiFix() {
 
 // validateGeneratedJs()の結果に、モック実行スモークテストの結果を
 // マージする。mockErrorが検出された場合はokをfalseにする。
+// mockErrorは { message: string, line: number|null } の形。
 async function _augmentWithMockCheck(validation, code, isAppEvent, evName, wtag, wid) {
     const mockError = await _runMockSmokeTest(code, isAppEvent, evName, wtag, wid);
     if (!mockError) return validation;
