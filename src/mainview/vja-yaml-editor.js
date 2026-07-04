@@ -26,7 +26,8 @@
        2. 未知API（prompt-def.js の VJA_USE_FRONT_JS_INFO/VJA_USE_BACK_JS_INFO
           から自動抽出したホワイトリストに無い vja系/console系 の呼び出し）
        3. 禁止パターン（require/ヘルパー関数定義/.then/.catch/
-          window.alert・confirm・prompt/window.location/new Promise 等）
+          window.alert・confirm・prompt/window.location/new Promise/
+          addEventListener 等）
        4. await漏れ（同ドキュメントで「await付き」と明記されているAPIが
           await無しで呼ばれている）
        5. 未知のウィジェット名（vja.widget.get/set等に、現在のフォームに
@@ -716,6 +717,7 @@ const _FORBIDDEN_PATTERNS = [
     { re: /\b(?:window\.)?(?:alert|confirm|prompt)\s*\(/, message: "window.alert/confirm/prompt の使用（VJAではvja.app.showDialog/showConfirmを使用してください）" },
     { re: /\bwindow\.location\b/, message: "window.location の使用（画面遷移はvja.form.navigate()のみ使用してください）" },
     { re: /\bnew\s+Promise\s*\(/, message: "new Promise() の使用（Promiseの明示的な生成は禁止。awaitを使用してください）" },
+    { re: /\baddEventListener\s*\(/, message: "addEventListener() の使用（VJAではイベント登録は不要。処理は直接記述してください）" },
 ];
 function _findForbiddenPatterns(code) {
     const lines = code.split("\n");
