@@ -669,14 +669,11 @@ function yamlInitRpanelEvents() {
         }
         if (e.type !== "click") return;
 
-        // ③ テーブルカラム展開ボタン
-        const expand = e.target.closest(".rp-tbl-expand");
-        if (expand) {
-            e.stopPropagation();
-            yamlToggleTblCols(expand);
-            return;
-        }
-        // ⑤ 挿入系（最後に判定）
+        // ② 挿入系（最後に判定）
+        // 【注記】テーブルカラム展開ボタン（.rp-tbl-expand）は、以前ここでも
+        // 判定していたが、ボタン自身がonmousedownで直接yamlToggleTblCols()を
+        // 呼んでいるため二重発火（開いた直後に閉じてしまう不具合）していた。
+        // ボタン自身のonmousedownハンドラのみに一本化し、ここでの判定は削除済み。
         const insEl = e.target.closest(".rp-insert");
         if (insEl && insEl.dataset.insert !== undefined) {
             e.stopPropagation();
