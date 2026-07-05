@@ -83,7 +83,7 @@ function openAppEvents(evKey) {
         "</div>" +
         "<button class='mclose'" + evtAttr("onmousedown", "closeModal()") + ">✕</button>" +
         "</div>";
-    showModal(buildYamlEditorHTML(cur, curJs, false, appEvHeader));
+    showModal(buildYamlEditorHTML(cur, curJs, false, appEvHeader, "", null, true, "appev", evKey));
     initYamlEditorModal(cur, curJs, () => {
         APP_EV_TYPES.forEach(t => {
             const tabEl = $("appev-tab-" + t.key);
