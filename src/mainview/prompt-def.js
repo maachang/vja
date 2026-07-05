@@ -622,50 +622,14 @@ getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ
     // ※使わなそうなものは削除.
     // 「vja ランタイムの追加・変更・削除がある場合は、反映が必要」
     // ※必須条件: 英語版は使用例、使用例説明は不要.
-    const VJA_USE_FRONT_JS_INFO_ENG = `
-await vja.db.query: { args: [sql:string, params?:any[]], return: "Record<string,any>[]", desc: "SQL SELECT. Use ? placeholder." }
-await vja.db.execute: { args: [sql:string, params?:any[]], return: "{changes:number, lastInsertRowid:number}|null", desc: "SQL INSERT/UPDATE/DELETE." }
-await vja.db.transaction: { args: [statements:object[]], return: "boolean", desc: "Multiple SQLs. Rollback and returns false on failure." }
-
+    // ### [systemPromptで利用]
+    // [フロントエンド] 必須API（常時システムプロンプトに含む: widget/event/trigger/app/ui.loading/console）
+    const VJA_FRONT_API_MANDATORY_ENG = `
 vja.widget.get: { args: [name:string], return: "string|number|boolean|null", desc: "Gets current value from UI Widget. CRITICAL: The returned value is READ-ONLY. Modifying the returned object/array WILL NOT update the UI. To update, you MUST explicitly use vja.widget.set()." }
 vja.widget.set: { args: [name:string, value:any, options?:object], return: "void", desc: "Sets value to UI Widget (text:str, checkbox:bool, select:array, datagrid:object[]). MANDATORY: This is the ONLY way to update UI data. Never mutate objects retrieved from get()." }
 vja.widget.getAllInputs: { args: [], return: "Record<string,any>", desc: "Gets all active UI inputs in a form as {name: value}." }
 vja.widget.setVisible: { args: [name:string, visible:boolean], return: "void", desc: "Toggles UI display (true=show, false=hide)." }
 vja.widget.show: { args: [name:string], return: "void", desc: "Shows the widget. Same argument pattern for vja.widget.hide(name), vja.widget.enable(name), vja.widget.disable(name)." }
-
-vja.const.get: { args: [key:string, default?:any], return: "any", desc: "Retrieves constant value. Form priority, then global." }
-vja.const.getAll: { args: [], return: "Record<string,any>", desc: "Retrieves all active config constants." }
-
-vja.form.navigate: { args: [formName:string, options?:object], return: "void", desc: "Navigates to form. options.save defaults to true." }
-vja.form.back: { args: [], return: "void" }
-vja.form.setParam: { args: [key:string, value:any], return: "void", desc: "Sets data parameter to pass to the next screen." }
-vja.form.getParam: { args: [key:string, default?:any], return: "any", desc: "Retrieves parameter passed from previous screen." }
-
-await vja.session.get: { args: [key:string, default?:any], return: "any", desc: "Retrieves persistent session data. MUST use await." }
-await vja.session.set: { args: [key:string, value:any], return: "boolean", desc: "Saves persistent session data (JSON)." }
-await vja.session.delete: { args: [key:string], return: "boolean", desc: "Deletes a session data entry. MUST use await." }
-await vja.session.clear: { args: [], return: "boolean", desc: "Clears all session data. MUST use await." }
-
-vja.util.today: { args: [], return: "string", desc: "Returns current date in YYYY-MM-DD format." }
-vja.util.formatDate: { args: [date:any, format?:string], return: "string", desc: "Formats Date object or string (default: YYYY-MM-DD)." }
-vja.util.formatNumber: { args: [n:number, decimals?:number], return: "string", desc: "Formats number with thousands separators." }
-
-await vja.io.openCsv: { args: [], return: "Record<string,string>[]|null", desc: "Reads CSV via dialog. Returns null if canceled." }
-await vja.io.openJson: { args: [], return: "Promise<any|null>", desc: "Reads JSON via dialog. Throws on parse error." }
-await vja.io.saveCsv: { args: [csvRows:object[], filename:string], return: "void", desc: "Saves rows as a CSV file via save dialog. MUST use await." }
-await vja.io.saveJson: { args: [data:any, filename:string], return: "void", desc: "Saves data as a JSON file via save dialog. MUST use await." }
-
-await vja.file.read: { args: [path:string], return: "string|null", desc: "Reads a text file. Returns null if not found. MUST use await." }
-await vja.file.write: { args: [path:string, content:string], return: "boolean", desc: "Writes text to a file. MUST use await." }
-await vja.file.readBytes: { args: [path:string], return: "Uint8Array|null", desc: "Reads a binary file. Returns null if not found. MUST use await." }
-await vja.file.writeBytes: { args: [path:string, data:Uint8Array], return: "boolean", desc: "Writes binary data to a file. MUST use await." }
-await vja.file.exists: { args: [path:string], return: "boolean", desc: "Checks whether a file exists. Same argument pattern for vja.file.delete(path) [deletes file]. MUST use await." }
-await vja.file.copy: { args: [src:string, dest:string], return: "boolean", desc: "Copies a file. MUST use await." }
-
-await vja.dir.create: { args: [path:string], return: "boolean", desc: "Creates a directory (including parents). Same argument pattern for vja.dir.delete(path) [deletes directory], vja.dir.exists(path) [checks existence]. MUST use await." }
-await vja.dir.list: { args: [path:string], return: "string[]", desc: "Lists entries in a directory. MUST use await." }
-
-vja.notify.toast: { args: [message:string, duration?:number], return: "void", desc: "Displays a bottom toast notification." }
 
 vja.trigger.click: { args: [name:string], return: "void", desc: "Triggers click on widget. name is the widget's NAME STRING (e.g. 'btnSearch'). For other events use same pattern: vja.trigger.focus(name), vja.trigger.blur(name), vja.trigger.change(name), vja.trigger.mouseDown(name), vja.trigger.mouseUp(name), vja.trigger.mouseEnter(name), vja.trigger.mouseLeave(name), vja.trigger.scroll(name)" }
 
@@ -677,10 +641,6 @@ vja.event.isEscape: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Re
 vja.event.isShift: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Shift key is held." }
 vja.event.isCtrl: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Ctrl key is held." }
 
-await vja.http.get: { args: [url:string, headers?:object], return: "any", desc: "HTTP GET. (vja.http.delete(url, headers) uses same args)" }
-await vja.http.post: { args: [url:string, body:any, headers?:object], return: "any", desc: "HTTP POST with JSON body. (vja.http.put(url, body, headers) uses same args)" }
-await vja.fetch: { args: [url:string, options?:object], return: "any", desc: "Low-level fetch alternative for custom options." }
-
 vja.ui.loading: { args: [show:boolean, message?:string], return: "void", desc: "Toggle loading overlay screen. MUST wrap the actual code in try{} finally{ vja.ui.loading(false); } structure to ensure turn off on errors." }
 
 await vja.app.showDialog: { args: [message:string], return: "void", desc: "Shows a message dialog. MUST use await (e.g., await vja.app.showDialog('...')). Forgetting await is a common mistake — do not omit it." }
@@ -690,6 +650,85 @@ console.info: { args: [message:any], return: "void" }
 console.warn: { args: [message:any], return: "void" }
 console.error: { args: [message:any], return: "void" }
 `.trim();
+
+    // ### [systemPromptで利用]
+    // [フロントエンド] 特殊API（vja.db: YAMLの「利用テーブル:」に記載がある場合のみユーザプロンプト側に付与）
+    const VJA_FRONT_API_DB_ENG = `
+await vja.db.query: { args: [sql:string, params?:any[]], return: "Record<string,any>[]", desc: "SQL SELECT. Use ? placeholder." }
+await vja.db.execute: { args: [sql:string, params?:any[]], return: "{changes:number, lastInsertRowid:number}|null", desc: "SQL INSERT/UPDATE/DELETE." }
+await vja.db.transaction: { args: [statements:object[]], return: "boolean", desc: "Multiple SQLs. Rollback and returns false on failure." }
+`.trim();
+
+    // ### [systemPromptで利用]
+    // [フロントエンド] 任意API（イベントエディタのチェックボックスでON時のみユーザプロンプト側に付与）
+    // キー名は、チェックボックスUI・検証ロジック（無効化カテゴリのAPI使用検出）と共通で使用する識別子.
+    const VJA_FRONT_API_OPTIONAL_ENG = {
+        form: `
+vja.form.navigate: { args: [formName:string, options?:object], return: "void", desc: "Navigates to form. options.save defaults to true." }
+vja.form.back: { args: [], return: "void" }
+vja.form.setParam: { args: [key:string, value:any], return: "void", desc: "Sets data parameter to pass to the next screen." }
+vja.form.getParam: { args: [key:string, default?:any], return: "any", desc: "Retrieves parameter passed from previous screen." }
+`.trim(),
+        session: `
+await vja.session.get: { args: [key:string, default?:any], return: "any", desc: "Retrieves persistent session data. MUST use await." }
+await vja.session.set: { args: [key:string, value:any], return: "boolean", desc: "Saves persistent session data (JSON)." }
+await vja.session.delete: { args: [key:string], return: "boolean", desc: "Deletes a session data entry. MUST use await." }
+await vja.session.clear: { args: [], return: "boolean", desc: "Clears all session data. MUST use await." }
+`.trim(),
+        const: `
+vja.const.get: { args: [key:string, default?:any], return: "any", desc: "Retrieves constant value. Form priority, then global." }
+vja.const.getAll: { args: [], return: "Record<string,any>", desc: "Retrieves all active config constants." }
+`.trim(),
+        util: `
+vja.util.today: { args: [], return: "string", desc: "Returns current date in YYYY-MM-DD format." }
+vja.util.formatDate: { args: [date:any, format?:string], return: "string", desc: "Formats Date object or string (default: YYYY-MM-DD)." }
+vja.util.formatNumber: { args: [n:number, decimals?:number], return: "string", desc: "Formats number with thousands separators." }
+`.trim(),
+        file: `
+await vja.file.read: { args: [path:string], return: "string|null", desc: "Reads a text file. Returns null if not found. MUST use await." }
+await vja.file.write: { args: [path:string, content:string], return: "boolean", desc: "Writes text to a file. MUST use await." }
+await vja.file.readBytes: { args: [path:string], return: "Uint8Array|null", desc: "Reads a binary file. Returns null if not found. MUST use await." }
+await vja.file.writeBytes: { args: [path:string, data:Uint8Array], return: "boolean", desc: "Writes binary data to a file. MUST use await." }
+await vja.file.exists: { args: [path:string], return: "boolean", desc: "Checks whether a file exists. Same argument pattern for vja.file.delete(path) [deletes file]. MUST use await." }
+await vja.file.copy: { args: [src:string, dest:string], return: "boolean", desc: "Copies a file. MUST use await." }
+`.trim(),
+        io: `
+await vja.io.openCsv: { args: [], return: "Record<string,string>[]|null", desc: "Reads CSV via dialog. Returns null if canceled." }
+await vja.io.openJson: { args: [], return: "Promise<any|null>", desc: "Reads JSON via dialog. Throws on parse error." }
+await vja.io.saveCsv: { args: [csvRows:object[], filename:string], return: "void", desc: "Saves rows as a CSV file via save dialog. MUST use await." }
+await vja.io.saveJson: { args: [data:any, filename:string], return: "void", desc: "Saves data as a JSON file via save dialog. MUST use await." }
+`.trim(),
+        dir: `
+await vja.dir.create: { args: [path:string], return: "boolean", desc: "Creates a directory (including parents). Same argument pattern for vja.dir.delete(path) [deletes directory], vja.dir.exists(path) [checks existence]. MUST use await." }
+await vja.dir.list: { args: [path:string], return: "string[]", desc: "Lists entries in a directory. MUST use await." }
+`.trim(),
+        http: `
+await vja.http.get: { args: [url:string, headers?:object], return: "any", desc: "HTTP GET. (vja.http.delete(url, headers) uses same args)" }
+await vja.http.post: { args: [url:string, body:any, headers?:object], return: "any", desc: "HTTP POST with JSON body. (vja.http.put(url, body, headers) uses same args)" }
+await vja.fetch: { args: [url:string, options?:object], return: "any", desc: "Low-level fetch alternative for custom options." }
+`.trim(),
+    };
+
+    // 任意カテゴリの表示名（チェックボックスUI用）
+    const VJA_FRONT_API_OPTIONAL_LABELS = {
+        form: "画面遷移 (vja.form.*)",
+        session: "セッション (vja.session.*)",
+        const: "定数 (vja.const.*)",
+        util: "ユーティリティ (vja.util.*)",
+        file: "ファイル操作 (vja.file.*)",
+        io: "ファイルI/O ダイアログ (vja.io.*)",
+        dir: "ディレクトリ操作 (vja.dir.*)",
+        http: "外部API (vja.http.*)",
+    };
+
+    // 互換用: 上記3つを結合した全量（ドキュメント自動生成・ホワイトリスト系の用途では未使用。
+    // AIP説明用の日本語詳細版VJA_USE_FRONT_JS_INFOとは別物）
+    const VJA_USE_FRONT_JS_INFO_ENG = (
+        VJA_FRONT_API_DB_ENG + "\n\n" +
+        VJA_FRONT_API_MANDATORY_ENG + "\n\n" +
+        Object.values(VJA_FRONT_API_OPTIONAL_ENG).join("\n\n") + "\n\n" +
+        `vja.notify.toast: { args: [message:string, duration?:number], return: "void", desc: "Displays a bottom toast notification." }`
+    ).trim();
 
     // ### [AIP説明で利用]
     // [バックエンド]利用可能なjavascript関数の説明.
@@ -1058,7 +1097,7 @@ ${vjaUseJsInfo}
     ) {
         const vjaUseJsInfo = isAppEvent
             ? VJA_USE_BACK_JS_INFO_ENG
-            : VJA_USE_FRONT_JS_INFO_ENG;
+            : VJA_FRONT_API_MANDATORY_ENG;
 
         const codeType = isAppEvent ? "TypeScript" : "JavaScript";
 
@@ -1332,6 +1371,7 @@ ${_removeYamlShComments(yamlDef)}
             formConstCtx,
             tablesCtx,
             extRuntimeDoc,
+            optionalApiDocCtx,
         },
     ) {
         const programType = isAppEvent ? "TypeScript" : "JavaScript";
@@ -1402,7 +1442,7 @@ ${globalConstCtx}
 ---
 ${tablesCtx}
 ---
-
+${optionalApiDocCtx ? "\n### Additional Available APIs (enabled for this event)\n---\n" + optionalApiDocCtx + "\n---\n" : ""}
 ### Extended Runtime(yaml)
 ---
 ~~~yaml
@@ -1786,6 +1826,13 @@ ${tablesCtx || "(No reference table specified)"}
     // [日本語]利用可能関数一覧: js利用者向けのvjaランタイム説明等.
     o.VJA_USE_BACK_JS_INFO = VJA_USE_BACK_JS_INFO; // バックエンド.
     o.VJA_USE_FRONT_JS_INFO = VJA_USE_FRONT_JS_INFO; // フロントエンド.
+
+    // [フロントエンド] API定義（カテゴリ分割版・必須/DB専用/任意）.
+    // 「任意API有効化（イベントエディタのチェックボックス）」機能で使用.
+    o.VJA_FRONT_API_MANDATORY_ENG = VJA_FRONT_API_MANDATORY_ENG;
+    o.VJA_FRONT_API_DB_ENG = VJA_FRONT_API_DB_ENG;
+    o.VJA_FRONT_API_OPTIONAL_ENG = VJA_FRONT_API_OPTIONAL_ENG;
+    o.VJA_FRONT_API_OPTIONAL_LABELS = VJA_FRONT_API_OPTIONAL_LABELS;
 
     // [プロンプト]yamlから js AI生成依頼.
     // 日本語版.

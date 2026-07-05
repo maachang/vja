@@ -154,7 +154,7 @@ function openYaml(wid, evName) {
     pvRegister("yamlAiGenRandom", () => yamlAiGenerate(wid, evName, _getBoostedTemperature()));
     pvRegister("yamlMockCheck", () => manualMockCheck(false, evName, getWidget(wid)?.tag, wid));
     pvRegister("yamlMockEdit", () => openMockOverrideEditor(wid, evName));
-    showModal(buildYamlEditorHTML(cur, curJs, true, mhdrHTML("📋 " + esc(w.name) + " — " + esc(evName)), "", null, isAppEvent));
+    showModal(buildYamlEditorHTML(cur, curJs, true, mhdrHTML("📋 " + esc(w.name) + " — " + esc(evName)), "", null, isAppEvent, wid, evName));
     initYamlEditorModal(cur, curJs);
 }
 
@@ -341,8 +341,101 @@ function _rpBuildWidgetTagSection() {
     }).join("") + "</div>";
 }
 
-function yamlBuildRightPanel(showWidgets = true) {
+// ── 任意API有効化: データ管理 ──
+// getProjectData().apiOptOverrides["wid_evName"] = ["form","const",...]
+// （有効化された任意カテゴリのキー配列。未初期化＝undefined）
+function _apiOptStorageKey(wid, evName) { return wid + "_" + evName; }
+function _getApiOptState(wid, evName) {
+    const store = getProjectData().apiOptOverrides || (getProjectData().apiOptOverrides = {});
+    return store[_apiOptStorageKey(wid, evName)];
+}
+function _setApiOptState(wid, evName, enabledArr) {
+    const store = getProjectData().apiOptOverrides || (getProjectData().apiOptOverrides = {});
+    store[_apiOptStorageKey(wid, evName)] = enabledArr;
+}
+
+// 任意APIカテゴリの検出パターン（コード内で実際に使われているカテゴリを判定）
+const _API_OPT_DETECT_PATTERNS = {
+    form: /\bvja\.form\./,
+    session: /\bvja\.session\./,
+    const: /\bvja\.const\./,
+    util: /\bvja\.util\./,
+    file: /\bvja\.file\./,
+    io: /\bvja\.io\./,
+    dir: /\bvja\.dir\./,
+    http: /\bvja\.http\.|\bvja\.fetch\s*\(/,
+};
+function _detectApiOptCategoriesFromCode(code) {
+    const found = new Set();
+    if (!code) return found;
+    Object.entries(_API_OPT_DETECT_PATTERNS).forEach(([key, re]) => {
+        if (re.test(code)) found.add(key);
+    });
+    return found;
+}
+
+// 未初期化（このイベントを一度も開いていない）の場合、既存の生成済みコードを
+// 解析して実際に使われているカテゴリを自動でON状態にする。
+// 新規イベント（コードが空）の場合は全OFFになる。
+function _ensureApiOptInitialized(wid, evName, code) {
+    let state = _getApiOptState(wid, evName);
+    if (state === undefined) {
+        state = Array.from(_detectApiOptCategoriesFromCode(code));
+        _setApiOptState(wid, evName, state);
+    }
+    return state;
+}
+
+// チェックボックスのトグル（onchangeから直接呼ばれる）
+function yamlToggleApiOpt(wid, evName, key, checked) {
+    const state = _getApiOptState(wid, evName) || [];
+    const set = new Set(state);
+    if (checked) set.add(key); else set.delete(key);
+    _setApiOptState(wid, evName, Array.from(set));
+}
+
+// vja.xxx.yyy 形式のAPI名から、任意カテゴリのキーを判定する。
+// 該当しない（必須カテゴリ・console等）場合はnullを返す。
+function _apiOptCategoryOfApiName(api) {
+    for (const [key, re] of Object.entries(_API_OPT_DETECT_PATTERNS)) {
+        if (re.test(api + "(")) return key; // api文字列に"("を補って既存パターンと一致させる
+    }
+    return null;
+}
+
+// wid（通常ウィジェットID、または擬似ID"form"）とevNameから、
+// 既存の生成済みJSコードを取得する（保存済みデータの格納先が異なるため共通化）。
+function _getExistingJsCodeFor(wid, evName) {
+    if (wid === "form") {
+        const f = getProjectData().forms[getProjectData().curFormIdx];
+        return f?.events?.["_js_" + evName] || "";
+    }
+    const w = getWidget(wid);
+    return (w?.jsCode && w.jsCode[evName]) || "";
+}
+
+// ── 右パネル: 利用API（任意カテゴリ）セクション ──
+// フロントエンドイベントのみ表示。バックエンド（isAppEvent）では表示しない。
+function _rpBuildApiOptSection(wid, evName) {
+    const code = _getExistingJsCodeFor(wid, evName);
+    const enabled = new Set(_ensureApiOptInitialized(wid, evName, code));
+    const labels = _PROMPT_DEF.VJA_FRONT_API_OPTIONAL_LABELS || {};
+    const rows = Object.keys(labels).map(key => {
+        const checked = enabled.has(key) ? " checked" : "";
+        return "<label class='rp-api-opt' style='display:flex;align-items:center;gap:6px;padding:4px 10px;font-size:12px'>"
+            + "<input type='checkbox'" + checked + " "
+            + evtAttr("onchange", "yamlToggleApiOpt(" + JSON.stringify(wid) + "," + JSON.stringify(evName) + "," + JSON.stringify(key) + ",this.checked)")
+            + ">" + esc(labels[key]) + "</label>";
+    }).join("");
+    const dbNote = "<div style='padding:6px 10px;font-size:11px;color:var(--text3)'>"
+        + "🗄 vja.db.*: YAMLの「利用テーブル:」に記載があれば自動的に利用可能になります（チェック不要）"
+        + "</div>";
+    return "<div>" + rows + dbNote + "</div>";
+}
+
+function yamlBuildRightPanel(showWidgets = true, wid = null, evName = null, isAppEvent = false) {
     return [
+        (!isAppEvent && wid && evName) ? yamlRpSection("🔌 利用API（任意）", _rpBuildApiOptSection(wid, evName), true) : "",
         yamlRpSection("📌 定数", _rpBuildConstSection(), true),
         yamlRpSection("📋 画面一覧", _rpBuildFormSection(), true),
         showWidgets ? yamlRpSection("🔲 現在フォームのウィジェット", _rpBuildWidgetSection(), true) : "",
@@ -883,9 +976,10 @@ function _checkJsSyntax(code) {
 }
 
 // コード内の vja.*/console.* 呼び出しを走査し、ホワイトリストに
-// 存在しないものを行番号付きで検出する。
-// 戻り値: [{ line: 1-indexed行番号, api: "vja.xxx.yyy" }, ...]
-function _findUnknownApis(code, isAppEvent) {
+// 存在しないもの、または「無効化された任意APIカテゴリ」に属するものを
+// 行番号付きで検出する。
+// 戻り値: [{ line: 1-indexed行番号, api: "vja.xxx.yyy", reason: "unknown"|"disabled" }, ...]
+function _findUnknownApis(code, isAppEvent, disabledCategories) {
     const whitelist = isAppEvent ? _getVjaApiWhitelist().back : _getVjaApiWhitelist().front;
     const lines = code.split("\n");
     const found = [];
@@ -896,11 +990,20 @@ function _findUnknownApis(code, isAppEvent) {
         re.lastIndex = 0;
         while ((m = re.exec(line)) !== null) {
             const api = m[1];
+            const key = idx + ":" + api;
+            if (seen.has(key)) continue;
             if (!whitelist.has(api)) {
-                const key = idx + ":" + api;
-                if (!seen.has(key)) {
+                seen.add(key);
+                found.push({ line: idx + 1, api, reason: "unknown" });
+                continue;
+            }
+            // ホワイトリストには存在するが、このイベントで任意カテゴリが
+            // 無効化されている場合はエラー扱いにする（フロントのみ対象）
+            if (!isAppEvent && disabledCategories && disabledCategories.size > 0) {
+                const category = _apiOptCategoryOfApiName(api);
+                if (category && disabledCategories.has(category)) {
                     seen.add(key);
-                    found.push({ line: idx + 1, api });
+                    found.push({ line: idx + 1, api, reason: "disabled", category });
                 }
             }
         }
@@ -995,10 +1098,21 @@ function _findEventTypeMismatch(code, evName, wtag) {
     return found;
 }
 
+// 現在の任意API有効化状態から「無効化されているカテゴリ」の集合を算出する。
+// バックエンド（isAppEvent）は対象外（常に空集合＝全カテゴリ利用可能）。
+function _getDisabledApiCategories(wid, evName, isAppEvent) {
+    if (isAppEvent || !wid || !evName) return new Set();
+    const labels = _PROMPT_DEF.VJA_FRONT_API_OPTIONAL_LABELS || {};
+    const allCategories = Object.keys(labels);
+    const enabled = new Set(_getApiOptState(wid, evName) || []);
+    return new Set(allCategories.filter(c => !enabled.has(c)));
+}
+
 // 生成コードを検証する。戻り値: { ok, syntaxError, unknownApis, forbiddenPatterns, ... }
-function validateGeneratedJs(code, isAppEvent, evName, wtag) {
+function validateGeneratedJs(code, isAppEvent, evName, wtag, wid) {
     const syntaxError = _checkJsSyntax(code);
-    const unknownApis = _findUnknownApis(code, isAppEvent);
+    const disabledCategories = _getDisabledApiCategories(wid, evName, isAppEvent);
+    const unknownApis = _findUnknownApis(code, isAppEvent, disabledCategories);
     const forbiddenPatterns = _findForbiddenPatterns(code);
     const missingAwaits = _findMissingAwaits(code, isAppEvent);
     const unknownWidgets = _findUnknownWidgetNames(code);
@@ -1018,9 +1132,13 @@ function validateGeneratedJs(code, isAppEvent, evName, wtag) {
 // （構文エラーは行の特定精度が低いため、行コメント挿入の対象外とする）
 function annotateUnknownApis(code, unknownApis, forbiddenPatterns, missingAwaits, unknownWidgets, styleWarnings, eventTypeMismatches) {
     const byLine = new Map();
-    (unknownApis || []).forEach(({ line, api }) => {
+    (unknownApis || []).forEach(({ line, api, reason }) => {
         if (!byLine.has(line)) byLine.set(line, []);
-        byLine.get(line).push("未知のAPI: " + api + " は存在しません（VJAランタイムを確認してください）");
+        byLine.get(line).push(
+            reason === "disabled"
+                ? "無効化されたAPI: " + api + " は、このイベントでは無効化されています（右パネルの「利用API」で有効にしてください）"
+                : "未知のAPI: " + api + " は存在しません（VJAランタイムを確認してください）"
+        );
     });
     (forbiddenPatterns || []).forEach(({ line, message }) => {
         if (!byLine.has(line)) byLine.set(line, []);
@@ -1070,7 +1188,7 @@ function _getBoostedTemperature() {
 function _formatValidationIssuesForLog(validation) {
     const parts = [];
     if (validation.syntaxError) parts.push("構文エラー: " + validation.syntaxError);
-    validation.unknownApis.forEach(({ line, api }) => parts.push(line + "行目: 未知のAPI " + api));
+    validation.unknownApis.forEach(({ line, api, reason }) => parts.push(line + "行目: " + (reason === "disabled" ? "無効化されたAPI " : "未知のAPI ") + api));
     validation.forbiddenPatterns.forEach(({ line, message }) => parts.push(line + "行目: " + message));
     validation.missingAwaits.forEach(({ line, api }) => parts.push(line + "行目: await漏れ " + api));
     validation.unknownWidgets.forEach(({ line, api, name }) => parts.push(line + "行目: 未知のウィジェット名 " + name + "（" + api + "）"));
@@ -1081,8 +1199,12 @@ function _formatValidationIssuesForLog(validation) {
 function _buildAiFixPrompt(originalUserPrompt, code, validation) {
     const issues = [];
     if (validation.syntaxError) issues.push("- 構文エラー: " + validation.syntaxError);
-    validation.unknownApis.forEach(({ line, api }) => {
-        issues.push("- " + line + "行目付近: 存在しないAPI \"" + api + "\" が使用されています。VJAランタイムに実在するAPIのみを使用してください。");
+    validation.unknownApis.forEach(({ line, api, reason }) => {
+        if (reason === "disabled") {
+            issues.push("- " + line + "行目付近: API \"" + api + "\" は、このイベントでは現在無効化されています。このAPIを使用せず、有効化されているAPIの範囲内で実装してください。");
+        } else {
+            issues.push("- " + line + "行目付近: 存在しないAPI \"" + api + "\" が使用されています。VJAランタイムに実在するAPIのみを使用してください。");
+        }
     });
     validation.forbiddenPatterns.forEach(({ line, message }) => {
         issues.push("- " + line + "行目付近: " + message);
@@ -1135,8 +1257,12 @@ function showAiValidationWarningBanner(validation, canRetry = true) {
     }
     const items = [];
     if (validation.syntaxError) items.push("・構文エラーの可能性: " + esc(validation.syntaxError));
-    validation.unknownApis.forEach(({ line, api }) => {
-        items.push("・" + line + "行目付近: 未知のAPI「" + esc(api) + "」");
+    validation.unknownApis.forEach(({ line, api, reason }) => {
+        items.push(
+            reason === "disabled"
+                ? "・" + line + "行目付近: 無効化されたAPI「" + esc(api) + "」（右パネルの「利用API」で有効にできます）"
+                : "・" + line + "行目付近: 未知のAPI「" + esc(api) + "」"
+        );
     });
     validation.forbiddenPatterns.forEach(({ line, message }) => {
         items.push("・" + line + "行目付近: " + esc(message));
@@ -1208,7 +1334,7 @@ async function manualMockCheck(isAppEvent, evName, wtag, wid) {
     const code = jsTa?.value || "";
     if (!code.trim()) { showToast("JavaScriptが入力されていません"); return; }
     if (!(await vja.app.showConfirm("モックの実行を行います。よろしいですか？"))) return;
-    let validation = validateGeneratedJs(code, isAppEvent, evName, wtag);
+    let validation = validateGeneratedJs(code, isAppEvent, evName, wtag, wid);
     validation = await _augmentWithMockCheck(validation, code, isAppEvent, evName, wtag, wid);
     window.vja?.log?.debug?.("[AI検証] 手動モック実行: " + _formatValidationIssuesForLog(validation));
     if (validation.ok) {
@@ -1228,7 +1354,7 @@ async function manualRetryAiFix() {
     const { sysPrompt, userPrompt, isAppEvent, wid, evName, isFormEvent, validationName, wtag } = _lastAiValidationCtx;
     const jsTa = $("js-ta");
     const currentCode = _stripValidationWrapper(jsTa?.value || "", validationName);
-    let validation = validateGeneratedJs(currentCode, isAppEvent, evName, wtag);
+    let validation = validateGeneratedJs(currentCode, isAppEvent, evName, wtag, wid);
     validation = await _augmentWithMockCheck(validation, currentCode, isAppEvent, evName, wtag, wid);
     if (validation.ok) { dismissAiValidationBanner(); return; }
     window.vja?.log?.debug?.("[AI検証] 手動での修正依頼を実行します。検出内容: " + _formatValidationIssuesForLog(validation));
@@ -1238,7 +1364,7 @@ async function manualRetryAiFix() {
         userPrompt: fixUserPrompt,
         loadingMsg: "検出した問題を自動修正中…",
         onSuccess: async (fixed) => {
-            let revalidated = validateGeneratedJs(fixed, isAppEvent, evName, wtag);
+            let revalidated = validateGeneratedJs(fixed, isAppEvent, evName, wtag, wid);
             revalidated = await _augmentWithMockCheck(revalidated, fixed, isAppEvent, evName, wtag, wid);
             window.vja?.log?.debug?.(revalidated.ok
                 ? "[AI検証] 手動修正で解消しました。"
@@ -1363,6 +1489,30 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
         : []; // 未指定の場合は何も渡さない
     const tablesCtx = buildTablesCtxText(targetTables);
 
+    // ── ⑤-2 任意API有効化: 有効カテゴリの判定・連動コンテキストのゲーティング ──
+    // フロントエンドイベントのみ対象（バックエンドは全カテゴリ常時利用可能のため対象外）。
+    const enabledApiOpts = isAppEvent ? [] : (_getApiOptState(wid, evName) || []);
+    const enabledApiOptSet = new Set(enabledApiOpts);
+    // vja.constが無効なら、定数一覧そのものを見せる意味が無いため空にする
+    const globalConstCtxGated = (!isAppEvent && !enabledApiOptSet.has("const")) ? "  （vja.constは現在このイベントで無効化されています）" : globalConstCtx;
+    const formConstCtxGated = (!isAppEvent && !enabledApiOptSet.has("const")) ? "  （vja.constは現在このイベントで無効化されています）" : formConstCtx;
+    // vja.formが無効なら、画面一覧も見せる意味が無いため空にする
+    const formsCtxGated = (!isAppEvent && !enabledApiOptSet.has("form")) ? "  （vja.formは現在このイベントで無効化されています）" : formsCtx;
+    // 有効化された任意カテゴリ・利用テーブル指定時のvja.dbのAPI説明を、ユーザープロンプト側に追加する
+    let optionalApiDocCtx = "";
+    if (!isAppEvent) {
+        const blocks = [];
+        enabledApiOpts.forEach(key => {
+            const label = _PROMPT_DEF.VJA_FRONT_API_OPTIONAL_LABELS?.[key];
+            const doc = _PROMPT_DEF.VJA_FRONT_API_OPTIONAL_ENG?.[key];
+            if (label && doc) blocks.push("## " + label + "\n" + doc);
+        });
+        if (targetTables.length > 0 && _PROMPT_DEF.VJA_FRONT_API_DB_ENG) {
+            blocks.push("## データベース (vja.db.*)\n" + _PROMPT_DEF.VJA_FRONT_API_DB_ENG);
+        }
+        optionalApiDocCtx = blocks.join("\n\n");
+    }
+
     // ── ⑥ システムプロンプト ──
     const sysPrompt = _PROMPT_DEF.YAML_TO_JS_SYS_PROMPT(
         isAppEvent,
@@ -1370,8 +1520,8 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
             formName: curForm?.cfg?.name, eventName: evName,
             wname: w?.name, wtag: w?.tag, wdescription: w?.props?.description,
             inputParamsCtx: inputParamsCtx, allWidgetsCtx: allWidgetsCtx,
-            formsCtx: formsCtx, globalConstCtx: globalConstCtx,
-            formConstCtx: formConstCtx, tablesCtx: tablesCtx,
+            formsCtx: formsCtxGated, globalConstCtx: globalConstCtxGated,
+            formConstCtx: formConstCtxGated, tablesCtx: tablesCtx,
             extRuntimeDoc: getProjectData().extRuntime.doc
         });
 
@@ -1382,9 +1532,10 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
             formName: curForm?.cfg?.name, eventName: evName,
             wname: w?.name, wtag: w?.tag, wdescription: w?.props?.description,
             inputParamsCtx: inputParamsCtx, allWidgetsCtx: allWidgetsCtx,
-            formsCtx: formsCtx, globalConstCtx: globalConstCtx,
-            formConstCtx: formConstCtx, tablesCtx: tablesCtx,
-            extRuntimeDoc: getProjectData().extRuntime.doc
+            formsCtx: formsCtxGated, globalConstCtx: globalConstCtxGated,
+            formConstCtx: formConstCtxGated, tablesCtx: tablesCtx,
+            extRuntimeDoc: getProjectData().extRuntime.doc,
+            optionalApiDocCtx: optionalApiDocCtx,
         }
     );
 
@@ -1429,7 +1580,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
             // ※temperatureの自動引き上げは行わない（通常のtemperature設定を
             //   そのまま使う）。ランダム性を上げて試したい場合は、エディタの
             //   「🎲 ランダム性を上げて再生成」ボタンを使う。
-            let validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag);
+            let validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag, wid);
             validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid);
             if (!validation.ok) {
                 const issueLog = _formatValidationIssuesForLog(validation);
@@ -1448,7 +1599,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                 });
                 if (retryCode) {
                     unwrapped = retryCode;
-                    validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag);
+                    validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag, wid);
                     validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid);
                     window.vja?.log?.debug?.(validation.ok
                         ? "[AI検証] 自動修正リトライで解消しました。"
@@ -1935,7 +2086,7 @@ function editorHlUpdate(taId) {
 
 /* ── YAMLエディタ共通HTML生成 ── */
 // tabConfig: null=通常(YAML+JS), {tabs:[{id,label,type:'yaml'|'js',val,ph}], aiBar, saveAction}
-function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", extraTabsHTML = "", tabConfig = null, isAppEvent = false) {
+function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", extraTabsHTML = "", tabConfig = null, isAppEvent = false, wid = null, evName = null) {
     const aiEnabled = getProjectData().aiConfig.enabled;
 
     // カスタムタブ構成
@@ -2053,7 +2204,7 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         "</div>" +
         "<div class='yaml-resize-handle' id='yaml-rhandle'></div>" +
         "<div class='yaml-editor-right' id='yaml-rpanel'>" +
-        yamlBuildRightPanel(showWidgets) +
+        yamlBuildRightPanel(showWidgets, wid, evName, isAppEvent) +
         "</div>" +
         "</div>" +
         "</div>" +
