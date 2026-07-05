@@ -987,7 +987,7 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
 - SQLインジェクション対策として、プレースホルダー（?）の利用は必須です。
 - sqlite3専用のSQLで実装してください。必ず実行可能なSQL文で定義する必要があります。
 - SQLの LIKE 検索では、SQL文の中に '?' を直接クォーテーションで囲んで配置してはなりません（悪い例: LIKE '%?%' はプレースホルダーが機能しなくなるため絶対禁止）。必ずJavaScript側の変数に '%' を結合してプレースホルダーに渡してください。
-  - 記述例: let pattern = '%' + txtSearch.value + '%'; let sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
+  - 記述例: let pattern = '%' + searchText + '%'; let sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
 - SQL文の中に、テンプレートリテラル（\`\${...}\`）で「値」を直接埋め込むことは絶対禁止です。検索文字列・数値・ID・JSON.stringify()した結果など、値は必ず\`?\`プレースホルダーとparams配列経由で渡してください（悪い例: \`WHERE id = \${id}\`、\`WHERE data = \${JSON.stringify(obj)}\`）。
   - 悪い例: \`SELECT * FROM users WHERE name = \${name}\`
   - 良い例: let sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]);
@@ -1020,12 +1020,13 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
 - 画面遷移は vja.form.navigate('画面name') のみを使用してください。（window.location等は禁止）
 - navigate() は別画面への移動専用です。現在画面のリロードや更新目的での使用は絶対禁止です。
 - window.confirm や window.alert の使用は禁止です。代わりに vja.app.showDialog または vja.app.showConfirm を使用してください。
+- ウィジェットの値は、DOM要素のプロパティのように直接アクセスすること（例: searchText.value、document.getElementById('x').value）はできません。全て不正であり、実行時エラーになります。ウィジェットの現在値を取得する唯一の方法は vja.widget.get('ウィジェット名') です。
 
 ## SQL
 - SQLインジェクション対策として、プレースホルダー（?）の利用は必須です。
 - sqlite3専用のSQLで実装してください。必ず実行可能なSQL文で定義する必要があります。
 - SQLの LIKE 検索では、SQL文の中に '?' を直接クォーテーションで囲んで配置してはなりません（悪い例: LIKE '%?%' はプレースホルダーが機能しなくなるため絶対禁止）。必ずJavaScript側の変数に '%' を結合してプレースホルダーに渡してください。
-  - 記述例: var pattern = '%' + txtSearch.value + '%'; var sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
+  - 記述例: var searchText = vja.widget.get('txtSearch'); var pattern = '%' + searchText + '%'; var sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
 - SQL文の中に、テンプレートリテラル（\`\${...}\`）で「値」を直接埋め込むことは絶対禁止です。検索文字列・数値・ID・JSON.stringify()した結果など、値は必ず\`?\`プレースホルダーとparams配列経由で渡してください（悪い例: \`WHERE id = \${id}\`、\`WHERE data = \${JSON.stringify(obj)}\`）。
   - 悪い例: \`SELECT * FROM users WHERE name = \${name}\`
   - 良い例: var sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]);
@@ -1123,7 +1124,7 @@ ${vjaUseJsInfo}
 - Placeholders (?) are mandatory for all variable inputs to prevent SQL injection.
 - Implemented using SQL specific to sqlite3. Must be defined using executable SQL statements.
 - For SQL LIKE searches, NEVER place the '?' placeholder inside quotes (e.g., LIKE '%?%' is STRICTLY PROHIBITED as it breaks the placeholder). Always concatenate the '%' wildcards to the JavaScript variable side.
-  - Example: let pattern = '%' + txtSearch.value + '%'; let sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
+  - Example: let pattern = '%' + searchText + '%'; let sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
 - NEVER embed a data VALUE into the SQL string using a template literal (\`\${...}\`). Any value (search text, numbers, IDs, JSON.stringify() results, etc.) must always be passed through the \`?\` placeholder and the params array. Embedding a value directly (e.g., \`WHERE id = \${id}\` or \`WHERE data = \${JSON.stringify(obj)}\`) is STRICTLY PROHIBITED.
   - Bad: \`SELECT * FROM users WHERE name = \${name}\`
   - Good: let sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]);
@@ -1156,12 +1157,13 @@ ${vjaUseJsInfo}
 - Screen navigation must use vja.form.navigate('screen name') only. (window.location is prohibited)
 - navigate() is exclusively for navigating to a different screen. Using it to refresh or update the current screen is absolutely prohibited.
 - window.confirm/alert are prohibited. Use vja.app.showDialog/showConfirm instead.
+- Widgets are NOT accessible via direct DOM-style property access (e.g., searchText.value, document.getElementById('x').value are ALL INVALID and will throw an error). The ONLY way to read a widget's current value is vja.widget.get('widgetName').
 
 ## SQL
 - Placeholders (?) are mandatory for all variable inputs to prevent SQL injection.
 - Implemented using SQL specific to sqlite3. Must be defined using executable SQL statements.
 - For SQL LIKE searches, NEVER place the '?' placeholder inside quotes (e.g., LIKE '%?%' is STRICTLY PROHIBITED as it breaks the placeholder). Always concatenate the '%' wildcards to the JavaScript variable side.
-  - Example: var pattern = '%' + txtSearch.value + '%'; var sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
+  - Example: var searchText = vja.widget.get('txtSearch'); var pattern = '%' + searchText + '%'; var sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
 - NEVER embed a data VALUE into the SQL string using a template literal (\`\${...}\`). Any value (search text, numbers, IDs, JSON.stringify() results, etc.) must always be passed through the \`?\` placeholder and the params array. Embedding a value directly (e.g., \`WHERE id = \${id}\` or \`WHERE data = \${JSON.stringify(obj)}\`) is STRICTLY PROHIBITED.
   - Bad: \`SELECT * FROM users WHERE name = \${name}\`
   - Good: var sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]);

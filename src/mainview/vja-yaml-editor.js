@@ -859,7 +859,7 @@ function openMockOverrideEditor(wid, evName) {
     _mockEditorRowSeq = 0;
     const rowsHtml = rows.map((row) => _mockEditorRowHtml(row, _mockEditorRowSeq++)).join("");
     showModal(
-        mhdrHTML("⚙ モック値を編集（" + esc(String(evName)) + "）") +
+        mhdrHTML("⚙ モック値を編集（" + esc(String(evName)) + "）", "modal-layer-1") +
         "<div class='mbody' style='display:flex;flex-direction:column;gap:8px'>" +
         "<div style='font-size:12px;color:var(--text2)'>" +
         "「🧪 モック実行」やAI生成後の自動検証で使うダミー値を、明示的に指定できます。" +
@@ -869,9 +869,10 @@ function openMockOverrideEditor(wid, evName) {
         "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "_mockEditorAddRow()") + ">＋ 行を追加</button>" +
         "</div>" +
         "<div class='mfoot'>" +
-        mfootHTML([{ label: "キャンセル", action: "closeModal()" }]) +
+        mfootHTML([{ label: "キャンセル", action: 'closeModal("modal-layer-1")' }]) +
         "<button class='pri'" + evtAttr("onmousedown", "saveMockOverrides(" + JSON.stringify(wid) + "," + JSON.stringify(evName) + ")") + ">保存</button>" +
-        "</div>"
+        "</div>",
+        "modal-mock-editor", "modal-layer-1"
     );
 }
 // モーダル内の全行を読み取り、プロジェクトデータに保存する。
@@ -892,7 +893,7 @@ function saveMockOverrides(wid, evName) {
         rows.push({ type, target, json });
     });
     _saveMockOverrideRows(wid, evName, rows);
-    closeModal();
+    closeModal("modal-layer-1");
     showToast("✅ モック値を保存しました");
 }
 
@@ -1840,6 +1841,7 @@ async function formDesignAiGenerate() {
     // AI生成前に依頼テキストを下書き保存（モーダルは閉じない）
     getProjectData().formDesignDraft = rawText;
 
+    
     await runAiGenerate({
         systemPrompt: sysPrompt,
         userPrompt: userPrompt,
