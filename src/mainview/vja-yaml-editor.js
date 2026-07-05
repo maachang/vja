@@ -977,17 +977,47 @@ function _extractMockErrorLine(e) {
 // 生成コードをモックランタイムと共に実際に1回実行し、実行時例外が
 // 発生しないかを確認する。例外が無ければnull、あれば
 // { message: 例外メッセージ, line: 推定行番号（取れない場合はnull） } を返す。
+//
+// 【try/catchで握りつぶされたエラーの検出について】
+// 実プロジェクト実行時（project-bridge.ts / src/bun/index.ts の
+// window._vjaLastError 方式）と同じ考え方で、生成コード内で
+// 「console.error(e)」のようにErrorオブジェクトがログ出力された場合、
+// それを実行スコープ限定のモック用console経由で検知し、たとえ
+// try/catchで握りつぶされて例外が外に投げられなくても、エラーとして扱う。
+// モック実行では vja 自体も完全にモック版を使っているため、
+// console についても同様にモック実行スコープ限定のものを渡す
+// （グローバルのconsoleを書き換えて戻す、といった処理は不要）。
 async function _runMockSmokeTest(code, isAppEvent, evName, wtag, wid) {
     if (getProjectData().aiConfig.mockCheckEnabled === false) return null;
     if (!window.VJA_MOCK_RUNTIME) return null; // 読み込み失敗時は検証をスキップ
+    let capturedError = null;
+    const mockConsole = {
+        log: (...a) => console.log(...a),
+        info: (...a) => console.info(...a),
+        warn: (...a) => console.warn(...a),
+        error: (...a) => {
+            const errArg = a.find((x) => x instanceof Error);
+            if (errArg) capturedError = errArg;
+            console.error(...a);
+        },
+    };
     try {
         const overrides = wid !== undefined ? _computeMockOverrides(wid, evName) : undefined;
         const vjaMock = window.VJA_MOCK_RUNTIME.build(isAppEvent, evName, wtag, overrides);
         const extMock = _buildExtRuntimeMock();
         const extNames = Object.keys(extMock);
         const extValues = extNames.map((n) => extMock[n]);
-        const fn = new Function("vja", ...extNames, "return (async()=>{\n" + code + "\n})()");
-        await fn(vjaMock, ...extValues);
+        const fn = new Function("vja", ...extNames, "console", "return (async()=>{\n" + code + "\n})()");
+        await fn(vjaMock, ...extValues, mockConsole);
+        if (capturedError) {
+            // try/catchで握りつぶされていたエラー。例外としては外に出てこないが、
+            // console.error(Errorオブジェクト)で報告されていた場合はエラー扱いにする。
+            return {
+                message: capturedError.message || String(capturedError),
+                line: _extractMockErrorLine(capturedError),
+                caught: true,
+            };
+        }
         return null;
     } catch (e) {
         return {
@@ -1226,7 +1256,7 @@ function _formatValidationIssuesForLog(validation) {
     validation.forbiddenPatterns.forEach(({ line, message }) => parts.push(line + "行目: " + message));
     validation.missingAwaits.forEach(({ line, api }) => parts.push(line + "行目: await漏れ " + api));
     validation.unknownWidgets.forEach(({ line, api, name }) => parts.push(line + "行目: 未知のウィジェット名 " + name + "（" + api + "）"));
-    if (validation.mockError) parts.push("モック実行例外: " + (validation.mockError.line ? validation.mockError.line + "行目: " : "") + validation.mockError.message);
+    if (validation.mockError) parts.push((validation.mockError.caught ? "モック実行(catchで捕捉): " : "モック実行例外: ") + (validation.mockError.line ? validation.mockError.line + "行目: " : "") + validation.mockError.message);
     return parts.length > 0 ? parts.join(" / ") : "(詳細なし)";
 }
 
@@ -1254,7 +1284,10 @@ function _buildAiFixPrompt(originalUserPrompt, code, validation) {
     });
     if (validation.mockError) {
         const lineNote = validation.mockError.line ? (validation.mockError.line + "行目付近: ") : "";
-        issues.push("- モック実行時に例外が発生しました: " + lineNote + validation.mockError.message + "（ダミー値での試験実行のため、実際の実行結果とは異なる場合がありますが、コードの構造に問題がある可能性が高いです）");
+        const caughtNote = validation.mockError.caught
+            ? "モック実行時、try/catchで捕捉されconsole.error()に渡されたエラーが検出されました: "
+            : "モック実行時に例外が発生しました: ";
+        issues.push("- " + caughtNote + lineNote + validation.mockError.message + "（ダミー値での試験実行のため、実際の実行結果とは異なる場合がありますが、コードの構造に問題がある可能性が高いです）");
     }
     return originalUserPrompt +
         "\n\n[自動検証で以下の問題が検出されました。問題を修正し、修正後のコードのみを出力してください]\n" +
@@ -1312,7 +1345,8 @@ function showAiValidationWarningBanner(validation, canRetry = true) {
     });
     if (validation.mockError) {
         const lineNote = validation.mockError.line ? (validation.mockError.line + "行目付近: ") : "";
-        items.push("・モック実行時に例外が発生: " + lineNote + esc(validation.mockError.message));
+        const label = validation.mockError.caught ? "・catchで捕捉されたエラー" : "・モック実行時に例外が発生";
+        items.push(label + ": " + lineNote + esc(validation.mockError.message));
     }
     // 検出件数が多い場合、バナーの高さが際限なく伸びてエディタ領域（ガター等）の
     // 表示を崩すことがあるため、一覧部分は最大高さ＋内部スクロールに固定する。
@@ -1441,7 +1475,9 @@ async function manualRetryAiFix() {
 
 // validateGeneratedJs()の結果に、モック実行スモークテストの結果を
 // マージする。mockErrorが検出された場合はokをfalseにする。
-// mockErrorは { message: string, line: number|null } の形。
+// mockErrorは { message: string, line: number|null, caught?: boolean } の形。
+// caught=trueは、try/catchで握りつぶされconsole.error()に渡されたエラーを
+// 検出したケース（例外としては外に投げられていない）であることを示す。
 async function _augmentWithMockCheck(validation, code, isAppEvent, evName, wtag, wid) {
     const mockError = await _runMockSmokeTest(code, isAppEvent, evName, wtag, wid);
     if (!mockError) return validation;
