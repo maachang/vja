@@ -261,55 +261,84 @@ function _rpBuildWidgetSection() {
 
 // ── 右パネル: テーブル一覧セクション ──
 // SQLiteテーブル定義のカラム一覧（PK/NOT NULL/DEFAULT/INDEXフラグ付き）を表示する。
-function _rpBuildTableSection() {
-    return getProjectData().tables.length > 0
-        ? "<div>" + getProjectData().tables.map((t, ti) => {
-            const tn = esc(t.name);
-            const cols = (t.columns || []).map(c => {
-                const flags = [c.pk ? "PK" : "", c.notNull ? "NN" : "", c.useDefault ? "DEF" : "", c.index ? "IDX" : ""].filter(Boolean).join(" ");
-                const cn = esc(c.name);
-                return "<tr class='rp-insert' data-insert='" + cn + "'>"
-                    + "<td class='col-name'>" + cn + "</td>"
-                    + "<td class='col-type'>" + esc(c.type) + "</td>"
-                    + "<td class='col-flag'>" + flags + "</td></tr>";
-            }).join("");
-            return "<div class='rp-tbl-row'>"
-                + "<div class='rp-tbl-header'>"
-                + "<span class='rp-tbl-name rp-insert' data-insert='" + tn + "'>" + tn + "</span>"
-
-                + (cols ? "<button class='rp-tbl-expand' " + evtAttr("onmousedown", "event.stopPropagation();yamlToggleTblCols(this)") + ">▶</button>" : "")
-                + "</div>"
-                + (cols ? "<div class='rp-tbl-cols'><table>" + cols + "</table></div>" : "")
-                + "</div>";
-        }).join("") + "</div>"
-        : "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>\u30c6\u30fc\u30d6\u30eb\u306a\u3057</div>";
+function _rpBuildTableSection(wid, evName, curYaml) {
+    if (getProjectData().tables.length === 0) {
+        return "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>テーブルなし</div>";
+    }
+    const hasCtx = !!(wid && evName);
+    let enabledSet = new Set();
+    if (hasCtx) {
+        // 初期表示時（モーダルHTML構築中）はまだDOMにyaml-taが存在しないため、
+        // 引数で渡されたYAML本文（curYaml）を使う。DOM経由の$("yaml-ta")には依存しない。
+        enabledSet = new Set(_ensureTableOptInitialized(wid, evName, curYaml || ""));
+    }
+    return "<div>" + getProjectData().tables.map((t) => {
+        const tn = esc(t.name);
+        const cols = (t.columns || []).map(c => {
+            const flags = [c.pk ? "PK" : "", c.notNull ? "NN" : "", c.useDefault ? "DEF" : "", c.index ? "IDX" : ""].filter(Boolean).join(" ");
+            const cn = esc(c.name);
+            return "<tr class='rp-insert' data-insert='" + cn + "'>"
+                + "<td class='col-name'>" + cn + "</td>"
+                + "<td class='col-type'>" + esc(c.type) + "</td>"
+                + "<td class='col-flag'>" + flags + "</td></tr>";
+        }).join("");
+        const toggleHtml = hasCtx
+            ? "<div style='width:52px;flex-shrink:0;margin-right:6px'>" + makePvSel(
+                "tblopt-" + _sanitizeIdPart(wid) + "-" + _sanitizeIdPart(evName) + "-" + _sanitizeIdPart(t.name),
+                ["ON", "OFF"],
+                enabledSet.has(t.name) ? "ON" : "OFF",
+                "yamlSetTableOpt('" + wid + "','" + evName + "','" + t.name + "',{value})"
+            ) + "</div>"
+            : "";
+        return "<div class='rp-tbl-row'>"
+            + "<div class='rp-tbl-header' style='display:flex;align-items:center'>"
+            + toggleHtml
+            + "<span class='rp-tbl-name rp-insert' data-insert='" + tn + "'>" + tn + "</span>"
+            + (cols ? "<button class='rp-tbl-expand' " + evtAttr("onmousedown", "event.stopPropagation();yamlToggleTblCols(this)") + ">▶</button>" : "")
+            + "</div>"
+            + (cols ? "<div class='rp-tbl-cols'><table>" + cols + "</table></div>" : "")
+            + "</div>";
+    }).join("") + "</div>";
 }
 
 // ── 右パネル: 検証（バリデーション定義）一覧セクション ──
-// ヘッダー: 定義名クリックで「検証: 定義名」をYAMLエディタの現在位置に挿入。
-// 展開: ルールのウィジェット名・バリデーション条件をテーブル形式で表示。
-function _rpBuildValidationSection() {
+// 単一選択（プルダウン）方式。選択内容はYAML本文には書かず、
+// getProjectData().validationOverrides["wid_evName"]に保存する。
+// 各定義名の下に、参考情報としてルール詳細を展開表示できる。
+function _rpBuildValidationSection(wid, evName) {
     const curForm = getProjectData().forms[getProjectData().curFormIdx];
     const validations = curForm?.validations || [];
-    return validations.length > 0
-        ? "<div>" + validations.map(v => {
-            const vn = esc(v.name);
-            const rules = (v.rules || []).filter(r => r.name && r.type);
-            const ruleRows = rules.map(r => {
-                const typeLabel = (VALIDATION_TYPES.find(t => t.value === r.type)?.label) || r.type;
-                return "<tr><td class='col-name'>" + esc(r.name) + "</td>"
-                    + "<td class='col-type'>" + esc(typeLabel) + "</td>"
-                    + "<td class='col-flag'>" + (r.not ? "NOT" : "") + "</td></tr>";
-            }).join("");
-            return "<div class='rp-tbl-row'>"
-                + "<div class='rp-tbl-header'>"
-                + "<span class='rp-tbl-name rp-insert' data-insert='検証: " + vn + "'>" + vn + "</span>"
-                + (ruleRows ? "<button class='rp-tbl-expand' " + evtAttr("onmousedown", "event.stopPropagation();yamlToggleTblCols(this)") + ">▶</button>" : "")
-                + "</div>"
-                + (ruleRows ? "<div class='rp-tbl-cols'><table>" + ruleRows + "</table></div>" : "")
-                + "</div>";
-        }).join("") + "</div>"
-        : "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>検証定義なし</div>";
+    if (validations.length === 0) {
+        return "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>検証定義なし</div>";
+    }
+    const hasCtx = !!(wid && evName);
+    const current = hasCtx ? (_getValidationOverride(wid, evName) || "（なし）") : "（なし）";
+    const selectorHtml = hasCtx
+        ? "<div style='padding:6px 10px'>" + makePvSel(
+            "validsel-" + _sanitizeIdPart(wid) + "-" + _sanitizeIdPart(evName),
+            ["（なし）", ...validations.map((v) => v.name)],
+            current,
+            "yamlSetValidationOpt('" + wid + "','" + evName + "',{value})"
+        ) + "</div>"
+        : "";
+    const listHtml = "<div>" + validations.map(v => {
+        const vn = esc(v.name);
+        const rules = (v.rules || []).filter(r => r.name && r.type);
+        const ruleRows = rules.map(r => {
+            const typeLabel = (VALIDATION_TYPES.find(t => t.value === r.type)?.label) || r.type;
+            return "<tr><td class='col-name'>" + esc(r.name) + "</td>"
+                + "<td class='col-type'>" + esc(typeLabel) + "</td>"
+                + "<td class='col-flag'>" + (r.not ? "NOT" : "") + "</td></tr>";
+        }).join("");
+        return "<div class='rp-tbl-row'>"
+            + "<div class='rp-tbl-header'>"
+            + "<span class='rp-tbl-name'>" + vn + "</span>"
+            + (ruleRows ? "<button class='rp-tbl-expand' " + evtAttr("onmousedown", "event.stopPropagation();yamlToggleTblCols(this)") + ">▶</button>" : "")
+            + "</div>"
+            + (ruleRows ? "<div class='rp-tbl-cols'><table>" + ruleRows + "</table></div>" : "")
+            + "</div>";
+    }).join("") + "</div>";
+    return selectorHtml + listHtml;
 }
 
 // ── 右パネル: ウィジェット種別セクション（フォームデザインエディタ専用） ──
@@ -445,6 +474,107 @@ function _hasEnabledApiOpts(wid, evName) {
     return (enabled || []).length > 0;
 }
 
+// DOM要素ID等に使うため、wid/evNameを安全な文字列に変換する共通ヘルパー
+function _sanitizeIdPart(s) {
+    return String(s).replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
+/* ── 利用テーブル（ON/OFF、YAML本文と自動連動） ──
+   保存先: getProjectData().tableOptOverrides["wid_evName"] = ["horse_info", ...]
+   トグル操作の度に、YAMLエディタ本文の「利用テーブル:」ブロックを自動的に
+   追記・更新・削除する（YAML自体を唯一の情報源として保ちつつ、タイポを防ぐ）。 */
+function _getTableOptState(wid, evName) {
+    return (getProjectData().tableOptOverrides || {})[wid + "_" + evName];
+}
+function _setTableOptState(wid, evName, arr) {
+    if (!getProjectData().tableOptOverrides) getProjectData().tableOptOverrides = {};
+    getProjectData().tableOptOverrides[wid + "_" + evName] = arr;
+}
+// 未初期化の場合、既存のYAML本文の「利用テーブル:」ブロックを解析して初期状態とする。
+function _ensureTableOptInitialized(wid, evName, yamlText) {
+    let state = _getTableOptState(wid, evName);
+    if (state === undefined) {
+        const detected = [];
+        const m = (yamlText || "").match(/^[ \t]*利用テーブル[ \t]*:[ \t]*\r?\n((?:[ \t]*-[^\n]*\r?\n?)*)/m);
+        if (m) {
+            m[1].split("\n").forEach((l) => {
+                const name = l.replace(/^\s*-\s*/, "").replace(/#.*$/, "").trim();
+                if (name) detected.push(name);
+            });
+        }
+        state = detected;
+        _setTableOptState(wid, evName, state);
+    }
+    return state;
+}
+// 有効化されたテーブル名配列から「利用テーブル:」ブロックのテキストを生成する。
+// 0件の場合は空文字（＝ブロック無し）。
+function _buildTableYamlBlock(enabledTableNames) {
+    if (!enabledTableNames || enabledTableNames.length === 0) return "";
+    return "利用テーブル:\n" + enabledTableNames.map((n) => "  - " + n).join("\n");
+}
+// YAML本文中の既存「利用テーブル:」ブロック（#付きコメントアウトも含む）を
+// 検出して置き換える。ブロックが存在しない場合は新規挿入する。
+// 挿入位置: 1行目がコメント行なら2行目、空行なら1行目。
+function _syncTableYamlBlock(yamlText, enabledTableNames) {
+    const lines = yamlText.split("\n");
+    const headerRe = /^\s*#?\s*利用テーブル\s*:/;
+    let headerIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+        if (headerRe.test(lines[i])) { headerIdx = i; break; }
+    }
+    const originalFirstLine = lines[0] || "";
+    if (headerIdx !== -1) {
+        let endIdx = headerIdx + 1;
+        while (endIdx < lines.length && /^\s+-\s/.test(lines[endIdx])) endIdx++;
+        lines.splice(headerIdx, endIdx - headerIdx);
+    }
+    const newBlock = _buildTableYamlBlock(enabledTableNames);
+    if (!newBlock) return lines.join("\n");
+    let insertAt;
+    if (headerIdx === 0) {
+        insertAt = 0; // 元々1行目が「利用テーブル:」ブロックだった
+    } else {
+        insertAt = originalFirstLine.trim().startsWith("#") ? 1 : 0;
+    }
+    lines.splice(insertAt, 0, newBlock);
+    return lines.join("\n");
+}
+// トグル操作（onPickCodeから呼ばれる）。状態更新＋YAMLエディタへの即時反映を行う。
+function yamlSetTableOpt(wid, evName, tableName, value) {
+    const state = new Set(_getTableOptState(wid, evName) || []);
+    if (value === "ON") state.add(tableName); else state.delete(tableName);
+    // プロジェクト内のテーブル定義順に整列して保存（表示・出力の安定化のため）
+    const ordered = getProjectData().tables.map((t) => t.name).filter((n) => state.has(n));
+    _setTableOptState(wid, evName, ordered);
+    _applyTableYamlSync(wid, evName);
+}
+// 現在の有効化状態を、YAMLエディタ本文（yaml-ta）に即時反映する。
+function _applyTableYamlSync(wid, evName) {
+    const ta = $("yaml-ta");
+    if (!ta) return;
+    const enabled = _getTableOptState(wid, evName) || [];
+    const updated = _syncTableYamlBlock(ta.value, enabled);
+    if (updated !== ta.value) {
+        ta.value = updated;
+        yamlHlUpdate();
+        editorUpdateGutter("yaml-ta", "yaml-gutter");
+    }
+}
+
+/* ── 検証（バリデーション定義、単一選択・YAMLには書かない） ──
+   保存先: getProjectData().validationOverrides["wid_evName"] = "定義名"（未選択は""） */
+function _getValidationOverride(wid, evName) {
+    return (getProjectData().validationOverrides || {})[wid + "_" + evName] || "";
+}
+function _setValidationOverride(wid, evName, name) {
+    if (!getProjectData().validationOverrides) getProjectData().validationOverrides = {};
+    getProjectData().validationOverrides[wid + "_" + evName] = name || "";
+}
+function yamlSetValidationOpt(wid, evName, value) {
+    _setValidationOverride(wid, evName, value === "（なし）" ? "" : value);
+}
+
 // ── 右パネル: 利用API（任意カテゴリ）セクション ──
 // フロントエンドイベントのみ表示。バックエンド（isAppEvent）では表示しない。
 function _rpBuildApiOptSection(wid, evName) {
@@ -475,14 +605,14 @@ function _rpBuildApiOptSection(wid, evName) {
     return "<div>" + rows + dbNote + "</div>";
 }
 
-function yamlBuildRightPanel(showWidgets = true, wid = null, evName = null, isAppEvent = false) {
+function yamlBuildRightPanel(showWidgets = true, wid = null, evName = null, isAppEvent = false, curYaml = "") {
     return [
         (!isAppEvent && wid && evName) ? yamlRpSection("🔌 利用API（任意）", _rpBuildApiOptSection(wid, evName), _hasEnabledApiOpts(wid, evName)) : "",
         yamlRpSection("📌 定数", _rpBuildConstSection(), false),
         yamlRpSection("📋 画面一覧", _rpBuildFormSection(), false),
         showWidgets ? yamlRpSection("🔲 現在フォームのウィジェット", _rpBuildWidgetSection(), true) : "",
-        yamlRpSection("✅ 検証", _rpBuildValidationSection(), true),
-        yamlRpSection("🗄 テーブル一覧", _rpBuildTableSection(), true),
+        yamlRpSection("✅ 検証", _rpBuildValidationSection(wid, evName), true),
+        yamlRpSection("🗄 テーブル一覧", _rpBuildTableSection(wid, evName, curYaml), true),
     ].join("");
 }
 
@@ -1528,14 +1658,12 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
     }
     const yamlCur = $("yaml-ta")?.value || "";
 
-    // ── ⓪ バリデーション定義の抽出とYAMLからの削除 ──
-    // キー「バリデーション:」「バリデート:」「検証:」が設定されていたら先頭の1つを抽出し、
-    // AIに渡すYAMLから該当行を削除する。vja.validate.run('定義名') はonSuccess時に先頭挿入。
-    let validationName = null;
-    const yamlForAi = yamlCur.replace(/^(バリデーション|バリデート|検証)\s*:\s*(.+)$/mg, (_, _key, val) => {
-        if (!validationName) validationName = val.trim(); // 先頭のみ取得
-        return ""; // 全該当行を削除（先頭以外も残さない）
-    }).replace(/\n{3,}/g, "\n\n"); // 連続空行の整理
+    // ── ⓪ 検証（バリデーション）定義の取得 ──
+    // 以前はYAML本文の「検証:」行から正規表現で抽出していたが、
+    // タイポ防止のため右パネルでの単一選択方式に変更した。
+    // YAML自体には書き込まない。vja.validate.run('定義名') はonSuccess時に先頭挿入。
+    const validationName = _getValidationOverride(wid, evName) || null;
+    const yamlForAi = yamlCur;
 
     const addPrompt = $("ai-prompt-in")?.value || "";
     const btn = $("ai-gen-btn");
@@ -1572,20 +1700,13 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
         : "  （なし）";
 
     // ── ⑤ テーブル定義（利用テーブルのカラム情報） ──
-    // YAMLに「利用テーブル:」が書かれていればそれを参照、なければ全テーブル
-    const mentionedTables = [];
-    if (yamlCur) {
-        const m = yamlCur.match(/利用テーブル\s*:\s*\n([\s\S]*?)(?:\n\S|\n\n|$)/);
-        if (m) {
-            const lines = m[1].split("\n");
-            lines.forEach(l => {
-                const name = l.replace(/^\s*-\s*/, "").replace(/#.*$/, "").trim();
-                if (name) mentionedTables.push(name);
-            });
-        }
-    }
-    const targetTables = mentionedTables.length > 0
-        ? getProjectData().tables.filter(t => mentionedTables.includes(t.name))
+    // 以前はYAML本文の「利用テーブル:」から正規表現で抽出していたが、
+    // タイポ防止のため右パネルでのON/OFF方式に変更した
+    // （ON/OFFの度にYAML本文へも自動反映されるため、YAML自体は変わらず
+    //   唯一の情報源として保たれる。ここでは保存済みの状態を直接参照する）。
+    const enabledTableNames = _ensureTableOptInitialized(wid, evName, yamlCur);
+    const targetTables = enabledTableNames.length > 0
+        ? getProjectData().tables.filter(t => enabledTableNames.includes(t.name))
         : []; // 未指定の場合は何も渡さない
     const tablesCtx = buildTablesCtxText(targetTables);
 
@@ -2316,7 +2437,7 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         "</div>" +
         "<div class='yaml-resize-handle' id='yaml-rhandle'></div>" +
         "<div class='yaml-editor-right' id='yaml-rpanel'>" +
-        yamlBuildRightPanel(showWidgets, wid, evName, isAppEvent) +
+        yamlBuildRightPanel(showWidgets, wid, evName, isAppEvent, cur) +
         "</div>" +
         "</div>" +
         "</div>" +
@@ -2589,4 +2710,5 @@ Object.assign(window, {
     dismissAiValidationBanner, manualRetryAiFix, manualMockCheck,
     openMockOverrideEditor, saveMockOverrides, _mockEditorAddRow, _mockEditorOnTypeChange,
     yamlSetApiOpt,
+    yamlSetTableOpt, yamlSetValidationOpt, _applyTableYamlSync,
 });

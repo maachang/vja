@@ -247,6 +247,9 @@ function jsTokenize(code) {
 
 // YAMLデータをウィジェットに保存する（モーダルは閉じない）
 function _saveYamlData(wid, evName) {
+    // 保存直前に、有効化されている「利用テーブル」の状態をYAML本文へ再同期する。
+    // （手動でブロックを消してしまっていても、保存時に補完される）
+    if (typeof _applyTableYamlSync === "function") _applyTableYamlSync(wid, evName);
     if (wid === "form") {
         const f = getProjectData().forms[getProjectData().curFormIdx];
         if (!f.events) f.events = {};
