@@ -19,7 +19,11 @@
     // ウィジェット名→DOM要素を取得
     const _getEl = (name) => {
         // vja のウィジェットは id="w{n}" だが、name属性で検索
-        const el = document.querySelector(`[data-name="${name}"]`)
+        // data-vja-name: checkbox/radio等、実体のinputに付与される属性
+        // （getAllInputs()と同じ探索対象）。ラベル等の外側要素が
+        // 先にid/data-nameでヒットしてしまうケースがあるため最優先で検索する。
+        const el = document.querySelector(`[data-vja-name="${name}"]`)
+            || document.querySelector(`[data-name="${name}"]`)
             || document.querySelector(`#${name}`)
             || document.querySelector(`[name="${name}"]`);
         return el || null;
@@ -51,7 +55,14 @@
             }
             if (tag === "select") return el.value;
             if (tag === "textarea") return el.value;
-            if (tag === "span" || tag === "label") return el.textContent;
+            if (tag === "span" || tag === "label") {
+                // checkbox/radioは <label><input type="checkbox">テキスト</label> の構造で
+                // 生成され、idはlabel側に付与されるため、labelがヒットした場合は
+                // 内側のinputを本体として扱う（無ければ従来通りtextContentを返す）
+                const innerCheck = el.querySelector('input[type="checkbox"], input[type="radio"]');
+                if (innerCheck) return innerCheck.checked;
+                return el.textContent;
+            }
             if (tag === "div") {
                 // progressbar: data-val 属性から値を返す
                 if (el.dataset.val !== undefined) return Number(el.dataset.val);
@@ -103,7 +114,14 @@
             } else if (tag === "textarea") {
                 el.value = value ?? "";
             } else if (tag === "span" || tag === "label") {
-                el.textContent = value ?? "";
+                // getValueと同様、label内にcheckbox/radioがあればそちらのcheckedを設定する
+                // （無ければ従来通りtextContentを書き換える）
+                const innerCheck = el.querySelector('input[type="checkbox"], input[type="radio"]');
+                if (innerCheck) {
+                    innerCheck.checked = !!value;
+                } else {
+                    el.textContent = value ?? "";
+                }
             } else if (tag === "div") {
                 // progressbar: data-val/data-min/data-max で管理
                 if (el.dataset.val !== undefined) {
