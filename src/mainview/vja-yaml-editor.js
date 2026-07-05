@@ -356,6 +356,7 @@ function _setApiOptState(wid, evName, enabledArr) {
 
 // 任意APIカテゴリの検出パターン（コード内で実際に使われているカテゴリを判定）
 const _API_OPT_DETECT_PATTERNS = {
+    event: /\bvja\.event\./,
     form: /\bvja\.form\./,
     session: /\bvja\.session\./,
     const: /\bvja\.const\./,
@@ -365,6 +366,13 @@ const _API_OPT_DETECT_PATTERNS = {
     dir: /\bvja\.dir\./,
     http: /\bvja\.http\.|\bvja\.fetch\s*\(/,
 };
+// 「event」カテゴリを常時有効（OFFにできない）扱いにするイベント名。
+// これらのイベントはvja.event.*（ev.type/getKey()等）を使わないと
+// イベントの中身自体を判別できないため、実質「必須」として扱う。
+const _EVENT_LOCKED_ON_EVENTS = new Set(["KeyDown", "KeyUp", "RowClick", "HeaderClick"]);
+function _isEventCategoryLocked(evName) {
+    return _EVENT_LOCKED_ON_EVENTS.has(evName);
+}
 function _detectApiOptCategoriesFromCode(code) {
     const found = new Set();
     if (!code) return found;
@@ -377,17 +385,27 @@ function _detectApiOptCategoriesFromCode(code) {
 // 未初期化（このイベントを一度も開いていない）の場合、既存の生成済みコードを
 // 解析して実際に使われているカテゴリを自動でON状態にする。
 // 新規イベント（コードが空）の場合は全OFFになる。
+// ただし「event」カテゴリがロック対象のイベント（_EVENT_LOCKED_ON_EVENTS）の
+// 場合は、検出結果に関わらず常にONを含める。
 function _ensureApiOptInitialized(wid, evName, code) {
     let state = _getApiOptState(wid, evName);
     if (state === undefined) {
-        state = Array.from(_detectApiOptCategoriesFromCode(code));
+        const detected = _detectApiOptCategoriesFromCode(code);
+        if (_isEventCategoryLocked(evName)) detected.add("event");
+        state = Array.from(detected);
         _setApiOptState(wid, evName, state);
     }
     return state;
 }
 
-// カテゴリのON/OFF切り替え（pv-selのonPickCodeから呼ばれる）
+// カテゴリのON/OFF切り替え（pv-selのonPickCodeから呼ばれる）。
+// 「event」カテゴリがロック対象のイベントの場合は、OFFへの変更を無視する
+// （UI側でもプルダウン自体を出さないが、念のため二重に防御する）。
 function yamlSetApiOpt(wid, evName, key, value) {
+    if (key === "event" && value === "OFF" && _isEventCategoryLocked(evName)) {
+        window.vja?.log?.debug?.("[利用API] event はこのイベント(" + evName + ")では常時有効のためOFFにできません");
+        return;
+    }
     const state = _getApiOptState(wid, evName) || [];
     const set = new Set(state);
     if (value === "ON") set.add(key); else set.delete(key);
@@ -433,8 +451,16 @@ function _rpBuildApiOptSection(wid, evName) {
     const code = _getExistingJsCodeFor(wid, evName);
     const enabledArr = _ensureApiOptInitialized(wid, evName, code);
     const enabled = new Set(enabledArr);
+    const locked = _isEventCategoryLocked(evName);
     const labels = _PROMPT_DEF.VJA_FRONT_API_OPTIONAL_LABELS || {};
     const rows = Object.keys(labels).map(key => {
+        // 「event」カテゴリは、ロック対象イベント（KeyDown/KeyUp/RowClick/HeaderClick）
+        // では常時有効固定とし、ON/OFF切り替え自体を出さない（vja.dbの注記と同じ扱い）。
+        if (key === "event" && locked) {
+            return "<div style='padding:4px 10px;font-size:12px;color:var(--text3)'>"
+                + "🔒 " + esc(labels[key]) + "：このイベントでは常時有効です（OFF不可）"
+                + "</div>";
+        }
         const selId = "apiopt-" + String(wid).replace(/[^a-zA-Z0-9_-]/g, "_") + "-" + String(evName).replace(/[^a-zA-Z0-9_-]/g, "_") + "-" + key;
         const curVal = enabled.has(key) ? "ON" : "OFF";
         const onPickCode = "yamlSetApiOpt('" + wid + "','" + evName + "','" + key + "',{value})";
@@ -1164,12 +1190,16 @@ function _findEventTypeMismatch(code, evName, wtag) {
 
 // 現在の任意API有効化状態から「無効化されているカテゴリ」の集合を算出する。
 // バックエンド（isAppEvent）は対象外（常に空集合＝全カテゴリ利用可能）。
+// 「event」カテゴリがロック対象のイベント（KeyDown/KeyUp/RowClick/HeaderClick）の
+// 場合は、保存状態に関わらず常に有効（＝無効化対象から除外）として扱う。
 function _getDisabledApiCategories(wid, evName, isAppEvent) {
     if (isAppEvent || !wid || !evName) return new Set();
     const labels = _PROMPT_DEF.VJA_FRONT_API_OPTIONAL_LABELS || {};
     const allCategories = Object.keys(labels);
     const enabled = new Set(_getApiOptState(wid, evName) || []);
-    return new Set(allCategories.filter(c => !enabled.has(c)));
+    const disabled = new Set(allCategories.filter(c => !enabled.has(c)));
+    if (_isEventCategoryLocked(evName)) disabled.delete("event");
+    return disabled;
 }
 
 // 生成コードを検証する。戻り値: { ok, syntaxError, unknownApis, forbiddenPatterns, ... }
@@ -1561,7 +1591,13 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
 
     // ── ⑤-2 任意API有効化: 有効カテゴリの判定・連動コンテキストのゲーティング ──
     // フロントエンドイベントのみ対象（バックエンドは全カテゴリ常時利用可能のため対象外）。
-    const enabledApiOpts = isAppEvent ? [] : (_getApiOptState(wid, evName) || []);
+    const enabledApiOpts = isAppEvent ? [] : (() => {
+        const arr = _getApiOptState(wid, evName) || [];
+        // 保険: 右パネルを一度も開かず生成した場合でも、ロック対象イベントでは
+        // 必ずeventカテゴリを有効に含める。
+        if (_isEventCategoryLocked(evName) && !arr.includes("event")) return [...arr, "event"];
+        return arr;
+    })();
     const enabledApiOptSet = new Set(enabledApiOpts);
     // vja.constが無効なら、定数一覧そのものを見せる意味が無いため空にする
     const globalConstCtxGated = (!isAppEvent && !enabledApiOptSet.has("const")) ? "  （vja.constは現在このイベントで無効化されています）" : globalConstCtx;

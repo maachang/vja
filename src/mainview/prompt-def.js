@@ -623,7 +623,10 @@ getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ
     // 「vja ランタイムの追加・変更・削除がある場合は、反映が必要」
     // ※必須条件: 英語版は使用例、使用例説明は不要.
     // ### [systemPromptで利用]
-    // [フロントエンド] 必須API（常時システムプロンプトに含む: widget/event/trigger/app/ui.loading/console）
+    // [フロントエンド] 必須API（常時システムプロンプトに含む: widget/trigger/ui.loading/app/console）
+    // vja.event.*は任意カテゴリ（event）に分離。ただしKeyDown/KeyUp/RowClick/HeaderClickの
+    // 4イベントでは、UI・検証ロジック側でOFFにできない「常時有効」扱いにする
+    // （vja-yaml-editor.js の _EVENT_LOCKED_ON_EVENTS を参照）。
     const VJA_FRONT_API_MANDATORY_ENG = `
 vja.widget.get: { args: [name:string], return: "string|number|boolean|null", desc: "Gets current value from UI Widget. CRITICAL: The returned value is READ-ONLY. Modifying the returned object/array WILL NOT update the UI. To update, you MUST explicitly use vja.widget.set()." }
 vja.widget.set: { args: [name:string, value:any, options?:object], return: "void", desc: "Sets value to UI Widget (text:str, checkbox:bool, select:array, datagrid:object[]). MANDATORY: This is the ONLY way to update UI data. Never mutate objects retrieved from get()." }
@@ -632,14 +635,6 @@ vja.widget.setVisible: { args: [name:string, visible:boolean], return: "void", d
 vja.widget.show: { args: [name:string], return: "void", desc: "Shows the widget. Same argument pattern for vja.widget.hide(name), vja.widget.enable(name), vja.widget.disable(name)." }
 
 vja.trigger.click: { args: [name:string], return: "void", desc: "Triggers click on widget. name is the widget's NAME STRING (e.g. 'btnSearch'). For other events use same pattern: vja.trigger.focus(name), vja.trigger.blur(name), vja.trigger.change(name), vja.trigger.mouseDown(name), vja.trigger.mouseUp(name), vja.trigger.mouseEnter(name), vja.trigger.mouseLeave(name), vja.trigger.scroll(name)" }
-
-vja.event.getKey: { args: [], return: "string|null", desc: "KeyDown/KeyUp event ONLY. Returns key name ('Enter','Escape','ArrowUp' etc). Returns null in other events." }
-vja.event.get: { args: [], return: "object", desc: "MUST NOT use await or .then(). Synchronous function. Call directly: const ev = vja.event.get(); NEVER returns null — always returns an object. RowClick={type:'rowClick',row:rowIndex,column:'colName'}, HeaderClick={type:'headerClick',column:'colName'}, Click=returns rowClick or headerClick result based on clicked area (use ev.type to branch), ALL other events (KeyDown/KeyUp/TextChanged/CheckedChanged/etc.)={type: the event name with its first letter lowercased} (e.g. KeyDown->{type:'keyDown'}, TextChanged->{type:'textChanged'}). IMPORTANT: ev.type can ONLY be 'rowClick', 'headerClick', or the mechanically-derived lowerCamel event name — NEVER invent or guess any other value. To detect which key was pressed, use vja.event.getKey()/isEnter()/isEscape() etc. instead, NOT vja.event.get(). Example(RowClick): const ev=vja.event.get(); const rows=vja.widget.get('tableView'); const rowData=rows[ev.row];" }
-
-vja.event.isEnter: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Enter key." }
-vja.event.isEscape: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Escape key." }
-vja.event.isShift: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Shift key is held." }
-vja.event.isCtrl: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Ctrl key is held." }
 
 vja.ui.loading: { args: [show:boolean, message?:string], return: "void", desc: "Toggle loading overlay screen. MUST wrap the actual code in try{} finally{ vja.ui.loading(false); } structure to ensure turn off on errors." }
 
@@ -663,6 +658,14 @@ await vja.db.transaction: { args: [statements:object[]], return: "boolean", desc
     // [フロントエンド] 任意API（イベントエディタのチェックボックスでON時のみユーザプロンプト側に付与）
     // キー名は、チェックボックスUI・検証ロジック（無効化カテゴリのAPI使用検出）と共通で使用する識別子.
     const VJA_FRONT_API_OPTIONAL_ENG = {
+        event: `
+vja.event.getKey: { args: [], return: "string|null", desc: "KeyDown/KeyUp event ONLY. Returns key name ('Enter','Escape','ArrowUp' etc). Returns null in other events." }
+vja.event.get: { args: [], return: "object", desc: "MUST NOT use await or .then(). Synchronous function. Call directly: const ev = vja.event.get(); NEVER returns null — always returns an object. RowClick={type:'rowClick',row:rowIndex,column:'colName'}, HeaderClick={type:'headerClick',column:'colName'}, Click=returns rowClick or headerClick result based on clicked area (use ev.type to branch), ALL other events (KeyDown/KeyUp/TextChanged/CheckedChanged/etc.)={type: the event name with its first letter lowercased} (e.g. KeyDown->{type:'keyDown'}, TextChanged->{type:'textChanged'}). IMPORTANT: ev.type can ONLY be 'rowClick', 'headerClick', or the mechanically-derived lowerCamel event name — NEVER invent or guess any other value. To detect which key was pressed, use vja.event.getKey()/isEnter()/isEscape() etc. instead, NOT vja.event.get(). Example(RowClick): const ev=vja.event.get(); const rows=vja.widget.get('tableView'); const rowData=rows[ev.row];" }
+vja.event.isEnter: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Enter key." }
+vja.event.isEscape: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Escape key." }
+vja.event.isShift: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Shift key is held." }
+vja.event.isCtrl: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Ctrl key is held." }
+`.trim(),
         form: `
 vja.form.navigate: { args: [formName:string, options?:object], return: "void", desc: "Navigates to form. options.save defaults to true." }
 vja.form.back: { args: [], return: "void" }
@@ -711,6 +714,7 @@ await vja.fetch: { args: [url:string, options?:object], return: "any", desc: "Lo
 
     // 任意カテゴリの表示名（チェックボックスUI用）
     const VJA_FRONT_API_OPTIONAL_LABELS = {
+        event: "イベント情報 (vja.event.*)",
         form: "画面遷移 (vja.form.*)",
         session: "セッション (vja.session.*)",
         const: "定数 (vja.const.*)",
