@@ -386,12 +386,17 @@ function _ensureApiOptInitialized(wid, evName, code) {
     return state;
 }
 
-// チェックボックスのトグル（onchangeから直接呼ばれる）
-function yamlToggleApiOpt(wid, evName, key, checked) {
+// カテゴリのON/OFF切り替え（pv-selのonPickCodeから呼ばれる）
+function yamlSetApiOpt(wid, evName, key, value) {
     const state = _getApiOptState(wid, evName) || [];
     const set = new Set(state);
-    if (checked) set.add(key); else set.delete(key);
-    _setApiOptState(wid, evName, Array.from(set));
+    if (value === "ON") set.add(key); else set.delete(key);
+    const newState = Array.from(set);
+    _setApiOptState(wid, evName, newState);
+    window.vja?.log?.debug?.(
+        "[利用API] 切替: wid=" + wid + " evName=" + evName + " key=" + key
+        + " value=" + value + " → 保存後の状態=" + JSON.stringify(newState)
+    );
 }
 
 // vja.xxx.yyy 形式のAPI名から、任意カテゴリのキーを判定する。
@@ -414,18 +419,29 @@ function _getExistingJsCodeFor(wid, evName) {
     return (w?.jsCode && w.jsCode[evName]) || "";
 }
 
+// 「利用API」セクションを初期状態でオープン表示すべきか判定する。
+// 既に何らかの任意カテゴリが有効化されている（≒既存コードで使用中）場合はtrue。
+function _hasEnabledApiOpts(wid, evName) {
+    const code = _getExistingJsCodeFor(wid, evName);
+    const enabled = _ensureApiOptInitialized(wid, evName, code);
+    return (enabled || []).length > 0;
+}
+
 // ── 右パネル: 利用API（任意カテゴリ）セクション ──
 // フロントエンドイベントのみ表示。バックエンド（isAppEvent）では表示しない。
 function _rpBuildApiOptSection(wid, evName) {
     const code = _getExistingJsCodeFor(wid, evName);
-    const enabled = new Set(_ensureApiOptInitialized(wid, evName, code));
+    const enabledArr = _ensureApiOptInitialized(wid, evName, code);
+    const enabled = new Set(enabledArr);
     const labels = _PROMPT_DEF.VJA_FRONT_API_OPTIONAL_LABELS || {};
     const rows = Object.keys(labels).map(key => {
-        const checked = enabled.has(key) ? " checked" : "";
-        return "<label class='rp-api-opt' style='display:flex;align-items:center;gap:6px;padding:4px 10px;font-size:12px'>"
-            + "<input type='checkbox'" + checked + " "
-            + evtAttr("onchange", "yamlToggleApiOpt(" + JSON.stringify(wid) + "," + JSON.stringify(evName) + "," + JSON.stringify(key) + ",this.checked)")
-            + ">" + esc(labels[key]) + "</label>";
+        const selId = "apiopt-" + String(wid).replace(/[^a-zA-Z0-9_-]/g, "_") + "-" + String(evName).replace(/[^a-zA-Z0-9_-]/g, "_") + "-" + key;
+        const curVal = enabled.has(key) ? "ON" : "OFF";
+        const onPickCode = "yamlSetApiOpt('" + wid + "','" + evName + "','" + key + "',{value})";
+        return "<div style='display:flex;align-items:center;gap:8px;padding:4px 10px;font-size:12px'>"
+            + "<div style='width:64px;flex-shrink:0'>" + makePvSel(selId, ["ON", "OFF"], curVal, onPickCode) + "</div>"
+            + "<span>" + esc(labels[key]) + "</span>"
+            + "</div>";
     }).join("");
     const dbNote = "<div style='padding:6px 10px;font-size:11px;color:var(--text3)'>"
         + "🗄 vja.db.*: YAMLの「利用テーブル:」に記載があれば自動的に利用可能になります（チェック不要）"
@@ -435,9 +451,9 @@ function _rpBuildApiOptSection(wid, evName) {
 
 function yamlBuildRightPanel(showWidgets = true, wid = null, evName = null, isAppEvent = false) {
     return [
-        (!isAppEvent && wid && evName) ? yamlRpSection("🔌 利用API（任意）", _rpBuildApiOptSection(wid, evName), true) : "",
-        yamlRpSection("📌 定数", _rpBuildConstSection(), true),
-        yamlRpSection("📋 画面一覧", _rpBuildFormSection(), true),
+        (!isAppEvent && wid && evName) ? yamlRpSection("🔌 利用API（任意）", _rpBuildApiOptSection(wid, evName), _hasEnabledApiOpts(wid, evName)) : "",
+        yamlRpSection("📌 定数", _rpBuildConstSection(), false),
+        yamlRpSection("📋 画面一覧", _rpBuildFormSection(), false),
         showWidgets ? yamlRpSection("🔲 現在フォームのウィジェット", _rpBuildWidgetSection(), true) : "",
         yamlRpSection("✅ 検証", _rpBuildValidationSection(), true),
         yamlRpSection("🗄 テーブル一覧", _rpBuildTableSection(), true),
@@ -2482,4 +2498,5 @@ Object.assign(window, {
     openAiValidationDetailModal,
     dismissAiValidationBanner, manualRetryAiFix, manualMockCheck,
     openMockOverrideEditor, saveMockOverrides, _mockEditorAddRow, _mockEditorOnTypeChange,
+    yamlSetApiOpt,
 });

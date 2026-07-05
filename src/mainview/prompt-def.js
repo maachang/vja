@@ -643,7 +643,7 @@ vja.event.isCtrl: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Retu
 
 vja.ui.loading: { args: [show:boolean, message?:string], return: "void", desc: "Toggle loading overlay screen. MUST wrap the actual code in try{} finally{ vja.ui.loading(false); } structure to ensure turn off on errors." }
 
-await vja.app.showDialog: { args: [message:string], return: "void", desc: "Shows a message dialog. MUST use await (e.g., await vja.app.showDialog('...')). Forgetting await is a common mistake — do not omit it." }
+await vja.app.showDialog: { args: [message:string], return: "void", desc: "Shows a message dialog. MUST use await, including inside catch blocks (e.g., catch (e) { console.error(e.message, e); await vja.app.showDialog('...'); }). Forgetting await is a common mistake — do not omit it, even in error handling." }
 await vja.app.showConfirm: { args: [message:string], return: "boolean", desc: "Confirm dialog. OK=true, Cancel=false." }
 
 console.info: { args: [message:any], return: "void" }
