@@ -712,8 +712,8 @@ function pinput(d, val, wid) {
         }
         case "color":
             return `<input type="color" value="${val || "#000000"}" style="width:100%;height:22px;padding:1px 2px;cursor:pointer;border:1px solid var(--border);border-radius:2px;background:var(--bg3)"` +
-                evtAttr("oninput", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")") +
-                evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")") + ">";
+                evtAttr("oninput", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ",false)") +
+                evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ",true)") + ">";
         case "sel":
         case "select": {
             const sid = "pvs_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
@@ -763,7 +763,7 @@ function pinput(d, val, wid) {
     return "";
 }
 
-function setProp(k, sp, val, wid) {
+function setProp(k, sp, val, wid, isFinal) {
     // フォームプロパティの処理
     if (sp === "formName") { setFormCfg("name", val); return; }
     if (sp === "formTitle") { setFormCfg("title", val); return; }
@@ -773,8 +773,8 @@ function setProp(k, sp, val, wid) {
     if (sp === "formDesc") { setFormCfg("description", val); return; }
     if (sp === "formThemeFontFamily") { setFormCfg("themeFontFamily", val); return; }
     if (sp === "formThemeFontSize") { setFormCfg("themeFontSize", +val); return; }
-    if (sp === "formThemeFg") { setFormCfg("themeFg", val); return; }
-    if (sp === "formThemeBaseColor") { setFormCfg("themeBaseColor", val); return; }
+    if (sp === "formThemeFg") { setFormCfg("themeFg", val, { isFinal }); return; }
+    if (sp === "formThemeBaseColor") { setFormCfg("themeBaseColor", val, { isFinal }); return; }
     // ウィジェットプロパティの処理
     const w = getWidget(wid);
     if (!w) return;
@@ -924,7 +924,7 @@ function _syncPropValues(map) {
 function syncPropXY(w) { _syncPropValues({ "Left": w.x, "Top": w.y }); }
 function syncPropWH(w) { _syncPropValues({ "Width": w.w, "Height": w.h }); }
 
-function setFormCfg(k, v) {
+function setFormCfg(k, v, opts) {
     // 複数選択中にフォームプロパティを操作した場合は選択を解除する
     // （deselect()でハイライト・ヘッダー表示も含めて更新する）
     if (getDesignerState().selIds.length > 1) deselect();
@@ -940,7 +940,12 @@ function setFormCfg(k, v) {
     getProjectData().forms[getProjectData().curFormIdx].cfg[k] = v;
     if (k === "themeFontFamily" || k === "themeFontSize" || k === "themeFg" || k === "themeBaseColor") {
         applyThemeToWidgets();
-        renderProps(); // 選択中ウィジェットのプロパティ表示を更新
+        // 【重要】renderProps()（プロパティパネルの再描画）は、oninput（ドラッグ中の
+        // 連続発火。isFinal===false）では実行しない。カラーピッカー表示中に
+        // <input type="color">要素ごと作り直してしまうと、Windows（Chromium系
+        // WebView）ではネイティブのカラーピッカーが即座に閉じてしまうため。
+        // onchange（確定時。isFinal未指定またはtrue）でのみ実行する。
+        if (opts?.isFinal !== false) renderProps();
     }
     buildFormSelect();
     applyForm();
