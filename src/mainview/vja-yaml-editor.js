@@ -1512,6 +1512,12 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
         }
         optionalApiDocCtx = blocks.join("\n\n");
     }
+    window.vja?.log?.debug?.(
+        "[AI生成] 追加VJAランタイム(任意API) — 有効カテゴリ: "
+        + (enabledApiOpts.length > 0 ? enabledApiOpts.join(", ") : "（なし）")
+        + (targetTables.length > 0 ? " + db(利用テーブルあり)" : "")
+        + "\n" + (optionalApiDocCtx || "（追加なし）")
+    );
 
     // ── ⑥ システムプロンプト ──
     const sysPrompt = _PROMPT_DEF.YAML_TO_JS_SYS_PROMPT(
