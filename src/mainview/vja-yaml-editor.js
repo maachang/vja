@@ -756,14 +756,31 @@ function _saveMockOverrideRows(wid, evName, rows) {
     if (!getProjectData().mockOverrides) getProjectData().mockOverrides = {};
     getProjectData().mockOverrides[_getMockOverrideKey(wid, evName)] = rows;
 }
+// モック値編集の「JSON」欄をできるだけ寛容に解釈する。
+// 1. まず厳密なJSONとして解釈を試みる（"文字列"/123/{"a":1}/true 等はこれで通る）
+// 2. 失敗した場合、数値として解釈できれば数値として扱う（保険的なケース）
+// 3. それでも失敗した場合は、入力された文字列をそのまま値として扱う
+//    （クォート無しでの素朴な文字列入力に対応するため）
+// 4. 空文字の場合のみ、未入力行として無視する（{ ok: false }）
+function _parseMockJsonLenient(str) {
+    const trimmed = String(str ?? "").trim();
+    if (trimmed === "") return { ok: false };
+    try {
+        return { ok: true, value: JSON.parse(trimmed) };
+    } catch (e) {
+        if (/^-?\d+(\.\d+)?$/.test(trimmed)) return { ok: true, value: Number(trimmed) };
+        return { ok: true, value: trimmed };
+    }
+}
 // 保存済みの行から、VJA_MOCK_RUNTIME.build()に渡す overrides オブジェクトを
 // 組み立てる。不正なJSONの行は無視する（エラーには倒さない＝安全側）。
 function _computeMockOverrides(wid, evName) {
     const rows = _getMockOverrideRows(wid, evName);
     const overrides = { widgets: {}, event: undefined, consts: {}, session: {}, util: {} };
     rows.forEach((row) => {
-        let parsed;
-        try { parsed = JSON.parse(row.json); } catch (e) { return; } // 不正なJSONはスキップ
+        const result = _parseMockJsonLenient(row.json);
+        if (!result.ok) return; // 未入力行はスキップ
+        const parsed = result.value;
         if (row.type === "widget" && row.target) {
             overrides.widgets[row.target] = parsed;
         } else if (row.type === "const" && row.target) {
@@ -1841,7 +1858,6 @@ async function formDesignAiGenerate() {
     // AI生成前に依頼テキストを下書き保存（モーダルは閉じない）
     getProjectData().formDesignDraft = rawText;
 
-    
     await runAiGenerate({
         systemPrompt: sysPrompt,
         userPrompt: userPrompt,
