@@ -575,6 +575,47 @@ function yamlSetValidationOpt(wid, evName, value) {
     _setValidationOverride(wid, evName, value === "（なし）" ? "" : value);
 }
 
+/* ── 自動モック検証（AI生成直後の自動検証）のイベント単位ON/OFF ──
+   保存先: getProjectData().mockCheckOverrides["wid_evName"] = "on"|"off"
+   （未設定はグローバル設定＝aiConfig.mockCheckEnabled に従う）。
+   「🧪 モック実行」ボタンによる手動実行には適用しない（常に実行可能）。 */
+function _getMockCheckOverride(wid, evName) {
+    return (getProjectData().mockCheckOverrides || {})[wid + "_" + evName] || "既定";
+}
+function _setMockCheckOverride(wid, evName, value) {
+    if (!getProjectData().mockCheckOverrides) getProjectData().mockCheckOverrides = {};
+    const key = wid + "_" + evName;
+    if (value === "既定") {
+        delete getProjectData().mockCheckOverrides[key];
+    } else {
+        getProjectData().mockCheckOverrides[key] = value === "ON" ? "on" : "off";
+    }
+}
+function yamlSetMockCheckOpt(wid, evName, value) {
+    _setMockCheckOverride(wid, evName, value);
+    window.vja?.log?.debug?.("[自動モック検証] wid=" + wid + " evName=" + evName + " → " + value);
+}
+// AI生成直後の自動検証で、モック実行を行うべきか判定する。
+// イベント単位の設定があればそれを優先し、無ければグローバル設定に従う。
+function _isAutoMockCheckEnabled(wid, evName) {
+    const ov = (getProjectData().mockCheckOverrides || {})[wid + "_" + evName];
+    if (ov === "on") return true;
+    if (ov === "off") return false;
+    return getProjectData().aiConfig.mockCheckEnabled !== false;
+}
+// ── 右パネル: 自動モック検証セクション ──
+function _rpBuildMockCheckSection(wid, evName) {
+    if (!wid || !evName) return "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>-</div>";
+    const cur = _getMockCheckOverride(wid, evName);
+    const selId = "mockchk-" + _sanitizeIdPart(wid) + "-" + _sanitizeIdPart(evName);
+    const onPickCode = "yamlSetMockCheckOpt('" + wid + "','" + evName + "',{value})";
+    return "<div style='padding:6px 10px;display:flex;flex-direction:column;gap:6px'>"
+        + "<div style='font-size:11px;color:var(--text2)'>AI生成直後の自動モック実行検証（「🧪 モック実行」の手動実行には影響しません）</div>"
+        + makePvSel(selId, ["既定", "ON", "OFF"], cur, onPickCode)
+        + "</div>";
+}
+
+
 // ── 右パネル: 利用API（任意カテゴリ）セクション ──
 // フロントエンドイベントのみ表示。バックエンド（isAppEvent）では表示しない。
 function _rpBuildApiOptSection(wid, evName) {
@@ -608,6 +649,7 @@ function _rpBuildApiOptSection(wid, evName) {
 function yamlBuildRightPanel(showWidgets = true, wid = null, evName = null, isAppEvent = false, curYaml = "") {
     return [
         (!isAppEvent && wid && evName) ? yamlRpSection("🔌 利用API（任意）", _rpBuildApiOptSection(wid, evName), _hasEnabledApiOpts(wid, evName)) : "",
+        (!isAppEvent && wid && evName) ? yamlRpSection("🧪 自動モック検証", _rpBuildMockCheckSection(wid, evName), false) : "",
         yamlRpSection("📌 定数", _rpBuildConstSection(), false),
         yamlRpSection("📋 画面一覧", _rpBuildFormSection(), false),
         showWidgets ? yamlRpSection("🔲 現在フォームのウィジェット", _rpBuildWidgetSection(), true) : "",
@@ -1811,7 +1853,9 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
             //   そのまま使う）。ランダム性を上げて試したい場合は、エディタの
             //   「🎲 ランダム性を上げて再生成」ボタンを使う。
             let validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag, wid);
-            validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid);
+            if (_isAutoMockCheckEnabled(wid, evName)) {
+                validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid);
+            }
             if (!validation.ok) {
                 const issueLog = _formatValidationIssuesForLog(validation);
                 window.vja?.log?.debug?.("[AI検証] 自動修正リトライを実行します。検出内容: " + issueLog);
@@ -1830,7 +1874,9 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                 if (retryCode) {
                     unwrapped = retryCode;
                     validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag, wid);
-                    validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid);
+                    if (_isAutoMockCheckEnabled(wid, evName)) {
+                        validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid);
+                    }
                     window.vja?.log?.debug?.(validation.ok
                         ? "[AI検証] 自動修正リトライで解消しました。"
                         : "[AI検証] 自動修正リトライ後も未解消: " + _formatValidationIssuesForLog(validation));
@@ -2708,4 +2754,5 @@ Object.assign(window, {
     openMockOverrideEditor, saveMockOverrides, _mockEditorAddRow, _mockEditorOnTypeChange,
     yamlSetApiOpt,
     yamlSetTableOpt, yamlSetValidationOpt, _applyTableYamlSync,
+    yamlSetMockCheckOpt,
 });

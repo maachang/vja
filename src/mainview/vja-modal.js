@@ -264,6 +264,7 @@ function snapshot() {
         apiOptOverrides: p.apiOptOverrides || {},
         tableOptOverrides: p.tableOptOverrides || {},
         validationOverrides: p.validationOverrides || {},
+        mockCheckOverrides: p.mockCheckOverrides || {},
     };
 }
 // 現在の状態を undoStack に積む。redoStack はクリアする。
@@ -299,6 +300,7 @@ function applyProjectData(d) {
     getProjectData().apiOptOverrides = d.apiOptOverrides || {};
     getProjectData().tableOptOverrides = d.tableOptOverrides || {};
     getProjectData().validationOverrides = d.validationOverrides || {};
+    getProjectData().mockCheckOverrides = d.mockCheckOverrides || {};
     getDesignerState().snapOn = d.snapOn !== undefined ? d.snapOn : true;
     getDesignerState().showGrid = d.showGrid !== undefined ? d.showGrid : false;
     // editorConfigはvja設定ファイルで管理するためプロジェクトからは読み込まない
