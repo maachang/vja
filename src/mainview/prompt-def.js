@@ -641,6 +641,8 @@ vja.ui.loading: { args: [show:boolean, message?:string], return: "void", desc: "
 await vja.app.showDialog: { args: [message:string], return: "void", desc: "Shows a message dialog. MUST use await, including inside catch blocks (e.g., catch (e) { console.error(e.message, e); await vja.app.showDialog('...'); }). Forgetting await is a common mistake — do not omit it, even in error handling." }
 await vja.app.showConfirm: { args: [message:string], return: "boolean", desc: "Confirm dialog. OK=true, Cancel=false." }
 
+vja.notify.toast: { args: [message:string, duration?:number], return: "void", desc: "Displays a bottom toast notification. Use this for lightweight success/status messages (NOT vja.app.showDialog) when the YAML explicitly says \"トースト\" (toast)." }
+
 console.info: { args: [message:any], return: "void" }
 console.warn: { args: [message:any], return: "void" }
 console.error: { args: [message:any], return: "void" }
@@ -727,11 +729,11 @@ await vja.fetch: { args: [url:string, options?:object], return: "any", desc: "Lo
 
     // 互換用: 上記3つを結合した全量（ドキュメント自動生成・ホワイトリスト系の用途では未使用。
     // AIP説明用の日本語詳細版VJA_USE_FRONT_JS_INFOとは別物）
+    // vja.notify.toastはVJA_FRONT_API_MANDATORY_ENGに含まれるためここでの個別追記は不要。
     const VJA_USE_FRONT_JS_INFO_ENG = (
         VJA_FRONT_API_DB_ENG + "\n\n" +
         VJA_FRONT_API_MANDATORY_ENG + "\n\n" +
-        Object.values(VJA_FRONT_API_OPTIONAL_ENG).join("\n\n") + "\n\n" +
-        `vja.notify.toast: { args: [message:string, duration?:number], return: "void", desc: "Displays a bottom toast notification." }`
+        Object.values(VJA_FRONT_API_OPTIONAL_ENG).join("\n\n")
     ).trim();
 
     // ### [AIP説明で利用]
