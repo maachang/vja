@@ -507,8 +507,16 @@ function bindWidget(el, wid) {
         if (!w) return;
         const evList = WIDGET_DEFS[w.tag]?.events || [];
         if (evList.length === 0) return;
+        // イベント一覧の並び順の中で、最初に「YAMLが保存されていて、かつデフォルトの
+        // ひな形のままではない」イベントを探す。1件も無ければ（＝イベント設定が0件）、
+        // 従来通り先頭のイベントを開く。
+        const configuredEv = evList.find(ev => {
+            const saved = w.events && w.events[ev];
+            if (!saved) return false;
+            return saved !== _PROMPT_DEF.DEFAULT_YAML_VALUE(ev, w.name);
+        });
         select(wid);
-        openYaml(w.id, evList[0]);
+        openYaml(w.id, configuredEv || evList[0]);
     });
 
     el.addEventListener("contextmenu", (e) => {
