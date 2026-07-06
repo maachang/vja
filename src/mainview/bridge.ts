@@ -202,10 +202,15 @@ w.vja = {
             mkPromise("appInfo", () => s.appInfoRequest({})),
         showDialog: (message: string) =>
             new Promise<void>((resolve) => {
+                // ダイアログ表示中にローディングオーバーレイが重なって見えなく
+                // なる問題があったため、ダイアログ表示前に自動的にローディングを
+                // OFFにする。必要であれば呼び出し側（生成コード）が再度ONにする。
+                (w as any).vja?.ui?.loading?.(false);
                 (w as any).showVjaAlert?.(message, () => resolve());
             }),
         showConfirm: (message: string) =>
             new Promise<boolean>((resolve) => {
+                (w as any).vja?.ui?.loading?.(false);
                 (w as any).showVjaDialog?.(message, (confirmed: boolean) =>
                     resolve(confirmed)
                 );
