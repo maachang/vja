@@ -1380,6 +1380,7 @@ ${_removeYamlShComments(yamlDef)}
             tablesCtx,
             extRuntimeDoc,
             optionalApiDocCtx,
+            learnedFixesCtx,
         },
     ) {
         const programType = isAppEvent ? "TypeScript" : "JavaScript";
@@ -1451,6 +1452,7 @@ ${globalConstCtx}
 ${tablesCtx}
 ---
 ${optionalApiDocCtx ? "\n### Additional Available APIs (enabled for this event)\n---\n" + optionalApiDocCtx + "\n---\n" : ""}
+${learnedFixesCtx ? "\n### Project-Specific Notes\n---\n" + learnedFixesCtx + "\n---\n" : ""}
 ### Extended Runtime(yaml)
 ---
 ~~~yaml

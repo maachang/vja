@@ -616,6 +616,29 @@ function _rpBuildMockCheckSection(wid, evName) {
 }
 
 
+// ── 右パネル: 学習履歴（プロジェクト単位、たたき台版） ──
+function _rpBuildLearnedFixesSection(wid, evName) {
+    if (!wid || !evName) return "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>-</div>";
+    const list = _getLearnedFixes(wid, evName);
+    if (list.length === 0) {
+        return "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>学習履歴なし（「もう一度AIに修正を依頼」が成功すると自動的に記録されます）</div>";
+    }
+    return "<div>" + list.map(e => {
+        const pinLabel = e.pinned ? "👍 固定済み" : "👍 役に立った";
+        return "<div class='rp-learned-row' style='padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px'>"
+            + "<div style='margin-bottom:4px;color:var(--text2)'>" + esc(e.mistakeSummary) + "</div>"
+            + "<div style='display:flex;gap:6px'>"
+            + "<button class='yaml-ai-btn' style='font-size:11px;padding:2px 6px'" + (e.pinned ? " disabled" : "")
+            + evtAttr("onmousedown", "yamlPinLearnedFix('" + wid + "','" + evName + "','" + e.id + "');this.textContent='👍 固定済み';this.disabled=true;")
+            + ">" + pinLabel + "</button>"
+            + "<button class='yaml-ai-btn' style='font-size:11px;padding:2px 6px'"
+            + evtAttr("onmousedown", "yamlDeleteLearnedFix('" + wid + "','" + evName + "','" + e.id + "');this.closest('.rp-learned-row').remove();")
+            + ">🗑 削除</button>"
+            + "</div>"
+            + "</div>";
+    }).join("") + "</div>";
+}
+
 // ── 右パネル: 利用API（任意カテゴリ）セクション ──
 // フロントエンドイベントのみ表示。バックエンド（isAppEvent）では表示しない。
 function _rpBuildApiOptSection(wid, evName) {
@@ -650,6 +673,7 @@ function yamlBuildRightPanel(showWidgets = true, wid = null, evName = null, isAp
     return [
         (!isAppEvent && wid && evName) ? yamlRpSection("🔌 利用API（任意）", _rpBuildApiOptSection(wid, evName), _hasEnabledApiOpts(wid, evName)) : "",
         (!isAppEvent && wid && evName) ? yamlRpSection("🧪 自動モック検証", _rpBuildMockCheckSection(wid, evName), false) : "",
+        (wid && evName) ? yamlRpSection("🧠 学習履歴", _rpBuildLearnedFixesSection(wid, evName), false) : "",
         yamlRpSection("📌 定数", _rpBuildConstSection(), false),
         yamlRpSection("📋 画面一覧", _rpBuildFormSection(), false),
         showWidgets ? yamlRpSection("🔲 現在フォームのウィジェット", _rpBuildWidgetSection(), true) : "",
@@ -1591,6 +1615,80 @@ function dismissAiValidationBanner() {
 // リトライ実行前に、前回付与済みの検証チェック処理の自動挿入行を取り除く。
 // （manualRetryAiFixは複数回呼ばれ得るため、無いと呼ぶたびに二重・三重に
 //   挿入されてしまう）
+/* ── プロジェクト単位の学習履歴（AI修正で直った過去の間違い） ──
+   保存先: getProjectData().learnedFixes["wid_evName"] = [
+     { id, createdAt, mistakeSummary, pinned, recurCount }, ...
+   ]
+   1イベントあたり最大3件。人間への確認は行わず、以下の間接シグナルのみで
+   自動的に淘汰する（「👍 役に立った」で明示的にpinしたものは淘汰対象外）。
+   - 記録後、同種の問題（mistakeSummary一致）が2回再発 → 自動削除（効いていない）
+   - 再発しなければそのまま残る（効いている、とみなす） */
+function _learnedFixesKey(wid, evName) { return wid + "_" + evName; }
+function _getLearnedFixes(wid, evName) {
+    return (getProjectData().learnedFixes || {})[_learnedFixesKey(wid, evName)] || [];
+}
+function _setLearnedFixes(wid, evName, arr) {
+    if (!getProjectData().learnedFixes) getProjectData().learnedFixes = {};
+    getProjectData().learnedFixes[_learnedFixesKey(wid, evName)] = arr;
+}
+// AI修正（manualRetryAiFix）が成功した直後に、修正前の問題内容を1件記録する。
+// 同一内容が既にあれば追加しない。上限3件を超える分は、pinned以外の最古から間引く。
+function _recordLearnedFix(wid, evName, mistakeSummary) {
+    if (!mistakeSummary || mistakeSummary === "(詳細なし)") return;
+    let list = _getLearnedFixes(wid, evName);
+    if (list.some(e => e.mistakeSummary === mistakeSummary)) return;
+    list = [...list, {
+        id: Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+        createdAt: Date.now(), mistakeSummary, pinned: false, recurCount: 0,
+    }];
+    const MAX = 3;
+    while (list.length > MAX) {
+        const idx = list.findIndex(e => !e.pinned);
+        if (idx === -1) break; // 全件pinned済みならMAX超過もやむを得ず残す
+        list.splice(idx, 1);
+    }
+    _setLearnedFixes(wid, evName, list);
+    window.vja?.log?.debug?.("[学習履歴] 記録: " + wid + "_" + evName + " → " + mistakeSummary);
+}
+// 生成・検証のたびに呼び、今回の失敗が過去に記録した「直したはずの間違い」と
+// 同じ内容であれば再発とみなしrecurCountを+1する。2回再発したエントリは
+// 「効いていない」と判断し、pinned以外は自動的に削除する。
+function _trackLearnedFixRecurrence(wid, evName, mistakeSummary) {
+    if (!mistakeSummary || mistakeSummary === "(詳細なし)") return;
+    let changed = false;
+    let list = _getLearnedFixes(wid, evName).map(e => {
+        if (e.mistakeSummary !== mistakeSummary) return e;
+        changed = true;
+        return { ...e, recurCount: (e.recurCount || 0) + 1 };
+    });
+    if (!changed) return;
+    list = list.filter(e => e.pinned || (e.recurCount || 0) < 2);
+    _setLearnedFixes(wid, evName, list);
+    window.vja?.log?.debug?.("[学習履歴] 再発検知: " + wid + "_" + evName + " → " + mistakeSummary);
+}
+// 「👍 役に立った」ボタン。以後、再発しても自動削除の対象外にする。
+function yamlPinLearnedFix(wid, evName, id) {
+    const list = _getLearnedFixes(wid, evName).map(e => e.id === id ? { ...e, pinned: true } : e);
+    _setLearnedFixes(wid, evName, list);
+}
+function yamlDeleteLearnedFix(wid, evName, id) {
+    const list = _getLearnedFixes(wid, evName).filter(e => e.id !== id);
+    _setLearnedFixes(wid, evName, list);
+}
+// このイベントの学習履歴を、ユーザープロンプトに追加する文字列に変換する。
+// 1件も無ければ空文字（＝プロンプトへの追加なし）。
+function _buildLearnedFixesCtx(wid, evName) {
+    const list = _getLearnedFixes(wid, evName);
+    if (list.length === 0) return "";
+    return "## Past mistakes in this project for this event (already fixed once — avoid repeating)\n"
+        + list.map(e => "- " + e.mistakeSummary).join("\n");
+}
+
+
+// 警告バナーの「もう一度AIに修正を依頼」ボタン用。
+// リトライ実行前に、前回付与済みの検証チェック処理の自動挿入行を取り除く。
+// （manualRetryAiFixは複数回呼ばれ得るため、無いと呼ぶたびに二重・三重に
+//   挿入されてしまう）
 function _stripValidationWrapper(code, validationName) {
     if (!validationName) return code;
     const prefix = "// 検証チェック処理(自動追加).\n" +
@@ -1617,6 +1715,7 @@ async function manualMockCheck(isAppEvent, evName, wtag, wid) {
     // プロンプトはmanualRetryAiFix側でその場で組み立て直すため、
     // AI生成を1度も行っていない状態（手書きコードのみ）でも
     // 「もう一度AIに修正を依頼」ボタンを常に表示できる。
+    _trackLearnedFixRecurrence(wid, evName, _formatValidationIssuesForLog(validation));
     showAiValidationWarningBanner(validation, wid, evName, isAppEvent, wid === "form");
 }
 
@@ -1642,6 +1741,10 @@ async function manualRetryAiFix(wid, evName, isAppEvent, isFormEvent) {
             window.vja?.log?.debug?.(revalidated.ok
                 ? "[AI検証] 手動修正で解消しました。"
                 : "[AI検証] 手動修正後も未解消: " + _formatValidationIssuesForLog(revalidated));
+            if (revalidated.ok) {
+                // AIが自力で直せた＝「効いた」学習内容として記録する。
+                _recordLearnedFix(wid, evName, _formatValidationIssuesForLog(validation));
+            }
             let codeForEditor = annotateUnknownApis(
                 fixed, revalidated.unknownApis, revalidated.forbiddenPatterns,
                 revalidated.missingAwaits, revalidated.unknownWidgets, revalidated.styleWarnings,
@@ -1786,6 +1889,9 @@ function _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent) {
         + "\n" + (optionalApiDocCtx || "（追加なし）")
     );
 
+    // ── ⑤-3 プロジェクト単位の学習履歴（このイベントの過去の間違い） ──
+    const learnedFixesCtx = _buildLearnedFixesCtx(wid, evName);
+
     // ── ⑥ システムプロンプト ──
     const sysPrompt = _PROMPT_DEF.YAML_TO_JS_SYS_PROMPT(
         isAppEvent,
@@ -1809,6 +1915,7 @@ function _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent) {
             formConstCtx: formConstCtxGated, tablesCtx: tablesCtx,
             extRuntimeDoc: getProjectData().extRuntime.doc,
             optionalApiDocCtx: optionalApiDocCtx,
+            learnedFixesCtx: learnedFixesCtx,
         }
     );
 
@@ -1945,6 +2052,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                 const elapsed = Math.round((Date.now() - aiStartTime) / 1000);
                 showToast("✅ AI生成完了（" + elapsed + "秒）", 5000);
                 if (!validation.ok) {
+                    _trackLearnedFixRecurrence(wid, evName, _formatValidationIssuesForLog(validation));
                     showAiValidationWarningBanner(validation, wid, evName, isAppEvent, isFormEvent);
                 }
             }));
@@ -2777,4 +2885,5 @@ Object.assign(window, {
     yamlSetApiOpt,
     yamlSetTableOpt, yamlSetValidationOpt, _applyTableYamlSync,
     yamlSetMockCheckOpt,
+    yamlPinLearnedFix, yamlDeleteLearnedFix,
 });
