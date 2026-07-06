@@ -1494,23 +1494,28 @@ function _buildAiFixPrompt(originalUserPrompt, code, validation) {
         "\n\n[検出時のコード]\n```javascript\n" + code + "\n```";
 }
 
-// 検証NGのまま生成が確定した際の警告バナー用コンテキスト
-// （手動リトライボタンから参照するため保持しておく）
-let _lastAiValidationCtx = null;
+// 【設計方針】以前はここに「直前のAI生成時のプロンプト」をキャッシュして
+// 修正リトライ時に使い回していたが、ローカルLLM実行は高速・単体PC利用が
+// 前提のためキャッシュの必要性が薄く、逆に「キャッシュが無いと機能が
+// 使えない」「生成後に設定を変えても古いプロンプトのまま」といった問題の
+// 元になっていた。そのためキャッシュ自体を廃止し、必要な時に毎回
+// _buildGenPromptContext()で最新の状態から組み立て直す方式に統一した。
 
 // 検証NG（構文エラー・未知API・禁止パターン）の内容をまとめた警告バナーを、
 // 現在開いているYAMLエディタモーダルの左ペイン上部に表示する。
 // トーストと異なり、ユーザーが閉じるまで表示され続ける。
-function showAiValidationWarningBanner(validation, canRetry = true) {
+// wid/evName/isAppEvent/isFormEventは、「もう一度AIに修正を依頼」ボタンから
+// manualRetryAiFix()を呼ぶ際に必要な情報（プロンプトはその場で組み立て直す
+// ため、キャッシュではなくこれらの識別情報だけ渡せばよい）。
+function showAiValidationWarningBanner(validation, wid, evName, isAppEvent, isFormEvent) {
     const left = document.querySelector(".yaml-editor-left");
     if (!left) return;
     const old = document.getElementById("ai-validation-banner");
     if (old) old.remove();
     const banner = document.createElement("div");
     banner.id = "ai-validation-banner";
-    const retryBtnHtml = canRetry
-        ? "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "manualRetryAiFix()") + ">🤖 もう一度AIに修正を依頼</button> "
-        : "";
+    const retryArgs = "'" + wid + "','" + evName + "'," + !!isAppEvent + "," + !!isFormEvent;
+    const retryBtnHtml = "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "manualRetryAiFix(" + retryArgs + ")") + ">🤖 もう一度AIに修正を依頼</button> ";
     if (validation.ok) {
         // 検証OK：バナーは自動で消さず、再修正を依頼できる状態のまま維持する
         banner.style.cssText = "background:#2a4a2e;color:#d8ffe0;padding:10px 14px;font-size:12px;border-bottom:1px solid #3a7a4a;flex-shrink:0";
@@ -1609,16 +1614,17 @@ async function manualMockCheck(isAppEvent, evName, wtag, wid) {
         showToast("✅ モック実行OK（問題は検出されませんでした）");
         return;
     }
-    // AI修正依頼に必要なコンテキスト（sysPrompt/userPrompt）が無い場合
-    // （このセッションでまだAI生成を1度も行っていない状態で、手動編集した
-    // コードに対してモック実行だけ行った場合等）は、「もう一度AIに修正を
-    // 依頼」ボタンを出さない（押してもmanualRetryAiFix()が何もできないため）。
-    showAiValidationWarningBanner(validation, !!_lastAiValidationCtx);
+    // プロンプトはmanualRetryAiFix側でその場で組み立て直すため、
+    // AI生成を1度も行っていない状態（手書きコードのみ）でも
+    // 「もう一度AIに修正を依頼」ボタンを常に表示できる。
+    showAiValidationWarningBanner(validation, wid, evName, isAppEvent, wid === "form");
 }
 
-async function manualRetryAiFix() {
-    if (!_lastAiValidationCtx) return;
-    const { sysPrompt, userPrompt, isAppEvent, wid, evName, isFormEvent, validationName, wtag } = _lastAiValidationCtx;
+// 警告バナーの「もう一度AIに修正を依頼」ボタン用。
+// プロンプトはキャッシュを使い回さず、呼ばれるたびに_buildGenPromptContext()で
+// 現在の状態から組み立て直す（生成後に設定を変えていても最新の内容が使われる）。
+async function manualRetryAiFix(wid, evName, isAppEvent, isFormEvent) {
+    const { sysPrompt, userPrompt, validationName, wtag } = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent);
     const jsTa = $("js-ta");
     const currentCode = _stripValidationWrapper(jsTa?.value || "", validationName);
     let validation = validateGeneratedJs(currentCode, isAppEvent, evName, wtag, wid);
@@ -1663,7 +1669,7 @@ async function manualRetryAiFix() {
                 yamlTabSwitch("js");
                 jsHlUpdate();
                 editorUpdateGutter("js-ta", "js-gutter");
-                showAiValidationWarningBanner(revalidated);
+                showAiValidationWarningBanner(revalidated, wid, evName, isAppEvent, isFormEvent);
                 if (revalidated.ok) showToast("✅ 修正が完了しました");
             }));
         },
@@ -1683,18 +1689,17 @@ async function _augmentWithMockCheck(validation, code, isAppEvent, evName, wtag,
     return { ...validation, ok: false, mockError };
 }
 
-async function yamlAiGenerate(wid, evName, temperatureOverride) {
-    const isAppEvent = (wid === "appev");
-    const isFormEvent = (wid === "form");
+// AI生成・修正依頼で使うシステムプロンプト・ユーザープロンプトを、現在の
+// プロジェクト状態（ウィジェット一覧・利用テーブル・利用API・検証定義の
+// 選択状態等）から都度組み立てる。
+// 【設計方針】ローカルLLM実行は高速・単体PCでの利用が前提のため、
+// 過去に組み立てたプロンプトをキャッシュして使い回すことはせず、
+// 必要になるたびに毎回この関数で最新の状態から組み立て直す。
+// こうすることで「キャッシュが無いので機能が使えない」という特殊対応や、
+// 「生成後に設定を変えたのに古いプロンプトのまま修正依頼してしまう」
+// といった問題を、そもそも起こりようがない形にしている。
+function _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent) {
     const w = (isAppEvent || isFormEvent) ? null : getWidget(wid);
-    if (!isAppEvent && !isFormEvent && !w) return;
-    if (!getProjectData().aiConfig.enabled) {
-        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
-            closeModal();
-            openAiConfig();
-        }
-        return;
-    }
     const yamlCur = $("yaml-ta")?.value || "";
 
     // ── ⓪ 検証（バリデーション）定義の取得 ──
@@ -1705,10 +1710,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
     const yamlForAi = yamlCur;
 
     const addPrompt = $("ai-prompt-in")?.value || "";
-    const btn = $("ai-gen-btn");
-    const randomBtn = $("ai-gen-random-btn");
-    const status = $("ai-status");
-    const aiStartTime = Date.now(); // AI実行開始時刻を記録
+    const curForm = getProjectData().forms[getProjectData().curFormIdx];
 
     // ── ① 入力系ウィジェット一覧（フォームの入力パラメータ） ──
     const INPUT_TAGS = ["inputtype", "checkbox", "radiobutton", "listbox", "selectbox"];
@@ -1730,7 +1732,6 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
     }).join("\n");
 
     // ── ④ 定数（グローバル＋フォーム単位） ──
-    const curForm = getProjectData().forms[getProjectData().curFormIdx];
     const globalConstCtx = getProjectData().constants.length > 0
         ? getProjectData().constants.map(c => "  - " + c.name + " = " + c.value).join("\n")
         : "  （なし）";
@@ -1810,6 +1811,28 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
             optionalApiDocCtx: optionalApiDocCtx,
         }
     );
+
+    return { sysPrompt, userPrompt, validationName, wtag: w?.tag };
+}
+
+async function yamlAiGenerate(wid, evName, temperatureOverride) {
+    const isAppEvent = (wid === "appev");
+    const isFormEvent = (wid === "form");
+    const w = (isAppEvent || isFormEvent) ? null : getWidget(wid);
+    if (!isAppEvent && !isFormEvent && !w) return;
+    if (!getProjectData().aiConfig.enabled) {
+        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
+            closeModal();
+            openAiConfig();
+        }
+        return;
+    }
+
+    const { sysPrompt, userPrompt, validationName, wtag } = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent);
+    const btn = $("ai-gen-btn");
+    const randomBtn = $("ai-gen-random-btn");
+    const status = $("ai-status");
+    const aiStartTime = Date.now(); // AI実行開始時刻を記録
 
     // 確認ダイアログ
     const jsTaCur = $("js-ta")?.value || "";
@@ -1922,8 +1945,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                 const elapsed = Math.round((Date.now() - aiStartTime) / 1000);
                 showToast("✅ AI生成完了（" + elapsed + "秒）", 5000);
                 if (!validation.ok) {
-                    _lastAiValidationCtx = { sysPrompt, userPrompt, isAppEvent, wid, evName, isFormEvent, validationName, wtag: w?.tag };
-                    showAiValidationWarningBanner(validation);
+                    showAiValidationWarningBanner(validation, wid, evName, isAppEvent, isFormEvent);
                 }
             }));
         },
