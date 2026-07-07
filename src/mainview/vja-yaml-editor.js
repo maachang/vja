@@ -468,10 +468,15 @@ function _getExistingJsCodeFor(wid, evName) {
 
 // 「利用API」セクションを初期状態でオープン表示すべきか判定する。
 // 既に何らかの任意カテゴリが有効化されている（≒既存コードで使用中）場合はtrue。
+// ただし「event」がロック対象イベント（KeyDown/KeyUp/RowClick/HeaderClick）で
+// 常時有効固定されているだけの状態（ユーザーが操作できるカテゴリは0件）は、
+// オープンにする理由にはならないため除外する。
 function _hasEnabledApiOpts(wid, evName) {
     const code = _getExistingJsCodeFor(wid, evName);
     const enabled = _ensureApiOptInitialized(wid, evName, code);
-    return (enabled || []).length > 0;
+    const locked = _isEventCategoryLocked(evName);
+    const meaningful = (enabled || []).filter(key => !(key === "event" && locked));
+    return meaningful.length > 0;
 }
 
 // DOM要素ID等に使うため、wid/evNameを安全な文字列に変換する共通ヘルパー
