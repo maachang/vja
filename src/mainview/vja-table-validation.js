@@ -481,7 +481,7 @@ async function tblOnCsvSelected(e) {
     }
 
     // ヘッダー解析
-    const headers = _parseCsvLine(lines[0]);
+    const headers = parseCsvLine(lines[0]);
     const tbl = _TABLE_MODAL.edit;
     const cols = tbl.columns || [];
 
@@ -496,7 +496,7 @@ async function tblOnCsvSelected(e) {
     // 必須カラムの空欄チェック（全行）
     const dataLines = lines.slice(1);
     for (let i = 0; i < dataLines.length; i++) {
-        const vals = _parseCsvLine(dataLines[i]);
+        const vals = parseCsvLine(dataLines[i]);
         for (const rc of requiredCols) {
             const idx = headers.indexOf(rc.name);
             if (idx >= 0 && (!vals[idx] || vals[idx].trim() === "")) {
@@ -568,25 +568,8 @@ async function _decompressCsv(b64) {
     return new TextDecoder().decode(result);
 }
 
-// CSV1行をパースする（ダブルクォート対応）
-function _parseCsvLine(line) {
-    const result = [];
-    let cur = "", inQ = false;
-    for (let i = 0; i < line.length; i++) {
-        const c = line[i];
-        if (inQ) {
-            if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
-            else if (c === '"') inQ = false;
-            else cur += c;
-        } else {
-            if (c === '"') inQ = true;
-            else if (c === ',') { result.push(cur); cur = ""; }
-            else cur += c;
-        }
-    }
-    result.push(cur);
-    return result;
-}
+// CSV1行のパースは vja-runtime.js の window.parseCsvLine() を使用する
+// （同一ウィンドウ内で読み込まれているため、共通化してある）。
 
 // マスターCSVをダウンロードする
 async function tblDownloadMasterCsv() {
@@ -1115,7 +1098,7 @@ Object.assign(window, {
     openTableManager, renderTableManagerModal, deleteTable, openTableEdit,
     defaultColumn, renderTableEditModal, _renderMasterCsvArea,
     tblUploadMasterCsv, tblReuploadMasterCsv, tblOnCsvSelected,
-    _compressCsv, _decompressCsv, _parseCsvLine,
+    _compressCsv, _decompressCsv,
     tblDownloadMasterCsv, tblDeleteMasterCsv,
     defaultValueForType, validateDefaultValue,
     tblColUpdate, tblColUpdatePk, tblColAdd, tblColInsert, tblColDelete,

@@ -16,6 +16,29 @@
     // 内部ユーティリティ
     // ════════════════════════════════════════════════
 
+    // CSV1行をパースする（ダブルクォートのエスケープ "" にも対応）。
+    // vja-table-validation.js（デザイナー画面）と共通で使用するため、
+    // windowにも公開している（同一ウィンドウ内で読み込まれるため）。
+    const parseCsvLine = (line) => {
+        const result = [];
+        let cur = "", inQ = false;
+        for (let i = 0; i < line.length; i++) {
+            const c = line[i];
+            if (inQ) {
+                if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+                else if (c === '"') { inQ = false; }
+                else { cur += c; }
+            } else {
+                if (c === '"') { inQ = true; }
+                else if (c === ",") { result.push(cur); cur = ""; }
+                else { cur += c; }
+            }
+        }
+        result.push(cur);
+        return result;
+    };
+    global.parseCsvLine = parseCsvLine;
+
     // ウィジェット名→DOM要素を取得
     const _getEl = (name) => {
         // vja のウィジェットは id="w{n}" だが、name属性で検索
@@ -681,23 +704,7 @@
             const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n")
                 .filter(l => l.trim());
             if (lines.length === 0) return [];
-            const parse = line => {
-                const result = []; let cur = ""; let inQ = false;
-                for (let i = 0; i < line.length; i++) {
-                    const c = line[i];
-                    if (inQ) {
-                        if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
-                        else if (c === '"') { inQ = false; }
-                        else { cur += c; }
-                    } else {
-                        if (c === '"') { inQ = true; }
-                        else if (c === ",") { result.push(cur); cur = ""; }
-                        else { cur += c; }
-                    }
-                }
-                result.push(cur);
-                return result;
-            };
+            const parse = parseCsvLine;
             if (!hasHeader) return lines.map(parse);
             const headers = parse(lines[0]);
             return lines.slice(1).map(line => {
