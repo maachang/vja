@@ -685,12 +685,18 @@
                 const result = []; let cur = ""; let inQ = false;
                 for (let i = 0; i < line.length; i++) {
                     const c = line[i];
-                    if (c === '"') { inQ = !inQ; }
-                    else if (c === "," && !inQ) { result.push(cur); cur = ""; }
-                    else { cur += c; }
+                    if (inQ) {
+                        if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+                        else if (c === '"') { inQ = false; }
+                        else { cur += c; }
+                    } else {
+                        if (c === '"') { inQ = true; }
+                        else if (c === ",") { result.push(cur); cur = ""; }
+                        else { cur += c; }
+                    }
                 }
                 result.push(cur);
-                return result.map(v => v.trim().replace(/^"|"$/g, ""));
+                return result;
             };
             if (!hasHeader) return lines.map(parse);
             const headers = parse(lines[0]);
