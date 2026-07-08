@@ -691,6 +691,14 @@
             return this._parseCsv(result.content);
         },
 
+        // 既に取得済みのCSV文字列をパースする（ダイアログは開かない）。
+        // 例: vja.http.get()やvja.file.read()等で取得したCSV文字列を
+        // その場でパースしたい場合に使う。
+        parseCsv(csvText, hasHeader = true) {
+            if (typeof csvText !== "string") throw new Error("vja.io.parseCsv: csvTextは文字列である必要があります。");
+            return this._parseCsv(csvText, hasHeader);
+        },
+
         // JSONファイルを選択して読み込み
         async openJson() {
             const result = await this.openFile("*");
@@ -715,25 +723,33 @@
             });
         },
 
-        // CSV保存（ダウンロード）
+        // 行データ配列をCSV文字列に変換する（ダウンロードはしない）。
         // rows: [{ key: value }, ...] または [[val, val, ...], ...]
-        saveCsv(rows, filename = "export.csv", headers = null) {
+        // vja.io.parseCsv()と対になるAPI。
+        toCsv(rows, headers = null) {
             const toLine = arr => arr.map(v => {
                 const s = String(v ?? "");
                 return s.includes(",") || s.includes('"') || s.includes("\n")
                     ? `"${s.replace(/"/g, '""')}"` : s;
             }).join(",");
 
-            let csv = "";
-            if (rows.length === 0) { csv = ""; }
-            else if (Array.isArray(rows[0])) {
+            if (rows.length === 0) return "";
+            if (Array.isArray(rows[0])) {
+                let csv = "";
                 if (headers) csv = toLine(headers) + "\n";
                 csv += rows.map(toLine).join("\n");
-            } else {
-                const keys = headers || Object.keys(rows[0]);
-                csv = toLine(keys) + "\n";
-                csv += rows.map(r => toLine(keys.map(k => r[k] ?? ""))).join("\n");
+                return csv;
             }
+            const keys = headers || Object.keys(rows[0]);
+            let csv = toLine(keys) + "\n";
+            csv += rows.map(r => toLine(keys.map(k => r[k] ?? ""))).join("\n");
+            return csv;
+        },
+
+        // CSV保存（ダウンロード）
+        // rows: [{ key: value }, ...] または [[val, val, ...], ...]
+        saveCsv(rows, filename = "export.csv", headers = null) {
+            const csv = this.toCsv(rows, headers);
             this._download(csv, filename, "text/csv;charset=utf-8;");
         },
 

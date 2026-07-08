@@ -291,6 +291,28 @@
       if (data) vja.widget.setValue('txtData', JSON.stringify(data));
   - 使用例説明: JSONファイルを読み込んで内容を表示する
 
+- 関数名: vja.io.parseCsv(csvText, hasHeader):
+  - 説明: 既に取得済みのCSV文字列をパースする（ファイル選択ダイアログは開かない）
+  - 引数:
+    - csvText: string - パース対象のCSV文字列
+    - hasHeader: boolean - 省略可（既定true）。trueなら1行目をヘッダーとして扱いオブジェクト配列を返す。falseなら配列の配列を返す
+  - 戻り値: "Record<string, string>[] | string[][] - hasHeaderに応じた形式"
+  - 使用例: |
+      const res = await vja.http.get('https://example.com/data.csv');
+      const rows = vja.io.parseCsv(res);
+  - 使用例説明: HTTP経由で取得したCSV文字列をその場でパースする
+
+- 関数名: vja.io.toCsv(rows, headers):
+  - 説明: 行データ配列をCSV文字列に変換する（ダウンロードはしない。vja.io.parseCsvと対になるAPI）
+  - 引数:
+    - rows: "Record<string, any>[] | any[][]" - 変換対象の行データ配列
+    - headers: string[] - 省略可。指定しなければrows[0]のキーから自動生成
+  - 戻り値: string - CSV文字列
+  - 使用例: |
+      const csv = vja.io.toCsv(rows);
+      await vja.http.post('https://example.com/upload', csv);
+  - 使用例説明: 行データをCSV文字列に変換してHTTPでアップロードする
+
 - 関数名: vja.io.saveCsv(rows, filename):
   - 説明: データをCSV形式でダウンロードする
   - 引数:
@@ -700,6 +722,8 @@ await vja.file.copy: { args: [src:string, dest:string], return: "boolean", desc:
         io: `
 await vja.io.openCsv: { args: [], return: "Record<string,string>[]|null", desc: "Reads CSV via dialog. Returns null if canceled." }
 await vja.io.openJson: { args: [], return: "Promise<any|null>", desc: "Reads JSON via dialog. Throws on parse error." }
+vja.io.parseCsv: { args: [csvText:string, hasHeader?:boolean], return: "Record<string,string>[]|string[][]", desc: "Parses an already-obtained CSV string (NO dialog). Use this for CSV text obtained via vja.http/vja.file, not openCsv()." }
+vja.io.toCsv: { args: [rows:object[]|any[][], headers?:string[]], return: "string", desc: "Converts row data to a CSV string (does NOT download). Counterpart of vja.io.parseCsv." }
 await vja.io.saveCsv: { args: [csvRows:object[], filename:string], return: "void", desc: "Saves rows as a CSV file via save dialog. MUST use await." }
 await vja.io.saveJson: { args: [data:any, filename:string], return: "void", desc: "Saves data as a JSON file via save dialog. MUST use await." }
 `.trim(),
