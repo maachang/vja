@@ -295,8 +295,8 @@
   - 説明: 既に取得済みのCSV文字列をパースする（ファイル選択ダイアログは開かない）
   - 引数:
     - csvText: string - パース対象のCSV文字列
-    - hasHeader: boolean - 省略可（既定true）。trueなら1行目をヘッダーとして扱いオブジェクト配列を返す。falseなら配列の配列を返す
-  - 戻り値: "Record<string, string>[] | string[][] - hasHeaderに応じた形式"
+    - hasHeader: boolean - 省略可（既定true）。trueなら1行目をヘッダーとして扱いオブジェクトのキーにする。falseなら「col1」「col2」...という自動採番のキー名を使う
+  - 戻り値: "Record<string, string>[] - 常に配列オブジェクト形式（vja.widget.setのdatagrid等と同じ形式）"
   - 使用例: |
       const res = await vja.http.get('https://example.com/data.csv');
       const rows = vja.io.parseCsv(res);
@@ -305,8 +305,8 @@
 - 関数名: vja.io.toCsv(rows, headers):
   - 説明: 行データ配列をCSV文字列に変換する（ダウンロードはしない。vja.io.parseCsvと対になるAPI）
   - 引数:
-    - rows: "Record<string, any>[] | any[][]" - 変換対象の行データ配列
-    - headers: string[] - 省略可。指定しなければrows[0]のキーから自動生成
+    - rows: "Record<string, any>[] | any[][]" - 変換対象の行データ配列（配列オブジェクト形式・配列の配列形式どちらも可）
+    - headers: string[] - 省略可。配列オブジェクト形式の場合、省略時はrows[0]のキーから自動生成される。配列の配列形式の場合、省略するとヘッダー行なしのCSVになる（キーが無く自動生成できないため）
   - 戻り値: string - CSV文字列
   - 使用例: |
       const csv = vja.io.toCsv(rows);
@@ -722,8 +722,8 @@ await vja.file.copy: { args: [src:string, dest:string], return: "boolean", desc:
         io: `
 await vja.io.openCsv: { args: [], return: "Record<string,string>[]|null", desc: "Reads CSV via dialog. Returns null if canceled." }
 await vja.io.openJson: { args: [], return: "Promise<any|null>", desc: "Reads JSON via dialog. Throws on parse error." }
-vja.io.parseCsv: { args: [csvText:string, hasHeader?:boolean], return: "Record<string,string>[]|string[][]", desc: "Parses an already-obtained CSV string (NO dialog). Use this for CSV text obtained via vja.http/vja.file, not openCsv()." }
-vja.io.toCsv: { args: [rows:object[]|any[][], headers?:string[]], return: "string", desc: "Converts row data to a CSV string (does NOT download). Counterpart of vja.io.parseCsv." }
+vja.io.parseCsv: { args: [csvText:string, hasHeader?:boolean], return: "Record<string,string>[]", desc: "Parses an already-obtained CSV string (NO dialog). Always returns array-of-objects (same shape as datagrid data in vja.widget.set). If hasHeader=false, uses auto-generated keys col1,col2,... instead of header row." }
+vja.io.toCsv: { args: [rows:object[]|any[][], headers?:string[]], return: "string", desc: "Converts row data to a CSV string (does NOT download). Counterpart of vja.io.parseCsv. Accepts EITHER array-of-objects OR array-of-arrays as rows. If rows is array-of-objects and headers omitted, headers are auto-derived from rows[0] keys. If rows is array-of-arrays and headers omitted, the CSV has NO header row (arrays have no keys to derive from)." }
 await vja.io.saveCsv: { args: [csvRows:object[], filename:string], return: "void", desc: "Saves rows as a CSV file via save dialog. MUST use await." }
 await vja.io.saveJson: { args: [data:any, filename:string], return: "void", desc: "Saves data as a JSON file via save dialog. MUST use await." }
 `.trim(),

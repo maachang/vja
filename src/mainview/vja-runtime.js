@@ -708,12 +708,22 @@
         },
 
         // CSV文字列をパース → [{ col1: val, col2: val }, ...]
+        // 他のvja.* API（vja.widget.setのdatagrid等）と形式を揃えるため、
+        // hasHeader=falseの場合も配列オブジェクト形式で返す
+        // （col1, col2, ... という自動採番のキー名を使う）。
         _parseCsv(text, hasHeader = true) {
             const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n")
                 .filter(l => l.trim());
             if (lines.length === 0) return [];
             const parse = parseCsvLine;
-            if (!hasHeader) return lines.map(parse);
+            if (!hasHeader) {
+                return lines.map(line => {
+                    const vals = parse(line);
+                    const row = {};
+                    vals.forEach((v, i) => { row["col" + (i + 1)] = v; });
+                    return row;
+                });
+            }
             const headers = parse(lines[0]);
             return lines.slice(1).map(line => {
                 const vals = parse(line);
