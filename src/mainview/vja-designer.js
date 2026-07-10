@@ -799,7 +799,11 @@ function setProp(k, sp, val, wid, isFinal) {
         }
         w.props[k] = val;
     }
-    commitWidget(w, { name: sp === "name", props: true });
+    // isFinal===false（colorピッカーのドラッグ中等、oninputの連続発火）の間は
+    // renderProps()（プロパティパネルの再描画）をスキップする。
+    // カラーピッカー表示中にinput要素ごと作り直してしまうと、Windows（Chromium系
+    // WebView）ではネイティブのカラーピッカーが即座に閉じてしまうため。
+    commitWidget(w, { name: sp === "name", props: isFinal !== false });
 }
 
 // フォームのベースカラーに連動しているウィジェット（baseColorが非null）の
