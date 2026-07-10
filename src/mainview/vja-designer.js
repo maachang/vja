@@ -719,9 +719,12 @@ function pinput(d, val, wid) {
                 "setProp('" + d.k + "','" + (d.sp || "") + "',{value}==='true'," + w2 + ")");
         }
         case "color":
+            // 値の反映は oninput のみで行う（isFinal等のタイミング判定は不要。
+            // setProp側で「テーマに戻す」表示の直接更新に留めており、
+            // <input type="color">要素自体には一切触れないため、
+            // OS・WebViewエンジンを問わずネイティブピッカーを壊さない）。
             return `<input type="color" value="${val || "#000000"}" style="width:100%;height:22px;padding:1px 2px;cursor:pointer;border:1px solid var(--border);border-radius:2px;background:var(--bg3)"` +
-                evtAttr("oninput", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ",false)") +
-                evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ",true)") + ">";
+                evtAttr("oninput", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")") + ">";
         case "sel":
         case "select": {
             const sid = "pvs_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
@@ -732,7 +735,7 @@ function pinput(d, val, wid) {
         case "itemsdef":
             return `<button${evtAttr("onmousedown", "openItemsDefEditor(" + w2 + ")")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ 項目編集…</button>`;
         case "themeReset":
-            return `<button${evtAttr("onmousedown", "resetWidgetTheme(" + w2 + ")")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">↺ テーマに戻す${val == null ? "" : "（連動中）"}</button>`;
+            return `<button id="theme-reset-btn-${w2}"${evtAttr("onmousedown", "resetWidgetTheme(" + w2 + ")")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">↺ テーマに戻す${val == null ? "" : "（連動中）"}</button>`;
         case "formAiDesign":
             return `<button${evtAttr("onmousedown", "openFormDesignAi()")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">🤖 AIでフォーム設計…</button>`;
         case "area":
@@ -771,7 +774,7 @@ function pinput(d, val, wid) {
     return "";
 }
 
-function setProp(k, sp, val, wid, isFinal) {
+function setProp(k, sp, val, wid) {
     // フォームプロパティの処理
     if (sp === "formName") { setFormCfg("name", val); return; }
     if (sp === "formTitle") { setFormCfg("title", val); return; }
@@ -781,11 +784,14 @@ function setProp(k, sp, val, wid, isFinal) {
     if (sp === "formDesc") { setFormCfg("description", val); return; }
     if (sp === "formThemeFontFamily") { setFormCfg("themeFontFamily", val); return; }
     if (sp === "formThemeFontSize") { setFormCfg("themeFontSize", +val); return; }
-    if (sp === "formThemeFg") { setFormCfg("themeFg", val, { isFinal }); return; }
-    if (sp === "formThemeBaseColor") { setFormCfg("themeBaseColor", val, { isFinal }); return; }
+    if (sp === "formThemeFg") { setFormCfg("themeFg", val); return; }
+    if (sp === "formThemeBaseColor") { setFormCfg("themeBaseColor", val); return; }
     // ウィジェットプロパティの処理
     const w = getWidget(wid);
     if (!w) return;
+    // フォームのテーマ変更に連動する対象キー（個別編集するとbaseColorがnullになり
+    // 「テーマに戻す」表示が切り替わる）
+    const THEME_SYNC_KEYS = ["bg", "borderColor", "fontFamily", "fontSize", "fg"];
     if (sp === "name") w.name = val;
     else if (sp === "x") w.x = +val;
     else if (sp === "y") w.y = +val;
@@ -794,16 +800,25 @@ function setProp(k, sp, val, wid, isFinal) {
     else {
         // bg/borderColor/フォント関連を個別編集した場合、以後フォームの
         // テーマ変更に追従させない（baseColorをnullにして「カスタム済み」を示す）
-        if (["bg", "borderColor", "fontFamily", "fontSize", "fg"].includes(k) && w.props.baseColor != null) {
+        if (THEME_SYNC_KEYS.includes(k) && w.props.baseColor != null) {
             w.props.baseColor = null;
         }
         w.props[k] = val;
     }
-    // isFinal===false（colorピッカーのドラッグ中等、oninputの連続発火）の間は
-    // renderProps()（プロパティパネルの再描画）をスキップする。
-    // カラーピッカー表示中にinput要素ごと作り直してしまうと、Windows（Chromium系
-    // WebView）ではネイティブのカラーピッカーが即座に閉じてしまうため。
-    commitWidget(w, { name: sp === "name", props: isFinal !== false });
+    if (THEME_SYNC_KEYS.includes(k)) {
+        // 「テーマに戻す」表示だけを直接更新する（<input type="color">には
+        // 一切触れないため、ネイティブのカラーピッカーが開いていても安全）。
+        // パネル全体の再描画（renderProps）は不要と確認済みなので行わない。
+        renderWidget(w, false);
+        applyWPos($("w" + w.id), w);
+        _updateThemeResetIndicator(wid);
+        pushUndo();
+        return;
+    }
+    // ここに到達するのは name/x/y/w/h のみ（色関連は上でreturn済み）。
+    // これらはカラーピッカーのような連続発火・破壊リスクが無いため、
+    // 従来通りパネル全体を再描画する。
+    commitWidget(w, { name: sp === "name", props: true });
 }
 
 // フォームのベースカラーに連動しているウィジェット（baseColorが非null）の
@@ -889,7 +904,7 @@ function commitWidget(w, opts = {}) {
     renderWidget(w, false);
     applyWPos($("w" + w.id), w);
     if (opts.name) $("prop-obj").textContent = WIDGET_DEFS[w.tag]?.label ?? w.tag;
-    if (opts.props !== false) renderProps();
+    _deferPanelRefreshUntilFinal(opts.props, renderProps);
     pushUndo();
 }
 
@@ -936,7 +951,31 @@ function _syncPropValues(map) {
 function syncPropXY(w) { _syncPropValues({ "Left": w.x, "Top": w.y }); }
 function syncPropWH(w) { _syncPropValues({ "Width": w.w, "Height": w.h }); }
 
-function setFormCfg(k, v, opts) {
+// ウィジェットの「↺ テーマに戻す」表示だけを、パネル全体を再描画せずに
+// 直接DOM更新する。<input type="color">要素には一切触れないため、
+// ネイティブのカラーピッカーが開いている最中に呼んでも安全（OS問わず）。
+function _updateThemeResetIndicator(wid) {
+    const w = getWidget(wid);
+    if (!w) return;
+    const btn = document.getElementById("theme-reset-btn-" + wid);
+    if (!btn) return;
+    btn.textContent = "↺ テーマに戻す" + (w.props.baseColor == null ? "" : "（連動中）");
+}
+
+// 色プロパティ変更時の「パネル再描画タイミング」を一元管理する共通関数。
+// isFinal===falseの間（ドラッグ中等の連続発火）は再描画をスキップし、
+// isFinal===true（またはundefined＝isFinal概念を使わない従来呼び出し）の
+// 時だけ再描画処理(refreshFn)を呼ぶ。
+// カラーピッカー表示中に<input type="color">要素を作り直してしまうと、
+// 環境によってはネイティブのカラーピッカーが閉じてしまうための対策。
+// setFormCfg()・commitWidget()の両方から共通で呼ばれる
+// （以前はこの判定がそれぞれに個別実装されており、片方だけ直して
+// 　もう片方は直っていない、という食い違いの原因になっていた）。
+function _deferPanelRefreshUntilFinal(isFinal, refreshFn) {
+    if (isFinal !== false) refreshFn();
+}
+
+function setFormCfg(k, v) {
     // 複数選択中にフォームプロパティを操作した場合は選択を解除する
     // （deselect()でハイライト・ヘッダー表示も含めて更新する）
     if (getDesignerState().selIds.length > 1) deselect();
@@ -952,12 +991,8 @@ function setFormCfg(k, v, opts) {
     getProjectData().forms[getProjectData().curFormIdx].cfg[k] = v;
     if (k === "themeFontFamily" || k === "themeFontSize" || k === "themeFg" || k === "themeBaseColor") {
         applyThemeToWidgets();
-        // 【重要】renderProps()（プロパティパネルの再描画）は、oninput（ドラッグ中の
-        // 連続発火。isFinal===false）では実行しない。カラーピッカー表示中に
-        // <input type="color">要素ごと作り直してしまうと、Windows（Chromium系
-        // WebView）ではネイティブのカラーピッカーが即座に閉じてしまうため。
-        // onchange（確定時。isFinal未指定またはtrue）でのみ実行する。
-        if (opts?.isFinal !== false) renderProps();
+        // 【検証済み】フォーム自身のプロパティパネルには、この変更によって
+        // 表示が変わる項目が他に無いため、bgと同じくパネル再描画は行わない。
     }
     buildFormSelect();
     applyForm();
