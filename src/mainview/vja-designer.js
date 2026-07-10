@@ -792,6 +792,11 @@ function setProp(k, sp, val, wid) {
     // フォームのテーマ変更に連動する対象キー（個別編集するとbaseColorがnullになり
     // 「テーマに戻す」表示が切り替わる）
     const THEME_SYNC_KEYS = ["bg", "borderColor", "fontFamily", "fontSize", "fg"];
+    // このウィジェットのプロパティ定義から、kが「色」型（t:"color"）かどうかを見る。
+    // headerBg/rowBg等、datagrid固有の色プロパティも含め、キー名を列挙するのではなく
+    // 定義そのものから判定することで、今後色プロパティが増えても自動的に対応できる。
+    const propDef = (WIDGET_DEFS[w.tag]?.pdefs || []).find(d => d.k === k);
+    const isColorType = propDef?.t === "color";
     if (sp === "name") w.name = val;
     else if (sp === "x") w.x = +val;
     else if (sp === "y") w.y = +val;
@@ -805,17 +810,19 @@ function setProp(k, sp, val, wid) {
         }
         w.props[k] = val;
     }
-    if (THEME_SYNC_KEYS.includes(k)) {
-        // 「テーマに戻す」表示だけを直接更新する（<input type="color">には
-        // 一切触れないため、ネイティブのカラーピッカーが開いていても安全）。
-        // パネル全体の再描画（renderProps）は不要と確認済みなので行わない。
+    if (isColorType) {
+        // 色プロパティ（datagridのheaderBg/rowBg等も含む全て）は、
+        // パネル全体を再描画せず、必要な分だけ直接DOM更新する。
+        // <input type="color">要素自体には一切触れないため、
+        // ネイティブのカラーピッカーが開いていても安全（OS問わず）。
         renderWidget(w, false);
         applyWPos($("w" + w.id), w);
-        _updateThemeResetIndicator(wid);
+        // 「テーマに戻す」表示の更新は、実際にbaseColorへ影響するキーの時のみ。
+        if (THEME_SYNC_KEYS.includes(k)) _updateThemeResetIndicator(wid);
         pushUndo();
         return;
     }
-    // ここに到達するのは name/x/y/w/h のみ（色関連は上でreturn済み）。
+    // ここに到達するのは name/x/y/w/h、または色以外の一般プロパティのみ。
     // これらはカラーピッカーのような連続発火・破壊リスクが無いため、
     // 従来通りパネル全体を再描画する。
     commitWidget(w, { name: sp === "name", props: true });
