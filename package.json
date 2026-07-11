@@ -5,7 +5,8 @@
     "scripts": {
         "dev": "bun x electrobun dev",
         "build": "bun x electrobun build --env=stable",
-        "start": "bun src/bun/index.ts"
+        "start": "bun src/bun/index.ts",
+        "test": "bun test"
     },
     "dependencies": {
         "electrobun": "latest"
