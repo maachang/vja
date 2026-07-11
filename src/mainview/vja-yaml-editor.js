@@ -48,6 +48,15 @@
        静的チェックでは拾えない実行時例外を検出する。AI接続設定の
        「モック実行検証」がOFFの場合は実施しない。分岐(if/else)の全経路は
        検証できない点に注意（1回の実行では1パターンの値しか通らない）。
+       実行はWeb Worker内（_getMockWorkerUrl()）で行い、_MOCK_SMOKE_TIMEOUT_MS
+       を超えた場合はworker.terminate()で強制終了する（生成コードが無限ループを
+       含んでいてもUIをフリーズさせないための対策。単純なsetTimeoutでは
+       同期的な無限ループを止められないため、別スレッド実行＋terminate()が必須）。
+       Worker内では vja-mock-runtime.js を importScripts で読み込めない
+       （electrobunのカスタムスキームがWorkerからのネットワーク読み込みに
+       対応しておらず NetworkError: Load failed になる）ため、そのロジックを
+       _MOCK_WORKER_RUNTIME_SRC として複製・埋め込みしている。
+       vja-mock-runtime.js側を変更した場合はこちらも同期して修正すること。
        拡張ランタイム関数は _buildExtRuntimeMock() でプロジェクトの
        extRuntime.docから動的にモック生成する）
      - editorKeyHandler() 等のエディタ内キー操作
@@ -1198,6 +1207,245 @@ function _extractMockErrorLine(e) {
     return null;
 }
 
+// モック実行スモークテストの最大実行時間（ミリ秒）。
+// 単純なsetTimeout+Promise.raceによるタイムアウトでは、生成コードが
+// while(true){}のような同期的な無限ループを含んでいた場合、UIスレッド
+// （メインスレッド）自体がブロックされてタイマーコールバックすら発火せず
+// 止められない。そのため実行そのものを別スレッド（Web Worker）に切り出し、
+// タイムアウト時はworker.terminate()で強制終了することで確実に止める。
+const _MOCK_SMOKE_TIMEOUT_MS = 3000;
+
+// モック実行用Workerに埋め込む、vja-mock-runtime.jsの実行ロジックの複製。
+// 【重要・要同期】electrobunのWebViewが使うカスタムスキームは、Worker内からの
+// importScripts()によるネットワーク読み込みに対応しておらず「NetworkError: Load
+// failed」で失敗するため、外部ファイル読み込みに頼らずWorkerソース文字列に
+// ロジックそのものを埋め込んでいる。vja-mock-runtime.jsの_buildFrontMock() /
+// _buildBackMock()を変更した場合は、必ずこちらも同じ内容に追従させること。
+const _MOCK_WORKER_RUNTIME_SRC = `
+function _buildFrontMock(evName, wtag, overrides, widgets) {
+    const ov = overrides || {};
+    const isRowClickCtx = evName === "RowClick" || (evName === "Click" && wtag === "datagrid");
+    const isHeaderClickCtx = evName === "HeaderClick";
+    const isKeyCtx = evName === "KeyDown" || evName === "KeyUp";
+    function _widgetGetValue(name) {
+        if (ov.widgets && Object.prototype.hasOwnProperty.call(ov.widgets, name)) {
+            return ov.widgets[name];
+        }
+        const w = (widgets || []).find((ww) => ww.name === name) || null;
+        const tag = w ? w.tag : null;
+        if (tag === "datagrid") return [{}];
+        if (tag === "checkbox" || tag === "radio") return false;
+        if (tag === "progressbar" || tag === "slider" || tag === "hscroll" || tag === "vscroll") return 0;
+        if (tag === "inputtype" && w?.props?.inputType === "number") return 0;
+        return "";
+    }
+    function _constGetValue(name) {
+        if (ov.consts && Object.prototype.hasOwnProperty.call(ov.consts, name)) {
+            return ov.consts[name];
+        }
+        return "";
+    }
+    function _sessionGetValue(key) {
+        if (ov.session && Object.prototype.hasOwnProperty.call(ov.session, key)) {
+            return ov.session[key];
+        }
+        return "";
+    }
+    function _utilValue(fnName, fallback) {
+        if (ov.util && Object.prototype.hasOwnProperty.call(ov.util, fnName)) {
+            return ov.util[fnName];
+        }
+        return fallback;
+    }
+    return {
+        widget: {
+            get: (name) => _widgetGetValue(name),
+            set: () => {},
+            getValue: (name) => _widgetGetValue(name),
+            setValue: () => {},
+            setItems: () => {},
+            setTableData: () => {},
+            getAllInputs: () => ({}),
+            setVisible: () => {},
+            show: () => {},
+            hide: () => {},
+            enable: () => {},
+            disable: () => {},
+        },
+        const: {
+            get: (name) => _constGetValue(name),
+            getAll: () => ({}),
+        },
+        form: {
+            navigate: async () => {},
+            back: () => {},
+            setParam: () => {},
+            getParam: () => "",
+        },
+        session: {
+            get: async (key) => _sessionGetValue(key),
+            set: async () => true,
+            delete: async () => true,
+            clear: async () => true,
+        },
+        util: {
+            today: () => _utilValue("today", "2000-01-01"),
+            formatDate: () => _utilValue("formatDate", "2000-01-01"),
+            formatNumber: () => _utilValue("formatNumber", "0"),
+            uuid: () => _utilValue("uuid", "00000000-0000-0000-0000-000000000000"),
+            copyToClipboard: async () => {},
+        },
+        io: {
+            openCsv: async () => [{}],
+            openJson: async () => ({}),
+            saveCsv: async () => {},
+            saveJson: async () => {},
+        },
+        file: {
+            read: async () => "",
+            write: async () => true,
+            readBytes: async () => new Uint8Array(),
+            writeBytes: async () => true,
+            exists: async () => true,
+            delete: async () => true,
+            copy: async () => true,
+        },
+        dir: {
+            create: async () => true,
+            delete: async () => true,
+            list: async () => [],
+            exists: async () => true,
+        },
+        notify: {
+            toast: () => {},
+        },
+        trigger: {
+            click: () => {},
+            focus: () => {},
+            blur: () => {},
+            change: () => {},
+            mouseDown: () => {},
+            mouseUp: () => {},
+            mouseEnter: () => {},
+            mouseLeave: () => {},
+            scroll: () => {},
+        },
+        event: {
+            get: () => {
+                if (ov.event !== undefined) return ov.event;
+                if (isRowClickCtx) return { type: "rowClick", row: 0, column: "" };
+                if (isHeaderClickCtx) return { type: "headerClick", column: "" };
+                const t = evName ? evName.charAt(0).toLowerCase() + evName.slice(1) : "";
+                return { type: t };
+            },
+            getKey: () => (isKeyCtx ? "Enter" : null),
+            getKeyCode: () => (isKeyCtx ? 13 : null),
+            isEnter: () => isKeyCtx,
+            isEscape: () => isKeyCtx,
+            isShift: () => isKeyCtx,
+            isCtrl: () => isKeyCtx,
+        },
+        http: {
+            get: async () => ({}),
+            post: async () => ({}),
+            put: async () => ({}),
+            delete: async () => ({}),
+        },
+        fetch: async () => ({}),
+        ui: {
+            loading: () => {},
+        },
+        app: {
+            showDialog: async () => {},
+            showConfirm: async () => true,
+        },
+        crypto: {
+            encrypt: async () => "",
+            decrypt: async () => "",
+        },
+        getCloudInfraCredential: async () => ({}),
+        validate: {
+            run: async () => true,
+        },
+        db: {
+            query: async () => [{}],
+            execute: async () => ({ changes: 0, lastInsertRowid: 0 }),
+            transaction: async () => true,
+        },
+        log: {
+            info: () => {},
+            warn: () => {},
+            error: () => {},
+        },
+    };
+}
+function _buildBackMock() {
+    return {
+        db: {
+            query: () => [{}],
+            execute: () => ({ changes: 0, lastInsertRowid: 0 }),
+            clearTable: () => {},
+            importCsv: async () => {},
+            importJson: async () => {},
+        },
+        session: {
+            get: () => "",
+            set: () => true,
+            delete: () => true,
+            clear: () => true,
+        },
+        log: {
+            info: () => {},
+            warn: () => {},
+            error: () => {},
+        },
+    };
+}
+self.VJA_MOCK_RUNTIME = {
+    build(isAppEvent, evName, wtag, overrides, widgets) {
+        return isAppEvent ? _buildBackMock() : _buildFrontMock(evName, wtag, overrides, widgets);
+    },
+};
+`;
+
+// モック実行用Workerのソースを1回だけ生成しBlob URL化してキャッシュする。
+let _mockWorkerUrl = null;
+function _getMockWorkerUrl() {
+    if (_mockWorkerUrl) return _mockWorkerUrl;
+    const src = [
+        _MOCK_WORKER_RUNTIME_SRC,
+        "self.onmessage = async (ev) => {",
+        "  const { code, isAppEvent, evName, wtag, overrides, widgets, extNames } = ev.data;",
+        "  let capturedError = null;",
+        "  const mockConsole = {",
+        "    log: () => {}, info: () => {}, warn: () => {},",
+        "    error: (...a) => {",
+        "      const errArg = a.find((x) => x instanceof Error);",
+        "      if (errArg) capturedError = errArg;",
+        "    },",
+        "  };",
+        "  try {",
+        "    const vjaMock = self.VJA_MOCK_RUNTIME.build(isAppEvent, evName, wtag, overrides, widgets);",
+        // extMockは「関数名だけの一覧から、常に{}を返す非同期関数を生成する」だけの
+        // 単純なものなので、関数そのもの(構造化複製不可)ではなく名前のみ受け取り
+        // Worker内で組み立て直す。
+        "    const extValues = extNames.map(() => (async () => ({})));",
+        "    const fn = new Function('vja', ...extNames, 'console', 'return (async()=>{\\n' + code + '\\n})()');",
+        "    await fn(vjaMock, ...extValues, mockConsole);",
+        "    if (capturedError) {",
+        "      postMessage({ ok: false, caught: true, message: capturedError.message || String(capturedError), line: capturedError.line, stack: capturedError.stack });",
+        "    } else {",
+        "      postMessage({ ok: true });",
+        "    }",
+        "  } catch (e) {",
+        "    postMessage({ ok: false, message: (e && e.message) ? e.message : String(e), line: e && e.line, stack: e && e.stack });",
+        "  }",
+        "};",
+    ].join("\n");
+    _mockWorkerUrl = URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
+    return _mockWorkerUrl;
+}
+
 // 生成コードをモックランタイムと共に実際に1回実行し、実行時例外が
 // 発生しないかを確認する。例外が無ければnull、あれば
 // { message: 例外メッセージ, line: 推定行番号（取れない場合はnull） } を返す。
@@ -1208,47 +1456,57 @@ function _extractMockErrorLine(e) {
 // 「console.error(e)」のようにErrorオブジェクトがログ出力された場合、
 // それを実行スコープ限定のモック用console経由で検知し、たとえ
 // try/catchで握りつぶされて例外が外に投げられなくても、エラーとして扱う。
-// モック実行では vja 自体も完全にモック版を使っているため、
-// console についても同様にモック実行スコープ限定のものを渡す
-// （グローバルのconsoleを書き換えて戻す、といった処理は不要）。
+//
+// 【実行をWeb Workerに分離している理由】
+// 生成コードは実行前提が「未検証のAI生成コード」であり、意図しない無限ループ
+// （while(true){}等）を含む可能性がある。メインスレッドで直接new Function()
+// 実行すると、そのままUI全体がフリーズし復帰不能になる。Web Worker内で実行すれば、
+// タイムアウト時にterminate()でスレッドごと強制終了できるため、無限ループでも
+// UIは固まらず、エディタ側にタイムアウトエラーとして通知できる。
 async function _runMockSmokeTest(code, isAppEvent, evName, wtag, wid) {
     if (getProjectData().aiConfig.mockCheckEnabled === false) return null;
-    if (!window.VJA_MOCK_RUNTIME) return null; // 読み込み失敗時は検証をスキップ
-    let capturedError = null;
-    const mockConsole = {
-        log: (...a) => console.log(...a),
-        info: (...a) => console.info(...a),
-        warn: (...a) => console.warn(...a),
-        error: (...a) => {
-            const errArg = a.find((x) => x instanceof Error);
-            if (errArg) capturedError = errArg;
-            console.error(...a);
-        },
-    };
+    if (typeof Worker === "undefined") return null; // Worker非対応環境では検証をスキップ
+    const overrides = wid !== undefined ? _computeMockOverrides(wid, evName) : undefined;
+    const extMock = _buildExtRuntimeMock();
+    const extNames = Object.keys(extMock);
+    const widgets = getProjectData().widgets || [];
+
+    let worker;
     try {
-        const overrides = wid !== undefined ? _computeMockOverrides(wid, evName) : undefined;
-        const vjaMock = window.VJA_MOCK_RUNTIME.build(isAppEvent, evName, wtag, overrides);
-        const extMock = _buildExtRuntimeMock();
-        const extNames = Object.keys(extMock);
-        const extValues = extNames.map((n) => extMock[n]);
-        const fn = new Function("vja", ...extNames, "console", "return (async()=>{\n" + code + "\n})()");
-        await fn(vjaMock, ...extValues, mockConsole);
-        if (capturedError) {
-            // try/catchで握りつぶされていたエラー。例外としては外に出てこないが、
-            // console.error(Errorオブジェクト)で報告されていた場合はエラー扱いにする。
-            return {
-                message: capturedError.message || String(capturedError),
-                line: _extractMockErrorLine(capturedError),
-                caught: true,
-            };
-        }
-        return null;
+        worker = new Worker(_getMockWorkerUrl());
     } catch (e) {
-        return {
-            message: (e && e.message) ? e.message : String(e),
-            line: _extractMockErrorLine(e),
-        };
+        return null; // Worker生成に失敗した場合は検証をスキップ（既存の構文/API検証は別途行われる）
     }
+
+    return new Promise((resolve) => {
+        let settled = false;
+        const finish = (result) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            worker.terminate();
+            resolve(result);
+        };
+        const timer = setTimeout(() => {
+            finish({ message: "モック実行がタイムアウトしました（無限ループの可能性があります）", line: null, timeout: true });
+        }, _MOCK_SMOKE_TIMEOUT_MS);
+        worker.onmessage = (ev) => {
+            const r = ev.data;
+            if (!r || r.ok) {
+                finish(null);
+                return;
+            }
+            finish({
+                message: r.message,
+                line: _extractMockErrorLine({ line: r.line, stack: r.stack }),
+                caught: r.caught === true,
+            });
+        };
+        worker.onerror = (ev) => {
+            finish({ message: ev.message || "モック実行中に不明なエラーが発生しました", line: null });
+        };
+        worker.postMessage({ code, isAppEvent, evName, wtag, overrides, widgets, extNames });
+    });
 }
 
 // 構文チェックのみ行う（実行はしない）。

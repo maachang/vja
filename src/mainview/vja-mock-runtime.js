@@ -36,8 +36,17 @@
 
    【依存関係】
    - このファイルはどこからも呼ばれない限り何もしない（副作用なし）。
-   - vja-yaml-editor.js の _runMockSmokeTest() から
-     window.VJA_MOCK_RUNTIME.build(isAppEvent, evName, wtag) の形で呼ばれる。
+   - window.VJA_MOCK_RUNTIME.build(isAppEvent, evName, wtag, overrides, widgets)
+     という形自体は、メインスレッド上で直接呼ぶ用途のために残している。
+   - 【重要・要同期】実際のモック実行スモークテスト（vja-yaml-editor.js の
+     _runMockSmokeTest()）は、無限ループ対策のためWeb Worker内で実行される。
+     electrobunのカスタムスキームがWorker内からのimportScripts（ネットワーク
+     読み込み）に対応しておらず「NetworkError: Load failed」になるため、
+     WorkerではこのファイルをimportScriptsせず、_buildFrontMock()/
+     _buildBackMock()と同じ内容を vja-yaml-editor.js 側の
+     _MOCK_WORKER_RUNTIME_SRC 文字列に複製して埋め込んでいる。
+     このファイルを変更した場合は、必ず _MOCK_WORKER_RUNTIME_SRC も
+     同じ内容に追従させること（自動抽出できないため手動同期が必要）。
 
    【メンテナンス上の注意】
    - vja.* のAPI追加・変更・削除があった場合、prompt-def.js の
@@ -57,7 +66,7 @@
     //   { widgets: {名前: 値}, event: 値|undefined, consts: {名前: 値},
     //     session: {キー: 値}, util: {関数名: 値} }
     //   未指定の項目は、従来通りのデフォルトのダミー値にフォールバックする。
-    function _buildFrontMock(evName, wtag, overrides) {
+    function _buildFrontMock(evName, wtag, overrides, widgets) {
         const ov = overrides || {};
         // vja.event.get() 等のコンテキスト判定。
         // ・RowClick / HeaderClick イベントなら、そのままの形を返す。
@@ -77,13 +86,13 @@
         // 偽陽性でクラッシュしてしまう。実際のウィジェット一覧と突き合わせて
         // 型ごとに妥当なダミー値を返す。
         // ユーザーが明示的にウィジェット単位の上書き値を指定していれば、それを最優先する。
+        // widgets: 呼び出し元(_runMockSmokeTest)がgetProjectData().widgetsを渡す
+        // （Worker内にはgetProjectData()が存在しないため、直接データとして受け取る）。
         function _widgetGetValue(name) {
             if (ov.widgets && Object.prototype.hasOwnProperty.call(ov.widgets, name)) {
                 return ov.widgets[name];
             }
-            const w = (typeof getProjectData === "function"
-                ? (getProjectData().widgets || []).find((ww) => ww.name === name)
-                : null);
+            const w = (widgets || []).find((ww) => ww.name === name) || null;
             const tag = w ? w.tag : null;
             if (tag === "datagrid") return [{}];
             if (tag === "checkbox" || tag === "radio") return false;
@@ -273,13 +282,15 @@
         };
     }
 
-    window.VJA_MOCK_RUNTIME = {
+    const _global = (typeof window !== "undefined") ? window : self;
+    _global.VJA_MOCK_RUNTIME = {
         // isAppEvent: true=バックエンド(アプリイベント) / false=フロントエンド
         // evName: 生成対象のイベント名（フロント/フォームイベント時のみ意味を持つ）
         // wtag: 生成対象ウィジェットのタグ（ウィジェットイベント時のみ意味を持つ）
         // overrides: ユーザーが「⚙ モック値を編集」で指定した上書き値（フロントのみ有効）
-        build(isAppEvent, evName, wtag, overrides) {
-            return isAppEvent ? _buildBackMock() : _buildFrontMock(evName, wtag, overrides);
+        // widgets: getProjectData().widgets相当の配列（フロントのvja.widget.get()判定用）
+        build(isAppEvent, evName, wtag, overrides, widgets) {
+            return isAppEvent ? _buildBackMock() : _buildFrontMock(evName, wtag, overrides, widgets);
         },
     };
 })();

@@ -414,6 +414,7 @@ vja/
     │   ├── vja-modal.js            # モーダル基盤・Undo/Redo・削除/複製
     │   ├── vja-yaml-editor.js      # YAML/JSエディタ・AI生成
     │   ├── vja-editor-utils.js     # エディタ共通ユーティリティ
+    │   ├── vja-mock-runtime.js     #モック共通ユーティリティ
     │   ├── vja-save.js             # 保存・開く・実行・マルチフォーム管理
     │   ├── vja-table-validation.js # 定数・テーブル・バリデーション編集
     │   ├── vja-app-config.js       # フォーム定数・アプリイベント・クラウド設定等
