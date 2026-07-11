@@ -2,102 +2,39 @@
 // Electrobun RPC ブリッジ + window.vja.* API
 
 import { Electroview } from "electrobun/view";
-import type { DbRow, DbResult } from "../shared/types";
-import { makeFetchMaps, makeVjaFetch, makeFetchResultHandlers, type Pending } from "./bridge-common";
-
-const pending = {
-    openFile: null as Pending<{ content: string | null; path: string | null }> | null,
-    saveFile: null as Pending<{ ok: boolean; path: string | null; cancelled: boolean }> | null,
-    saveGenericFile: null as Pending<{ ok: boolean; path: string | null; cancelled: boolean }> | null,
-    dbQuery: null as Pending<{ ok: boolean; rows: DbRow[]; error?: string }> | null,
-    dbExecute: null as Pending<{ ok: boolean; result: DbResult; error?: string }> | null,
-    dbTransaction: null as Pending<{ ok: boolean; error?: string }> | null,
-    dbInit: null as Pending<{ ok: boolean; error?: string }> | null,
-    fileRead: null as Pending<{ ok: boolean; content: string | null; error?: string }> | null,
-    fileWrite: null as Pending<{ ok: boolean; error?: string }> | null,
-    fileReadBytes: null as Pending<{ ok: boolean; data: number[] | null; error?: string }> | null,
-    fileWriteBytes: null as Pending<{ ok: boolean; error?: string }> | null,
-    fileExists: null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
-    fileDelete: null as Pending<{ ok: boolean; error?: string }> | null,
-    fileCopy: null as Pending<{ ok: boolean; error?: string }> | null,
-    dirCreate: null as Pending<{ ok: boolean; error?: string }> | null,
-    dirDelete: null as Pending<{ ok: boolean; error?: string }> | null,
-    dirList: null as Pending<{ ok: boolean; entries: string[]; error?: string }> | null,
-    dirExists: null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
-    runProject: null as Pending<{ ok: boolean; error?: string }> | null,
-    stopProject: null as Pending<{ ok: boolean }> | null,
-    navigateForm: null as Pending<{ ok: boolean; error?: string }> | null,
-    sessionGet: null as Pending<{ ok: boolean; value: string | null }> | null,
-    sessionSet: null as Pending<{ ok: boolean }> | null,
-    clearProjectDb: null as Pending<{ ok: boolean; error?: string }> | null,
-    saveCloudInfras: null as Pending<{ ok: boolean; error?: string }> | null,
-    getCloudInfras: null as Pending<{ infras: any[] }> | null,
-    getDecryptedCred: null as Pending<{ ok: boolean; value: string }> | null,
-    compileProject: null as Pending<{ ok: boolean; error?: string; distPath?: string }> | null,
-    getVersion: null as Pending<{ version: string; runMode: string }> | null,
-    loadUiConfig: null as Pending<{ uiFontSize: number; uiFontFamily: string }> | null,
-};
+import { makeFetchMaps, makeVjaFetch, makeFetchResultHandlers } from "./bridge-common";
 
 // fetch は複数同時リクエスト対応のため fetchId ベースのMapで管理（bridge-common）
 const { fetchPendingMap: _fetchPendingMap, fetchAbortPendingMap: _fetchAbortPendingMap } = makeFetchMaps();
 
-const resolve = <K extends keyof typeof pending>(
-    key: K, val: NonNullable<typeof pending[K]> extends Pending<infer T> ? T : never
-) => {
-    const p = pending[key] as Pending<any> | null;
-    if (p) { pending[key] = null; p.resolve(val); }
-};
-
-const mkPromise = <K extends keyof typeof pending, T>(
-    key: K,
-    send: () => void
-): Promise<T> => new Promise<T>((res, rej) => {
-    pending[key] = { resolve: res as any, reject: rej } as any;
-    send();
+// ── プロジェクト停止（stopProject）専用の待機キュー ───────
+// stopProjectRequest/stopProjectResultは「明示的な停止呼び出しの応答」と
+// 「プロジェクトウィンドウが×ボタン等で予期せず閉じられた場合の通知」を
+// 兼ねており、1回のrequestに対し1回のresponseが返るという関係にならない
+// ため、electrobunの`requests`機構には乗せられずmessagesのまま扱う。
+// 以前は単一スロット（pending.stopProject）で管理しており、連続呼び出しで
+// 上書きされるとハングするバグがあったため、待機者を配列で保持し、
+// stopProjectResultを受け取った時点で待っている全員を解決する
+// （タイムアウトは設けない方針のため、応答が来るまで待ち続ける）。
+let _stopProjectWaiters: Array<(v: { ok: boolean }) => void> = [];
+const _waitStopProject = (): Promise<{ ok: boolean }> => new Promise((resolve) => {
+    _stopProjectWaiters.push(resolve);
 });
 
 // ── Electroview RPC 定義 ──────────────────────────────
+// maxRequestTime: Infinity（タイムアウト無し）。理由はsrc/bun/index.tsの
+// 同項目コメント参照（openFileRequest等ユーザー操作待ちのrequestと、
+// dbQuery等の高速なrequestが同一RPCインスタンス上に混在するため）。
 const rpc = Electroview.defineRPC({
+    maxRequestTime: Infinity,
     handlers: {
         requests: {},
         messages: {
-            openFileResult: (v: any) => resolve("openFile", v),
-            saveFileResult: (v: any) => resolve("saveFile", v),
-            saveGenericFileResult: (v: any) => resolve("saveGenericFile", v),
-            dbQueryResult: (v: any) => resolve("dbQuery", v),
-            dbExecuteResult: (v: any) => resolve("dbExecute", v),
-            dbTransactionResult: (v: any) => resolve("dbTransaction", v),
-            dbInitResult: (v: any) => resolve("dbInit", v),
-            fileReadResult: (v: any) => resolve("fileRead", v),
-            fileWriteResult: (v: any) => resolve("fileWrite", v),
-            fileReadBytesResult: (v: any) => resolve("fileReadBytes", v),
-            fileWriteBytesResult: (v: any) => resolve("fileWriteBytes", v),
-            fileExistsResult: (v: any) => resolve("fileExists", v),
-            fileDeleteResult: (v: any) => resolve("fileDelete", v),
-            fileCopyResult: (v: any) => resolve("fileCopy", v),
-            dirCreateResult: (v: any) => resolve("dirCreate", v),
-            dirDeleteResult: (v: any) => resolve("dirDelete", v),
-            dirListResult: (v: any) => resolve("dirList", v),
-            dirExistsResult: (v: any) => resolve("dirExists", v),
-            appInfoResult: (v: any) => resolve("appInfo", v),
-            runProjectResult: (v: any) => resolve("runProject", v),
-            saveCloudInfrasResult: (v: any) => resolve("saveCloudInfras", v),
-            getCloudInfrasResult: (v: any) => resolve("getCloudInfras", v),
-            getDecryptedCredentialResult: (v: any) => resolve("getDecryptedCred", v),
             loadScriptResult: (v: any) => { /* フロント側で処理 */ },
-            compileProjectResult: (v: any) => resolve("compileProject", v),
-            getVersionResult: (v: any) => resolve("getVersion", v),
-            loadUiConfigResult: (v: any) => {
-                resolve("loadUiConfig", v);
-                // window関数が定義されていれば呼び出してUI設定を適用
-                if (typeof (w as any)._onLoadUiConfigResult === "function") {
-                    (w as any)._onLoadUiConfigResult(v);
-                }
-            },
             stopProjectResult: (v: any) => {
-                if (pending.stopProject) {
-                    resolve("stopProject", v);
-                }
+                const waiters = _stopProjectWaiters;
+                _stopProjectWaiters = [];
+                waiters.forEach((resolve) => resolve(v));
                 // 常にボタン状態をリセット（×ボタンで閉じた場合も含む）
                 try {
                     const runBtn = document.getElementById("btn-run-project") as HTMLButtonElement | null;
@@ -106,88 +43,70 @@ const rpc = Electroview.defineRPC({
                     if (stopBtn) stopBtn.style.display = "none";
                 } catch (e: any) { console.debug("[stopProjectResult] DOM update failed:", e.message); }
             },
-            navigateFormResult: (v: any) => resolve("navigateForm", v),
-            sessionGetResult: (v: any) => resolve("sessionGet", v),
-            sessionSetResult: (v: any) => resolve("sessionSet", v),
-            clearProjectDbResult: (v: any) => resolve("clearProjectDb", v),
             ...makeFetchResultHandlers(_fetchPendingMap, _fetchAbortPendingMap),
         },
     },
 });
 const _ev = new Electroview({ rpc });
 const s = _ev.rpc.send;
+const r = _ev.rpc.request;
 
 // ── window.vja.* API ─────────────────────────────────
 const w = window as any;
 
-w.bunOpenFile = (a: any) => mkPromise("openFile", () => s.openFileRequest(a));
-w.bunSaveProject = (a: any) => mkPromise("saveFile", () => s.saveFileRequest(a));
-w.bunSaveGenericFile = (a: any) => mkPromise("saveGenericFile", () => s.saveGenericFileRequest(a));
+w.bunOpenFile = (a: any) => r.openFileRequest(a);
+w.bunSaveProject = (a: any) => r.saveFileRequest(a);
+w.bunSaveGenericFile = (a: any) => r.saveGenericFileRequest(a);
 w.bunCloseApp = () => s.closeAppRequest({});
 w.bunToggleDevTools = () => s.toggleDevToolsRequest({});
-w.bunSaveCloudInfras = (infras: any[]) => mkPromise("saveCloudInfras", () => s.saveCloudInfrasRequest({ infras }));
-w.bunCompileProject = () => mkPromise("compileProject", () => s.compileProjectRequest({}));
-w.bunGetCloudInfras = () => mkPromise("getCloudInfras", () => s.getCloudInfrasRequest({}));
+w.bunSaveCloudInfras = (infras: any[]) => r.saveCloudInfrasRequest({ infras });
+w.bunCompileProject = () => r.compileProjectRequest({});
+w.bunGetCloudInfras = () => r.getCloudInfrasRequest({});
 w.bunGetDecryptedCredential = (infraId: string, key: string) =>
-    mkPromise("getDecryptedCred", () => s.getDecryptedCredentialRequest({ infraId, key }));
+    r.getDecryptedCredentialRequest({ infraId, key });
 w.bunOpenFolder = (path: string) => s.openFolderRequest({ path });
-w.bunGetVersion = () => mkPromise("getVersion", () => s.getVersionRequest({}));
+w.bunGetVersion = () => r.getVersionRequest({});
 w.bunSaveUiConfig = (uiFontSize: number, uiFontFamily: string, editorFontSize: number, editorFontFamily: string, leftPanelW: number, rightPanelW: number) =>
     s.saveUiConfigRequest({ uiFontSize, uiFontFamily, editorFontSize, editorFontFamily, leftPanelW, rightPanelW });
-w.bunLoadUiConfig = () => mkPromise("loadUiConfig", () => s.loadUiConfigRequest({}));
+w.bunLoadUiConfig = () => r.loadUiConfigRequest({});
 
 // vja.db
 w.vja = {
     db: {
         query: (sql: string, params?: any[]) =>
-            mkPromise("dbQuery", () => s.dbQueryRequest({ sql, params }))
-                .then((r: any) => r.rows),
+            r.dbQueryRequest({ sql, params }).then((res: any) => res.rows),
         execute: (sql: string, params?: any[]) =>
-            mkPromise("dbExecute", () => s.dbExecuteRequest({ sql, params }))
-                .then((r: any) => r.ok ? r.result : null),
+            r.dbExecuteRequest({ sql, params }).then((res: any) => res.ok ? res.result : null),
         transaction: (statements: { sql: string; params?: any[] }[]) =>
-            mkPromise("dbTransaction", () => s.dbTransactionRequest({ statements }))
-                .then((r: any) => r.ok),
+            r.dbTransactionRequest({ statements }).then((res: any) => res.ok),
         init: (ddlStatements: string[]) =>
-            mkPromise("dbInit", () => s.dbInitRequest({ ddlStatements }))
-                .then((r: any) => r.ok),
+            r.dbInitRequest({ ddlStatements }).then((res: any) => res.ok),
     },
     file: {
         read: (path: string) =>
-            mkPromise("fileRead", () => s.fileReadRequest({ path }))
-                .then((r: any) => r.ok ? r.content : null),
+            r.fileReadRequest({ path }).then((res: any) => res.ok ? res.content : null),
         write: (path: string, content: string) =>
-            mkPromise("fileWrite", () => s.fileWriteRequest({ path, content }))
-                .then((r: any) => r.ok),
+            r.fileWriteRequest({ path, content }).then((res: any) => res.ok),
         readBytes: (path: string) =>
-            mkPromise("fileReadBytes", () => s.fileReadBytesRequest({ path }))
-                .then((r: any) => r.data ? new Uint8Array(r.data) : null),
+            r.fileReadBytesRequest({ path }).then((res: any) => res.data ? new Uint8Array(res.data) : null),
         writeBytes: (path: string, data: number[]) =>
-            mkPromise("fileWriteBytes", () => s.fileWriteBytesRequest({ path, data }))
-                .then((r: any) => r.ok),
+            r.fileWriteBytesRequest({ path, data }).then((res: any) => res.ok),
         exists: (path: string) =>
-            mkPromise("fileExists", () => s.fileExistsRequest({ path }))
-                .then((r: any) => r.value),
+            r.fileExistsRequest({ path }).then((res: any) => res.value),
         delete: (path: string) =>
-            mkPromise("fileDelete", () => s.fileDeleteRequest({ path }))
-                .then((r: any) => r.ok),
+            r.fileDeleteRequest({ path }).then((res: any) => res.ok),
         copy: (src: string, dest: string) =>
-            mkPromise("fileCopy", () => s.fileCopyRequest({ src, dest }))
-                .then((r: any) => r.ok),
+            r.fileCopyRequest({ src, dest }).then((res: any) => res.ok),
     },
     dir: {
         create: (path: string) =>
-            mkPromise("dirCreate", () => s.dirCreateRequest({ path }))
-                .then((r: any) => r.ok),
+            r.dirCreateRequest({ path }).then((res: any) => res.ok),
         delete: (path: string) =>
-            mkPromise("dirDelete", () => s.dirDeleteRequest({ path }))
-                .then((r: any) => r.ok),
+            r.dirDeleteRequest({ path }).then((res: any) => res.ok),
         list: (path: string) =>
-            mkPromise("dirList", () => s.dirListRequest({ path }))
-                .then((r: any) => r.entries),
+            r.dirListRequest({ path }).then((res: any) => res.entries),
         exists: (path: string) =>
-            mkPromise("dirExists", () => s.dirExistsRequest({ path }))
-                .then((r: any) => r.value),
+            r.dirExistsRequest({ path }).then((res: any) => res.value),
     },
     log: {
         trace: (message: string) => { try { s.logRequest({ level: "trace", message }); } catch(e: any) { console.debug(e.message); } },
@@ -198,8 +117,7 @@ w.vja = {
         log:   (message: string) => { try { s.logRequest({ level: "log",   message }); } catch(e: any) { console.log(e.message); } },
     },
     app: {
-        getInfo: () =>
-            mkPromise("appInfo", () => s.appInfoRequest({})),
+        getInfo: () => r.appInfoRequest({}),
         showDialog: (message: string) =>
             new Promise<void>((resolve) => {
                 // ダイアログ表示中にローディングオーバーレイが重なって見えなく
@@ -219,30 +137,26 @@ w.vja = {
     // ── プロジェクト実行 ──────────────────────────────
     project: {
         run: () =>
-            mkPromise("runProject", () => s.runProjectRequest({ projectData: JSON.stringify((window as any)._getProjectData?.() || {}) })),
-        stop: () =>
-            mkPromise("stopProject", () => s.stopProjectRequest({})),
+            r.runProjectRequest({ projectData: JSON.stringify((window as any)._getProjectData?.() || {}) }),
+        stop: () => {
+            s.stopProjectRequest({});
+            return _waitStopProject();
+        },
         navigate: (formName: string) =>
-            mkPromise("navigateForm", () => s.navigateFormRequest({ formName }))
-                .then(() => { }),
+            r.navigateFormRequest({ formName }).then(() => { }),
         clearDb: () =>
-            mkPromise("clearProjectDb", () => s.clearProjectDbRequest({}))
-                .then((r: any) => { if (!r.ok) throw new Error(r.error || "clearDb failed"); }),
+            r.clearProjectDbRequest({}).then((res: any) => { if (!res.ok) throw new Error(res.error || "clearDb failed"); }),
     },
     // ── セッション管理 ────────────────────────────────
     session: {
         get: (key: string, defaultVal: any = null) =>
-            mkPromise("sessionGet", () => s.sessionGetRequest({ key }))
-                .then((r: any) => r.value !== null ? r.value : defaultVal),
+            r.sessionGetRequest({ key }).then((res: any) => res.value !== null ? res.value : defaultVal),
         set: (key: string, value: string | null) =>
-            mkPromise("sessionSet", () => s.sessionSetRequest({ key, value }))
-                .then((r: any) => r.ok),
+            r.sessionSetRequest({ key, value }).then((res: any) => res.ok),
         delete: (key: string) =>
-            mkPromise("sessionSet", () => s.sessionSetRequest({ key, value: null }))
-                .then((r: any) => r.ok),
+            r.sessionSetRequest({ key, value: null }).then((res: any) => res.ok),
         clear: () =>
-            mkPromise("sessionSet", () => s.sessionSetRequest({ key: "__clear_all__", value: "__clear__" }))
-                .then((r: any) => r.ok),
+            r.sessionSetRequest({ key: "__clear_all__", value: "__clear__" }).then((res: any) => res.ok),
     },
 };
 
@@ -254,11 +168,9 @@ w.vja.fetchAbort = _vjaFetch.fetchAbort;
 // vja.cloud
 w.vja.cloud = w.vja.cloud || {};
 w.vja.cloud.list = () =>
-    mkPromise("getCloudInfras", () => s.getCloudInfrasRequest({}))
-        .then((r: any) => r.infras);
+    r.getCloudInfrasRequest({}).then((res: any) => res.infras);
 w.vja.cloud.getCredential = (infraId: string, key: string) =>
-    mkPromise("getDecryptedCred", () => s.getDecryptedCredentialRequest({ infraId, key }))
-        .then((r: any) => r.value);
+    r.getDecryptedCredentialRequest({ infraId, key }).then((res: any) => res.value);
 
 // bridge.ts 読み込み完了後、コンソールのキューを flush
 if (typeof (window as any)._flushLogQueue === "function") {
@@ -266,4 +178,8 @@ if (typeof (window as any)._flushLogQueue === "function") {
 }
 
 // bridge.tsロード完了時にUI設定を自動読み込み
-s.loadUiConfigRequest({});
+r.loadUiConfigRequest({}).then((v: any) => {
+    if (typeof (w as any)._onLoadUiConfigResult === "function") {
+        (w as any)._onLoadUiConfigResult(v);
+    }
+});

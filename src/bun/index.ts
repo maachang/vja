@@ -20,7 +20,7 @@ import { initLogger, writeLog } from "./logger";
 import { copyCompileAssets, getVersion, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH } from "./copy-compile-assets";
 import { clearProjectDb, closeProjectDb } from "./db-manager";
 import {
-    _VJA_PASSPHRASE, _decrypt, _deriveKey,
+    _VJA_PASSPHRASE, _decrypt, _deriveKey, decryptCredential,
     setProjectData, setFormHtmlPathResolver, setCloudInfras,
     openProjectWindow, closeProjectWindow, navigateProjectWindow, getProjectFormPath,
     _currentProjectForms, _currentProjectName,
@@ -185,30 +185,20 @@ const saveFileDialog = async (
 };
 
 // ── RPC 定義 ──────────────────────────────────────────
+// 【重要】requests/messagesの使い分けの方針はsrc/shared/types.tsの
+// コメントを参照。requestsは戻り値をreturnするだけでよく、electrobun側が
+// 呼び出し元との対応付け・タイムアウトを自動的に行う
+// （browserWindow.webview.rpc.send.xxxResult(...)を手動で呼ぶ必要がない）。
 const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
-    maxRequestTime: 5000,
+    // タイムアウト無し（Infinity）。openFileRequest等ユーザー操作待ちの
+    // requestと、dbQuery等の高速なrequestが同一RPCインスタンス上に混在し、
+    // electrobunの仕様上maxRequestTimeはインスタンス単位でしか設定できない
+    // ため、片方に合わせて短くすると他方が誤タイムアウトする。単一pending
+    // スロットの上書きバグ自体は呼び出しごとのID対応付け（requests化）で
+    // 解消済みのため、タイムアウトは無しにしている。
+    maxRequestTime: Infinity,
     handlers: {
-        requests: {},
-        messages: {
-            // ══ プロジェクトファイル操作 ══════════════
-
-            // ── DevTools 開閉 ─────────────────────────
-            toggleDevToolsRequest: async () => {
-                if (_devToolsOpen) {
-                    browserWindow.webview.closeDevTools();
-                    _devToolsOpen = false;
-                } else {
-                    browserWindow.webview.openDevTools();
-                    _devToolsOpen = true;
-                }
-            },
-
-            // ── プロジェクト停止（デザイナーウィンドウから） ──
-            stopProjectRequest: async () => {
-                closeProjectWindow();
-                browserWindow.webview.rpc.send.stopProjectResult({ ok: true });
-            },
-
+        requests: {
             // ── クラウドインフラ設定 ──────────────────────
 
             getCloudInfrasRequest: async () => {
@@ -221,29 +211,22 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                         }
                         return { ...inf, credentials: creds };
                     }));
-                    browserWindow.webview.rpc.send.getCloudInfrasResult({ infras: decrypted });
+                    return { infras: decrypted };
                 } catch (e: any) {
-                    browserWindow.webview.rpc.send.getCloudInfrasResult({ infras: [] });
+                    return { infras: [] };
                 }
             },
 
             getDecryptedCredentialRequest: async ({ infraId, key }: { infraId: string; key: string }) => {
                 try {
                     const inf = _cloudInfras.find((c: any) => c.id === infraId);
-                    if (!inf) {
-                        browserWindow.webview.rpc.send.getDecryptedCredentialResult({ ok: false, value: "" });
-                        return;
-                    }
+                    if (!inf) return { ok: false, value: "" };
                     const raw = inf.credentials?.[key] || "";
                     const value = raw ? await decryptCredential(raw) : "";
-                    browserWindow.webview.rpc.send.getDecryptedCredentialResult({ ok: true, value });
+                    return { ok: true, value };
                 } catch (e: any) {
-                    browserWindow.webview.rpc.send.getDecryptedCredentialResult({ ok: false, value: "" });
+                    return { ok: false, value: "" };
                 }
-            },
-
-            loadScriptRequest: async ({ url }: { url: string }) => {
-                browserWindow.webview.rpc.send.loadScriptResult({ url });
             },
 
             saveCloudInfrasRequest: async ({ infras }: { infras: any[] }) => {
@@ -261,9 +244,9 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                         return { ...inf, credentials: encCreds };
                     }));
                     setCloudInfras(merged);
-                    browserWindow.webview.rpc.send.saveCloudInfrasResult({ ok: true });
+                    return { ok: true };
                 } catch (e: any) {
-                    browserWindow.webview.rpc.send.saveCloudInfrasResult({ ok: false, error: e.message });
+                    return { ok: false, error: e.message };
                 }
             },
 
@@ -279,20 +262,17 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                     allowsMultipleSelection: false,
                 });
                 const path = paths?.length ? paths[0] : null;
-                if (!path) {
-                    browserWindow.webview.rpc.send.openFileResult({ content: null, path: null });
-                    return;
-                }
+                if (!path) return { content: null, path: null };
                 try {
                     const content = await Bun.file(path).text();
                     _lastDir = dirname(path);
                     await saveLastDir(path);
                     console.log("[open]", path);
                     _updateProjectData(content, path);
-                    browserWindow.webview.rpc.send.openFileResult({ content, path });
+                    return { content, path };
                 } catch (e: any) {
                     console.error("[open error]", e.message);
-                    browserWindow.webview.rpc.send.openFileResult({ content: null, path: null });
+                    return { content: null, path: null };
                 }
             },
 
@@ -303,8 +283,7 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 }
                 if (!savePath) {
                     console.log("[save] cancelled");
-                    browserWindow.webview.rpc.send.saveFileResult({ ok: false, path: null, cancelled: true });
-                    return;
+                    return { ok: false, path: null, cancelled: true };
                 }
                 try {
                     const contentWithPass = await _injectVjaPass(content);
@@ -313,10 +292,10 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                     await saveLastDir(savePath);
                     console.log("[saved]", savePath);
                     _updateProjectData(contentWithPass, savePath);
-                    browserWindow.webview.rpc.send.saveFileResult({ ok: true, path: savePath, cancelled: false });
+                    return { ok: true, path: savePath, cancelled: false };
                 } catch (e: any) {
                     console.error("[save error]", e.message);
-                    browserWindow.webview.rpc.send.saveFileResult({ ok: false, path: null, cancelled: false });
+                    return { ok: false, path: null, cancelled: false };
                 }
             },
 
@@ -326,24 +305,18 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 const savePath = await saveFileDialog(defaultName ?? ("file." + fileExt), fileExt);
                 if (!savePath) {
                     console.log("[saveGenericFile] cancelled");
-                    browserWindow.webview.rpc.send.saveGenericFileResult({ ok: false, path: null, cancelled: true });
-                    return;
+                    return { ok: false, path: null, cancelled: true };
                 }
                 try {
                     await Bun.write(savePath, content);
                     _lastDir = dirname(savePath);
                     await saveLastDir(savePath);
                     console.log("[saveGenericFile saved]", savePath);
-                    browserWindow.webview.rpc.send.saveGenericFileResult({ ok: true, path: savePath, cancelled: false });
+                    return { ok: true, path: savePath, cancelled: false };
                 } catch (e: any) {
                     console.error("[saveGenericFile error]", e.message);
-                    browserWindow.webview.rpc.send.saveGenericFileResult({ ok: false, path: null, cancelled: false });
+                    return { ok: false, path: null, cancelled: false };
                 }
-            },
-
-            closeAppRequest: () => {
-                console.log("[close]");
-                browserWindow.close();
             },
 
             // ══ DB: SELECT ════════════════════════════
@@ -353,10 +326,10 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                     const db = getDb();
                     const stmt = db.prepare(sql);
                     const rows = (params ? stmt.all(...params) : stmt.all()) as DbRow[];
-                    browserWindow.webview.rpc.send.dbQueryResult({ ok: true, rows });
+                    return { ok: true, rows };
                 } catch (e: any) {
                     writeLog("error", `dbQuery: ${e.message} | sql: ${sql}`);
-                    browserWindow.webview.rpc.send.dbQueryResult({ ok: false, rows: [], error: e.message });
+                    return { ok: false, rows: [], error: e.message };
                 }
             },
 
@@ -371,14 +344,14 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                         changes: res.changes,
                         lastInsertRowid: Number(res.lastInsertRowid),
                     };
-                    browserWindow.webview.rpc.send.dbExecuteResult({ ok: true, result });
+                    return { ok: true, result };
                 } catch (e: any) {
                     writeLog("error", `dbExecute: ${e.message} | sql: ${sql}`);
-                    browserWindow.webview.rpc.send.dbExecuteResult({
+                    return {
                         ok: false,
                         result: { changes: 0, lastInsertRowid: 0 },
                         error: e.message,
-                    });
+                    };
                 }
             },
 
@@ -394,10 +367,10 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                         }
                     });
                     tx();
-                    browserWindow.webview.rpc.send.dbTransactionResult({ ok: true });
+                    return { ok: true };
                 } catch (e: any) {
                     writeLog("error", `dbTransaction: ${e.message}`);
-                    browserWindow.webview.rpc.send.dbTransactionResult({ ok: false, error: e.message });
+                    return { ok: false, error: e.message };
                 }
             },
 
@@ -410,11 +383,264 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                         for (const ddl of ddlStatements) db.run(ddl);
                     });
                     tx();
-                    browserWindow.webview.rpc.send.dbInitResult({ ok: true });
+                    return { ok: true };
                 } catch (e: any) {
                     writeLog("error", `dbInit: ${e.message}`);
-                    browserWindow.webview.rpc.send.dbInitResult({ ok: false, error: e.message });
+                    return { ok: false, error: e.message };
                 }
+            },
+
+            // ══ ファイル操作 ══════════════════════════
+
+            fileReadRequest: async ({ path }) => {
+                try {
+                    const content = await Bun.file(path).text();
+                    return { ok: true, content };
+                } catch (e: any) {
+                    return { ok: false, content: null, error: e.message };
+                }
+            },
+
+            fileWriteRequest: async ({ path, content }) => {
+                try {
+                    await Bun.write(path, content);
+                    return { ok: true };
+                } catch (e: any) {
+                    return { ok: false, error: e.message };
+                }
+            },
+
+            fileReadBytesRequest: async ({ path }) => {
+                try {
+                    const buf = await Bun.file(path).arrayBuffer();
+                    const data = Array.from(new Uint8Array(buf));
+                    return { ok: true, data };
+                } catch (e: any) {
+                    return { ok: false, data: null, error: e.message };
+                }
+            },
+
+            fileWriteBytesRequest: async ({ path, data }) => {
+                try {
+                    await Bun.write(path, new Uint8Array(data));
+                    return { ok: true };
+                } catch (e: any) {
+                    return { ok: false, error: e.message };
+                }
+            },
+
+            fileExistsRequest: async ({ path }) => {
+                return { ok: true, value: existsSync(path) };
+            },
+
+            fileDeleteRequest: async ({ path }) => {
+                try {
+                    rmSync(path);
+                    return { ok: true };
+                } catch (e: any) {
+                    return { ok: false, error: e.message };
+                }
+            },
+
+            fileCopyRequest: async ({ src, dest }) => {
+                try {
+                    copyFileSync(src, dest);
+                    return { ok: true };
+                } catch (e: any) {
+                    return { ok: false, error: e.message };
+                }
+            },
+
+            // ══ ディレクトリ操作 ══════════════════════
+
+            dirCreateRequest: async ({ path }) => {
+                try {
+                    mkdirSync(path, { recursive: true });
+                    return { ok: true };
+                } catch (e: any) {
+                    return { ok: false, error: e.message };
+                }
+            },
+
+            dirDeleteRequest: async ({ path }) => {
+                try {
+                    rmSync(path, { recursive: true, force: true });
+                    return { ok: true };
+                } catch (e: any) {
+                    return { ok: false, error: e.message };
+                }
+            },
+
+            dirListRequest: async ({ path }) => {
+                try {
+                    const entries = readdirSync(path).map(String);
+                    return { ok: true, entries };
+                } catch (e: any) {
+                    return { ok: false, entries: [], error: e.message };
+                }
+            },
+
+            dirExistsRequest: async ({ path }) => {
+                return { ok: true, value: existsSync(path) };
+            },
+
+            // ══ アプリ情報 ════════════════════════════
+
+            appInfoRequest: () => {
+                return {
+                    ok: true,
+                    info: {
+                        dataDir: _dataDir,
+                        dbPath: _dbPath,
+                        appName: _appName,
+                        version: _VERSION,
+                    },
+                };
+            },
+
+            // ══ プロジェクト実行 ══════════════════════
+
+            runProjectRequest: async ({ projectData }) => {
+                try {
+                    if (_projectWindow) {
+                        await Utils.showMessageBox({
+                            type: "info", title: _TITLE,
+                            message: "プロジェクトは既に実行中です。",
+                            buttons: ["OK"],
+                        });
+                        return { ok: false, error: "already running" };
+                    }
+                    // フロントから受け取った最新データを使用
+                    if (!_updateProjectData(projectData)) {
+                        return { ok: false, error: "プロジェクトデータの解析に失敗しました" };
+                    }
+                    const result = await buildProjectFiles();
+                    if (!result.ok) {
+                        return { ok: false, error: result.error };
+                    }
+                    await openProjectWindow(result.startFormPath!, result.startFormW!, result.startFormH!, () => {
+                        browserWindow.webview.rpc.send.stopProjectResult({ ok: true });
+                    });
+                    return { ok: true };
+                } catch (e: any) {
+                    return { ok: false, error: e.message };
+                }
+            },
+
+            // ── バージョン情報取得 ────────────────────────
+            getVersionRequest: () => {
+                return {
+                    version: _VERSION,
+                    runMode: _VJA_RUN_MODE,
+                };
+            },
+
+            // ── UI設定読み込み ───────────────────────────
+            loadUiConfigRequest: () => {
+                try {
+                    const configPath = join(_configDir, "ui-config.json");
+                    if (existsSync(configPath)) {
+                        const cfg = JSON.parse(readFileSync(configPath, "utf-8"));
+                        return {
+                            uiFontSize:       cfg.uiFontSize       || 13,
+                            uiFontFamily:     cfg.uiFontFamily     || "",
+                            editorFontSize:   cfg.editorFontSize   || 16,
+                            editorFontFamily: cfg.editorFontFamily || "'Courier New', Courier, monospace",
+                            leftPanelW:       cfg.leftPanelW       || 110,
+                            rightPanelW:      cfg.rightPanelW      || 420,
+                        };
+                    }
+                } catch (e) { console.error("[vja] loadUiConfig failed:", e); }
+                return {
+                    uiFontSize: 13, uiFontFamily: "",
+                    editorFontSize: 16, editorFontFamily: "'Courier New', Courier, monospace",
+                    leftPanelW: 110, rightPanelW: 420,
+                };
+            },
+
+            // ══ コンパイル ════════════════════════════════
+
+            compileProjectRequest: async () => {
+                try {
+                    return await compileProject();
+                } catch (e: any) {
+                    return { ok: false, error: e.message };
+                }
+            },
+
+            // ══ DBデータクリア ════════════════════════════
+
+            clearProjectDbRequest: async () => {
+                try {
+                    if (!_currentProjectDbDir) {
+                        return { ok: false, error: "プロジェクトが読み込まれていません" };
+                    }
+                    closeProjectDb();
+                    clearProjectDb(_currentProjectDbDir);
+                    return { ok: true };
+                } catch (e: any) {
+                    return { ok: false, error: e.message };
+                }
+            },
+
+            navigateFormRequest: async ({ formName }) => {
+                try {
+                    const result = getProjectFormPath(formName);
+                    if (!result.ok) {
+                        return { ok: false, error: result.error };
+                    }
+                    await navigateProjectWindow(result.path!, result.w!, result.h!);
+                    return { ok: true };
+                } catch (e: any) {
+                    return { ok: false, error: e.message };
+                }
+            },
+
+            // ══ セッション管理 ════════════════════════
+
+            sessionGetRequest: ({ key }) => {
+                return { ok: true, value: _session.get(key) ?? null };
+            },
+
+            sessionSetRequest: ({ key, value }) => {
+                if (value === null) {
+                    _session.delete(key);
+                } else {
+                    _session.set(key, value);
+                }
+                return { ok: true };
+            },
+        },
+        messages: {
+            // ══ プロジェクトファイル操作 ══════════════
+
+            // ── DevTools 開閉 ─────────────────────────
+            toggleDevToolsRequest: async () => {
+                if (_devToolsOpen) {
+                    browserWindow.webview.closeDevTools();
+                    _devToolsOpen = false;
+                } else {
+                    browserWindow.webview.openDevTools();
+                    _devToolsOpen = true;
+                }
+            },
+
+            // ── プロジェクト停止（デザイナーウィンドウから） ──
+            // 明示的な呼び出しの応答と、プロジェクトウィンドウが予期せず
+            // 閉じられた場合の通知を兼ねるためmessagesのまま
+            // （詳細はsrc/shared/types.tsのコメント参照）。
+            stopProjectRequest: async () => {
+                closeProjectWindow();
+                browserWindow.webview.rpc.send.stopProjectResult({ ok: true });
+            },
+
+            loadScriptRequest: async ({ url }: { url: string }) => {
+                browserWindow.webview.rpc.send.loadScriptResult({ url });
+            },
+
+            closeAppRequest: () => {
+                console.log("[close]");
+                browserWindow.close();
             },
 
             // ══ 汎用fetch（WebKitタイムアウト回避） ══════════════════════════
@@ -451,157 +677,10 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 browserWindow.webview.rpc.send.fetchAbortResult({ fetchId });
             },
 
-            // ══ ファイル操作 ══════════════════════════
-
-            fileReadRequest: async ({ path }) => {
-                try {
-                    const content = await Bun.file(path).text();
-                    browserWindow.webview.rpc.send.fileReadResult({ ok: true, content });
-                } catch (e: any) {
-                    browserWindow.webview.rpc.send.fileReadResult({ ok: false, content: null, error: e.message });
-                }
-            },
-
-            fileWriteRequest: async ({ path, content }) => {
-                try {
-                    await Bun.write(path, content);
-                    browserWindow.webview.rpc.send.fileWriteResult({ ok: true });
-                } catch (e: any) {
-                    browserWindow.webview.rpc.send.fileWriteResult({ ok: false, error: e.message });
-                }
-            },
-
-            fileReadBytesRequest: async ({ path }) => {
-                try {
-                    const buf = await Bun.file(path).arrayBuffer();
-                    const data = Array.from(new Uint8Array(buf));
-                    browserWindow.webview.rpc.send.fileReadBytesResult({ ok: true, data });
-                } catch (e: any) {
-                    browserWindow.webview.rpc.send.fileReadBytesResult({ ok: false, data: null, error: e.message });
-                }
-            },
-
-            fileWriteBytesRequest: async ({ path, data }) => {
-                try {
-                    await Bun.write(path, new Uint8Array(data));
-                    browserWindow.webview.rpc.send.fileWriteBytesResult({ ok: true });
-                } catch (e: any) {
-                    browserWindow.webview.rpc.send.fileWriteBytesResult({ ok: false, error: e.message });
-                }
-            },
-
-            fileExistsRequest: async ({ path }) => {
-                const value = existsSync(path);
-                browserWindow.webview.rpc.send.fileExistsResult({ ok: true, value });
-            },
-
-            fileDeleteRequest: async ({ path }) => {
-                try {
-                    rmSync(path);
-                    browserWindow.webview.rpc.send.fileDeleteResult({ ok: true });
-                } catch (e: any) {
-                    browserWindow.webview.rpc.send.fileDeleteResult({ ok: false, error: e.message });
-                }
-            },
-
-            fileCopyRequest: async ({ src, dest }) => {
-                try {
-                    copyFileSync(src, dest);
-                    browserWindow.webview.rpc.send.fileCopyResult({ ok: true });
-                } catch (e: any) {
-                    browserWindow.webview.rpc.send.fileCopyResult({ ok: false, error: e.message });
-                }
-            },
-
-            // ══ ディレクトリ操作 ══════════════════════
-
-            dirCreateRequest: async ({ path }) => {
-                try {
-                    mkdirSync(path, { recursive: true });
-                    browserWindow.webview.rpc.send.dirCreateResult({ ok: true });
-                } catch (e: any) {
-                    browserWindow.webview.rpc.send.dirCreateResult({ ok: false, error: e.message });
-                }
-            },
-
-            dirDeleteRequest: async ({ path }) => {
-                try {
-                    rmSync(path, { recursive: true, force: true });
-                    browserWindow.webview.rpc.send.dirDeleteResult({ ok: true });
-                } catch (e: any) {
-                    browserWindow.webview.rpc.send.dirDeleteResult({ ok: false, error: e.message });
-                }
-            },
-
-            dirListRequest: async ({ path }) => {
-                try {
-                    const entries = readdirSync(path).map(String);
-                    browserWindow.webview.rpc.send.dirListResult({ ok: true, entries });
-                } catch (e: any) {
-                    browserWindow.webview.rpc.send.dirListResult({ ok: false, entries: [], error: e.message });
-                }
-            },
-
-            dirExistsRequest: async ({ path }) => {
-                const value = existsSync(path);
-                browserWindow.webview.rpc.send.dirExistsResult({ ok: true, value });
-            },
-
             // ══ ログ ══════════════════════════════════
 
             logRequest: async ({ level, message }) => {
                 writeLog(level, message);
-                browserWindow.webview.rpc.send.logResult({ ok: true });
-            },
-
-            // ══ アプリ情報 ════════════════════════════
-
-            appInfoRequest: () => {
-                browserWindow.webview.rpc.send.appInfoResult({
-                    ok: true,
-                    info: {
-                        dataDir: _dataDir,
-                        dbPath: _dbPath,
-                        appName: _appName,
-                        version: _VERSION,
-                    },
-                });
-            },
-
-            // ══ ダイアログ ════════════════════════════
-
-
-
-            // ══ プロジェクト実行 ══════════════════════
-
-            runProjectRequest: async ({ projectData }) => {
-                try {
-                    if (_projectWindow) {
-                        await Utils.showMessageBox({
-                            type: "info", title: _TITLE,
-                            message: "プロジェクトは既に実行中です。",
-                            buttons: ["OK"],
-                        });
-                        browserWindow.webview.rpc.send.runProjectResult({ ok: false, error: "already running" });
-                        return;
-                    }
-                    // フロントから受け取った最新データを使用
-                    if (!_updateProjectData(projectData)) {
-                        browserWindow.webview.rpc.send.runProjectResult({ ok: false, error: "プロジェクトデータの解析に失敗しました" });
-                        return;
-                    }
-                    const result = await buildProjectFiles();
-                    if (!result.ok) {
-                        browserWindow.webview.rpc.send.runProjectResult({ ok: false, error: result.error });
-                        return;
-                    }
-                    await openProjectWindow(result.startFormPath!, result.startFormW!, result.startFormH!, () => {
-                        browserWindow.webview.rpc.send.stopProjectResult({ ok: true });
-                    });
-                    browserWindow.webview.rpc.send.runProjectResult({ ok: true });
-                } catch (e: any) {
-                    browserWindow.webview.rpc.send.runProjectResult({ ok: false, error: e.message });
-                }
             },
 
             // ══ フォルダを開く ════════════════════════════
@@ -610,100 +689,13 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 Utils.showItemInFolder(path);
             },
 
-            // ── バージョン情報取得 ────────────────────────
-            getVersionRequest: () => {
-                browserWindow.webview.rpc.send.getVersionResult({
-                    version: _VERSION,
-                    runMode: _VJA_RUN_MODE,
-                });
-            },
-
-            // ── UI設定 ───────────────────────────────────
+            // ── UI設定保存 ───────────────────────────────
             saveUiConfigRequest: async ({ uiFontSize, uiFontFamily, editorFontSize, editorFontFamily, leftPanelW, rightPanelW }) => {
                 try {
                     const configPath = join(_configDir, "ui-config.json");
                     if (!existsSync(_configDir)) mkdirSync(_configDir, { recursive: true });
                     await Bun.write(configPath, JSON.stringify({ uiFontSize, uiFontFamily, editorFontSize, editorFontFamily, leftPanelW, rightPanelW }, null, 2));
                 } catch (e) { console.error("[vja] saveUiConfig failed:", e); }
-            },
-            loadUiConfigRequest: () => {
-                try {
-                    const configPath = join(_configDir, "ui-config.json");
-                    if (existsSync(configPath)) {
-                        const cfg = JSON.parse(readFileSync(configPath, "utf-8"));
-                        browserWindow.webview.rpc.send.loadUiConfigResult({
-                            uiFontSize:       cfg.uiFontSize       || 13,
-                            uiFontFamily:     cfg.uiFontFamily     || "",
-                            editorFontSize:   cfg.editorFontSize   || 16,
-                            editorFontFamily: cfg.editorFontFamily || "'Courier New', Courier, monospace",
-                            leftPanelW:       cfg.leftPanelW       || 110,
-                            rightPanelW:      cfg.rightPanelW      || 420,
-                        });
-                        return;
-                    }
-                } catch (e) { console.error("[vja] loadUiConfig failed:", e); }
-                browserWindow.webview.rpc.send.loadUiConfigResult({
-                    uiFontSize: 13, uiFontFamily: "",
-                    editorFontSize: 16, editorFontFamily: "'Courier New', Courier, monospace",
-                    leftPanelW: 110, rightPanelW: 420,
-                });
-            },
-
-            // ══ コンパイル ════════════════════════════════
-
-            compileProjectRequest: async () => {
-                try {
-                    const result = await compileProject();
-                    browserWindow.webview.rpc.send.compileProjectResult(result);
-                } catch (e: any) {
-                    browserWindow.webview.rpc.send.compileProjectResult({ ok: false, error: e.message });
-                }
-            },
-
-            // ══ DBデータクリア ════════════════════════════
-
-            clearProjectDbRequest: async () => {
-                try {
-                    if (!_currentProjectDbDir) {
-                        browserWindow.webview.rpc.send.clearProjectDbResult({ ok: false, error: "プロジェクトが読み込まれていません" });
-                        return;
-                    }
-                    closeProjectDb();
-                    clearProjectDb(_currentProjectDbDir);
-                    browserWindow.webview.rpc.send.clearProjectDbResult({ ok: true });
-                } catch (e: any) {
-                    browserWindow.webview.rpc.send.clearProjectDbResult({ ok: false, error: e.message });
-                }
-            },
-
-            navigateFormRequest: async ({ formName }) => {
-                try {
-                    const result = getProjectFormPath(formName);
-                    if (!result.ok) {
-                        browserWindow.webview.rpc.send.navigateFormResult({ ok: false, error: result.error });
-                        return;
-                    }
-                    await navigateProjectWindow(result.path!, result.w!, result.h!);
-                    browserWindow.webview.rpc.send.navigateFormResult({ ok: true });
-                } catch (e: any) {
-                    browserWindow.webview.rpc.send.navigateFormResult({ ok: false, error: e.message });
-                }
-            },
-
-            // ══ セッション管理 ════════════════════════
-
-            sessionGetRequest: ({ key }) => {
-                const value = _session.get(key) ?? null;
-                browserWindow.webview.rpc.send.sessionGetResult({ ok: true, value });
-            },
-
-            sessionSetRequest: ({ key, value }) => {
-                if (value === null) {
-                    _session.delete(key);
-                } else {
-                    _session.set(key, value);
-                }
-                browserWindow.webview.rpc.send.sessionSetResult({ ok: true });
             },
         },
     },

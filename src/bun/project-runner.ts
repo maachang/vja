@@ -243,34 +243,29 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
     _session.clear();
 
     _projectRPC = BrowserView.defineRPC<VjaRPCType>({
-        maxRequestTime: 5000,
+        // タイムアウト無し（Infinity）。理由はsrc/bun/index.tsの同項目コメント参照。
+        maxRequestTime: Infinity,
         handlers: {
-            requests: {},
-            messages: {
-                logRequest: ({ level, message }) => {
-                    writeLog(level, `[proj] ${message}`);
-                },
-                pageLoadedRequest: () => {
-                    // ページ読み込み完了 → 遷移をロック
-                    _projectWindow?.webview.setNavigationRules(["^*"]);
-                },
-
+            // 【重要】requests/messagesの使い分けの方針はsrc/shared/types.tsの
+            // コメントを参照。以前は全RPCをmessages（一方向・相関ID無し）で
+            // 自前実装しており、同種のRPCを連続で呼ぶと先の呼び出しのPromiseが
+            // 後発呼び出しに上書きされ永久にハングするバグがあった。
+            requests: {
                 navigateFormRequest: async ({ formName }) => {
                     try {
                         const result = getProjectFormPath(formName);
                         if (!result.ok || !result.path) {
-                            console.error("[project] navigate error:", result.error);
-                            return;
+                            return { ok: false, error: result.error };
                         }
                         await navigateProjectWindow(result.path, result.w!, result.h!);
+                        return { ok: true };
                     } catch (e: any) {
-                        console.error("[project] navigate error:", e.message);
+                        return { ok: false, error: e.message };
                     }
                 },
 
                 sessionGetRequest: ({ key }) => {
-                    const value = _session.get(key) ?? null;
-                    _projectWindow?.webview.rpc.send.sessionGetResult({ ok: true, value });
+                    return { ok: true, value: _session.get(key) ?? null };
                 },
                 sessionSetRequest: ({ key, value }) => {
                     if (key === "__clear_all__" && value === "__clear__") {
@@ -280,29 +275,27 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
                     } else {
                         _session.set(key, value);
                     }
-                    _projectWindow?.webview.rpc.send.sessionSetResult({ ok: true });
+                    return { ok: true };
                 },
-
-                stopProjectRequest: async () => { closeProjectWindow(); onStop?.(); },
 
                 dbQueryRequest: async ({ sql, params }) => {
                     try {
                         const rows = _dbQuery(sql, params);
-                        _projectWindow?.webview.rpc.send.dbQueryResult({ ok: true, rows });
+                        return { ok: true, rows };
                     } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.dbQueryResult({ ok: false, rows: [], error: e.message });
+                        return { ok: false, rows: [], error: e.message };
                     }
                 },
                 dbExecuteRequest: async ({ sql, params }) => {
                     try {
                         const r = _dbExecute(sql, params);
-                        _projectWindow?.webview.rpc.send.dbExecuteResult({
+                        return {
                             ok: true, result: { changes: r?.changes ?? 0, lastInsertRowid: Number(r?.lastInsertRowid ?? 0) },
-                        });
+                        };
                     } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.dbExecuteResult({
+                        return {
                             ok: false, result: { changes: 0, lastInsertRowid: 0 }, error: e.message,
-                        });
+                        };
                     }
                 },
                 dbTransactionRequest: async ({ statements }) => {
@@ -311,9 +304,9 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
                         db.transaction(() => {
                             for (const { sql, params } of statements) _dbExecute(sql, params);
                         })();
-                        _projectWindow?.webview.rpc.send.dbTransactionResult({ ok: true });
+                        return { ok: true };
                     } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.dbTransactionResult({ ok: false, error: e.message });
+                        return { ok: false, error: e.message };
                     }
                 },
                 dbInitRequest: async ({ ddlStatements }) => {
@@ -322,9 +315,9 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
                         db.transaction(() => {
                             for (const ddl of ddlStatements) _dbExecute(ddl);
                         })();
-                        _projectWindow?.webview.rpc.send.dbInitResult({ ok: true });
+                        return { ok: true };
                     } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.dbInitResult({ ok: false, error: e.message });
+                        return { ok: false, error: e.message };
                     }
                 },
 
@@ -339,13 +332,12 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
                         const path = paths?.[0] ?? null;
                         if (path) {
                             const content = await Bun.file(path).text();
-                            _projectWindow?.webview.rpc.send.openFileResult({ content, path });
-                        } else {
-                            _projectWindow?.webview.rpc.send.openFileResult({ content: null, path: null });
+                            return { content, path };
                         }
+                        return { content: null, path: null };
                     } catch (e: any) {
                         console.error("[project] openFileRequest failed:", e.message);
-                        _projectWindow?.webview.rpc.send.openFileResult({ content: null, path: null });
+                        return { content: null, path: null };
                     }
                 },
 
@@ -353,110 +345,121 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
                     try {
                         closeProjectDb();
                         clearProjectDb(_currentProjectDbDir);
-                        _projectWindow?.webview.rpc.send.clearProjectDbResult({ ok: true });
+                        return { ok: true };
                     } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.clearProjectDbResult({ ok: false, error: e.message });
+                        return { ok: false, error: e.message };
                     }
                 },
 
                 fileReadRequest: async ({ path }) => {
                     try {
                         const content = await Bun.file(path).text();
-                        _projectWindow?.webview.rpc.send.fileReadResult({ ok: true, content });
+                        return { ok: true, content };
                     } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.fileReadResult({ ok: false, content: null, error: e.message });
+                        return { ok: false, content: null, error: e.message };
                     }
                 },
                 fileWriteRequest: async ({ path, content }) => {
                     try {
                         await Bun.write(path, content);
-                        _projectWindow?.webview.rpc.send.fileWriteResult({ ok: true });
+                        return { ok: true };
                     } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.fileWriteResult({ ok: false, error: e.message });
+                        return { ok: false, error: e.message };
                     }
                 },
                 fileReadBytesRequest: async ({ path }) => {
                     try {
                         const buf = await Bun.file(path).arrayBuffer();
                         const data = Array.from(new Uint8Array(buf));
-                        _projectWindow?.webview.rpc.send.fileReadBytesResult({ ok: true, data });
+                        return { ok: true, data };
                     } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.fileReadBytesResult({ ok: false, data: null, error: e.message });
+                        return { ok: false, data: null, error: e.message };
                     }
                 },
                 fileWriteBytesRequest: async ({ path, data }) => {
                     try {
                         await Bun.write(path, new Uint8Array(data));
-                        _projectWindow?.webview.rpc.send.fileWriteBytesResult({ ok: true });
+                        return { ok: true };
                     } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.fileWriteBytesResult({ ok: false, error: e.message });
+                        return { ok: false, error: e.message };
                     }
                 },
                 fileExistsRequest: async ({ path }) => {
-                    _projectWindow?.webview.rpc.send.fileExistsResult({ ok: true, value: existsSync(path) });
+                    return { ok: true, value: existsSync(path) };
                 },
                 fileDeleteRequest: async ({ path }) => {
                     try {
                         rmSync(path);
-                        _projectWindow?.webview.rpc.send.fileDeleteResult({ ok: true });
+                        return { ok: true };
                     } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.fileDeleteResult({ ok: false, error: e.message });
+                        return { ok: false, error: e.message };
                     }
                 },
                 fileCopyRequest: async ({ src, dest }) => {
                     try {
                         copyFileSync(src, dest);
-                        _projectWindow?.webview.rpc.send.fileCopyResult({ ok: true });
+                        return { ok: true };
                     } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.fileCopyResult({ ok: false, error: e.message });
+                        return { ok: false, error: e.message };
                     }
                 },
                 dirCreateRequest: async ({ path }) => {
                     try {
                         mkdirSync(path, { recursive: true });
-                        _projectWindow?.webview.rpc.send.dirCreateResult({ ok: true });
+                        return { ok: true };
                     } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.dirCreateResult({ ok: false, error: e.message });
+                        return { ok: false, error: e.message };
                     }
                 },
                 dirDeleteRequest: async ({ path }) => {
                     try {
                         rmSync(path, { recursive: true, force: true });
-                        _projectWindow?.webview.rpc.send.dirDeleteResult({ ok: true });
+                        return { ok: true };
                     } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.dirDeleteResult({ ok: false, error: e.message });
+                        return { ok: false, error: e.message };
                     }
                 },
                 dirListRequest: async ({ path }) => {
                     try {
                         const entries = readdirSync(path).map(String);
-                        _projectWindow?.webview.rpc.send.dirListResult({ ok: true, entries });
+                        return { ok: true, entries };
                     } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.dirListResult({ ok: false, entries: [], error: e.message });
+                        return { ok: false, entries: [], error: e.message };
                     }
                 },
                 dirExistsRequest: async ({ path }) => {
-                    _projectWindow?.webview.rpc.send.dirExistsResult({ ok: true, value: existsSync(path) });
+                    return { ok: true, value: existsSync(path) };
                 },
 
                 getCloudInfrasRequest: async () => {
                     // クレデンシャルは getDecryptedCredentialRequest で個別取得するため、ここでは復号しない
-                    _projectWindow?.webview.rpc.send.getCloudInfrasResult({ infras: _cloudInfras });
+                    return { infras: _cloudInfras };
                 },
                 getDecryptedCredentialRequest: async ({ infraId, key }) => {
                     try {
                         const inf = _cloudInfras.find((c: any) => c.id === infraId);
-                        if (!inf) {
-                            _projectWindow?.webview.rpc.send.getDecryptedCredentialResult({ ok: false, value: "" });
-                            return;
-                        }
+                        if (!inf) return { ok: false, value: "" };
                         const raw = inf.credentials?.[key] || "";
                         const value = raw ? await decryptCredential(raw) : "";
-                        _projectWindow?.webview.rpc.send.getDecryptedCredentialResult({ ok: true, value });
+                        return { ok: true, value };
                     } catch (e: any) {
-                        _projectWindow?.webview.rpc.send.getDecryptedCredentialResult({ ok: false, value: "" });
+                        return { ok: false, value: "" };
                     }
                 },
+            },
+            messages: {
+                logRequest: ({ level, message }) => {
+                    writeLog(level, `[proj] ${message}`);
+                },
+                pageLoadedRequest: () => {
+                    // ページ読み込み完了 → 遷移をロック
+                    _projectWindow?.webview.setNavigationRules(["^*"]);
+                },
+
+                // 明示的な呼び出しの応答と、予期せず閉じられた場合の通知を
+                // 兼ねるためmessagesのまま（詳細はsrc/shared/types.tsのコメント参照）。
+                stopProjectRequest: async () => { closeProjectWindow(); onStop?.(); },
+
                 loadScriptRequest: async ({ url }) => {
                     _projectWindow?.webview.rpc.send.loadScriptResult({ url });
                 },

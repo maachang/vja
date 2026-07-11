@@ -7,6 +7,23 @@ import type { RPCSchema } from "electrobun/bun";
 export type DbRow = Record<string, string | number | boolean | null>;
 export type DbResult = { changes: number; lastInsertRowid: number };
 
+// ── テーブル定義型 ────────────────────────────────────
+// vja-table-validation.js のテーブル編集UI・DB初期化(dbInit)で使うテーブル定義。
+export type TableColumnDef = {
+    name: string;
+    type: string;
+    notNull: boolean;
+    pk: boolean;
+    index: boolean;
+    useDefault: boolean;
+    default: string;
+};
+export type TableDef = {
+    name: string;
+    description?: string;
+    columns: TableColumnDef[];
+};
+
 // ── ファイル関連型 ────────────────────────────────────
 export type FileReadResult = {
     ok: boolean;
@@ -26,87 +43,177 @@ export type AppInfo = {
 };
 
 // ── RPC 型定義 ────────────────────────────────────────
+// 【重要】1回のリクエストに対して1回の応答が返る種類のRPCは、すべて
+// `requests`（electrobun組み込みのrequest/response機構）で定義する。
+// `requests`は呼び出しごとに自動でIDを採番し、応答を個別に対応付け、
+// maxRequestTime（BrowserView.defineRPC側で指定）でタイムアウムする。
+// 以前は全RPCを`messages`（一方向・相関ID無し）で自前実装しており、
+// 同種のRPCを連続で呼ぶと先の呼び出しのPromiseが後発呼び出しに上書きされ
+// 永久にハングするバグがあった（`pending`が種別ごとに1スロットしか
+// 持てない構造だったため）。`requests`に統一することでこの問題自体が
+// 構造的に発生しなくなる。
+//
+// `messages`に残すのは、以下のような「1回の呼び出しに対し1回の応答が
+// 返る」という関係が成り立たないもの、または応答を必要としない一方向の
+// 通知のみ：
+// - stopProjectRequest/stopProjectResult: 明示的な停止呼び出しの応答と、
+//   プロジェクトウィンドウが×ボタン等で予期せず閉じられた際の非同期通知
+//   （呼び出し無しで発生しうる）の両方を兼ねるため、request/responseの
+//   1:1関係にならない。
+// - fetchRequest/fetchResult, fetchAbortRequest/fetchAbortResult:
+//   既にfetchIdベースの相関の仕組み（bridge-common.ts）で複数同時呼び出し
+//   に対応済みのため、変更不要。
+// - closeAppRequest/toggleDevToolsRequest/openFolderRequest/
+//   saveUiConfigRequest/logRequest/pageLoadedRequest/appDialogRequest/
+//   loadScriptRequest: 応答を必要としない一方向の通知。
 export type VjaRPCType = {
     // ════════════════════════════════════════════════
     // Bun 側で実行される関数
     // ════════════════════════════════════════════════
     bun: RPCSchema<{
-        requests: {};
-        messages: {
+        requests: {
             // ── プロジェクトファイル操作 ──────────────────
-            openFileRequest: { filter: string; lastPath: string | null };
+            openFileRequest: {
+                params: { filter: string; lastPath: string | null };
+                response: { content: string | null; path: string | null };
+            };
             saveFileRequest: {
-                content: string;
-                defaultName: string;
-                lastPath: string | null;
+                params: { content: string; defaultName: string; lastPath: string | null };
+                response: { ok: boolean; path: string | null; cancelled: boolean };
             };
             // 汎用ファイル保存（マスターCSVダウンロード等）
             saveGenericFileRequest: {
-                content: string;
-                defaultName: string;
-                ext?: string;
+                params: { content: string; defaultName: string; ext?: string };
+                response: { ok: boolean; path: string | null; cancelled: boolean };
             };
-            closeAppRequest: { _?: never };
 
             // ── DB: SELECT ───────────────────────────────
-            // result: DbRow[] を dbQueryResult で返す
             dbQueryRequest: {
-                sql: string;
-                params?: (string | number | boolean | null)[];
+                params: { sql: string; params?: (string | number | boolean | null)[] };
+                response: { ok: boolean; rows: DbRow[]; error?: string };
             };
 
             // ── DB: INSERT / UPDATE / DELETE ─────────────
             dbExecuteRequest: {
-                sql: string;
-                params?: (string | number | boolean | null)[];
+                params: { sql: string; params?: (string | number | boolean | null)[] };
+                response: { ok: boolean; result: DbResult; error?: string };
             };
 
             // ── DB: トランザクション ──────────────────────
             // statements を順番に execute する
             dbTransactionRequest: {
-                statements: {
-                    sql: string;
-                    params?: (string | number | boolean | null)[];
-                }[];
+                params: {
+                    statements: {
+                        sql: string;
+                        params?: (string | number | boolean | null)[];
+                    }[];
+                };
+                response: { ok: boolean; error?: string };
             };
 
             // ── DB: 初期化（テーブル作成） ────────────────
             dbInitRequest: {
-                ddlStatements: string[]; // CREATE TABLE IF NOT EXISTS ...
+                params: { ddlStatements: string[] }; // CREATE TABLE IF NOT EXISTS ...
+                response: { ok: boolean; error?: string };
             };
 
             // ── ファイル: テキスト読み込み ─────────────────
-            fileReadRequest: { path: string };
+            fileReadRequest: { params: { path: string }; response: FileReadResult };
 
             // ── ファイル: テキスト書き込み ─────────────────
-            fileWriteRequest: { path: string; content: string };
+            fileWriteRequest: { params: { path: string; content: string }; response: FileWriteResult };
 
             // ── ファイル: バイナリ読み込み ─────────────────
-            fileReadBytesRequest: { path: string };
+            fileReadBytesRequest: {
+                params: { path: string };
+                response: { ok: boolean; data: number[] | null; error?: string };
+            };
 
             // ── ファイル: バイナリ書き込み ─────────────────
-            fileWriteBytesRequest: { path: string; data: number[] }; // Uint8Array → number[]
+            fileWriteBytesRequest: {
+                params: { path: string; data: number[] }; // Uint8Array → number[]
+                response: FileWriteResult;
+            };
 
             // ── ファイル: 存在確認 ────────────────────────
-            fileExistsRequest: { path: string };
+            fileExistsRequest: { params: { path: string }; response: BoolResult };
 
             // ── ファイル: 削除 ────────────────────────────
-            fileDeleteRequest: { path: string };
+            fileDeleteRequest: { params: { path: string }; response: FileWriteResult };
 
             // ── ファイル: コピー ──────────────────────────
-            fileCopyRequest: { src: string; dest: string };
+            fileCopyRequest: { params: { src: string; dest: string }; response: FileWriteResult };
 
             // ── ディレクトリ: 作成 ────────────────────────
-            dirCreateRequest: { path: string };
+            dirCreateRequest: { params: { path: string }; response: FileWriteResult };
 
             // ── ディレクトリ: 削除 ────────────────────────
-            dirDeleteRequest: { path: string };
+            dirDeleteRequest: { params: { path: string }; response: FileWriteResult };
 
             // ── ディレクトリ: 一覧 ────────────────────────
-            dirListRequest: { path: string };
+            dirListRequest: { params: { path: string }; response: DirListResult };
 
             // ── ディレクトリ: 存在確認 ────────────────────
-            dirExistsRequest: { path: string };
+            dirExistsRequest: { params: { path: string }; response: BoolResult };
+
+            // ── アプリ情報取得 ────────────────────────────
+            appInfoRequest: { params: { _?: never }; response: { ok: boolean; info: AppInfo } };
+
+            // ── プロジェクト実行 ──────────────────────────
+            runProjectRequest: { params: { projectData: string }; response: { ok: boolean; error?: string } };
+
+            // ── DBデータクリア ────────────────────────────
+            clearProjectDbRequest: { params: { _?: never }; response: { ok: boolean; error?: string } };
+
+            // ── フォーム切り替え（プロジェクト実行中） ────
+            navigateFormRequest: { params: { formName: string }; response: { ok: boolean; error?: string } };
+
+            // ── クラウドインフラ設定 ──────────────────────
+            getCloudInfrasRequest: { params: { _?: never }; response: { infras: any[] } };
+            saveCloudInfrasRequest: { params: { infras: any[] }; response: { ok: boolean; error?: string } };
+            getDecryptedCredentialRequest: {
+                params: { infraId: string; key: string };
+                response: { ok: boolean; value: string };
+            };
+
+            // ── セッション取得 ────────────────────────────
+            sessionGetRequest: { params: { key: string }; response: { ok: boolean; value: string | null } };
+
+            // ── セッション設定 ────────────────────────────
+            sessionSetRequest: { params: { key: string; value: string | null }; response: { ok: boolean } };
+
+            // ── プロジェクトコンパイル ────────────────────
+            compileProjectRequest: {
+                params: { _?: never };
+                response: { ok: boolean; error?: string; distPath?: string };
+            };
+
+            // ── バージョン情報取得 ────────────────────────
+            getVersionRequest: { params: { _?: never }; response: { version: string; runMode: string } };
+
+            // ── UI設定読み込み ────────────────────────────
+            loadUiConfigRequest: {
+                params: { _?: never };
+                response: {
+                    uiFontSize: number; uiFontFamily: string;
+                    editorFontSize: number; editorFontFamily: string;
+                    leftPanelW: number; rightPanelW: number;
+                };
+            };
+        };
+        messages: {
+            closeAppRequest: { _?: never };
+
+            // ── プロジェクト停止（デザイナーウィンドウから） ──
+            // 明示的な呼び出しの応答と、プロジェクトウィンドウが予期せず
+            // 閉じられた場合の非同期通知を兼ねるため、request/responseの
+            // 1:1関係にならず、messagesのままとしている（詳細は上部コメント）。
+            stopProjectRequest: { _?: never };
+
+            pageLoadedRequest: { _?: never };
+
+            // ── DevTools ─────────────────────────────────
+            toggleDevToolsRequest: { _?: never };
 
             // ── ログ ──────────────────────────────────────
             logRequest: {
@@ -114,57 +221,21 @@ export type VjaRPCType = {
                 message: string;
             };
 
-            // ── アプリ情報取得 ────────────────────────────
-            appInfoRequest: { _?: never };
-
             // ── ダイアログ ────────────────────────────────
             appDialogRequest: {
                 type: "alert" | "confirm";
                 message: string;
             };
 
-            // ── プロジェクト実行 ──────────────────────────
-            runProjectRequest: { projectData: string };
-
-            // ── プロジェクト停止 ──────────────────────────
-            stopProjectRequest: { _?: never };
-
-            // ── DBデータクリア ────────────────────────────
-            clearProjectDbRequest: { _?: never };
-
-            // ── フォーム切り替え（プロジェクト実行中） ────
-            navigateFormRequest: { formName: string };
-            pageLoadedRequest: { _?: never };
-
-            // ── DevTools ─────────────────────────────────
-            toggleDevToolsRequest: { _?: never };
-
-            // ── クラウドインフラ設定 ──────────────────────
-            getCloudInfrasRequest: { _?: never };
-            saveCloudInfrasRequest: { infras: any[] };
-            getDecryptedCredentialRequest: { infraId: string; key: string };
             loadScriptRequest: { url: string };
-
-            // ── セッション取得 ────────────────────────────
-            sessionGetRequest: { key: string };
-
-            // ── セッション設定 ────────────────────────────
-            sessionSetRequest: { key: string; value: string | null };
-
-            // ── プロジェクトコンパイル ────────────────────
-            compileProjectRequest: { _?: never };
 
             // ── フォルダを開く ────────────────────────────
             openFolderRequest: { path: string };
 
-            // ── バージョン情報取得 ────────────────────────
-            getVersionRequest: { _?: never };
-
-            // ── UI設定 ───────────────────────────────────
+            // ── UI設定保存 ───────────────────────────────
             saveUiConfigRequest: { uiFontSize: number; uiFontFamily: string; editorFontSize: number; editorFontFamily: string; leftPanelW: number; rightPanelW: number };
-            loadUiConfigRequest: { _?: never };
 
-            // ── 汎用fetch ─────────────────────────────────
+            // ── 汎用fetch（fetchIdで独自に相関管理済み） ──
             fetchRequest: { fetchId: string; url: string; method?: string; headers?: Record<string, string>; body?: string };
             fetchAbortRequest: { fetchId: string };
         };
@@ -176,85 +247,16 @@ export type VjaRPCType = {
     webview: RPCSchema<{
         requests: {};
         messages: {
-            // ── プロジェクトファイル操作結果 ──────────────
-            openFileResult: { content: string | null; path: string | null };
-            saveFileResult: {
-                ok: boolean;
-                path: string | null;
-                cancelled: boolean;
-            };
-            saveGenericFileResult: {
-                ok: boolean;
-                path: string | null;
-                cancelled: boolean;
-            };
-
-            // ── DB 結果 ───────────────────────────────────
-            dbQueryResult: { ok: boolean; rows: DbRow[]; error?: string };
-            dbExecuteResult: { ok: boolean; result: DbResult; error?: string };
-            dbTransactionResult: { ok: boolean; error?: string };
-            dbInitResult: { ok: boolean; error?: string };
-
-            // ── ファイル結果 ──────────────────────────────
-            fileReadResult: FileReadResult;
-            fileWriteResult: FileWriteResult;
-            fileReadBytesResult: {
-                ok: boolean;
-                data: number[] | null;
-                error?: string;
-            };
-            fileWriteBytesResult: FileWriteResult;
-            fileExistsResult: BoolResult;
-            fileDeleteResult: FileWriteResult;
-            fileCopyResult: FileWriteResult;
-
-            // ── ディレクトリ結果 ──────────────────────────
-            dirCreateResult: FileWriteResult;
-            dirDeleteResult: FileWriteResult;
-            dirListResult: DirListResult;
-            dirExistsResult: BoolResult;
+            // ── プロジェクト停止結果（詳細はbun.messagesのコメント参照） ──
+            stopProjectResult: { ok: boolean };
 
             // ── ログ結果 ──────────────────────────────────
             logResult: { ok: boolean };
 
-            // ── アプリ情報結果 ────────────────────────────
-            appInfoResult: { ok: boolean; info: AppInfo };
-
             // ── ダイアログ結果 ────────────────────────────
             appDialogResult: { ok: boolean; confirmed?: boolean };
 
-            // ── プロジェクト実行結果 ──────────────────────
-            runProjectResult: { ok: boolean; error?: string };
-
-            // ── プロジェクト停止結果 ──────────────────────
-            stopProjectResult: { ok: boolean };
-
-            // ── DBデータクリア結果 ────────────────────────
-            clearProjectDbResult: { ok: boolean; error?: string };
-
-            // ── フォーム切り替え結果 ──────────────────────
-            navigateFormResult: { ok: boolean; error?: string };
-
-            // ── クラウドインフラ設定結果 ──────────────────
-            getCloudInfrasResult: { infras: any[] };
-            saveCloudInfrasResult: { ok: boolean; error?: string };
-            getDecryptedCredentialResult: { ok: boolean; value: string };
             loadScriptResult: { url: string };
-
-            // ── セッション取得結果 ────────────────────────
-            sessionGetResult: { ok: boolean; value: string | null };
-
-            // ── セッション設定結果 ────────────────────────
-            sessionSetResult: { ok: boolean };
-
-            // ── プロジェクトコンパイル結果 ────────────────
-            compileProjectResult: { ok: boolean; error?: string; distPath?: string };
-
-            // ── バージョン情報結果 ────────────────────────
-            getVersionResult: { version: string; runMode: string };
-
-            // ── UI設定結果 ───────────────────────────────
-            loadUiConfigResult: { uiFontSize: number; uiFontFamily: string; editorFontSize: number; editorFontFamily: string; leftPanelW: number; rightPanelW: number };
 
             // ── 汎用fetch結果 ─────────────────────────────
             fetchResult: { fetchId: string; ok: boolean; status: number; headers: Record<string, string>; body: string; error?: string };

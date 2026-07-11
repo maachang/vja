@@ -5,78 +5,24 @@
 import { Electroview } from "electrobun/view";
 import "./vja-runtime.js";
 import type { VjaRPCType } from "../shared/types";
-import { makeFetchMaps, makeVjaFetch, makeFetchResultHandlers, type Pending } from "./bridge-common";
-
-const pending = {
-    navigateForm: null as Pending<{ ok: boolean; error?: string }> | null,
-    openFile: null as Pending<{ content: string | null; path: string | null }> | null,
-    saveGenericFile: null as Pending<{ ok: boolean; path: string | null; cancelled: boolean }> | null,
-    dbInit: null as Pending<{ ok: boolean; error?: string }> | null,
-    sessionGet: null as Pending<{ ok: boolean; value: string | null }> | null,
-    sessionSet: null as Pending<{ ok: boolean }> | null,
-    dbQuery: null as Pending<{ ok: boolean; rows: any[]; error?: string }> | null,
-    dbExecute: null as Pending<{ ok: boolean; result: any; error?: string }> | null,
-    dbTransaction: null as Pending<{ ok: boolean; error?: string }> | null,
-    fileRead: null as Pending<{ ok: boolean; content: string | null; error?: string }> | null,
-    fileWrite: null as Pending<{ ok: boolean; error?: string }> | null,
-    fileReadBytes: null as Pending<{ ok: boolean; data: number[] | null; error?: string }> | null,
-    fileWriteBytes: null as Pending<{ ok: boolean; error?: string }> | null,
-    fileExists: null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
-    fileDelete: null as Pending<{ ok: boolean; error?: string }> | null,
-    fileCopy: null as Pending<{ ok: boolean; error?: string }> | null,
-    dirCreate: null as Pending<{ ok: boolean; error?: string }> | null,
-    dirDelete: null as Pending<{ ok: boolean; error?: string }> | null,
-    dirList: null as Pending<{ ok: boolean; entries: string[]; error?: string }> | null,
-    dirExists: null as Pending<{ ok: boolean; value: boolean; error?: string }> | null,
-    getCloudInfras: null as Pending<{ infras: any[] }> | null,
-    getDecryptedCred: null as Pending<{ ok: boolean; value: string }> | null,
-};
+import { makeFetchMaps, makeVjaFetch, makeFetchResultHandlers } from "./bridge-common";
 
 // fetch は複数同時リクエスト対応のため fetchId ベースのMapで管理（bridge-common）
 const { fetchPendingMap: _fetchPendingMap, fetchAbortPendingMap: _fetchAbortPendingMap } = makeFetchMaps();
 
-const resolve = <K extends keyof typeof pending>(
-    key: K,
-    val: NonNullable<typeof pending[K]> extends Pending<infer T> ? T : never,
-) => {
-    const p = pending[key] as Pending<any> | null;
-    if (p) { pending[key] = null; p.resolve(val); }
-};
-
-const mkPromise = <K extends keyof typeof pending, T>(
-    key: K, send: () => void,
-): Promise<T> => new Promise<T>((res, rej) => {
-    pending[key] = { resolve: res as any, reject: rej } as any;
-    send();
-});
-
 // ── RPC 定義 ──────────────────────────────────────────
+// 【重要】requests/messagesの使い分けの方針はsrc/shared/types.tsのコメント
+// 参照。以前は全RPCをmessages（一方向・相関ID無し）で自前実装しており、
+// 同種のRPCを連続で呼ぶと先の呼び出しのPromiseが上書きされ永久にハングする
+// バグがあった。requestsに統一することでこの問題自体が発生しなくなる。
+// maxRequestTime: Infinity（タイムアウト無し）。理由はsrc/bun/index.tsの
+// 同項目コメント参照（openFileRequest等ユーザー操作待ちのrequestと、
+// dbQuery等の高速なrequestが同一RPCインスタンス上に混在するため）。
 const rpc = Electroview.defineRPC<VjaRPCType>({
+    maxRequestTime: Infinity,
     handlers: {
         requests: {},
         messages: {
-            navigateFormResult: (v: any) => resolve("navigateForm", v),
-            openFileResult: (v: any) => resolve("openFile", v),
-            saveGenericFileResult: (v: any) => resolve("saveGenericFile", v),
-            dbInitResult: (v: any) => resolve("dbInit", v),
-            sessionGetResult: (v: any) => resolve("sessionGet", v),
-            sessionSetResult: (v: any) => resolve("sessionSet", v),
-            dbQueryResult: (v: any) => resolve("dbQuery", v),
-            dbExecuteResult: (v: any) => resolve("dbExecute", v),
-            dbTransactionResult: (v: any) => resolve("dbTransaction", v),
-            fileReadResult: (v: any) => resolve("fileRead", v),
-            fileWriteResult: (v: any) => resolve("fileWrite", v),
-            fileReadBytesResult: (v: any) => resolve("fileReadBytes", v),
-            fileWriteBytesResult: (v: any) => resolve("fileWriteBytes", v),
-            fileExistsResult: (v: any) => resolve("fileExists", v),
-            fileDeleteResult: (v: any) => resolve("fileDelete", v),
-            fileCopyResult: (v: any) => resolve("fileCopy", v),
-            dirCreateResult: (v: any) => resolve("dirCreate", v),
-            dirDeleteResult: (v: any) => resolve("dirDelete", v),
-            dirListResult: (v: any) => resolve("dirList", v),
-            dirExistsResult: (v: any) => resolve("dirExists", v),
-            getCloudInfrasResult: (v: any) => resolve("getCloudInfras", v),
-            getDecryptedCredentialResult: (v: any) => resolve("getDecryptedCred", v),
             ...makeFetchResultHandlers(_fetchPendingMap, _fetchAbortPendingMap),
             loadScriptResult: () => { },
         },
@@ -85,6 +31,7 @@ const rpc = Electroview.defineRPC<VjaRPCType>({
 
 const _ev = new Electroview({ rpc });
 const s = _ev.rpc.send;
+const r = _ev.rpc.request;
 const w = window as any;
 
 // ── 共通ユーティリティ ────────────────────────────────
@@ -173,32 +120,28 @@ w.vja.confirm = (message: string) => w.vja.app.showConfirm(message);
 // DB操作
 w.vja.db = {
     query: (sql: string, params?: any[]) =>
-        mkPromise("dbQuery", () => s.dbQueryRequest({ sql, params }))
-            .then((r: any) => r.rows),
+        r.dbQueryRequest({ sql, params }).then((res: any) => res.rows),
     execute: (sql: string, params?: any[]) =>
-        mkPromise("dbExecute", () => s.dbExecuteRequest({ sql, params }))
-            .then((r: any) => r.ok ? r.result : null),
+        r.dbExecuteRequest({ sql, params }).then((res: any) => res.ok ? res.result : null),
     transaction: (statements: { sql: string; params?: any[] }[]) =>
-        mkPromise("dbTransaction", () => s.dbTransactionRequest({ statements }))
-            .then((r: any) => r.ok),
+        r.dbTransactionRequest({ statements }).then((res: any) => res.ok),
 
     // テーブル全行削除
     clearTable: (tableName: string) =>
-        mkPromise("dbExecute", () => s.dbExecuteRequest({ sql: `DELETE FROM ${tableName}` }))
-            .then(() => { }),
+        r.dbExecuteRequest({ sql: `DELETE FROM ${tableName}` }).then(() => { }),
 
     // テーブル一覧取得
     tables: async (): Promise<string[]> => {
-        const rows = await mkPromise<any>("dbQuery", () =>
-            s.dbQueryRequest({ sql: "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name" })
-        ).then((r: any) => r.rows);
-        return rows.map((r: any) => r.name);
+        const rows = await r.dbQueryRequest({
+            sql: "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name",
+        }).then((res: any) => res.rows);
+        return rows.map((row: any) => row.name);
     },
 
     // CSV取得（where句省略可）
     exportCsv: async (tableName: string, where?: string): Promise<string> => {
         const sql = where ? `SELECT * FROM ${tableName} WHERE ${where}` : `SELECT * FROM ${tableName}`;
-        const rows: any[] = await mkPromise<any>("dbQuery", () => s.dbQueryRequest({ sql })).then((r: any) => r.rows);
+        const rows: any[] = await r.dbQueryRequest({ sql }).then((res: any) => res.rows);
         if (rows.length === 0) return "";
         const headers = Object.keys(rows[0]);
         const esc = (v: any) => {
@@ -208,14 +151,14 @@ w.vja.db = {
             }
             return str;
         };
-        const lines = [headers.join(","), ...rows.map(r => headers.map(h => esc(r[h])).join(","))];
+        const lines = [headers.join(","), ...rows.map(row => headers.map(h => esc(row[h])).join(","))];
         return lines.join("\n");
     },
 
     // JSON取得（where句省略可）
     exportJson: async (tableName: string, where?: string): Promise<any[]> => {
         const sql = where ? `SELECT * FROM ${tableName} WHERE ${where}` : `SELECT * FROM ${tableName}`;
-        return mkPromise<any>("dbQuery", () => s.dbQueryRequest({ sql })).then((r: any) => r.rows);
+        return r.dbQueryRequest({ sql }).then((res: any) => res.rows);
     },
 
     // CSVインポート（既存データに追記）
@@ -230,7 +173,7 @@ w.vja.db = {
                 params: vals,
             };
         });
-        await mkPromise("dbTransaction", () => s.dbTransactionRequest({ statements }));
+        await r.dbTransactionRequest({ statements });
     },
 
     // JSONインポート（既存データに追記）
@@ -241,87 +184,70 @@ w.vja.db = {
             sql: `INSERT INTO ${tableName} (${headers.join(",")}) VALUES (${headers.map(() => "?").join(",")})`,
             params: headers.map(h => row[h] ?? null),
         }));
-        await mkPromise("dbTransaction", () => s.dbTransactionRequest({ statements }));
+        await r.dbTransactionRequest({ statements });
     },
 };
 
 // フォーム切り替え
 w.vja.project = {
     navigate: (formName: string) =>
-        mkPromise("navigateForm", () => s.navigateFormRequest({ formName }))
-            .then(() => { }),
+        r.navigateFormRequest({ formName }).then(() => { }),
 };
 
 // セッション
 w.vja.session = {
     get: (key: string, defaultVal: any = null) =>
-        mkPromise("sessionGet", () => s.sessionGetRequest({ key }))
-            .then((r: any) => r.value !== null ? r.value : defaultVal),
+        r.sessionGetRequest({ key }).then((res: any) => res.value !== null ? res.value : defaultVal),
     set: (key: string, value: string | null) =>
-        mkPromise("sessionSet", () => s.sessionSetRequest({ key, value }))
-            .then((r: any) => r.ok),
+        r.sessionSetRequest({ key, value }).then((res: any) => res.ok),
     delete: (key: string) =>
-        mkPromise("sessionSet", () => s.sessionSetRequest({ key, value: null }))
-            .then((r: any) => r.ok),
+        r.sessionSetRequest({ key, value: null }).then((res: any) => res.ok),
     clear: () =>
-        mkPromise("sessionSet", () => s.sessionSetRequest({ key: "__clear_all__", value: "__clear__" }))
-            .then((r: any) => r.ok),
+        r.sessionSetRequest({ key: "__clear_all__", value: "__clear__" }).then((res: any) => res.ok),
 };
 
 // ファイル選択（openCsv/openJson用）
 // vja._openFile を差し替えることで vja.io.openFile/openCsv/openJson がRPC経由になる
 w.vja._openFile = (filter: string = "*") =>
-    mkPromise("openFile", () => s.openFileRequest({ filter, lastPath: null }));
+    r.openFileRequest({ filter, lastPath: null });
 
 // ファイル保存（saveCsv/saveJson/saveText用）
 // vja._saveFile を差し替えることで vja.io.saveCsv/saveJson/saveText がネイティブ保存ダイアログ経由になる
 w.vja._saveFile = (content: string, filename: string, ext: string = "txt") =>
-    mkPromise("saveGenericFile", () => s.saveGenericFileRequest({ content, defaultName: filename, ext }));
+    r.saveGenericFileRequest({ content, defaultName: filename, ext });
 
 // DB init
 w.vja.db.init = (ddlStatements: string[]) =>
-    mkPromise("dbInit", () => s.dbInitRequest({ ddlStatements }))
-        .then((r: any) => r.ok);
+    r.dbInitRequest({ ddlStatements }).then((res: any) => res.ok);
 
 // ファイル操作
 w.vja.file = {
     read: (path: string) =>
-        mkPromise("fileRead", () => s.fileReadRequest({ path }))
-            .then((r: any) => r.ok ? r.content : null),
+        r.fileReadRequest({ path }).then((res: any) => res.ok ? res.content : null),
     write: (path: string, content: string) =>
-        mkPromise("fileWrite", () => s.fileWriteRequest({ path, content }))
-            .then((r: any) => r.ok),
+        r.fileWriteRequest({ path, content }).then((res: any) => res.ok),
     exists: (path: string) =>
-        mkPromise("fileExists", () => s.fileExistsRequest({ path }))
-            .then((r: any) => r.value),
+        r.fileExistsRequest({ path }).then((res: any) => res.value),
     readBytes: (path: string) =>
-        mkPromise("fileReadBytes", () => s.fileReadBytesRequest({ path }))
-            .then((r: any) => r.data ? new Uint8Array(r.data) : null),
+        r.fileReadBytesRequest({ path }).then((res: any) => res.data ? new Uint8Array(res.data) : null),
     writeBytes: (path: string, data: Uint8Array) =>
-        mkPromise("fileWriteBytes", () => s.fileWriteBytesRequest({ path, data: Array.from(data) }))
-            .then((r: any) => r.ok),
+        r.fileWriteBytesRequest({ path, data: Array.from(data) }).then((res: any) => res.ok),
     delete: (path: string) =>
-        mkPromise("fileDelete", () => s.fileDeleteRequest({ path }))
-            .then((r: any) => r.ok),
+        r.fileDeleteRequest({ path }).then((res: any) => res.ok),
     copy: (src: string, dest: string) =>
-        mkPromise("fileCopy", () => s.fileCopyRequest({ src, dest }))
-            .then((r: any) => r.ok),
+        r.fileCopyRequest({ src, dest }).then((res: any) => res.ok),
 };
 
 // ディレクトリ操作
 w.vja.dir = {
     create: (path: string) =>
-        mkPromise("dirCreate", () => s.dirCreateRequest({ path }))
-            .then((r: any) => r.ok),
+        r.dirCreateRequest({ path }).then((res: any) => res.ok),
     delete: (path: string) =>
-        mkPromise("dirDelete", () => s.dirDeleteRequest({ path }))
-            .then((r: any) => r.ok),
+        r.dirDeleteRequest({ path }).then((res: any) => res.ok),
     list: (path: string) =>
-        mkPromise("dirList", () => s.dirListRequest({ path }))
-            .then((r: any) => r.entries),
+        r.dirListRequest({ path }).then((res: any) => res.entries),
     exists: (path: string) =>
-        mkPromise("dirExists", () => s.dirExistsRequest({ path }))
-            .then((r: any) => r.value),
+        r.dirExistsRequest({ path }).then((res: any) => res.value),
 };
 
 // vja.fetch / vja.fetchAbort（Bun経由の汎用fetch、WebKitタイムアウト回避）
@@ -331,11 +257,9 @@ w.vja.fetchAbort = _vjaFetch.fetchAbort;
 
 w.vja.cloud = w.vja.cloud || {};
 w.vja.cloud.list = () =>
-    mkPromise("getCloudInfras", () => s.getCloudInfrasRequest({}))
-        .then((r: any) => r.infras);
+    r.getCloudInfrasRequest({}).then((res: any) => res.infras);
 w.vja.cloud.getCredential = (infraId: string, key: string) =>
-    mkPromise("getDecryptedCred", () => s.getDecryptedCredentialRequest({ infraId, key }))
-        .then((r: any) => r.value);
+    r.getDecryptedCredentialRequest({ infraId, key }).then((res: any) => res.value);
 
 // console.* を vja.log.* (RPC経由) に差し替え
 const _origConsole = {
