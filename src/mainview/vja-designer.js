@@ -307,16 +307,17 @@ function initFormBodyEvents() {
 /* ═══════════════════════════════════════════
   ADD WIDGET
 ═══════════════════════════════════════════ */
-// toolの規定値にフォームテーマを適用したprops（fontFamily/fontSize/fg/
-// baseColor/borderColor/bg）を生成する。addWidget()と一括配置系で共有。
-function makeThemedProps(tool) {
-    const props = { ...tool.def };
-    // w,h は def から除いて別管理
-    delete props.w;
-    delete props.h;
-    const sync = WIDGET_DEFS[tool.tag]?.themeSync || [];
-    if (sync.length === 0) return props; // このタグはテーマ連動対象外
-    const theme = getFormTheme();
+// テーマ連動対象プロパティ（font/color）を、themeSync設定に従ってpropsへ
+// 適用する共通処理。
+// 【重要・再発防止メモ】以前はmakeThemedProps()/resetWidgetTheme()/
+// applyThemeToWidgets()の3箇所に同じロジックが個別にコピーされており、
+// テーマ連動の仕様を変える際に1箇所直しても他が追従しない不具合の
+// 温床になっていた。テーマ連動ロジックを変更する場合は、必ずこの関数
+// だけを直せばよいようにするため、3箇所ともここを呼び出す形にしている。
+// 戻り値: そのタグがテーマ連動対象かどうか（false ならpropsは変更していない）。
+function _applyThemeSync(props, tag, theme) {
+    const sync = WIDGET_DEFS[tag]?.themeSync || [];
+    if (sync.length === 0) return false; // このタグはテーマ連動対象外
     if (sync.includes("font")) {
         if ("fontFamily" in props) props.fontFamily = theme.fontFamily;
         if ("fontSize" in props) props.fontSize = theme.fontSize;
@@ -326,8 +327,19 @@ function makeThemedProps(tool) {
     props.baseColor = theme.baseColor;
     if (sync.includes("color")) {
         props.borderColor = darkenColor(theme.baseColor, 0.911);
-        if (tool.tag === "button") props.bg = theme.baseColor;
+        if (tag === "button") props.bg = theme.baseColor;
     }
+    return true;
+}
+
+// toolの規定値にフォームテーマを適用したprops（fontFamily/fontSize/fg/
+// baseColor/borderColor/bg）を生成する。addWidget()と一括配置系で共有。
+function makeThemedProps(tool) {
+    const props = { ...tool.def };
+    // w,h は def から除いて別管理
+    delete props.w;
+    delete props.h;
+    _applyThemeSync(props, tool.tag, getFormTheme());
     return props;
 }
 
@@ -832,19 +844,8 @@ function setProp(k, sp, val, wid) {
 // フォント/borderColor/bgを再計算する。個別カスタマイズ済み（baseColor===null）は対象外。
 function resetWidgetTheme(wid) {
     const w = getWidget(wid);
-    const sync = w ? (WIDGET_DEFS[w.tag]?.themeSync || []) : [];
-    if (!w || sync.length === 0) return;
-    const theme = getFormTheme();
-    if (sync.includes("font")) {
-        if ("fontFamily" in w.props) w.props.fontFamily = theme.fontFamily;
-        if ("fontSize" in w.props) w.props.fontSize = theme.fontSize;
-        if ("fg" in w.props) w.props.fg = theme.fg;
-    }
-    w.props.baseColor = theme.baseColor;
-    if (sync.includes("color")) {
-        w.props.borderColor = darkenColor(theme.baseColor, 0.911);
-        if (w.tag === "button") w.props.bg = theme.baseColor;
-    }
+    if (!w) return;
+    if (!_applyThemeSync(w.props, w.tag, getFormTheme())) return;
     commitWidget(w, { props: true });
 }
 
@@ -853,18 +854,7 @@ function applyThemeToWidgets() {
     const theme = getFormTheme();
     getProjectData().widgets.forEach((w) => {
         if (w.props.baseColor == null) return;
-        const sync = WIDGET_DEFS[w.tag]?.themeSync || [];
-        if (sync.length === 0) return;
-        if (sync.includes("font")) {
-            if ("fontFamily" in w.props) w.props.fontFamily = theme.fontFamily;
-            if ("fontSize" in w.props) w.props.fontSize = theme.fontSize;
-            if ("fg" in w.props) w.props.fg = theme.fg;
-        }
-        w.props.baseColor = theme.baseColor;
-        if (sync.includes("color")) {
-            w.props.borderColor = darkenColor(theme.baseColor, 0.911);
-            if (w.tag === "button") w.props.bg = theme.baseColor;
-        }
+        if (!_applyThemeSync(w.props, w.tag, theme)) return;
         renderWidget(w, false);
     });
 }

@@ -3,12 +3,17 @@
 // index.ts（デザイナー）と standalone-index.ts（スタンドアロン）の両方で使用する
 
 import { BrowserWindow, BrowserView, Utils } from "electrobun/bun";
-import { existsSync, mkdirSync, rmSync, readdirSync, copyFileSync } from "fs";
+import { existsSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { writeLog } from "./logger";
 import { decompressGzip, parseCsvLine } from "./bun-utils";
 import { initProjectDb, clearProjectDb, getProjectDb, closeProjectDb } from "./db-manager";
 import type { VjaRPCType, TableDef } from "../shared/types";
+import {
+    fileReadHandler, fileWriteHandler, fileReadBytesHandler, fileWriteBytesHandler,
+    fileExistsHandler, fileDeleteHandler, fileCopyHandler,
+    dirCreateHandler, dirDeleteHandler, dirListHandler, dirExistsHandler,
+} from "./fs-rpc-handlers";
 
 // ── 暗号化基盤 ────────────────────────────────────────
 export const _VJA_PASSPHRASE = "vja-form-designer-2024-xK9mPqR7nL2wT5vY";
@@ -351,85 +356,19 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
                     }
                 },
 
-                fileReadRequest: async ({ path }) => {
-                    try {
-                        const content = await Bun.file(path).text();
-                        return { ok: true, content };
-                    } catch (e: any) {
-                        return { ok: false, content: null, error: e.message };
-                    }
-                },
-                fileWriteRequest: async ({ path, content }) => {
-                    try {
-                        await Bun.write(path, content);
-                        return { ok: true };
-                    } catch (e: any) {
-                        return { ok: false, error: e.message };
-                    }
-                },
-                fileReadBytesRequest: async ({ path }) => {
-                    try {
-                        const buf = await Bun.file(path).arrayBuffer();
-                        const data = Array.from(new Uint8Array(buf));
-                        return { ok: true, data };
-                    } catch (e: any) {
-                        return { ok: false, data: null, error: e.message };
-                    }
-                },
-                fileWriteBytesRequest: async ({ path, data }) => {
-                    try {
-                        await Bun.write(path, new Uint8Array(data));
-                        return { ok: true };
-                    } catch (e: any) {
-                        return { ok: false, error: e.message };
-                    }
-                },
-                fileExistsRequest: async ({ path }) => {
-                    return { ok: true, value: existsSync(path) };
-                },
-                fileDeleteRequest: async ({ path }) => {
-                    try {
-                        rmSync(path);
-                        return { ok: true };
-                    } catch (e: any) {
-                        return { ok: false, error: e.message };
-                    }
-                },
-                fileCopyRequest: async ({ src, dest }) => {
-                    try {
-                        copyFileSync(src, dest);
-                        return { ok: true };
-                    } catch (e: any) {
-                        return { ok: false, error: e.message };
-                    }
-                },
-                dirCreateRequest: async ({ path }) => {
-                    try {
-                        mkdirSync(path, { recursive: true });
-                        return { ok: true };
-                    } catch (e: any) {
-                        return { ok: false, error: e.message };
-                    }
-                },
-                dirDeleteRequest: async ({ path }) => {
-                    try {
-                        rmSync(path, { recursive: true, force: true });
-                        return { ok: true };
-                    } catch (e: any) {
-                        return { ok: false, error: e.message };
-                    }
-                },
-                dirListRequest: async ({ path }) => {
-                    try {
-                        const entries = readdirSync(path).map(String);
-                        return { ok: true, entries };
-                    } catch (e: any) {
-                        return { ok: false, entries: [], error: e.message };
-                    }
-                },
-                dirExistsRequest: async ({ path }) => {
-                    return { ok: true, value: existsSync(path) };
-                },
+                // src/bun/index.tsと処理内容が変わらない純粋な処理のため、
+                // fs-rpc-handlers.tsに共通化している
+                fileReadRequest: fileReadHandler,
+                fileWriteRequest: fileWriteHandler,
+                fileReadBytesRequest: fileReadBytesHandler,
+                fileWriteBytesRequest: fileWriteBytesHandler,
+                fileExistsRequest: fileExistsHandler,
+                fileDeleteRequest: fileDeleteHandler,
+                fileCopyRequest: fileCopyHandler,
+                dirCreateRequest: dirCreateHandler,
+                dirDeleteRequest: dirDeleteHandler,
+                dirListRequest: dirListHandler,
+                dirExistsRequest: dirExistsHandler,
 
                 getCloudInfrasRequest: async () => {
                     // クレデンシャルは getDecryptedCredentialRequest で個別取得するため、ここでは復号しない

@@ -5,6 +5,18 @@
 (function () {
     "use strict";
 
+    // YAMLをMarkdown風フェンス(~~~yaml ... ~~~)でプロンプトに埋め込む際、
+    // 埋め込む内容自体に「~~~」という並びが含まれていると、そこでフェンスが
+    // 終わったとAIに誤認され、以降の内容が別の指示として解釈される恐れがある
+    // （開発者自身が書くYAMLが対象なので発生頻度は低いが、起こり得る）。
+    // Markdownのコードフェンスのエスケープ手法にならい、埋め込む内容に含まれる
+    // 最長の連続~より1文字長いフェンスを動的に使うことで回避する。
+    const _safeYamlFence = function (content) {
+        const matches = String(content || "").match(/~{3,}/g) || [];
+        const maxLen = matches.reduce((m, s) => Math.max(m, s.length), 3);
+        return "~".repeat(maxLen + 1);
+    };
+
     // ### [AIP説明で利用]
     // [フロントエンド]利用可能なjavascript関数の説明.
     // 「vja ランタイムの追加・変更・削除がある場合は、反映が必要」
@@ -1088,9 +1100,9 @@ ${rule}
 
 [vjaランタイム(yaml)]
 ---
-~~~yaml
+${_safeYamlFence(vjaUseJsInfo)}yaml
 ${vjaUseJsInfo}
-~~~
+${_safeYamlFence(vjaUseJsInfo)}
 ---
 `.trim() + "\n");
     };
@@ -1225,9 +1237,9 @@ ${rule}
 
 [vja Runtime(yaml)]
 ---
-~~~yaml
+${_safeYamlFence(vjaUseJsInfo)}yaml
 ${vjaUseJsInfo}
-~~~
+${_safeYamlFence(vjaUseJsInfo)}
 ---
 `.trim() + "\n");
     };
@@ -1280,6 +1292,8 @@ ${vjaUseJsInfo}
             formConstCtx,
             tablesCtx,
             extRuntimeDoc,
+            optionalApiDocCtx,
+            learnedFixesCtx,
         },
     ) {
         const programType = isAppEvent ? "TypeScript" : "JavaScript";
@@ -1324,12 +1338,13 @@ ${globalConstCtx}
 ---
 ${tablesCtx}
 ---
-
+${optionalApiDocCtx ? "\n### 追加で利用可能なAPI（このイベントで有効化されたもの）\n---\n" + optionalApiDocCtx + "\n---\n" : ""}
+${learnedFixesCtx ? "\n### プロジェクト固有の注意点\n---\n" + learnedFixesCtx + "\n---\n" : ""}
 ### 拡張ランタイム(yaml)
 ---
-~~~yaml
+${_safeYamlFence(extRuntimeDoc)}yaml
 ${extRuntimeDoc}
-~~~
+${_safeYamlFence(extRuntimeDoc)}
 ---`.trim();
 
         let instructions = "";
@@ -1345,9 +1360,9 @@ ${extRuntimeDoc}
 
 [YAML仕様]
 ---
-~~~yaml
+${_safeYamlFence(yamlDef)}yaml
 ${_removeYamlShComments(yamlDef)}
-~~~
+${_safeYamlFence(yamlDef)}
 ---`;
         }
 
@@ -1479,9 +1494,9 @@ ${optionalApiDocCtx ? "\n### Additional Available APIs (enabled for this event)\
 ${learnedFixesCtx ? "\n### Project-Specific Notes\n---\n" + learnedFixesCtx + "\n---\n" : ""}
 ### Extended Runtime(yaml)
 ---
-~~~yaml
+${_safeYamlFence(extRuntimeDoc)}yaml
 ${extRuntimeDoc}
-~~~
+${_safeYamlFence(extRuntimeDoc)}
 ---`.trim();
 
         let instructions = "";
@@ -1497,9 +1512,9 @@ ${extRuntimeDoc}
 
 [The Following YAML]
 ---
-~~~yaml
+${_safeYamlFence(yamlDef)}yaml
 ${_removeYamlShComments(yamlDef)}
-~~~
+${_safeYamlFence(yamlDef)}
 ---`;
         }
 

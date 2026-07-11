@@ -2,7 +2,10 @@
 // Electrobun RPC ブリッジ + window.vja.* API
 
 import { Electroview } from "electrobun/view";
-import { makeFetchMaps, makeVjaFetch, makeFetchResultHandlers } from "./bridge-common";
+import {
+    makeFetchMaps, makeVjaFetch, makeFetchResultHandlers,
+    makeDbWrappers, makeFileWrappers, makeDirWrappers, makeDialogHelpers,
+} from "./bridge-common";
 
 // fetch は複数同時リクエスト対応のため fetchId ベースのMapで管理（bridge-common）
 const { fetchPendingMap: _fetchPendingMap, fetchAbortPendingMap: _fetchAbortPendingMap } = makeFetchMaps();
@@ -73,41 +76,12 @@ w.bunLoadUiConfig = () => r.loadUiConfigRequest({});
 // vja.db
 w.vja = {
     db: {
-        query: (sql: string, params?: any[]) =>
-            r.dbQueryRequest({ sql, params }).then((res: any) => res.rows),
-        execute: (sql: string, params?: any[]) =>
-            r.dbExecuteRequest({ sql, params }).then((res: any) => res.ok ? res.result : null),
-        transaction: (statements: { sql: string; params?: any[] }[]) =>
-            r.dbTransactionRequest({ statements }).then((res: any) => res.ok),
+        ...makeDbWrappers(r),
         init: (ddlStatements: string[]) =>
             r.dbInitRequest({ ddlStatements }).then((res: any) => res.ok),
     },
-    file: {
-        read: (path: string) =>
-            r.fileReadRequest({ path }).then((res: any) => res.ok ? res.content : null),
-        write: (path: string, content: string) =>
-            r.fileWriteRequest({ path, content }).then((res: any) => res.ok),
-        readBytes: (path: string) =>
-            r.fileReadBytesRequest({ path }).then((res: any) => res.data ? new Uint8Array(res.data) : null),
-        writeBytes: (path: string, data: number[]) =>
-            r.fileWriteBytesRequest({ path, data }).then((res: any) => res.ok),
-        exists: (path: string) =>
-            r.fileExistsRequest({ path }).then((res: any) => res.value),
-        delete: (path: string) =>
-            r.fileDeleteRequest({ path }).then((res: any) => res.ok),
-        copy: (src: string, dest: string) =>
-            r.fileCopyRequest({ src, dest }).then((res: any) => res.ok),
-    },
-    dir: {
-        create: (path: string) =>
-            r.dirCreateRequest({ path }).then((res: any) => res.ok),
-        delete: (path: string) =>
-            r.dirDeleteRequest({ path }).then((res: any) => res.ok),
-        list: (path: string) =>
-            r.dirListRequest({ path }).then((res: any) => res.entries),
-        exists: (path: string) =>
-            r.dirExistsRequest({ path }).then((res: any) => res.value),
-    },
+    file: makeFileWrappers(r),
+    dir: makeDirWrappers(r),
     log: {
         trace: (message: string) => { try { s.logRequest({ level: "trace", message }); } catch(e: any) { console.debug(e.message); } },
         debug: (message: string) => { try { s.logRequest({ level: "debug", message }); } catch(e: any) { console.debug(e.message); } },
@@ -118,21 +92,7 @@ w.vja = {
     },
     app: {
         getInfo: () => r.appInfoRequest({}),
-        showDialog: (message: string) =>
-            new Promise<void>((resolve) => {
-                // ダイアログ表示中にローディングオーバーレイが重なって見えなく
-                // なる問題があったため、ダイアログ表示前に自動的にローディングを
-                // OFFにする。必要であれば呼び出し側（生成コード）が再度ONにする。
-                (w as any).vja?.ui?.loading?.(false);
-                (w as any).showVjaAlert?.(message, () => resolve());
-            }),
-        showConfirm: (message: string) =>
-            new Promise<boolean>((resolve) => {
-                (w as any).vja?.ui?.loading?.(false);
-                (w as any).showVjaDialog?.(message, (confirmed: boolean) =>
-                    resolve(confirmed)
-                );
-            }),
+        ...makeDialogHelpers(w),
     },
     // ── プロジェクト実行 ──────────────────────────────
     project: {

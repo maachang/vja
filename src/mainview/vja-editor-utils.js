@@ -67,7 +67,7 @@ function yamlTabSwitch(tab) {
 
 // UNDO_DELIMITERS（区切り文字）は init-params.js で window.UNDO_DELIMITERS として定義済み
 
-// エディタの Undo 履歴にテキスト値を積む。最大100件保持。
+// エディタの Undo 履歴にテキスト値を積む。最大1000件保持。
 function editorUndoPush(state, val) {
     state.stack = state.stack.slice(0, state.idx + 1);
     if (state.stack[state.idx] === val) return;

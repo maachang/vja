@@ -5,7 +5,10 @@
 import { Electroview } from "electrobun/view";
 import "./vja-runtime.js";
 import type { VjaRPCType } from "../shared/types";
-import { makeFetchMaps, makeVjaFetch, makeFetchResultHandlers } from "./bridge-common";
+import {
+    makeFetchMaps, makeVjaFetch, makeFetchResultHandlers,
+    makeDbWrappers, makeFileWrappers, makeDirWrappers, makeDialogHelpers,
+} from "./bridge-common";
 
 // fetch は複数同時リクエスト対応のため fetchId ベースのMapで管理（bridge-common）
 const { fetchPendingMap: _fetchPendingMap, fetchAbortPendingMap: _fetchAbortPendingMap } = makeFetchMaps();
@@ -87,21 +90,7 @@ w.vja.log = {
 // ダイアログ・ウィンドウ操作
 w.vja.app = {
     // showDialog / showConfirm はフロント側 #dialog-root ダイアログで処理
-    showDialog: (message: string) =>
-        new Promise<void>((resolve) => {
-            // ダイアログ表示中にローディングオーバーレイが重なって見えなく
-            // なる問題があったため、ダイアログ表示前に自動的にローディングを
-            // OFFにする。必要であれば呼び出し側（生成コード）が再度ONにする。
-            (w as any).vja?.ui?.loading?.(false);
-            (w as any).showVjaAlert?.(message, () => resolve());
-        }),
-    showConfirm: (message: string) =>
-        new Promise<boolean>((resolve) => {
-            (w as any).vja?.ui?.loading?.(false);
-            (w as any).showVjaDialog?.(message, (confirmed: boolean) =>
-                resolve(confirmed)
-            );
-        }),
+    ...makeDialogHelpers(w),
     closeWindow: () => s.stopProjectRequest({}),
     loadScript: (url: string) =>
         new Promise<void>((resolve, reject) => {
@@ -119,12 +108,7 @@ w.vja.confirm = (message: string) => w.vja.app.showConfirm(message);
 
 // DB操作
 w.vja.db = {
-    query: (sql: string, params?: any[]) =>
-        r.dbQueryRequest({ sql, params }).then((res: any) => res.rows),
-    execute: (sql: string, params?: any[]) =>
-        r.dbExecuteRequest({ sql, params }).then((res: any) => res.ok ? res.result : null),
-    transaction: (statements: { sql: string; params?: any[] }[]) =>
-        r.dbTransactionRequest({ statements }).then((res: any) => res.ok),
+    ...makeDbWrappers(r),
 
     // テーブル全行削除
     clearTable: (tableName: string) =>
@@ -221,34 +205,10 @@ w.vja.db.init = (ddlStatements: string[]) =>
     r.dbInitRequest({ ddlStatements }).then((res: any) => res.ok);
 
 // ファイル操作
-w.vja.file = {
-    read: (path: string) =>
-        r.fileReadRequest({ path }).then((res: any) => res.ok ? res.content : null),
-    write: (path: string, content: string) =>
-        r.fileWriteRequest({ path, content }).then((res: any) => res.ok),
-    exists: (path: string) =>
-        r.fileExistsRequest({ path }).then((res: any) => res.value),
-    readBytes: (path: string) =>
-        r.fileReadBytesRequest({ path }).then((res: any) => res.data ? new Uint8Array(res.data) : null),
-    writeBytes: (path: string, data: Uint8Array) =>
-        r.fileWriteBytesRequest({ path, data: Array.from(data) }).then((res: any) => res.ok),
-    delete: (path: string) =>
-        r.fileDeleteRequest({ path }).then((res: any) => res.ok),
-    copy: (src: string, dest: string) =>
-        r.fileCopyRequest({ src, dest }).then((res: any) => res.ok),
-};
+w.vja.file = makeFileWrappers(r);
 
 // ディレクトリ操作
-w.vja.dir = {
-    create: (path: string) =>
-        r.dirCreateRequest({ path }).then((res: any) => res.ok),
-    delete: (path: string) =>
-        r.dirDeleteRequest({ path }).then((res: any) => res.ok),
-    list: (path: string) =>
-        r.dirListRequest({ path }).then((res: any) => res.entries),
-    exists: (path: string) =>
-        r.dirExistsRequest({ path }).then((res: any) => res.value),
-};
+w.vja.dir = makeDirWrappers(r);
 
 // vja.fetch / vja.fetchAbort（Bun経由の汎用fetch、WebKitタイムアウト回避）
 const _vjaFetch = makeVjaFetch(_fetchPendingMap, _fetchAbortPendingMap, s.fetchRequest, s.fetchAbortRequest);

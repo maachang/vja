@@ -18,6 +18,7 @@ export const COPY_BUILD_FILES: [string, string][] = [
     ["bun/bun-utils.ts", "bun/bun-utils.ts"],
     ["bun/standalone-index.ts", "bun/standalone-index.ts"],
     ["bun/project-runner.ts", "bun/project-runner.ts"],
+    ["bun/fs-rpc-handlers.ts", "bun/fs-rpc-handlers.ts"],
     ["shared/types.ts", "shared/types.ts"],
     ["mainview/project-bridge.ts", "mainview/project-bridge.ts"],
     ["mainview/bridge-common.ts", "mainview/bridge-common.ts"],
