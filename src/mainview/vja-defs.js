@@ -755,6 +755,16 @@ var _CTX = {
         widgets: [],
         formCfg: {},
         idCnt: 1,
+        // イベントJS生成・検証まわりの「wid_evName」キー付きオーバーライド保存先。
+        // 以前はvja-modal.jsのsnapshot()/applyProjectData()にだけ後付けされ、
+        // _project本体には定義がなかった（新規フィールド追加時の保存/復元漏れの
+        // 温床になっていたため、単一情報源としてここにも定義する）。
+        mockOverrides: {},
+        apiOptOverrides: {},
+        tableOptOverrides: {},
+        validationOverrides: {},
+        mockCheckOverrides: {},
+        learnedFixes: {},
         aiConfig: {
             endpoint: "http://localhost:8080",
             apiKey: "",

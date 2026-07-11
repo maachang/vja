@@ -357,6 +357,10 @@ function actDelete() {
     if (!ids.length) return;
     pushUndo();
     ids.forEach((id) => $("w" + id)?.remove());
+    // ウィジェット削除に伴い、そのウィジェットが持っていたイベント単位の
+    // オーバーライド（モック値・API/テーブル選択・検証定義等）もあわせて削除する
+    // （削除しないと二度と参照されないゴミデータとして残り続けるため）。
+    ids.forEach((id) => _purgeOverridesForWid(id));
     getProjectData().widgets = getProjectData().widgets.filter((x) => !ids.includes(x.id));
     getProjectData().forms[getProjectData().curFormIdx].widgets = getProjectData().widgets;
     getDesignerState().selIds = [];

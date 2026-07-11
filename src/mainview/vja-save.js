@@ -357,6 +357,10 @@ async function formDelete() {
     }
     if (!(await vja.app.showConfirm(`"${getProjectData().formCfg.title}" を削除しますか？`))) return;
     commitAndPush();
+    // 画面削除に伴い、その画面が持っていた各ウィジェットのイベントオーバーライドも
+    // あわせて削除する（"form_*"キーは全画面共通のためここでは消さない）。
+    const _deletedForm = getProjectData().forms[getProjectData().curFormIdx];
+    (_deletedForm?.widgets || []).forEach((w) => _purgeOverridesForWid(w.id));
     getProjectData().forms.splice(getProjectData().curFormIdx, 1);
     getProjectData().curFormIdx = Math.min(getProjectData().curFormIdx, getProjectData().forms.length - 1);
     getDesignerState().selIds = [];

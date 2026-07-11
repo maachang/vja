@@ -310,6 +310,9 @@ async function deleteFormYaml(evName) {
     const dlg = await vja.app.showConfirm("「" + evName + "」のイベント定義を削除してよろしいですか？");
     if (!dlg) return;
     if (f.events) { delete f.events[evName]; delete f.events["_js_" + evName]; }
+    // フォームイベントのオーバーライド（wid="form"固定）もあわせて削除する
+    // （残すと二度と参照されないゴミデータになるため）。
+    _purgeOverridesForKey("form", evName);
     renderEventsAndPush();
 }
 

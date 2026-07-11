@@ -1014,6 +1014,9 @@ async function deleteYaml(wid, evName) {
     const _dlg1 = await vja.app.showConfirm("「" + evName + "」のイベント定義を削除してよろしいですか？");
     if (!_dlg1) return;
     if (w.events) delete w.events[evName];
+    // このイベントに紐づくオーバーライド（モック値・API/テーブル選択・検証定義等）も
+    // あわせて削除する（残すと二度と参照されないゴミデータになるため）。
+    _purgeOverridesForKey(wid, evName);
     renderEventsAndPush();
 }
 

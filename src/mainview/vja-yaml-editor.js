@@ -989,6 +989,39 @@ function _saveMockOverrideRows(wid, evName, rows) {
     if (!getProjectData().mockOverrides) getProjectData().mockOverrides = {};
     getProjectData().mockOverrides[_getMockOverrideKey(wid, evName)] = rows;
 }
+
+// mockOverrides/apiOptOverrides/tableOptOverrides/validationOverrides/
+// mockCheckOverrides/learnedFixesの6種は、いずれも "wid_evName" 形式の
+// キーで管理される（キー生成方法は_getMockOverrideKey()等と同一）。
+// ウィジェット削除・イベント削除時にこれらのエントリを消し忘れると、
+// 二度と参照されないゴミデータとしてプロジェクトJSONに残り続けるため、
+// 削除処理側から呼び出す共通クリーンアップ関数をここにまとめる。
+const _OVERRIDE_MAP_NAMES = [
+    "mockOverrides", "apiOptOverrides", "tableOptOverrides",
+    "validationOverrides", "mockCheckOverrides", "learnedFixes",
+];
+// 指定したwid・evNameの組み合わせに完全一致するキーだけを6マップから削除する
+// （1イベント単位でのYAML削除時に使用）。
+function _purgeOverridesForKey(wid, evName) {
+    const key = wid + "_" + evName;
+    _OVERRIDE_MAP_NAMES.forEach((name) => {
+        const map = getProjectData()[name];
+        if (map) delete map[key];
+    });
+}
+// 指定したwid（ウィジェットid）で始まるキーを全て6マップから削除する
+// （ウィジェット自体の削除時に使用。そのウィジェットの全イベント分の
+// オーバーライドが対象になるため、evName側は問わずprefix一致で消す）。
+function _purgeOverridesForWid(wid) {
+    const prefix = wid + "_";
+    _OVERRIDE_MAP_NAMES.forEach((name) => {
+        const map = getProjectData()[name];
+        if (!map) return;
+        Object.keys(map).forEach((key) => {
+            if (key.startsWith(prefix)) delete map[key];
+        });
+    });
+}
 // モック値編集の「JSON」欄をできるだけ寛容に解釈する。
 // 1. まず厳密なJSONとして解釈を試みる（"文字列"/123/{"a":1}/true 等はこれで通る）
 // 2. 失敗した場合、数値として解釈できれば数値として扱う（保険的なケース）
