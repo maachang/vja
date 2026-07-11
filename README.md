@@ -210,6 +210,14 @@ bun run dev
 bun run build
 ```
 
+### ユニットテスト
+
+```bash
+bun run test
+```
+
+Electrobunのウィンドウ/DOMに依存しない純粋なロジック（RPCラッパー・CSVパース・ファイル操作ハンドラ等）が対象です。UI操作を伴う部分は引き続き手動確認が必要です。
+
 ### Linux での保存ダイアログ
 
 `zenity`（GNOME）または `kdialog`（KDE）が必要です。
@@ -379,7 +387,7 @@ if (!await vja.validate.run('入力チェック')) return;
 
 ```
 フォームデザイナー (WebView)
-    ↕ RPC (message ベース・タイムアウトなし)
+    ↕ RPC (request/response ベース・呼び出し単位でID対応付け)
 Bun.js メインプロセス
     ├── SQLite (データベース)
     ├── ファイル I/O
@@ -402,6 +410,9 @@ vja/
 └── src/
     ├── bun/
     │   ├── index.ts                 # メインプロセス（ウィンドウ生成・RPC定義）
+    │   ├── project-runner.ts       # プロジェクト実行ウィンドウの共通処理（index.ts・standalone-index.tsで共有）
+    │   ├── fs-rpc-handlers.ts      # ファイル/ディレクトリ操作RPCハンドラ共通実装
+    │   ├── bun-utils.ts            # CSVパース・gzip展開等の共通ユーティリティ
     │   ├── logger.ts                # ロガー
     │   ├── db-manager.ts           # SQLite 管理
     │   ├── copy-compile-assets.ts  # コンパイル資材コピー
