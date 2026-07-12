@@ -77,12 +77,19 @@
 
 - 関数名: vja.widget.get(name):
 - 関数名: vja.widget.getValue(name):
-  - 説明: 指定名のウィジェットの現在値を取得する
+  - 説明: 指定名のウィジェットの現在値を、既に展開済みの生の値として直接返す（オブジェクトではない。ウィジェットの種類によって戻り値の型は変わるが、いずれの場合も value のようなプロパティで包まれてはいない）
   - 引数:
     - name: string - ウィジェット名
-  - 戻り値: "string | number | boolean | null - ウィジェットの値"
-  - 使用例: "const name = vja.widget.getValue('txtName');"
-  - 使用例説明: txtNameウィジェットの入力値を取得する
+  - 戻り値: "ウィジェットの種類によって以下のいずれかの型がそのまま返る（すべてプリミティブ値または配列であり、プロパティアクセスは不要）:
+      - datagrid（テーブル）: Record<string, any>[] - 行データの配列
+      - checkbox / radioButton: boolean
+      - progressbar / slider / hscroll / vscroll: number
+      - inputType(number): number
+      - 上記以外（text / textarea / selectBox / listBox / label 等）: string"
+  - 使用例: "const name = vja.widget.getValue('txtName'); const checked = vja.widget.getValue('chkAgree'); const rows = vja.widget.getValue('tableView');"
+  - 使用例説明: txtNameウィジェットの入力値（string）、chkAgreeの状態（boolean）、tableViewの行データ（配列）をそれぞれ取得する
+  - 誤った使用例（絶対にしないこと）: "const v = vja.widget.getValue('txtName'); if (v.value) { ... }"
+  - 誤りの説明: 戻り値は既に生の値そのものであり、DOM要素のようにvalueプロパティで包まれていない。v.valueのようなアクセスは誤り（vが文字列ならv.valueはundefinedになり、実行時エラーにはならず静かに意図と異なる挙動になる）。正しくはvをそのまま使う
 
 - 関数名: vja.widget.set(name, value, options?):
 - 関数名: vja.widget.setValue(name, value, options?):
@@ -1097,7 +1104,7 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
 - 画面遷移は vja.form.navigate('画面name') のみを使用してください。（window.location等は禁止）
 - navigate() は別画面への移動専用です。現在画面のリロードや更新目的での使用は絶対禁止です。
 - window.confirm や window.alert の使用は禁止です。代わりに vja.app.showDialog または vja.app.showConfirm を使用してください。
-- ウィジェットの値は、DOM要素のプロパティのように直接アクセスすること（例: searchText.value、document.getElementById('x').value）はできません。全て不正であり、実行時エラーになります。ウィジェットの現在値を取得する唯一の方法は vja.widget.get('ウィジェット名') です。
+- ウィジェットの値は、DOM要素のプロパティのように直接アクセスすること（例: searchText.value、document.getElementById('x').value）はできません。全て不正です。vja.widget.get()の戻り値は既に展開済みの生の値（string/number/boolean/配列のいずれか）であり、valueのようなプロパティで包まれていません。v.valueのようなアクセスは実行時エラーにはならず、単にundefinedになって静かに意図と異なる挙動を引き起こします。ウィジェットの現在値を取得する唯一の方法は vja.widget.get('ウィジェット名') で、戻り値をそのまま使ってください。
 
 ## SQL
 - SQLインジェクション対策として、プレースホルダー（?）の利用は必須です。
@@ -1234,7 +1241,7 @@ ${_safeYamlFence(vjaUseJsInfo)}
 - Screen navigation must use vja.form.navigate('screen name') only. (window.location is prohibited)
 - navigate() is exclusively for navigating to a different screen. Using it to refresh or update the current screen is absolutely prohibited.
 - window.confirm/alert are prohibited. Use vja.app.showDialog/showConfirm instead.
-- Widgets are NOT accessible via direct DOM-style property access (e.g., searchText.value, document.getElementById('x').value are ALL INVALID and will throw an error). The ONLY way to read a widget's current value is vja.widget.get('widgetName').
+- Widgets are NOT accessible via direct DOM-style property access (e.g., searchText.value, document.getElementById('x').value are ALL INVALID). vja.widget.get()'s return value is already the raw unwrapped value (string/number/boolean/array) — it is never wrapped in a \`.value\` property. Accessing \`.value\` on it will NOT throw — it silently becomes undefined and causes subtly wrong behavior. The ONLY way to read a widget's current value is vja.widget.get('widgetName'), and you must use the returned value directly.
 
 ## SQL
 - Placeholders (?) are mandatory for all variable inputs to prevent SQL injection.
