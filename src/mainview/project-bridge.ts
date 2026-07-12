@@ -170,6 +170,12 @@ w.vja.db = {
         }));
         await r.dbTransactionRequest({ statements });
     },
+
+    // DBバックアップ/リストア
+    backup: (destPath: string) =>
+        r.backupDbRequest({ destPath }).then((res: any) => { if (!res.ok) throw new Error(res.error || "backup failed"); }),
+    restore: (srcPath: string) =>
+        r.restoreDbRequest({ srcPath }).then((res: any) => { if (!res.ok) throw new Error(res.error || "restore failed"); }),
 };
 
 // フォーム切り替え

@@ -242,3 +242,30 @@ export const getProjectDb = (dbDir: string): Database => {
     const dbPath = join(dbDir, "app.db");
     return getDb(dbPath);
 };
+
+// ── DBバックアップ（destPathへコピー） ───────────────
+// WALモード（getDb内でPRAGMA journal_mode = WALを設定済み）のため、
+// コピー前にwal_checkpoint(TRUNCATE)でWAL内容をapp.db本体へ統合してから
+// 単一ファイルとしてコピーする（-wal/-shmサイドカーファイルを個別に
+// 扱う必要をなくすため）。
+export const backupProjectDb = (dbDir: string, destPath: string): void => {
+    const dbPath = join(dbDir, "app.db");
+    if (!existsSync(dbPath)) throw new Error("バックアップ対象のDBが存在しません");
+    const db = getDb(dbPath);
+    db.run("PRAGMA wal_checkpoint(TRUNCATE)");
+    closeProjectDb();
+    copyFileSync(dbPath, destPath);
+    console.log(`[db] バックアップ作成: ${destPath}`);
+};
+
+// ── DBリストア（srcPathから復元） ────────────────────
+// 現在のDB接続を閉じてから、srcPathの内容でapp.dbを上書きする。
+// 以降のgetProjectDb()呼び出しで新しい内容のDBが開き直される。
+export const restoreProjectDb = (dbDir: string, srcPath: string): void => {
+    if (!existsSync(srcPath)) throw new Error("復元元のファイルが存在しません");
+    closeProjectDb();
+    if (!existsSync(dbDir)) mkdirSync(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "app.db");
+    copyFileSync(srcPath, dbPath);
+    console.log(`[db] バックアップから復元: ${dbPath}`);
+};

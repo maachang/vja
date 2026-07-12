@@ -607,16 +607,39 @@
         nowIso() { return new Date().toISOString(); },
         today() { return new Date().toISOString().slice(0, 10); },
 
-        // 日付フォーマット
+        // 日付フォーマット（dddは曜日。和暦(GGGG等)は非対応 — 元号切り替えの
+        // 保守負担が大きいため、あえて対応していない）
         formatDate(date, format = "YYYY-MM-DD") {
             const d = date instanceof Date ? date : new Date(date);
+            const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
             return format
                 .replace("YYYY", d.getFullYear())
                 .replace("MM", String(d.getMonth() + 1).padStart(2, "0"))
                 .replace("DD", String(d.getDate()).padStart(2, "0"))
                 .replace("HH", String(d.getHours()).padStart(2, "0"))
                 .replace("mm", String(d.getMinutes()).padStart(2, "0"))
-                .replace("ss", String(d.getSeconds()).padStart(2, "0"));
+                .replace("ss", String(d.getSeconds()).padStart(2, "0"))
+                .replace("ddd", WEEKDAYS[d.getDay()]);
+        },
+
+        // formatDate()の逆変換。formatに書かれた各トークンの出現位置と同じ
+        // 位置・長さの部分文字列をstrから取り出して日付を組み立てる
+        // （区切り文字部分は同じ長さで一致している前提。dddは解析対象外）。
+        parseDate(str, format = "YYYY-MM-DD") {
+            str = String(str ?? "");
+            const pick = (token) => {
+                const idx = format.indexOf(token);
+                return idx === -1 ? null : str.substr(idx, token.length);
+            };
+            const yyyy = pick("YYYY");
+            const mm = pick("MM");
+            const dd = pick("DD");
+            if (yyyy == null || mm == null || dd == null) return null;
+            const hh = pick("HH") || "0";
+            const mi = pick("mm") || "0";
+            const ss = pick("ss") || "0";
+            const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd), Number(hh), Number(mi), Number(ss));
+            return isNaN(d.getTime()) ? null : d;
         },
 
         // UUID生成
@@ -647,6 +670,15 @@
                 minimumFractionDigits: decimals,
                 maximumFractionDigits: decimals,
             });
+        },
+
+        // formatNumber()の逆変換。カンマ区切りを取り除いてNumber化する
+        parseNumber(str) {
+            if (typeof str === "number") return isNaN(str) ? null : str;
+            const cleaned = String(str ?? "").replace(/,/g, "").trim();
+            if (cleaned === "") return null;
+            const n = Number(cleaned);
+            return isNaN(n) ? null : n;
         },
 
         // sleep

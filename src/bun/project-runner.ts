@@ -7,7 +7,7 @@ import { existsSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { writeLog } from "./logger";
 import { decompressGzip, parseCsvLine } from "./bun-utils";
-import { initProjectDb, clearProjectDb, getProjectDb, closeProjectDb } from "./db-manager";
+import { initProjectDb, clearProjectDb, getProjectDb, closeProjectDb, backupProjectDb, restoreProjectDb } from "./db-manager";
 import type { VjaRPCType, TableDef } from "../shared/types";
 import {
     fileReadHandler, fileWriteHandler, fileReadBytesHandler, fileWriteBytesHandler,
@@ -350,6 +350,24 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
                     try {
                         closeProjectDb();
                         clearProjectDb(_currentProjectDbDir);
+                        return { ok: true };
+                    } catch (e: any) {
+                        return { ok: false, error: e.message };
+                    }
+                },
+
+                backupDbRequest: async ({ destPath }: { destPath: string }) => {
+                    try {
+                        backupProjectDb(_currentProjectDbDir, destPath);
+                        return { ok: true };
+                    } catch (e: any) {
+                        return { ok: false, error: e.message };
+                    }
+                },
+
+                restoreDbRequest: async ({ srcPath }: { srcPath: string }) => {
+                    try {
+                        restoreProjectDb(_currentProjectDbDir, srcPath);
                         return { ok: true };
                     } catch (e: any) {
                         return { ok: false, error: e.message };

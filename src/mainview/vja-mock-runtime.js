@@ -159,6 +159,8 @@
                 today: () => _utilValue("today", "2000-01-01"),
                 formatDate: () => _utilValue("formatDate", "2000-01-01"),
                 formatNumber: () => _utilValue("formatNumber", "0"),
+                parseDate: () => _utilValue("parseDate", new Date("2000-01-01")),
+                parseNumber: () => _utilValue("parseNumber", 0),
                 uuid: () => _utilValue("uuid", "00000000-0000-0000-0000-000000000000"),
                 copyToClipboard: async () => {},
             },
@@ -245,6 +247,8 @@
                 query: async () => [{}],
                 execute: async () => ({ changes: 0, lastInsertRowid: 0 }),
                 transaction: async () => true,
+                backup: async () => {},
+                restore: async () => {},
             },
             log: {
                 info: () => {},

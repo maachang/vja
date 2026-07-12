@@ -55,6 +55,24 @@
       ]);
   - 使用例説明: 注文登録と在庫更新を1つのトランザクションで実行する
 
+- 関数名: await vja.db.backup(destPath):
+  - 説明: 現在のプロジェクトDBを指定パスへバックアップする
+  - 引数:
+    - destPath: string - バックアップ先のファイルパス（vja.dir.create()等で事前にフォルダを用意しておくこと）
+  - 戻り値: なし（失敗時は例外をスロー）
+  - 使用例: |
+      await vja.dir.create('backups');
+      await vja.db.backup('backups/backup_' + vja.util.today() + '.db');
+  - 使用例説明: backupsフォルダに、今日の日付を付けたバックアップファイルを作成する
+
+- 関数名: await vja.db.restore(srcPath):
+  - 説明: 指定パスのバックアップファイルから現在のプロジェクトDBを復元する（現在のDBは上書きされる）
+  - 引数:
+    - srcPath: string - 復元元のバックアップファイルパス
+  - 戻り値: なし（失敗時は例外をスロー）
+  - 使用例: "await vja.db.restore('backups/backup_2026-01-01.db');"
+  - 使用例説明: 指定したバックアップファイルの内容でDBを復元する
+
 ## ウィジェット操作 (vja.widget.*)
 
 - 関数名: vja.widget.get(name):
@@ -272,6 +290,23 @@
   - 戻り値: string - フォーマットされた数値文字列
   - 使用例: "vja.widget.setValue('lblPrice', vja.util.formatNumber(1234567));"
   - 使用例説明: 価格を「1,234,567」形式で表示する
+
+- 関数名: vja.util.parseDate(str, format?):
+  - 説明: formatDate()で作られた形式の文字列をDateオブジェクトに変換する（逆変換）
+  - 引数:
+    - str: string - 変換する日付文字列
+    - "format?: string - strのフォーマット（デフォルト: 'YYYY-MM-DD'）。formatDate()に渡したものと同じ形式を指定する"
+  - 戻り値: Date|null - 変換できた場合はDate、失敗時はnull
+  - 使用例: "const d = vja.util.parseDate('2026年06月11日', 'YYYY年MM月DD日');"
+  - 使用例説明: 「2026年06月11日」形式の文字列をDateオブジェクトに変換する
+
+- 関数名: vja.util.parseNumber(str):
+  - 説明: formatNumber()で作られたようなカンマ区切りの数値文字列を数値に変換する（逆変換）
+  - 引数:
+    - str: string - 変換する数値文字列（カンマ区切り可）
+  - 戻り値: number|null - 変換できた場合は数値、失敗時はnull
+  - 使用例: "const n = vja.util.parseNumber(vja.widget.getValue('txtPrice'));"
+  - 使用例説明: 「1,234,567」のようなカンマ区切り入力を数値に変換する
 
 - 関数名: await vja.util.copyToClipboard(text):
   - 説明: テキストをクリップボードにコピーする

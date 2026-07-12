@@ -165,6 +165,10 @@ export type VjaRPCType = {
             // ── DBデータクリア ────────────────────────────
             clearProjectDbRequest: { params: { _?: never }; response: { ok: boolean; error?: string } };
 
+            // ── DBバックアップ/リストア ────────────────────
+            backupDbRequest: { params: { destPath: string }; response: { ok: boolean; error?: string } };
+            restoreDbRequest: { params: { srcPath: string }; response: { ok: boolean; error?: string } };
+
             // ── フォーム切り替え（プロジェクト実行中） ────
             navigateFormRequest: { params: { formName: string }; response: { ok: boolean; error?: string } };
 
