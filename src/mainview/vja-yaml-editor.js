@@ -2585,6 +2585,54 @@ function editorKeyHandler(e) {
         e.preventDefault(); editorRedo(ta.id, state); return;
     }
 
+    // ── 括弧/クォートの自動補完 ────────────────────────
+    const AUTO_PAIRS = { "(": ")", "[": "]", "{": "}", '"': '"', "'": "'", "`": "`" };
+    const isQuoteChar = (ch) => ch === '"' || ch === "'" || ch === "`";
+    if (!ctrl && !e.altKey && Object.prototype.hasOwnProperty.call(AUTO_PAIRS, e.key)) {
+        const close = AUTO_PAIRS[e.key];
+        const s = ta.selectionStart, en = ta.selectionEnd, v = ta.value;
+        // クォートは開き=閉じが同一文字のため、直後に既に閉じ文字がある場合は
+        // 新規挿入せずカーソルをその上へ移動するだけにする（スキップオーバー）
+        if (isQuoteChar(e.key) && s === en && v[s] === close) {
+            e.preventDefault();
+            ta.selectionStart = ta.selectionEnd = s + 1;
+            return;
+        }
+        e.preventDefault();
+        editorUndoPush(state, v, { start: s, end: en });
+        if (s === en) {
+            ta.value = v.slice(0, s) + e.key + close + v.slice(en);
+            ta.selectionStart = ta.selectionEnd = s + 1;
+        } else {
+            // 選択ありの場合は選択範囲を括弧/クォートで囲む
+            const inner = v.slice(s, en);
+            ta.value = v.slice(0, s) + e.key + inner + close + v.slice(en);
+            ta.selectionStart = s + 1;
+            ta.selectionEnd = s + 1 + inner.length;
+        }
+        editorHlUpdate(ta.id); return;
+    }
+    // 閉じ括弧を打った際、直後に同じ閉じ文字があればスキップオーバー
+    if (!ctrl && !e.altKey && (e.key === ")" || e.key === "]" || e.key === "}")) {
+        const s = ta.selectionStart, en = ta.selectionEnd, v = ta.value;
+        if (s === en && v[s] === e.key) {
+            e.preventDefault();
+            ta.selectionStart = ta.selectionEnd = s + 1;
+            return;
+        }
+    }
+    // Backspace: カーソルが自動補完で挿入した空の括弧/クォートの間にある場合はペアごと削除
+    if (e.key === "Backspace" && !ctrl) {
+        const s = ta.selectionStart, en = ta.selectionEnd, v = ta.value;
+        if (s === en && s > 0 && AUTO_PAIRS[v[s - 1]] === v[s]) {
+            e.preventDefault();
+            editorUndoPush(state, v, { start: s, end: en });
+            ta.value = v.slice(0, s - 1) + v.slice(s + 1);
+            ta.selectionStart = ta.selectionEnd = s - 1;
+            editorHlUpdate(ta.id); return;
+        }
+    }
+
     // ── 行ブロック操作の共通変数取得ヘルパー ─────────
     // s/en: カーソル位置, v: テキスト全体
     // ls: 行頭, le: 行末（-1=最終行）
