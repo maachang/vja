@@ -2603,7 +2603,7 @@ function editorKeyHandler(e) {
     // ── Tab: インデント追加 ───────────────────────────
     if (e.key === "Tab" && !e.shiftKey) {
         e.preventDefault();
-        editorUndoPush(state, ta.value);
+        editorUndoPush(state, ta.value, { start: ta.selectionStart, end: ta.selectionEnd });
         const { s, en, v, ls, le } = getBlock();
         if (s === en) {
             const ins = isJs ? "    " : "  ";
@@ -2620,7 +2620,7 @@ function editorKeyHandler(e) {
     // ── Ctrl+[: インデント削除 ────────────────────────
     if (e.key === "[" && ctrl) {
         e.preventDefault();
-        editorUndoPush(state, ta.value);
+        editorUndoPush(state, ta.value, { start: ta.selectionStart, end: ta.selectionEnd });
         const { v, ls, le } = getBlock();
         const blk = v.slice(ls, le === -1 ? v.length : le);
         const dedent = isJs ? /^ {1,4}/ : /^ {1,2}/;
@@ -2631,7 +2631,7 @@ function editorKeyHandler(e) {
     // ── Ctrl+]: インデント追加 ────────────────────────
     if (e.key === "]" && ctrl) {
         e.preventDefault();
-        editorUndoPush(state, ta.value);
+        editorUndoPush(state, ta.value, { start: ta.selectionStart, end: ta.selectionEnd });
         const { v, ls, le } = getBlock();
         const blk = v.slice(ls, le === -1 ? v.length : le);
         const ins = isJs ? "    " : "  ";
@@ -2642,7 +2642,7 @@ function editorKeyHandler(e) {
     // ── Ctrl+/: コメントトグル ────────────────────────
     if (e.key === "/" && ctrl) {
         e.preventDefault();
-        editorUndoPush(state, ta.value);
+        editorUndoPush(state, ta.value, { start: ta.selectionStart, end: ta.selectionEnd });
         const { v, ls, le } = getBlock();
         const blk = v.slice(ls, le === -1 ? v.length : le);
         const COM = isJs ? "// " : "# ";
@@ -2659,7 +2659,7 @@ function editorKeyHandler(e) {
     // ── Ctrl+D: 行複製 ────────────────────────────────
     if (e.key === "d" && ctrl) {
         e.preventDefault();
-        editorUndoPush(state, ta.value);
+        editorUndoPush(state, ta.value, { start: ta.selectionStart, end: ta.selectionEnd });
         const { v, ls, le } = getBlock();
         const line = v.slice(ls, le === -1 ? v.length : le);
         const ins = "\n" + line;
@@ -2671,7 +2671,7 @@ function editorKeyHandler(e) {
     // ── Ctrl+K: 行削除 ────────────────────────────────
     if (e.key === "k" && ctrl) {
         e.preventDefault();
-        editorUndoPush(state, ta.value);
+        editorUndoPush(state, ta.value, { start: ta.selectionStart, end: ta.selectionEnd });
         const { v, ls, le } = getBlock();
         ta.value = v.slice(0, ls) + v.slice(le === -1 ? v.length : le + 1);
         ta.selectionStart = ta.selectionEnd = ls;
@@ -2684,7 +2684,7 @@ function editorKeyHandler(e) {
         const curLine = v.slice(ls, s);
         if (/^\s+$/.test(curLine) && curLine.length >= 4) {
             e.preventDefault();
-            editorUndoPush(state, ta.value);
+            editorUndoPush(state, ta.value, { start: ta.selectionStart, end: ta.selectionEnd });
             const newIndent = curLine.slice(4);
             ta.value = v.slice(0, ls) + newIndent + "}" + v.slice(en);
             ta.selectionStart = ta.selectionEnd = ls + newIndent.length + 1;
@@ -2695,7 +2695,7 @@ function editorKeyHandler(e) {
     // ── Enter: 自動インデント ─────────────────────────
     if (e.key === "Enter") {
         e.preventDefault();
-        editorUndoPush(state, ta.value);
+        editorUndoPush(state, ta.value, { start: ta.selectionStart, end: ta.selectionEnd });
         const { s, en, v, ls } = getBlock();
         const curLine = v.slice(ls, s);
         const baseIndent = curLine.match(/^(\s*)/)[1];

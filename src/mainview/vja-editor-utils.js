@@ -68,17 +68,19 @@ function yamlTabSwitch(tab) {
 // UNDO_DELIMITERS（区切り文字）は init-params.js で window.UNDO_DELIMITERS として定義済み
 
 // エディタの Undo 履歴にテキスト値を積む。最大1000件保持。
-function editorUndoPush(state, val) {
+// sel: そのスナップショット時点のカーソル位置 {start,end}（省略時はUndo/Redo時にカーソル位置を復元しない）
+function editorUndoPush(state, val, sel) {
     state.stack = state.stack.slice(0, state.idx + 1);
-    if (state.stack[state.idx] === val) return;
-    state.stack.push(val);
+    const top = state.stack[state.idx];
+    if (top && top.val === val) return;
+    state.stack.push({ val, sel: sel || null });
     if (state.stack.length > 1000) state.stack.shift();
     else state.idx++;
 }
 
 // エディタの Undo 状態を初期化する。モーダルオープン時に呼ぶ。
 function editorUndoInit(taId, state, initVal) {
-    state.stack = [initVal];
+    state.stack = [{ val: initVal, sel: null }];
     state.idx = 0;
     state.busy = false;
     state.lastKey = "";
@@ -92,21 +94,33 @@ function editorUndoInit(taId, state, initVal) {
     ta.addEventListener("input", function () {
         if (state.busy) return;
         if (UNDO_DELIMITERS.has(state.lastKey)) {
-            editorUndoPush(state, ta.value);
+            editorUndoPush(state, ta.value, { start: ta.selectionStart, end: ta.selectionEnd });
         }
     });
+}
+
+// スナップショットのカーソル位置をtextareaへ復元する。
+function _editorRestoreSel(ta, entry) {
+    if (!entry || !entry.sel) return;
+    ta.selectionStart = Math.min(entry.sel.start, entry.val.length);
+    ta.selectionEnd = Math.min(entry.sel.end, entry.val.length);
 }
 
 // エディタの Undo を実行し、ハイライトを更新する。
 function editorUndo(taId, state) {
     const ta = $(taId);
     if (!ta) return;
-    if (state.stack[state.idx] !== ta.value) editorUndoPush(state, ta.value);
+    if (state.stack[state.idx].val !== ta.value) {
+        editorUndoPush(state, ta.value, { start: ta.selectionStart, end: ta.selectionEnd });
+    }
     if (state.idx <= 0) return;
     state.busy = true;
     state.idx--;
-    ta.value = state.stack[state.idx];
+    const entry = state.stack[state.idx];
+    ta.value = entry.val;
+    _editorRestoreSel(ta, entry);
     editorHlUpdate(taId);
+    _ensureCursorVisible(ta);
     setTimeout(() => { state.busy = false; }, 50);
 }
 
@@ -117,8 +131,11 @@ function editorRedo(taId, state) {
     if (!ta) return;
     state.busy = true;
     state.idx++;
-    ta.value = state.stack[state.idx];
+    const entry = state.stack[state.idx];
+    ta.value = entry.val;
+    _editorRestoreSel(ta, entry);
     editorHlUpdate(taId);
+    _ensureCursorVisible(ta);
     setTimeout(() => { state.busy = false; }, 50);
 }
 
