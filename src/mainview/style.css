@@ -2564,3 +2564,32 @@ select.pv-input option {
     display: flex;
     flex-direction: column
 }
+
+/* ── JSペイン入力補完ポップアップ（vja API名/ウィジェット名） ── */
+.editor-completion-pop {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    min-width: 160px;
+    max-width: 360px;
+    max-height: 200px;
+    overflow-y: auto;
+    background: var(--bg2);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    font-family: var(--editor-font-family);
+    font-size: 13px;
+}
+
+.editor-completion-item {
+    padding: 4px 10px;
+    color: var(--text);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.editor-completion-item.sel,
+.editor-completion-item:hover {
+    background: var(--accent-dim, #2a3a6a);
+}

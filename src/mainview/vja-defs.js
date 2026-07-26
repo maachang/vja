@@ -801,6 +801,9 @@ var _CTX = {
         dblPending: false,
         yu: { stack: [], idx: -1, busy: false },
         ju: { stack: [], idx: -1, busy: false },
+        isAppEvent: false,
+        // JSペインの入力補完（vja API名/ウィジェット名）ポップアップ状態
+        completion: { active: false, list: [], sel: 0, wordStart: 0, wordEnd: 0, mode: "api" },
     },
     // AI生成リクエストの状態
     _ai: {

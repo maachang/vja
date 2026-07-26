@@ -50,6 +50,7 @@ function yamlTabSwitch(tab) {
     const jsPane = $("pane-js");
     if (!yamlTab || !jsTab || !yamlPane || !jsPane) return;
     if (tab === "yaml") {
+        _closeCompletionPopup(); // JSペイン限定の入力補完ポップアップが表示されたままにならないよう閉じる
         yamlTab.classList.add("active");
         jsTab.classList.remove("active");
         yamlPane.classList.add("active");

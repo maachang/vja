@@ -89,7 +89,7 @@ function openAppEvents(evKey) {
             const tabEl = $("appev-tab-" + t.key);
             if (tabEl) tabEl.addEventListener("click", () => openAppEvents(t.key));
         });
-    });
+    }, true);
 }
 
 function saveAppEvent() {

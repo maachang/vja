@@ -164,7 +164,7 @@ function openYaml(wid, evName) {
     pvRegister("yamlMockCheck", () => manualMockCheck(false, evName, getWidget(wid)?.tag, wid));
     pvRegister("yamlMockEdit", () => openMockOverrideEditor(wid, evName));
     showModal(buildYamlEditorHTML(cur, curJs, true, mhdrHTML("📋 " + esc(w.name) + " — " + esc(evName)), "", null, isAppEvent, wid, evName));
-    initYamlEditorModal(cur, curJs);
+    initYamlEditorModal(cur, curJs, undefined, isAppEvent);
 }
 
 /* ── YAMLエディタ 右パネル ── */
@@ -871,6 +871,162 @@ function _getVjaApiWhitelist() {
         };
     }
     return _vjaApiWhitelistCache;
+}
+
+/* ═══════════════════════════════════════════
+   JSペイン入力補完（vja API名 / ウィジェット名）
+═══════════════════════════════════════════ */
+
+// カーソル直前の「補完対象になりうる文字列」を判定する。
+// 行内のクォート数が奇数（＝文字列リテラルの中）ならウィジェット名候補、
+// それ以外は `vja.xxx.yyy` のようなAPI名候補として扱う。
+// 戻り値: null（補完対象外） または { mode, partial, start, end }
+function _getCompletionPartial(ta) {
+    if (ta.selectionStart !== ta.selectionEnd) return null; // 選択中は補完しない
+    const pos = ta.selectionStart;
+    const v = ta.value;
+    const lineStart = v.lastIndexOf("\n", pos - 1) + 1;
+    const lineBefore = v.slice(lineStart, pos);
+    const quoteCount = (lineBefore.match(/["']/g) || []).length;
+    if (quoteCount % 2 === 1) {
+        const qIdx = Math.max(lineBefore.lastIndexOf('"'), lineBefore.lastIndexOf("'"));
+        const partial = lineBefore.slice(qIdx + 1);
+        if (!partial) return null;
+        return { mode: "widget", partial, start: lineStart + qIdx + 1, end: pos };
+    }
+    const m = lineBefore.match(/[\w$.]*$/);
+    const partial = m ? m[0] : "";
+    if (!partial || !/[a-zA-Z_$]/.test(partial[0])) return null;
+    return { mode: "api", partial, start: pos - partial.length, end: pos };
+}
+
+// 現コンテキスト（フロント/バック）のvja API名一覧を取得する。
+function _getCompletionApiNames(isAppEvent) {
+    const wl = _getVjaApiWhitelist();
+    return Array.from(isAppEvent ? wl.back : wl.front);
+}
+
+// 現在のフォームのウィジェット名一覧を取得する。
+function _getCompletionWidgetNames() {
+    return (getProjectData().widgets || []).map((w) => w.name).filter(Boolean);
+}
+
+// js-ta の input イベントで呼ばれ、候補を絞り込んでポップアップを更新する。
+function _editorCompletionOnInput(e) {
+    const ta = e.target;
+    const info = _getCompletionPartial(ta);
+    if (!info || info.partial.length < 1) { _closeCompletionPopup(); return; }
+
+    const isAppEvent = !!getEditorContext().isAppEvent;
+    const pool = info.mode === "api" ? _getCompletionApiNames(isAppEvent) : _getCompletionWidgetNames();
+    const lp = info.partial.toLowerCase();
+    const list = pool
+        .filter((name) => info.mode === "api" ? name.toLowerCase().startsWith(lp) : name.toLowerCase().includes(lp))
+        .filter((name) => name.toLowerCase() !== lp)
+        .sort()
+        .slice(0, 8);
+    if (list.length === 0) { _closeCompletionPopup(); return; }
+
+    const comp = getEditorContext().completion;
+    comp.active = true;
+    comp.list = list;
+    comp.sel = 0;
+    comp.wordStart = info.start;
+    comp.wordEnd = info.end;
+    comp.mode = info.mode;
+    _renderCompletionPopup(ta);
+}
+
+// 補完ポップアップのDOM要素を取得（なければ作成）する。
+function _completionPopupEl() {
+    let el = document.getElementById("editor-completion-pop");
+    if (!el) {
+        el = document.createElement("div");
+        el.id = "editor-completion-pop";
+        el.className = "editor-completion-pop";
+        document.body.appendChild(el);
+    }
+    return el;
+}
+
+// カーソル位置（画面座標）を、非表示のミラーdivで文字列を計測して算出する。
+function _getCaretScreenPos(ta) {
+    const div = document.createElement("div");
+    const cs = getComputedStyle(ta);
+    ["boxSizing", "width", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+        "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth",
+        "fontFamily", "fontSize", "fontWeight", "lineHeight", "letterSpacing", "textIndent",
+    ].forEach((p) => { div.style[p] = cs[p]; });
+    div.style.position = "absolute";
+    div.style.visibility = "hidden";
+    div.style.whiteSpace = "pre-wrap";
+    div.style.wordWrap = "break-word";
+    div.style.top = "0";
+    div.style.left = "-9999px";
+    div.style.width = ta.clientWidth + "px";
+    document.body.appendChild(div);
+    div.textContent = ta.value.slice(0, ta.selectionStart);
+    const marker = document.createElement("span");
+    marker.textContent = "​";
+    div.appendChild(marker);
+    const rect = ta.getBoundingClientRect();
+    const top = rect.top + marker.offsetTop - ta.scrollTop + marker.offsetHeight;
+    const left = rect.left + marker.offsetLeft - ta.scrollLeft;
+    document.body.removeChild(div);
+    return { top, left };
+}
+
+// 候補一覧をポップアップに描画してカーソル位置の下に表示する。
+function _renderCompletionPopup(ta) {
+    const comp = getEditorContext().completion;
+    const el = _completionPopupEl();
+    el.innerHTML = comp.list.map((name, i) =>
+        "<div class='editor-completion-item" + (i === comp.sel ? " sel" : "") + "'" +
+        evtAttr("onmousedown", "event.preventDefault();_acceptCompletionAt(" + i + ")") + ">" + esc(name) + "</div>"
+    ).join("");
+    const pos = _getCaretScreenPos(ta);
+    // ポップアップがテキストエリアの外（タブバー側等）にはみ出してクリックを
+    // 奪わないよう、表示位置をテキストエリアの表示範囲内にクランプする
+    const rect = ta.getBoundingClientRect();
+    const left = Math.min(Math.max(pos.left, rect.left), rect.right - 20);
+    const top = Math.min(Math.max(pos.top, rect.top), rect.bottom - 20);
+    el.style.left = left + "px";
+    el.style.top = top + "px";
+    el.style.display = "block";
+}
+
+// 補完ポップアップを閉じる。
+function _closeCompletionPopup() {
+    const comp = getEditorContext().completion;
+    comp.active = false;
+    comp.list = [];
+    const el = document.getElementById("editor-completion-pop");
+    if (el) el.style.display = "none";
+}
+
+// ポップアップ内の候補をクリックで確定する。
+function _acceptCompletionAt(i) {
+    const comp = getEditorContext().completion;
+    if (!comp.active) return;
+    comp.sel = i;
+    const ta = $("js-ta");
+    if (!ta) return;
+    _acceptCompletion(ta, getEditorContext().ju);
+}
+
+// 選択中の補完候補をテキストへ挿入して確定する。
+function _acceptCompletion(ta, state) {
+    const comp = getEditorContext().completion;
+    if (!comp.active || !comp.list.length) return;
+    const name = comp.list[comp.sel];
+    const v = ta.value;
+    const s = comp.wordStart, en = comp.wordEnd;
+    editorUndoPush(state, v, { start: ta.selectionStart, end: ta.selectionEnd });
+    ta.value = v.slice(0, s) + name + v.slice(en);
+    ta.selectionStart = ta.selectionEnd = s + name.length;
+    editorHlUpdate(ta.id);
+    _closeCompletionPopup();
+    ta.focus();
 }
 
 // VJA_USE_FRONT_JS_INFO / VJA_USE_BACK_JS_INFO 内で「await vja.xxx.yyy(」の
@@ -2576,6 +2732,23 @@ function editorKeyHandler(e) {
         e.preventDefault(); return;
     }
 
+    // ── 入力補完ポップアップの操作（JSペインのみ）─────
+    const comp = getEditorContext().completion;
+    if (comp.active && ta.id === "js-ta") {
+        if (e.key === "ArrowDown") {
+            e.preventDefault(); comp.sel = (comp.sel + 1) % comp.list.length; _renderCompletionPopup(ta); return;
+        }
+        if (e.key === "ArrowUp") {
+            e.preventDefault(); comp.sel = (comp.sel - 1 + comp.list.length) % comp.list.length; _renderCompletionPopup(ta); return;
+        }
+        if (e.key === "Tab" || e.key === "Enter") {
+            e.preventDefault(); _acceptCompletion(ta, state); return;
+        }
+        if (e.key === "Escape") {
+            e.preventDefault(); _closeCompletionPopup(); return;
+        }
+    }
+
     // ── Undo / Redo ───────────────────────────────────
     if (ctrl && e.key.toLowerCase() === "z" && !e.shiftKey) {
         e.preventDefault(); editorUndo(ta.id, state); return;
@@ -2978,7 +3151,9 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
 }
 
 /* ── YAMLエディタ初期化（requestAnimationFrame内の共通処理） ── */
-function initYamlEditorModal(cur, curJs, onAfterInit) {
+function initYamlEditorModal(cur, curJs, onAfterInit, isAppEvent = false) {
+    getEditorContext().isAppEvent = isAppEvent;
+    getEditorContext().completion = { active: false, list: [], sel: 0, wordStart: 0, wordEnd: 0, mode: "api" };
     requestAnimationFrame(() => {
         applyEditorConfig();
         yamlHlUpdate();
@@ -2993,6 +3168,9 @@ function initYamlEditorModal(cur, curJs, onAfterInit) {
         if (jta) jta.addEventListener("mousedown", editorMouseDownHandler2);
         if (yta) yta.addEventListener("dblclick", editorDblClickHandler);
         if (jta) jta.addEventListener("dblclick", editorDblClickHandler);
+        // JSペインの入力補完（vja API名/ウィジェット名）
+        if (jta) jta.addEventListener("input", _editorCompletionOnInput);
+        if (jta) jta.addEventListener("blur", _closeCompletionPopup);
         editorUndoInit("yaml-ta", getEditorContext().yu, cur);
         editorUndoInit("js-ta", getEditorContext().ju, curJs);
         yamlInitResize();
@@ -3312,4 +3490,5 @@ Object.assign(window, {
     yamlSetTableOpt, yamlSetValidationOpt, _applyTableYamlSync,
     yamlSetMockCheckOpt,
     yamlPinLearnedFix, yamlDeleteLearnedFix,
+    _closeCompletionPopup, _acceptCompletionAt,
 });
