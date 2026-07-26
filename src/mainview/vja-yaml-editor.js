@@ -2209,7 +2209,9 @@ async function manualRetryAiFix(wid, evName, isAppEvent, isFormEvent) {
     validation = await _augmentWithMockCheck(validation, currentCode, isAppEvent, evName, wtag, wid);
     if (validation.ok) { dismissAiValidationBanner(); return; }
     window.vja?.log?.debug?.("[AI検証] 手動での修正依頼を実行します。検出内容: " + _formatValidationIssuesForLog(validation));
-    const fixUserPrompt = _buildAiFixPrompt(userPrompt, currentCode, validation);
+    // 自動修正リトライ時と同様、ウィジェット一覧の絞り込みを解除して再構築する。
+    const wideCtx = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, false);
+    const fixUserPrompt = _buildAiFixPrompt(wideCtx.userPrompt, currentCode, validation);
     await runAiGenerate({
         systemPrompt: sysPrompt,
         userPrompt: fixUserPrompt,
@@ -2271,6 +2273,25 @@ async function _augmentWithMockCheck(validation, code, isAppEvent, evName, wtag,
     return { ...validation, ok: false, mockError };
 }
 
+// 正規表現の特殊文字をエスケープする。
+function _escapeRegExp(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// text（YAML定義本文＋追加指示）中に、ウィジェット名が単語境界つきで
+// 文字として出現するものだけを機械的に抽出する。LLMに推測させるのではなく、
+// 純粋な文字列マッチで「このイベントが触れていそうなウィジェット」を絞り込むための処理。
+// （前後が識別子文字[A-Za-z0-9_$]でないことを境界条件とする。日本語の助詞等は
+//   識別子文字ではないため、"txtNameの値" のような埋め込みでも問題なくマッチする）
+function _extractMentionedWidgets(text, widgets) {
+    if (!text) return [];
+    return widgets.filter((w) => {
+        if (!w.name) return false;
+        const re = new RegExp("(?<![A-Za-z0-9_$])" + _escapeRegExp(w.name) + "(?![A-Za-z0-9_$])");
+        return re.test(text);
+    });
+}
+
 // AI生成・修正依頼で使うシステムプロンプト・ユーザープロンプトを、現在の
 // プロジェクト状態（ウィジェット一覧・利用テーブル・利用API・検証定義の
 // 選択状態等）から都度組み立てる。
@@ -2280,7 +2301,14 @@ async function _augmentWithMockCheck(validation, code, isAppEvent, evName, wtag,
 // こうすることで「キャッシュが無いので機能が使えない」という特殊対応や、
 // 「生成後に設定を変えたのに古いプロンプトのまま修正依頼してしまう」
 // といった問題を、そもそも起こりようがない形にしている。
-function _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent) {
+//
+// narrowWidgets: true（既定）の場合、YAML本文＋追加指示に名前が出現する
+// ウィジェットのみに一覧を絞り込み、ローカルLLMに渡すコンテキストを削減する
+// （小型モデルほど無関係なウィジェット名に惑わされやすいため）。
+// 絞り込みが原因で生成コードが未知のウィジェット名を参照してしまった場合の
+// 救済策として、AI自動修正リトライ時にはfalseを渡し、全件のまま再構築する
+// （呼び出し側 yamlAiGenerate を参照）。
+function _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowWidgets = true) {
     const w = (isAppEvent || isFormEvent) ? null : getWidget(wid);
     const yamlCur = $("yaml-ta")?.value || "";
 
@@ -2294,9 +2322,29 @@ function _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent) {
     const addPrompt = $("ai-prompt-in")?.value || "";
     const curForm = getProjectData().forms[getProjectData().curFormIdx];
 
+    // ── ①② ウィジェット一覧の絞り込み ──
+    // narrowWidgets=trueの場合、YAML本文＋追加指示に名前が出現するウィジェットのみに
+    // 一覧を絞る（絞り込んだ結果0件＝手がかりが無い場合は絞り込まず全件のままにする）。
+    // 現在編集中のウィジェット自身は、本文中で自分の名前を書かないケースが多いため、
+    // マッチ結果に関わらず無条件で含める。
+    const allWidgetsFull = getProjectData().widgets;
+    let widgetsForCtx = allWidgetsFull;
+    if (narrowWidgets) {
+        const mentioned = _extractMentionedWidgets(yamlCur + "\n" + addPrompt, allWidgetsFull);
+        const mentionedSet = new Set(mentioned.map(ww => ww.name));
+        if (w?.name) mentionedSet.add(w.name);
+        if (mentionedSet.size > 0) {
+            widgetsForCtx = allWidgetsFull.filter(ww => mentionedSet.has(ww.name));
+        }
+    }
+    window.vja?.log?.debug?.(
+        "[AI生成] ウィジェット一覧の絞り込み: " + widgetsForCtx.length + "/" + allWidgetsFull.length + "件"
+        + (narrowWidgets ? "" : "（絞り込み無効・全件使用）")
+    );
+
     // ── ① 入力系ウィジェット一覧（フォームの入力パラメータ） ──
     const INPUT_TAGS = ["inputtype", "checkbox", "radiobutton", "listbox", "selectbox"];
-    const inputWidgets = getProjectData().widgets.filter(ww => INPUT_TAGS.includes(ww.tag.toLowerCase()));
+    const inputWidgets = widgetsForCtx.filter(ww => INPUT_TAGS.includes(ww.tag.toLowerCase()));
     const inputParamsCtx = inputWidgets.length > 0
         ? inputWidgets.map(ww => {
             const desc = ww.props?.description ? " // " + ww.props.description : "";
@@ -2305,7 +2353,7 @@ function _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent) {
         : "  （なし）";
 
     // ── ② 全ウィジェット一覧 ──
-    const allWidgetsCtx = getProjectData().widgets.map(ww => "  - " + ww.name + " (" + ww.tag + ")").join("\n") || "  （なし）";
+    const allWidgetsCtx = widgetsForCtx.map(ww => "  - " + ww.name + " (" + ww.tag + ")").join("\n") || "  （なし）";
 
     // ── ③ 画面一覧 ──
     const formsCtx = getProjectData().forms.map((f, i) => {
@@ -2469,7 +2517,11 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                 const issueLog = _formatValidationIssuesForLog(validation);
                 window.vja?.log?.debug?.("[AI検証] 自動修正リトライを実行します。検出内容: " + issueLog);
                 if (status) status.textContent = "⏳ 検出した問題を自動修正中…";
-                const fixUserPrompt = _buildAiFixPrompt(userPrompt, unwrapped, validation);
+                // 自動修正リトライ時は、ウィジェット一覧の絞り込みを解除した
+                // userPromptを使う（絞り込みが原因で未知のウィジェット名を
+                // 参照してしまった可能性の救済策。narrowWidgets=falseで再構築）。
+                const wideCtx = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, false);
+                const fixUserPrompt = _buildAiFixPrompt(wideCtx.userPrompt, unwrapped, validation);
                 let retryCode = null;
                 await runAiGenerate({
                     systemPrompt: sysPrompt,
