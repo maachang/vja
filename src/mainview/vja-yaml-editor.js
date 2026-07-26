@@ -2950,8 +2950,15 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         "<input id='editor-search-in' placeholder='検索ワード（Ctrl+F）' style='flex:1' " +
         evtAttr("onkeydown", "if(event.key===\"Enter\"){event.preventDefault();editorSearch();}") + " " +
         evtAttr("oninput", "getEditorContext().searchLast={taId:null,word:\"\",pos:0}") + ">" +
-        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "event.preventDefault();$(\"editor-search-in\").value=\"\";getEditorContext().searchLast={taId:null,word:\"\",pos:0}") + ">✕</button>" +
+        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "event.preventDefault();$(\"editor-search-in\").value=\"\";$(\"editor-replace-in\").value=\"\";getEditorContext().searchLast={taId:null,word:\"\",pos:0}") + ">✕</button>" +
         "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "event.preventDefault();editorSearch()") + ">🔍 検索</button>" +
+        "<span class='yaml-ai-right-spacer'></span>" +
+        "</div>" +
+        "<div style='display:flex;align-items:center;gap:4px'>" +
+        "<input id='editor-replace-in' placeholder='置換後の文字列' style='flex:1' " +
+        evtAttr("onkeydown", "if(event.key===\"Enter\"){event.preventDefault();editorReplace();}") + ">" +
+        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "event.preventDefault();editorReplace()") + ">置換</button>" +
+        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "event.preventDefault();editorReplaceAll()") + ">すべて置換</button>" +
         "<span class='yaml-ai-right-spacer'></span>" +
         "</div>" +
         "</div>" +
@@ -3213,6 +3220,77 @@ function editorSearch() {
     getEditorContext().searchLast = { taId: ta.id, word, pos: idx + word.length };
 }
 
+// 大文字小文字を無視した単純文字列置換（正規表現は使わない）。戻り値: { result, count }
+function _literalReplaceAllCI(text, word, repl) {
+    if (!word) return { result: text, count: 0 };
+    const lower = text.toLowerCase();
+    const lword = word.toLowerCase();
+    let result = "";
+    let pos = 0;
+    let count = 0;
+    let idx;
+    while ((idx = lower.indexOf(lword, pos)) >= 0) {
+        result += text.slice(pos, idx) + repl;
+        pos = idx + word.length;
+        count++;
+    }
+    result += text.slice(pos);
+    return { result, count };
+}
+
+// taId から対応するUndo状態を取得する（editorSearch/editorReplaceで使用するyaml-ta/js-ta限定）
+function _editorUndoStateFor(taId) {
+    return taId === "js-ta" ? getEditorContext().ju : getEditorContext().yu;
+}
+
+// 現在選択中の箇所が検索ワードと一致していれば置換して次の一致箇所を検索する。
+// 一致していなければ（まだ検索していない場合）次の一致箇所を検索するだけ。
+function editorReplace() {
+    const word = $("editor-search-in")?.value || "";
+    const repl = $("editor-replace-in")?.value || "";
+    if (!word) return;
+
+    const isJs = $("pane-js")?.classList.contains("active");
+    const ta = isJs ? $("js-ta") : $("yaml-ta");
+    if (!ta) { showToast("エディタが見つかりません"); return; }
+
+    const s = ta.selectionStart, en = ta.selectionEnd;
+    const selected = ta.value.slice(s, en);
+
+    if (en > s && selected.toLowerCase() === word.toLowerCase()) {
+        const state = _editorUndoStateFor(ta.id);
+        editorUndoPush(state, ta.value, { start: s, end: en });
+        ta.value = ta.value.slice(0, s) + repl + ta.value.slice(en);
+        ta.selectionStart = ta.selectionEnd = s + repl.length;
+        editorHlUpdate(ta.id);
+        getEditorContext().searchLast = { taId: ta.id, word, pos: s + repl.length };
+        editorSearch();
+    } else {
+        editorSearch();
+    }
+}
+
+// 現在のエディタ内の検索ワードを全て置換する。
+function editorReplaceAll() {
+    const word = $("editor-search-in")?.value || "";
+    const repl = $("editor-replace-in")?.value || "";
+    if (!word) return;
+
+    const isJs = $("pane-js")?.classList.contains("active");
+    const ta = isJs ? $("js-ta") : $("yaml-ta");
+    if (!ta) { showToast("エディタが見つかりません"); return; }
+
+    const { result, count } = _literalReplaceAllCI(ta.value, word, repl);
+    if (count === 0) { showToast("「" + word + "」は見つかりません"); return; }
+
+    const state = _editorUndoStateFor(ta.id);
+    editorUndoPush(state, ta.value, { start: ta.selectionStart, end: ta.selectionEnd });
+    ta.value = result;
+    editorHlUpdate(ta.id);
+    getEditorContext().searchLast = { taId: null, word: "", pos: 0 };
+    showToast(count + "件を置換しました");
+}
+
 /* ═══════════════════════════════════════════
    window へのエクスポート（他ファイルから参照される関数のみ）
 ═══════════════════════════════════════════ */
@@ -3224,7 +3302,7 @@ Object.assign(window, {
     buildYamlEditorHTML, initYamlEditorModal,
     openAiConfig, aiCfgModelListHtml, aiCfgToggleRouter, aiCfgToggleEnabled,
     aiCfgFetchModels, saveAiConfig,
-    editorSearch, openFormDesignAi, formDesignAiGenerate, saveFormDesignDraft,
+    editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, formDesignAiGenerate, saveFormDesignDraft,
     parseFormDesignJson, openAiRawOutputModal,
     validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
     openAiValidationDetailModal,
