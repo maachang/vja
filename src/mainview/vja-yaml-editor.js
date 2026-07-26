@@ -2280,14 +2280,16 @@ function _escapeRegExp(s) {
 
 // text（YAML定義本文＋追加指示）中に、ウィジェット名が単語境界つきで
 // 文字として出現するものだけを機械的に抽出する。LLMに推測させるのではなく、
-// 純粋な文字列マッチで「このイベントが触れていそうなウィジェット」を絞り込むための処理。
+// 純粋な文字列マッチで「このイベントが触れていそうな対象（ウィジェット/定数等）」を
+// 絞り込むための処理。items は { name: string, ... } の配列であれば何でも使える
+// （ウィジェット一覧・グローバル定数・フォーム定数のいずれにも共通で使用する）。
 // （前後が識別子文字[A-Za-z0-9_$]でないことを境界条件とする。日本語の助詞等は
 //   識別子文字ではないため、"txtNameの値" のような埋め込みでも問題なくマッチする）
-function _extractMentionedWidgets(text, widgets) {
+function _extractMentionedByName(text, items) {
     if (!text) return [];
-    return widgets.filter((w) => {
-        if (!w.name) return false;
-        const re = new RegExp("(?<![A-Za-z0-9_$])" + _escapeRegExp(w.name) + "(?![A-Za-z0-9_$])");
+    return items.filter((it) => {
+        if (!it.name) return false;
+        const re = new RegExp("(?<![A-Za-z0-9_$])" + _escapeRegExp(it.name) + "(?![A-Za-z0-9_$])");
         return re.test(text);
     });
 }
@@ -2302,13 +2304,16 @@ function _extractMentionedWidgets(text, widgets) {
 // 「生成後に設定を変えたのに古いプロンプトのまま修正依頼してしまう」
 // といった問題を、そもそも起こりようがない形にしている。
 //
-// narrowWidgets: true（既定）の場合、YAML本文＋追加指示に名前が出現する
-// ウィジェットのみに一覧を絞り込み、ローカルLLMに渡すコンテキストを削減する
-// （小型モデルほど無関係なウィジェット名に惑わされやすいため）。
+// narrowContext: true（既定）の場合、YAML本文＋追加指示に名前が出現する
+// ウィジェット/定数のみに一覧を絞り込み、ローカルLLMに渡すコンテキストを削減する
+// （小型モデルほど無関係な名前に惑わされやすいため）。
 // 絞り込みが原因で生成コードが未知のウィジェット名を参照してしまった場合の
 // 救済策として、AI自動修正リトライ時にはfalseを渡し、全件のまま再構築する
 // （呼び出し側 yamlAiGenerate を参照）。
-function _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowWidgets = true) {
+// ※定数側には「未知の定数キー検出」バリデーションが無いため、絞り込みで必要な
+//   定数が漏れても自動検知はできない（マッチ0件時は全件表示にフォールバックする
+//   ことで、大外しは防いでいる）。
+function _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowContext = true) {
     const w = (isAppEvent || isFormEvent) ? null : getWidget(wid);
     const yamlCur = $("yaml-ta")?.value || "";
 
@@ -2322,15 +2327,17 @@ function _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowWidg
     const addPrompt = $("ai-prompt-in")?.value || "";
     const curForm = getProjectData().forms[getProjectData().curFormIdx];
 
+    const scanText = yamlCur + "\n" + addPrompt;
+
     // ── ①② ウィジェット一覧の絞り込み ──
-    // narrowWidgets=trueの場合、YAML本文＋追加指示に名前が出現するウィジェットのみに
+    // narrowContext=trueの場合、YAML本文＋追加指示に名前が出現するウィジェットのみに
     // 一覧を絞る（絞り込んだ結果0件＝手がかりが無い場合は絞り込まず全件のままにする）。
     // 現在編集中のウィジェット自身は、本文中で自分の名前を書かないケースが多いため、
     // マッチ結果に関わらず無条件で含める。
     const allWidgetsFull = getProjectData().widgets;
     let widgetsForCtx = allWidgetsFull;
-    if (narrowWidgets) {
-        const mentioned = _extractMentionedWidgets(yamlCur + "\n" + addPrompt, allWidgetsFull);
+    if (narrowContext) {
+        const mentioned = _extractMentionedByName(scanText, allWidgetsFull);
         const mentionedSet = new Set(mentioned.map(ww => ww.name));
         if (w?.name) mentionedSet.add(w.name);
         if (mentionedSet.size > 0) {
@@ -2339,7 +2346,7 @@ function _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowWidg
     }
     window.vja?.log?.debug?.(
         "[AI生成] ウィジェット一覧の絞り込み: " + widgetsForCtx.length + "/" + allWidgetsFull.length + "件"
-        + (narrowWidgets ? "" : "（絞り込み無効・全件使用）")
+        + (narrowContext ? "" : "（絞り込み無効・全件使用）")
     );
 
     // ── ① 入力系ウィジェット一覧（フォームの入力パラメータ） ──
@@ -2350,10 +2357,10 @@ function _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowWidg
             const desc = ww.props?.description ? " // " + ww.props.description : "";
             return "  - " + ww.name + " (" + ww.tag + ")" + desc;
         }).join("\n")
-        : "  （なし）";
+        : "  (none)";
 
     // ── ② 全ウィジェット一覧 ──
-    const allWidgetsCtx = widgetsForCtx.map(ww => "  - " + ww.name + " (" + ww.tag + ")").join("\n") || "  （なし）";
+    const allWidgetsCtx = widgetsForCtx.map(ww => "  - " + ww.name + " (" + ww.tag + ")").join("\n") || "  (none)";
 
     // ── ③ 画面一覧 ──
     const formsCtx = getProjectData().forms.map((f, i) => {
@@ -2362,12 +2369,23 @@ function _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowWidg
     }).join("\n");
 
     // ── ④ 定数（グローバル＋フォーム単位） ──
-    const globalConstCtx = getProjectData().constants.length > 0
-        ? getProjectData().constants.map(c => "  - " + c.name + " = " + c.value).join("\n")
-        : "  （なし）";
-    const formConstCtx = (curForm?.constants || []).length > 0
-        ? (curForm.constants || []).map(c => "  - " + c.name + " = " + c.value).join("\n")
-        : "  （なし）";
+    // ウィジェットと同様、YAML本文＋追加指示に名前が出現する定数のみに絞り込む
+    // （定数自体が0件なら絞り込み判定不要でそのまま「なし」、1件以上ある場合のみ
+    //   マッチ判定を行い、マッチ0件＝手がかりが無い場合は絞り込まず全件のままにする）。
+    const globalConstsFull = getProjectData().constants;
+    const globalConstsForCtx = (narrowContext && globalConstsFull.length > 0)
+        ? (() => { const m = _extractMentionedByName(scanText, globalConstsFull); return m.length > 0 ? m : globalConstsFull; })()
+        : globalConstsFull;
+    const globalConstCtx = globalConstsForCtx.length > 0
+        ? globalConstsForCtx.map(c => "  - " + c.name + " = " + c.value).join("\n")
+        : "  (none)";
+    const formConstsFull = curForm?.constants || [];
+    const formConstsForCtx = (narrowContext && formConstsFull.length > 0)
+        ? (() => { const m = _extractMentionedByName(scanText, formConstsFull); return m.length > 0 ? m : formConstsFull; })()
+        : formConstsFull;
+    const formConstCtx = formConstsForCtx.length > 0
+        ? formConstsForCtx.map(c => "  - " + c.name + " = " + c.value).join("\n")
+        : "  (none)";
 
     // ── ⑤ テーブル定義（利用テーブルのカラム情報） ──
     // 以前はYAML本文の「利用テーブル:」から正規表現で抽出していたが、
@@ -2519,7 +2537,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                 if (status) status.textContent = "⏳ 検出した問題を自動修正中…";
                 // 自動修正リトライ時は、ウィジェット一覧の絞り込みを解除した
                 // userPromptを使う（絞り込みが原因で未知のウィジェット名を
-                // 参照してしまった可能性の救済策。narrowWidgets=falseで再構築）。
+                // 参照してしまった可能性の救済策。narrowContext=falseで再構築）。
                 const wideCtx = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, false);
                 const fixUserPrompt = _buildAiFixPrompt(wideCtx.userPrompt, unwrapped, validation);
                 let retryCode = null;
