@@ -1726,9 +1726,9 @@ ${js.trim()}
 
 [JSONスキーマ（要素ごとのキー定義）]
 各オブジェクトは以下のキーを必ず保持してください。
-- "tag": "inputtype" | "textarea" | "checkbox" | "radio" | "selectBox" | "listbox" | "button" | "label" | "datagrid"
+- "tag": "inputtype" | "textarea" | "checkbox" | "radio" | "selectBox" | "listbox" | "button" | "label" | "datagrid" | "qrcode" | "markdown"
 - "name": 配列内で重複しないVB6風のハンガリアン記法（例: txtUserId, lblUserId, btnSubmit, chkAgree, radMale, cmbCategory, lstItems, txaMemo, tblResult）
-- "text": 表示文言（"label", "button", "checkbox", "radio" の場合は必須。"inputtype", "textarea", "datagrid" の場合は空文字 "" または省略）
+- "text": "label", "button", "checkbox", "radio" の場合は表示文言（必須）。"qrcode" の場合はエンコードする生テキスト/URL。"markdown" の場合は表示するMarkdown本文。"inputtype", "textarea", "datagrid" の場合は空文字 "" または省略
 - "inputType": "tag" が "inputtype" の場合のみ必須。"text" | "password" | "number" | "email" | "tel" | "date" | "time" | "url"
 - "placeholder": （任意）"inputtype" または "textarea" のときの入力例
 - "group": "tag" が "radio" の場合のみ必須。同一グループのラジオボタンには同じグループ名（例: "Gender", "MemberType"）を指定
@@ -1806,9 +1806,9 @@ Your task is to read a Japanese YAML screen definition (including screen purpose
 
 [JSON Schema per Element]
 Each object in the array must have the following keys:
-- "tag": "inputtype" | "textarea" | "checkbox" | "radio" | "selectBox" | "listbox" | "button" | "label" | "datagrid"
+- "tag": "inputtype" | "textarea" | "checkbox" | "radio" | "selectBox" | "listbox" | "button" | "label" | "datagrid" | "qrcode" | "markdown"
 - "name": Unique VB6-style Hungarian notation (e.g., txtUserId, lblUserId, btnSubmit, chkAgree, radMale, cmbCategory, lstItems, txaMemo, tblResult). Ensure names are unique within the array.
-- "text": Caption text. Required for "label", "button", "checkbox", "radio". Omit or leave empty "" for "inputtype", "textarea", and "datagrid".
+- "text": Caption text for "label", "button", "checkbox", "radio" (required). For "qrcode", the raw text/URL to encode. For "markdown", the raw Markdown source text to display. Omit or leave empty "" for "inputtype", "textarea", and "datagrid".
 - "inputType": (Required only when tag is "inputtype") "text" | "password" | "number" | "email" | "tel" | "date" | "time" | "url"
 - "placeholder": (Optional) Sample input text for "inputtype" or "textarea".
 - "group": (Required only when tag is "radio") Group name string. Assign the same value to radio buttons belonging to the same selection group (e.g., "Gender", "MemberType").

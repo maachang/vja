@@ -72,6 +72,9 @@
             if (el.dataset.columns !== undefined) {
                 return (window._vjaDatagridStore || {})[name] || [];
             }
+            // qrcode/markdown: 描画に使った生テキストを返す（レンダリング後のHTMLではない）
+            if (el.dataset.qrText !== undefined) return el.dataset.qrText || "";
+            if (el.dataset.mdText !== undefined) return el.dataset.mdText || "";
             if (tag === "input") {
                 if (el.type === "checkbox" || el.type === "radio") return el.checked;
                 return el.value;
@@ -107,6 +110,21 @@
             if (el.dataset.columns !== undefined) {
                 const fn = global[`${name}_setData`];
                 if (typeof fn === "function") fn(value, options);
+                return;
+            }
+            // qrcode: テキストを更新して再描画（window._vjaRenderQrはbun/index.tsが生成する
+            // DOMContentLoaded内のinit処理で定義される）
+            if (el.dataset.qrText !== undefined) {
+                el.dataset.qrText = value ?? "";
+                if (typeof window._vjaRenderQr === "function") window._vjaRenderQr(el);
+                el.dispatchEvent(new Event("change", { bubbles: true }));
+                return;
+            }
+            // markdown: テキストを更新して再レンダリング（window._vjaRenderMdも同様）
+            if (el.dataset.mdText !== undefined) {
+                el.dataset.mdText = value ?? "";
+                if (typeof window._vjaRenderMd === "function") window._vjaRenderMd(el);
+                el.dispatchEvent(new Event("change", { bubbles: true }));
                 return;
             }
             if (tag === "input") {

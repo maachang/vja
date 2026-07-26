@@ -113,6 +113,7 @@ function renderWidget(w, isNew) {
         applyWPos(el, w);
         fb().appendChild(el);
         bindWidget(el, w.id);
+        WIDGET_DEFS[w.tag]?.afterRender?.(el, w.props);
         return;
     }
     // update existing
@@ -122,6 +123,7 @@ function renderWidget(w, isNew) {
     // replace inner (first child = content, rest = rh handles)
     el.firstChild && el.firstChild.remove();
     el.insertAdjacentHTML("afterbegin", makeInner(w));
+    WIDGET_DEFS[w.tag]?.afterRender?.(el, w.props);
 }
 
 function applyWPos(el, w) {
@@ -381,7 +383,7 @@ function addWidget(tool, x, y, w, h) {
 // placeholder/group）を現在フォームへ一括配置する。座標はAI出力をそのまま使い、
 // フォーム範囲外・不正値のみVJA側で補正する（色・フォントはテーマ機能に委譲）。
 // 対応タグ以外はスキップしてカウントする。まとめて1回だけUndo登録する。
-const AI_FORM_DESIGN_TAGS = ["inputtype", "textarea", "checkbox", "radio", "selectBox", "listbox", "button", "label", "datagrid"];
+const AI_FORM_DESIGN_TAGS = ["inputtype", "textarea", "checkbox", "radio", "selectBox", "listbox", "button", "label", "datagrid", "qrcode", "markdown"];
 const AI_FORM_DESIGN_INPUT_TYPES = ["text", "password", "number", "email", "tel", "date", "time", "url"];
 // datagridのカラム幅の既定値（AI出力のwidthが数値でない/未指定の場合のフォールバック）
 const AI_FORM_DESIGN_DEFAULT_COL_WIDTH = 20;

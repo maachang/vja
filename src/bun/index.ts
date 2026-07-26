@@ -16,7 +16,7 @@ import {
 import { Database } from "bun:sqlite";
 import { type VjaRPCType, type DbRow, type DbResult } from "../shared/types";
 import { initLogger, writeLog } from "./logger";
-import { copyCompileAssets, getVersion, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH } from "./copy-compile-assets";
+import { copyCompileAssets, getVersion, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH, WEBVIEW_RUNTIME_LIBS } from "./copy-compile-assets";
 import { clearProjectDb, closeProjectDb } from "./db-manager";
 import {
     fileReadHandler, fileWriteHandler, fileReadBytesHandler, fileWriteBytesHandler,
@@ -701,6 +701,25 @@ const buildProjectFiles = async (): Promise<{
             copyFileSync(bridgeJsSrc, join(outDir, "project-bridge.js"));
         }
 
+        // WEBVIEW_RUNTIME_LIBS（qrcode.js/marked.umd.js等、<script src>で直接読み込む
+        // 実行時ライブラリ）を実行用出力先へコピーする。project-bridge.jsとは違いバンドル
+        // されずファイルそのものとして必要。vja-runtime.jsはproject-bridge.js側にバンドル
+        // 済みのためここでは不要だが、リスト共通化のためまとめて対象にしてスキップする。
+        // import.meta.dir（実行中index.jsの場所）配下にはsrc/mainviewの生ファイルが無いため、
+        // compileProject()と同じ「vjaRoot（PWD、ビルド後はBUILD_VJA_SRC_PATH）/src/mainview」
+        // から解決する。
+        let vjaRootForLibs = process.env.PWD || "";
+        if (existsSync(BUILD_VJA_SRC_PATH)) vjaRootForLibs = BUILD_VJA_SRC_PATH;
+        for (const libName of WEBVIEW_RUNTIME_LIBS) {
+            if (libName === "vja-runtime.js") continue; // project-bridge.jsにバンドル済み
+            const libSrc = join(vjaRootForLibs, "src", "mainview", libName);
+            if (existsSync(libSrc)) {
+                copyFileSync(libSrc, join(outDir, libName));
+            } else {
+                console.warn(`[vja] 実行用ライブラリコピー失敗（見つかりません）: ${libSrc}`);
+            }
+        }
+
         // 各フォームのHTMLを生成
         const extRuntimeJs = (_currentProjectExtRuntime || "").trim();
         for (const form of _currentProjectForms) {
@@ -785,9 +804,12 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
         // ── フォームHTMLを生成 ────────────────────────
         const extRuntimeJs = (_currentProjectExtRuntime || "").trim();
         const copyEntries: Record<string, string> = {
-            "src/mainview/vja-runtime.js": "views/mainview/vja-runtime.js",
             "src/project.vjaproj": "project.vjaproj",
         };
+        // WEBVIEW_RUNTIME_LIBS（vja-runtime.js/qrcode.js/marked.umd.js等）を一括登録
+        for (const libName of WEBVIEW_RUNTIME_LIBS) {
+            copyEntries[`src/mainview/${libName}`] = `views/mainview/${libName}`;
+        }
         for (const form of _currentProjectForms) {
             const htmlFileName = `${form.cfg.name || form.cfg.title}.html`;
             const html = buildFormHtml(form, _currentProjectForms, extRuntimeJs);
@@ -968,6 +990,8 @@ ${widgetsHtml}
 <div id="dialog-root"></div>
 <div id="toast-root"></div>
 <script>window._INIT_PARAMS = window._INIT_PARAMS || {}; window._INIT_PARAMS.PROJECT_NAME = ${JSON.stringify(_currentProjectName || "")};</script>
+<script src="./qrcode.js"></script>
+<script src="./marked.umd.js"></script>
 <script src="./project-bridge.js"></script>
 ${extRuntimeJs ? `<script>\n${extRuntimeJs}\n</script>` : ""}
 <script>
@@ -1019,6 +1043,15 @@ const buildWidgetHtml = (w: any): string => {
             return `<fieldset ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border}"><legend>${esc2(p.text)}</legend></fieldset>`;
         case "picture":
             return `<div ${id} style="${base}background:${p.bg};${border};display:flex;align-items:center;justify-content:center">${p.src ? `<img src="${esc2(p.src)}" style="max-width:100%;max-height:100%;object-fit:${p.objectFit || "contain"}">` : ""}</div>`;
+        case "qrcode":
+            // QRCode.js はコンテナへ直接DOMを書き込む方式のため、初期HTMLはプレースホルダーのみ返し、
+            // 実際の描画はDOMContentLoaded後のinit処理（window._vjaRenderQr）で行う。
+            return `<div ${id} data-qr-text="${esc2(p.text || "")}" style="${base}background:${p.bg || "#ffffff"};display:flex;align-items:center;justify-content:center"></div>`;
+        case "markdown":
+            // marked.parse()はブラウザ側でロード済みのmarked.umd.jsを使うため、初期HTMLは
+            // プレースホルダーのみ返し、実際のレンダリングはDOMContentLoaded後のinit処理
+            // （window._vjaRenderMd）で行う。
+            return `<div ${id} data-md-text="${esc2(p.text || "")}" style="${base}background:${p.bg || "#ffffff"};color:${p.fg || "#000000"};${font};${border};overflow:auto;padding:4px;box-sizing:border-box"></div>`;
         case "datepicker": {
             const _itype = p.inputType || "date";
             return `<input type="${_itype}" ${id} value="${esc2(p.value || "")}" ${p.min ? `min="${esc2(p.min)}"` : ""} ${p.max ? `max="${esc2(p.max)}"` : ""} ${p.disabled ? "disabled" : ""} ${p.readonly ? "readonly" : ""} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
@@ -1280,6 +1313,40 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
             lines.push(`    const el = document.getElementById(${JSON.stringify(w.name)});`);
             lines.push(`    if (el) window._buildDatagridHtml(el, rows, options);`);
             lines.push(`  };`);
+        }
+    }
+    // qrcode/markdown: 描画関数を定義し、対象ウィジェットへ初回描画を行う
+    // （setValue()からも同じ関数を呼び再描画するため、vja-runtime.jsから参照できる
+    //   window._vjaRenderQr/window._vjaRenderMd としてグローバルに公開する）。
+    const hasQrcode = (form.widgets || []).some((w: any) => w.tag === "qrcode");
+    if (hasQrcode) {
+        lines.push(`  window._vjaRenderQr = function(el) {`);
+        lines.push(`    el.innerHTML = "";`);
+        lines.push(`    const text = el.dataset.qrText || "";`);
+        lines.push(`    if (text && window.QRCode) {`);
+        lines.push(`      new QRCode(el, { text: text, width: Math.max(1, el.clientWidth || 120), height: Math.max(1, el.clientHeight || 120), colorDark: "#000000", colorLight: el.style.background || "#ffffff", correctLevel: QRCode.CorrectLevel.L });`);
+        lines.push(`    }`);
+        lines.push(`  };`);
+        for (const w of (form.widgets || [])) {
+            if (w.tag !== "qrcode") continue;
+            lines.push(`  (function() {`);
+            lines.push(`    const el = document.getElementById(${JSON.stringify(w.name)});`);
+            lines.push(`    if (el) window._vjaRenderQr(el);`);
+            lines.push(`  })();`);
+        }
+    }
+    const hasMarkdown = (form.widgets || []).some((w: any) => w.tag === "markdown");
+    if (hasMarkdown) {
+        lines.push(`  window._vjaRenderMd = function(el) {`);
+        lines.push(`    const text = el.dataset.mdText || "";`);
+        lines.push(`    el.innerHTML = window.marked ? window.marked.parse(text) : text;`);
+        lines.push(`  };`);
+        for (const w of (form.widgets || [])) {
+            if (w.tag !== "markdown") continue;
+            lines.push(`  (function() {`);
+            lines.push(`    const el = document.getElementById(${JSON.stringify(w.name)});`);
+            lines.push(`    if (el) window._vjaRenderMd(el);`);
+            lines.push(`  })();`);
         }
     }
     for (const w of (form.widgets || [])) {

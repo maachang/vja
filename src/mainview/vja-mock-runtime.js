@@ -98,6 +98,7 @@
             if (tag === "checkbox" || tag === "radio") return false;
             if (tag === "progressbar" || tag === "slider" || tag === "hscroll" || tag === "vscroll") return 0;
             if (tag === "inputtype" && w?.props?.inputType === "number") return 0;
+            if (tag === "qrcode" || tag === "markdown") return w?.props?.text || "";
             // ウィジェット名が特定できない場合（変数名で渡された、未配置等）は
             // 従来通り安全側の文字列を返す。
             return "";

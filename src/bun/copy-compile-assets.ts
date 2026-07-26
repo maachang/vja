@@ -9,6 +9,17 @@ import { homedir } from "os";
 
 const DEST = join(homedir(), ".vja-apps", "VJAFormDesigner", "compile-assets", "src");
 
+// src/mainview/ 直下にあり、生成したアプリHTMLから <script src="./xxx.js"> で
+// 直接読み込む「実行時ライブラリ」の一覧（TSやバンドル対象のブリッジ層とは別。
+// バンドルされずファイルそのものとして各出力先へ存在する必要がある）。
+// 新規ウィジェットが外部ライブラリを必要とする場合はここに1つ追記するだけでよい。
+// 利用箇所: compileProject()のcopyEntries初期化、buildProjectFiles()のコピー処理（共にindex.ts）。
+export const WEBVIEW_RUNTIME_LIBS: string[] = [
+    "vja-runtime.js",
+    "qrcode.js",
+    "marked.umd.js",
+];
+
 // コピー対象ファイル定義
 // [vjaRoot/src/ からの相対パス, compile-assets/src/ からの相対パス]
 // compileProject() でも同じリストを使って一元管理する
@@ -22,9 +33,8 @@ export const COPY_BUILD_FILES: [string, string][] = [
     ["shared/types.ts", "shared/types.ts"],
     ["mainview/project-bridge.ts", "mainview/project-bridge.ts"],
     ["mainview/bridge-common.ts", "mainview/bridge-common.ts"],
-    ["mainview/vja-runtime.js", "mainview/vja-runtime.js"],
-    ["mainview/marked.umd.js", "mainview/marked.umd.js"],
-    ["mainview/qrcode.js", "mainview/qrcode.js"],
+    // WEBVIEW_RUNTIME_LIBS（vja-runtime.js/qrcode.js/marked.umd.js等）から自動生成
+    ...WEBVIEW_RUNTIME_LIBS.map((f): [string, string] => [`mainview/${f}`, `mainview/${f}`]),
 ];
 
 // build後のsrcパスを取得.

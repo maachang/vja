@@ -1449,6 +1449,7 @@ function _buildFrontMock(evName, wtag, overrides, widgets) {
         if (tag === "checkbox" || tag === "radio") return false;
         if (tag === "progressbar" || tag === "slider" || tag === "hscroll" || tag === "vscroll") return 0;
         if (tag === "inputtype" && w?.props?.inputType === "number") return 0;
+        if (tag === "qrcode" || tag === "markdown") return w?.props?.text || "";
         return "";
     }
     function _constGetValue(name) {
@@ -3684,5 +3685,6 @@ Object.assign(window, {
     yamlSetTableOpt, yamlSetValidationOpt, _applyTableYamlSync,
     yamlSetMockCheckOpt,
     yamlPinLearnedFix, yamlDeleteLearnedFix,
-    _closeCompletionPopup, _acceptCompletionAt, _clearBracketMatch, _updateBracketMatch,
+    _closeCompletionPopup, _acceptCompletionAt, _clearBracketMatch, _updateBracketMatch,_purgeOverridesForWid,
+    _OVERRIDE_MAP_NAMES, _purgeOverridesForKey,
 });

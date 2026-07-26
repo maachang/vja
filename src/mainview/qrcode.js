@@ -221,7 +221,10 @@
 	var useSVG = document.documentElement.tagName.toLowerCase() === "svg";
 
 	// Drawing in DOM by using Table tag
-	const Drawing = useSVG ? svgDrawer : !_isSupportCanvas() ? (function () {
+	// ※ 元ライブラリはconstだったが、下方でuseSVG時にDrawingへ再代入している箇所が
+	//   あり（this._htOption.useSVGがtrueの場合）、constのままでは再代入不可能なため
+	//   letに変更（Bunバンドラでの構文エラー、および実行時のTypeErrorを回避）。
+	let Drawing = useSVG ? svgDrawer : !_isSupportCanvas() ? (function () {
 		var Drawing = function (el, htOption) {
 			this._el = el;
 			this._htOption = htOption;
@@ -280,7 +283,11 @@
 		
 		// Android 2.1 bug workaround
 		// http://code.google.com/p/android/issues/detail?id=5141
-		if (this._android && this._android <= 2.1) {
+		// ※ この判定はIIFE直下（コンストラクタ外）でthisを参照しており、元々
+		//   非strictモードではthis===windowでwindow._androidは常にundefined
+		//   （実質no-op）だったが、Bunのビルド処理でstrict mode化されるとthisが
+		//   undefinedになり例外になる。typeofガードで安全に無害化する。
+		if (typeof this !== "undefined" && this._android && this._android <= 2.1) {
 	    	var factor = 1 / window.devicePixelRatio;
 	        var drawImage = CanvasRenderingContext2D.prototype.drawImage; 
 	    	CanvasRenderingContext2D.prototype.drawImage = function (image, sx, sy, sw, sh, dx, dy, dw, dh) {
@@ -613,4 +620,4 @@
 
 	// set global.
 	_g.QRCode = QRCode;
-})(this);
+})(typeof window !== "undefined" ? window : globalThis || this);

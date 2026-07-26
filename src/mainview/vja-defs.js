@@ -565,6 +565,76 @@ const WIDGET_DEFS = {
         ],
         preview: (p, base, vis) => `<div style="${base}background:${p.bg};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};display:flex;align-items:center;justify-content:center;color:#888;font-size:11px;${vis}">${p.src ? `<img src="${esc(p.src)}" style="max-width:100%;max-height:100%;object-fit:${p.objectFit || "contain"}">` : "📷"}</div>`,
     },
+    qrcode: {
+        label: "QRコード", icon: "🔲",
+        def: {
+            w: 120, h: 120,
+            text: "", bg: "#ffffff",
+            visible: true, description: "",
+        },
+        events: ["Click"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "内容" },
+            { k: "text", lb: "Text", t: "area" },
+            { k: "bg", lb: "BackColor", t: "color" },
+            ...PP_TAIL,
+        ],
+        // QRCode.js（qrcode.js）はコンテナ要素へ直接DOMを書き込む方式のため、
+        // previewは空のプレースホルダー枠のみを返し、実際の描画はafterRender
+        // （renderWidget()から描画直後に呼ばれる）でQRCodeコンストラクタを使って行う。
+        // 文字数超過でQRコードが生成できなくなる問題を避けるため、
+        // correctLevelは常にL固定とする（CLAUDE.md記載の既知の制約）。
+        preview: (p, base, vis) => `<div class="qr-box" style="${base}background:${p.bg || "#ffffff"};display:flex;align-items:center;justify-content:center;color:#888;font-size:24px;${vis}"></div>`,
+        afterRender: (el, p) => {
+            const box = el.querySelector(".qr-box");
+            if (!box) return;
+            box.innerHTML = "";
+            if (p.text && window.QRCode) {
+                new QRCode(box, {
+                    text: p.text,
+                    width: Math.max(1, (parseInt(box.clientWidth, 10) || 120)),
+                    height: Math.max(1, (parseInt(box.clientHeight, 10) || 120)),
+                    colorDark: "#000000", colorLight: p.bg || "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.L,
+                });
+            } else {
+                box.textContent = "🔲";
+            }
+        },
+    },
+    markdown: {
+        label: "マークダウン", icon: "📝",
+        themeSync: ["color"],
+        def: {
+            w: 240, h: 120,
+            text: "", bg: "#ffffff", fg: "#000000",
+            fontSize: 12,
+            borderSize: 1, borderColor: "#cccccc",
+            visible: true, description: "",
+        },
+        events: ["Click"],
+        pdefs: [
+            ...PP_POS,
+            { sep: "内容" },
+            { k: "text", lb: "Markdown", t: "area" },
+            { k: "bg", lb: "BackColor", t: "color" },
+            { k: "fg", lb: "ForeColor", t: "color" },
+            { k: "fontSize", lb: "FontSize", t: "num" },
+            ...PP_BORDER,
+            ...PP_TAIL,
+        ],
+        // marked.parse()は同期的に文字列を返すため、previewは枠のみ返し、
+        // 実際のレンダリングはafterRenderで行う（QRコードと処理経路を揃える）。
+        // marked()の出力はそのままinnerHTMLへ入れる想定（ローカルアプリのため
+        // XSS対策は行わない。CLAUDE.md「あえてやってないこと」節参照）。
+        preview: (p, base, vis) => `<div class="md-box" style="${base}background:${p.bg || "#ffffff"};color:${p.fg || "#000000"};font-size:${p.fontSize || 12}px;border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};overflow:auto;padding:4px;box-sizing:border-box;${vis}"></div>`,
+        afterRender: (el, p) => {
+            const box = el.querySelector(".md-box");
+            if (!box) return;
+            box.innerHTML = window.marked ? window.marked.parse(p.text || "") : esc(p.text || "");
+        },
+    },
     datepicker: {
         label: "日付/時刻", icon: "📅",
         themeSync: ["font", "color"],
