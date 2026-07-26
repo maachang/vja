@@ -99,6 +99,13 @@ function editorUndoInit(taId, state, initVal) {
             state.pushOnInput = UNDO_DELIMITERS.has(e.key);
         }
     });
+    // 貼り付け（Ctrl+V等）は内容挿入前の状態を区切りとして積む
+    // （keydown時点ではまだUNDO_DELIMITERS判定に乗らないため、pasteイベントで個別に扱う）
+    ta.addEventListener("paste", function () {
+        if (state.busy) return;
+        editorUndoPush(state, ta.value, { start: ta.selectionStart, end: ta.selectionEnd });
+        state.pushOnInput = false;
+    });
     // input時に区切り文字なら保存
     ta.addEventListener("input", function () {
         if (state.busy) return;
