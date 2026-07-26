@@ -2593,3 +2593,16 @@ select.pv-input option {
 .editor-completion-item:hover {
     background: var(--accent-dim, #2a3a6a);
 }
+
+/* ── 対応括弧のハイライト ──
+   textarea/シンタックスハイライト層と同じ親（.yaml-hl-wrap/.js-hl-wrap）内に配置する前提。
+   ハイライト層（z-index:2）より下に表示し、文字が隠れないようにする。 */
+.editor-bracket-match {
+    display: none;
+    position: absolute;
+    z-index: 1;
+    pointer-events: none;
+    background: var(--accent-dim, #2a3a6a);
+    outline: 1px solid var(--accent);
+    box-sizing: border-box;
+}

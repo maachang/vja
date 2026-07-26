@@ -49,6 +49,7 @@ function yamlTabSwitch(tab) {
     const yamlPane = $("pane-yaml");
     const jsPane = $("pane-js");
     if (!yamlTab || !jsTab || !yamlPane || !jsPane) return;
+    _clearBracketMatch(); // 表示中のペインが切り替わるため、対応括弧ハイライトは一旦消す
     if (tab === "yaml") {
         _closeCompletionPopup(); // JSペイン限定の入力補完ポップアップが表示されたままにならないよう閉じる
         yamlTab.classList.add("active");

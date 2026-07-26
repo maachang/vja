@@ -950,7 +950,9 @@ function _completionPopupEl() {
 }
 
 // カーソル位置（画面座標）を、非表示のミラーdivで文字列を計測して算出する。
-function _getCaretScreenPos(ta) {
+// textarea上の文字位置を画面座標で計測するための、非表示のミラーdivを作成する。
+// 呼び出し側でtextContent/マーカー設定・計測後、必ずdocument.bodyから除去すること。
+function _createEditorMirrorDiv(ta) {
     const div = document.createElement("div");
     const cs = getComputedStyle(ta);
     ["boxSizing", "width", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
@@ -965,6 +967,11 @@ function _getCaretScreenPos(ta) {
     div.style.left = "-9999px";
     div.style.width = ta.clientWidth + "px";
     document.body.appendChild(div);
+    return div;
+}
+
+function _getCaretScreenPos(ta) {
+    const div = _createEditorMirrorDiv(ta);
     div.textContent = ta.value.slice(0, ta.selectionStart);
     const marker = document.createElement("span");
     marker.textContent = "​";
@@ -974,6 +981,22 @@ function _getCaretScreenPos(ta) {
     const left = rect.left + marker.offsetLeft - ta.scrollLeft;
     document.body.removeChild(div);
     return { top, left };
+}
+
+// textarea上の指定インデックスの文字1つ分の矩形を、textareaの親（.yaml-hl-wrap/.js-hl-wrap）基準の相対座標で計測する
+// （対応括弧ハイライト用。ハイライト層と同じ親の中に配置するため、画面座標ではなく親要素基準の座標が必要）。
+function _getCharScreenRect(ta, idx) {
+    const div = _createEditorMirrorDiv(ta);
+    div.textContent = ta.value.slice(0, idx);
+    const marker = document.createElement("span");
+    marker.textContent = ta.value[idx] || " ";
+    div.appendChild(marker);
+    const top = ta.offsetTop + marker.offsetTop - ta.scrollTop;
+    const left = ta.offsetLeft + marker.offsetLeft - ta.scrollLeft;
+    const width = marker.offsetWidth;
+    const height = marker.offsetHeight;
+    document.body.removeChild(div);
+    return { top, left, width, height };
 }
 
 // 候補一覧をポップアップに描画してカーソル位置の下に表示する。
@@ -3008,6 +3031,97 @@ function editorHlUpdate(taId) {
     else if (taId === "ta-extrt-js") { _hlUpdate("ta-extrt-js", "hl-extrt-js", jsTokenize); editorUpdateGutter("ta-extrt-js", "gutter-extrt-js"); }
     else if (taId === "ta-extrt-doc") { _hlUpdate("ta-extrt-doc", "hl-extrt-doc", yamlTokenize); editorUpdateGutter("ta-extrt-doc", "gutter-extrt-doc"); }
     else if (taId === "ta-fd") { _hlUpdate("ta-fd", "hl-fd", yamlTokenize); editorUpdateGutter("ta-fd", "gutter-fd"); }
+    _updateBracketMatch(taId);
+}
+
+/* ═══════════════════════════════════════════
+   対応括弧のハイライト
+═══════════════════════════════════════════ */
+
+// テキスト中の指定インデックスが文字列リテラル（"/'/`）の中かどうかを判定する。
+function _isInsideStringLiteral(text, idx) {
+    let q = null;
+    for (let i = 0; i < idx; i++) {
+        const c = text[i];
+        if (q) { if (c === q && text[i - 1] !== "\\") q = null; }
+        else if (c === '"' || c === "'" || c === "`") q = c;
+    }
+    return !!q;
+}
+
+// カーソル位置に隣接する括弧と、対応する括弧のインデックスを探す。
+// 見つからない場合・文字列リテラルの中の場合はnullを返す。
+function _findMatchingBracket(text, pos) {
+    const OPEN_OF = { ")": "(", "]": "[", "}": "{" };
+    const CLOSE_OF = { "(": ")", "[": "]", "{": "}" };
+    let idx = -1, ch = null;
+    if (CLOSE_OF[text[pos]] || OPEN_OF[text[pos]]) { idx = pos; ch = text[pos]; }
+    else if (CLOSE_OF[text[pos - 1]] || OPEN_OF[text[pos - 1]]) { idx = pos - 1; ch = text[pos - 1]; }
+    if (idx < 0 || _isInsideStringLiteral(text, idx)) return null;
+
+    if (CLOSE_OF[ch]) {
+        // 開き括弧: 後方（右）へ探索
+        const close = CLOSE_OF[ch];
+        let depth = 0;
+        for (let i = idx; i < text.length; i++) {
+            if (_isInsideStringLiteral(text, i)) continue;
+            if (text[i] === ch) depth++;
+            else if (text[i] === close) { depth--; if (depth === 0) return { a: idx, b: i }; }
+        }
+        return null;
+    } else {
+        // 閉じ括弧: 前方（左）へ探索
+        const open = OPEN_OF[ch];
+        let depth = 0;
+        for (let i = idx; i >= 0; i--) {
+            if (_isInsideStringLiteral(text, i)) continue;
+            if (text[i] === ch) depth++;
+            else if (text[i] === open) { depth--; if (depth === 0) return { a: i, b: idx }; }
+        }
+        return null;
+    }
+}
+
+// ハイライト表示用のDOM要素2つ（対応する2文字分）を取得する（なければ作成）。
+// シンタックスハイライト層（.yaml-hl-bg等、z-index:2）より下に表示する必要があるため、
+// document.body直下ではなく、textareaと同じ親（.yaml-hl-wrap/.js-hl-wrap）の中に配置する。
+function _bracketMatchEls(ta) {
+    const wrap = ta.closest(".yaml-hl-wrap, .js-hl-wrap");
+    if (!wrap) return null;
+    const aId = "editor-bracket-a-" + ta.id;
+    const bId = "editor-bracket-b-" + ta.id;
+    let a = document.getElementById(aId);
+    let b = document.getElementById(bId);
+    if (!a) { a = document.createElement("div"); a.id = aId; a.className = "editor-bracket-match"; wrap.appendChild(a); }
+    if (!b) { b = document.createElement("div"); b.id = bId; b.className = "editor-bracket-match"; wrap.appendChild(b); }
+    return [a, b];
+}
+
+function _positionBracketEl(el, r) {
+    el.style.top = r.top + "px";
+    el.style.left = r.left + "px";
+    el.style.width = r.width + "px";
+    el.style.height = r.height + "px";
+    el.style.display = "block";
+}
+
+// 対応括弧のハイライトを消す（存在する全editorペイン分をまとめて消す）。
+function _clearBracketMatch() {
+    document.querySelectorAll(".editor-bracket-match").forEach((el) => { el.style.display = "none"; });
+}
+
+// taId のカーソル位置に対応する括弧ハイライトを再計算して表示/非表示を更新する。
+function _updateBracketMatch(taId) {
+    const ta = $(taId);
+    if (!ta) return;
+    if (ta.selectionStart !== ta.selectionEnd) { _clearBracketMatch(); return; }
+    const match = _findMatchingBracket(ta.value, ta.selectionStart);
+    if (!match) { _clearBracketMatch(); return; }
+    const els = _bracketMatchEls(ta);
+    if (!els) return;
+    const [elA, elB] = els;
+    _positionBracketEl(elA, _getCharScreenRect(ta, match.a));
+    _positionBracketEl(elB, _getCharScreenRect(ta, match.b));
 }
 
 
@@ -3171,6 +3285,16 @@ function initYamlEditorModal(cur, curJs, onAfterInit, isAppEvent = false) {
         // JSペインの入力補完（vja API名/ウィジェット名）
         if (jta) jta.addEventListener("input", _editorCompletionOnInput);
         if (jta) jta.addEventListener("blur", _closeCompletionPopup);
+        // 対応括弧のハイライト（入力だけでなく、クリック・カーソル移動キーでも再計算する）
+        if (yta) yta.addEventListener("input", () => _updateBracketMatch("yaml-ta"));
+        if (yta) yta.addEventListener("keyup", () => _updateBracketMatch("yaml-ta"));
+        if (yta) yta.addEventListener("mouseup", () => _updateBracketMatch("yaml-ta"));
+        if (yta) yta.addEventListener("blur", _clearBracketMatch);
+        if (jta) jta.addEventListener("input", () => _updateBracketMatch("js-ta"));
+        if (jta) jta.addEventListener("keyup", () => _updateBracketMatch("js-ta"));
+        if (jta) jta.addEventListener("mouseup", () => _updateBracketMatch("js-ta"));
+        if (jta) jta.addEventListener("blur", _clearBracketMatch);
+        _clearBracketMatch();
         editorUndoInit("yaml-ta", getEditorContext().yu, cur);
         editorUndoInit("js-ta", getEditorContext().ju, curJs);
         yamlInitResize();
@@ -3490,5 +3614,5 @@ Object.assign(window, {
     yamlSetTableOpt, yamlSetValidationOpt, _applyTableYamlSync,
     yamlSetMockCheckOpt,
     yamlPinLearnedFix, yamlDeleteLearnedFix,
-    _closeCompletionPopup, _acceptCompletionAt,
+    _closeCompletionPopup, _acceptCompletionAt, _clearBracketMatch, _updateBracketMatch,
 });
