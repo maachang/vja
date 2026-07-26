@@ -83,17 +83,26 @@ function editorUndoInit(taId, state, initVal) {
     state.stack = [{ val: initVal, sel: null }];
     state.idx = 0;
     state.busy = false;
-    state.lastKey = "";
+    state.inBackspaceRun = false;
+    state.pushOnInput = false;
     const ta = $(taId);
     if (!ta) return;
-    // キーを記録
+    // Backspaceは連打（長押しリピート含む）の間は区切りとせず、
+    // 連続Backspace区間の最初の1回だけを区切りとして扱う（1文字ごとに履歴が積まれるのを防ぐ）
     ta.addEventListener("keydown", function (e) {
-        if (!state.busy) state.lastKey = e.key;
+        if (state.busy) return;
+        if (e.key === "Backspace") {
+            state.pushOnInput = !state.inBackspaceRun;
+            state.inBackspaceRun = true;
+        } else {
+            state.inBackspaceRun = false;
+            state.pushOnInput = UNDO_DELIMITERS.has(e.key);
+        }
     });
     // input時に区切り文字なら保存
     ta.addEventListener("input", function () {
         if (state.busy) return;
-        if (UNDO_DELIMITERS.has(state.lastKey)) {
+        if (state.pushOnInput) {
             editorUndoPush(state, ta.value, { start: ta.selectionStart, end: ta.selectionEnd });
         }
     });
