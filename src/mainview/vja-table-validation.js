@@ -59,15 +59,15 @@ function showCloseConfirm(mainMsg, subMsg, okLabel, onOk) {
     if (m) m.textContent = mainMsg || "VJA Form Designer を閉じますか？";
     if (s) s.textContent = subMsg || "保存していない変更は失われます。";
     if (b) b.textContent = okLabel || "閉じる";
-    _CONFIRM_MODAL.okCb = onOk || null;
+    CONFIRM_MODAL.okCb = onOk || null;
     document.getElementById("close-confirm").classList.add("show");
 }
 function hideCloseConfirm() {
     document.getElementById("close-confirm").classList.remove("show");
-    _CONFIRM_MODAL.okCb = null;
+    CONFIRM_MODAL.okCb = null;
 }
-function _onConfirmOk() {
-    const cb = _CONFIRM_MODAL.okCb;
+function onConfirmOk() {
+    const cb = CONFIRM_MODAL.okCb;
     hideCloseConfirm();
     if (cb) cb();
 }
@@ -83,8 +83,8 @@ async function doClose() {
 
 /* ── 定数エディタ ── */
 function openConstEditor() {
-    _CONST_MODAL.rows = getProjectData().constants.map(c => ({ name: c.name || "", value: c.value || "" }));
-    if (_CONST_MODAL.rows.length === 0) _CONST_MODAL.rows.push({ name: "", value: "" });
+    CONST_MODAL.rows = getProjectData().constants.map(c => ({ name: c.name || "", value: c.value || "" }));
+    if (CONST_MODAL.rows.length === 0) CONST_MODAL.rows.push({ name: "", value: "" });
     renderConstModal();
 }
 
@@ -99,7 +99,7 @@ function renderConstModal() {
 }
 
 function renderConstModalBase(title, infoText, addAction, saveAction, delRenderFn) {
-    const rows = _CONST_MODAL.rows || [];
+    const rows = CONST_MODAL.rows || [];
     let tbody = "";
     rows.forEach((r, i) => {
         const oi_n = "constUpdate(" + i + ",'name',this.value)";
@@ -130,44 +130,44 @@ function renderConstModalBase(title, infoText, addAction, saveAction, delRenderF
         + "</div>");
 }
 
-// DOM から現在の入力値を _CONST_MODAL.rows に同期する
+// DOM から現在の入力値を CONST_MODAL.rows に同期する
 function syncConstFromDOM() {
     const tbody = document.querySelector("#const-modal .const-table tbody");
-    if (!tbody || !_CONST_MODAL.rows) return;
+    if (!tbody || !CONST_MODAL.rows) return;
     const rows = tbody.querySelectorAll("tr");
     rows.forEach((tr, i) => {
         const inputs = tr.querySelectorAll("input");
-        if (inputs.length >= 2 && _CONST_MODAL.rows[i]) {
-            _CONST_MODAL.rows[i].name = inputs[0].value;
-            _CONST_MODAL.rows[i].value = inputs[1].value;
+        if (inputs.length >= 2 && CONST_MODAL.rows[i]) {
+            CONST_MODAL.rows[i].name = inputs[0].value;
+            CONST_MODAL.rows[i].value = inputs[1].value;
         }
     });
 }
 
 function constUpdate(idx, key, val) {
-    if (_CONST_MODAL.rows) _CONST_MODAL.rows[idx][key] = val;
+    if (CONST_MODAL.rows) CONST_MODAL.rows[idx][key] = val;
 }
 
 function constAddRow() {
-    if (!_CONST_MODAL.rows) return;
+    if (!CONST_MODAL.rows) return;
     syncConstFromDOM(); // 現在の入力値を先に保存
-    _CONST_MODAL.rows.push({ name: "", value: "" });
+    CONST_MODAL.rows.push({ name: "", value: "" });
     renderConstModal();
 }
 
 function constDelRow(idx, renderFnName) {
-    if (!_CONST_MODAL.rows) return;
+    if (!CONST_MODAL.rows) return;
     syncConstFromDOM(); // 現在の入力値を先に保存
-    _CONST_MODAL.rows.splice(idx, 1);
-    if (_CONST_MODAL.rows.length === 0) _CONST_MODAL.rows.push({ name: "", value: "" });
+    CONST_MODAL.rows.splice(idx, 1);
+    if (CONST_MODAL.rows.length === 0) CONST_MODAL.rows.push({ name: "", value: "" });
     (renderFnName ? window[renderFnName] : renderConstModal)();
 }
 
 // ── 定数保存共通ヘルパー ──────────────────────────────────
 // target=null → グローバル定数、target=フォームオブジェクト → フォーム定数
-function _constSaveBase(target) {
+function constSaveBase(target) {
     syncConstFromDOM();
-    const valid = (_CONST_MODAL.rows || []).filter(r => r.name.trim());
+    const valid = (CONST_MODAL.rows || []).filter(r => r.name.trim());
     const names = valid.map(r => r.name.trim());
     const dup = names.find((n, i) => names.indexOf(n) !== i);
     if (dup) { showVjaAlert("定数名「" + dup + "」が重複しています"); return; }
@@ -181,7 +181,7 @@ function _constSaveBase(target) {
     closeModal();
     pushUndo();
 }
-function constSave() { _constSaveBase(null); }
+function constSave() { constSaveBase(null); }
 
 /* ── プロパティパネル カスタムセレクト ── */
 // ── pv-sel 生成共通ヘルパー ─────────────────────────────
@@ -307,8 +307,8 @@ function openTableEdit(idx) {
         ? { name: "", description: "", columns: [defaultColumn()] }
         : JSON.parse(JSON.stringify(getProjectData().tables[idx])); // ディープコピー
     if (!tbl.columns || tbl.columns.length === 0) tbl.columns = [defaultColumn()];
-    _TABLE_MODAL.editIdx = idx;
-    _TABLE_MODAL.edit = tbl;
+    TABLE_MODAL.editIdx = idx;
+    TABLE_MODAL.edit = tbl;
     renderTableEditModal();
 }
 
@@ -317,8 +317,8 @@ function defaultColumn() {
 }
 
 function renderTableEditModal() {
-    const tbl = _TABLE_MODAL.edit;
-    const isNew = _TABLE_MODAL.editIdx < 0;
+    const tbl = TABLE_MODAL.edit;
+    const isNew = TABLE_MODAL.editIdx < 0;
     const cols = tbl.columns || [];
 
     let tbody = cols.map((c, i) => {
@@ -358,12 +358,12 @@ function renderTableEditModal() {
         // テーブル名
         "<div class='tbl-name-row'><label>テーブル名</label>" +
         "<input id='tbl-name-in' value='" + esc(tbl.name) + "' placeholder='例: users' " +
-        evtAttr("oninput", "_TABLE_MODAL.edit.name=this.value") + "></div>" +
+        evtAttr("oninput", "TABLE_MODAL.edit.name=this.value") + "></div>" +
         // 説明
         "<div class='tbl-desc-row'><label>説明（任意）</label>" +
-        "<textarea id='tbl-desc-in'" + evtAttr("oninput", "_TABLE_MODAL.edit.description=this.value") + ">" + esc(tbl.description || "") + "</textarea></div>" +
+        "<textarea id='tbl-desc-in'" + evtAttr("oninput", "TABLE_MODAL.edit.description=this.value") + ">" + esc(tbl.description || "") + "</textarea></div>" +
         // マスターCSV
-        _renderMasterCsvArea(tbl) +
+        renderMasterCsvArea(tbl) +
         // カラム一覧
         "<div style='display:flex;justify-content:space-between;align-items:center'>" +
         "<span style='font-size:12px;color:var(--text2)'>カラム定義（" + cols.length + "列）</span>" +
@@ -413,7 +413,7 @@ function renderTableEditModal() {
 // ── マスターCSV管理 ──────────────────────────────────
 
 // マスターCSVエリアのHTMLを生成する
-function _renderMasterCsvArea(tbl) {
+function renderMasterCsvArea(tbl) {
     const csv = tbl.masterCsv;
     if (csv && csv.data) {
         const origKb = csv.originalSize ? (csv.originalSize / 1024).toFixed(1) + " KB" : "不明";
@@ -482,7 +482,7 @@ async function tblOnCsvSelected(e) {
 
     // ヘッダー解析
     const headers = parseCsvLine(lines[0]);
-    const tbl = _TABLE_MODAL.edit;
+    const tbl = TABLE_MODAL.edit;
     const cols = tbl.columns || [];
 
     // 必須カラムチェック（NOT NULL + DEFAULTなし + PKでない）
@@ -508,8 +508,8 @@ async function tblOnCsvSelected(e) {
 
     // gzip圧縮 → Base64
     try {
-        const compressed = await _compressCsv(text);
-        _TABLE_MODAL.edit.masterCsv = {
+        const compressed = await compressCsv(text);
+        TABLE_MODAL.edit.masterCsv = {
             filename: file.name,
             data: compressed,
             rows: dataLines.length,
@@ -524,7 +524,7 @@ async function tblOnCsvSelected(e) {
 }
 
 // CSVをgzip圧縮してBase64文字列で返す
-async function _compressCsv(text) {
+async function compressCsv(text) {
     const enc = new TextEncoder();
     const input = enc.encode(text);
     const cs = new CompressionStream("gzip");
@@ -546,7 +546,7 @@ async function _compressCsv(text) {
 }
 
 // Base64+gzip → 元のCSVテキストに展開
-async function _decompressCsv(b64) {
+async function decompressCsv(b64) {
     const binary = atob(b64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -573,11 +573,11 @@ async function _decompressCsv(b64) {
 
 // マスターCSVをダウンロードする
 async function tblDownloadMasterCsv() {
-    const csv = _TABLE_MODAL.edit.masterCsv;
+    const csv = TABLE_MODAL.edit.masterCsv;
     if (!csv?.data) return;
     try {
-        const text = await _decompressCsv(csv.data);
-        const defaultName = csv.filename || (_TABLE_MODAL.edit.name + "_master.csv");
+        const text = await decompressCsv(csv.data);
+        const defaultName = csv.filename || (TABLE_MODAL.edit.name + "_master.csv");
         const result = await window.bunSaveGenericFile({
             content: text,
             defaultName: defaultName,
@@ -596,7 +596,7 @@ async function tblDownloadMasterCsv() {
 async function tblDeleteMasterCsv() {
     const confirmed = await vja.app.showConfirm("マスターCSVを削除しますか？");
     if (!confirmed) return;
-    delete _TABLE_MODAL.edit.masterCsv;
+    delete TABLE_MODAL.edit.masterCsv;
     renderTableEditModal();
     showToast("マスターCSVを削除しました");
 }
@@ -630,51 +630,51 @@ function validateDefaultValue(type, value) {
 }
 
 function tblColUpdate(idx, key, val) {
-    if (!_TABLE_MODAL.edit || !_TABLE_MODAL.edit.columns[idx]) return;
-    _TABLE_MODAL.edit.columns[idx][key] = val;
+    if (!TABLE_MODAL.edit || !TABLE_MODAL.edit.columns[idx]) return;
+    TABLE_MODAL.edit.columns[idx][key] = val;
     if (key === "pk" && val) {
         // PKの場合はNOT NULLも自動ON
-        _TABLE_MODAL.edit.columns[idx].notNull = true;
+        TABLE_MODAL.edit.columns[idx].notNull = true;
     }
 }
 
 // PK設定（1つのみ許可）
 function tblColUpdatePk(idx, val) {
-    if (!_TABLE_MODAL.edit) return;
-    _TABLE_MODAL.edit.columns.forEach((c, i) => { c.pk = (i === idx && val); });
+    if (!TABLE_MODAL.edit) return;
+    TABLE_MODAL.edit.columns.forEach((c, i) => { c.pk = (i === idx && val); });
     // 再描画
     renderTableEditModal();
 }
 
 // カラム追加
 function tblColAdd() {
-    if (!_TABLE_MODAL.edit) return;
+    if (!TABLE_MODAL.edit) return;
     // 現在のDOMから値を同期
     tblSyncFromDOM();
-    _TABLE_MODAL.edit.columns.push(defaultColumn());
+    TABLE_MODAL.edit.columns.push(defaultColumn());
     renderTableEditModal();
 }
 
 // カラム挿入（指定行の前に追加）
 function tblColInsert(idx) {
-    if (!_TABLE_MODAL.edit) return;
+    if (!TABLE_MODAL.edit) return;
     tblSyncFromDOM();
-    _TABLE_MODAL.edit.columns.splice(idx, 0, defaultColumn());
+    TABLE_MODAL.edit.columns.splice(idx, 0, defaultColumn());
     renderTableEditModal();
 }
 
 // カラム削除
 function tblColDelete(idx) {
-    if (!_TABLE_MODAL.edit) return;
+    if (!TABLE_MODAL.edit) return;
     tblSyncFromDOM();
-    _TABLE_MODAL.edit.columns.splice(idx, 1);
-    if (_TABLE_MODAL.edit.columns.length === 0) _TABLE_MODAL.edit.columns.push(defaultColumn());
+    TABLE_MODAL.edit.columns.splice(idx, 1);
+    if (TABLE_MODAL.edit.columns.length === 0) TABLE_MODAL.edit.columns.push(defaultColumn());
     renderTableEditModal();
 }
 
 // DOMから現在の入力値を同期
 function tblSyncFromDOM() {
-    const tbl = _TABLE_MODAL.edit;
+    const tbl = TABLE_MODAL.edit;
     if (!tbl) return;
     const nameIn = $("tbl-name-in");
     const descIn = $("tbl-desc-in");
@@ -702,7 +702,7 @@ function tblSyncFromDOM() {
 // DDLプレビュー表示
 function tblShowDdl() {
     tblSyncFromDOM();
-    const tbl = _TABLE_MODAL.edit;
+    const tbl = TABLE_MODAL.edit;
     const pre = $("tbl-ddl-preview");
     if (!pre) return;
     pre.style.display = pre.style.display === "none" ? "block" : "none";
@@ -741,8 +741,8 @@ function generateDDL(tbl) {
 function tblTypeOpen(idx, btn) {
     const float = $("col-type-float");
     if (!float) { return; }
-    if (!_TABLE_MODAL.edit || !_TABLE_MODAL.edit.columns[idx]) return;
-    const curType = _TABLE_MODAL.edit.columns[idx].type || "TEXT";
+    if (!TABLE_MODAL.edit || !TABLE_MODAL.edit.columns[idx]) return;
+    const curType = TABLE_MODAL.edit.columns[idx].type || "TEXT";
     // 既に開いていて同じインデックスならclose
     if (float.classList.contains("open") && float.dataset.colidx == idx) {
         float.classList.remove("open");
@@ -773,8 +773,8 @@ function tblTypeOpen(idx, btn) {
 // カラム型の選択
 function tblTypeSelect(idx, type) {
     const t = type.trim();
-    if (!_TABLE_MODAL.edit || !_TABLE_MODAL.edit.columns[idx]) return;
-    _TABLE_MODAL.edit.columns[idx].type = t;
+    if (!TABLE_MODAL.edit || !TABLE_MODAL.edit.columns[idx]) return;
+    TABLE_MODAL.edit.columns[idx].type = t;
     // ボタンラベル更新
     const btn = document.querySelector(".col-type-btn[data-colidx='" + idx + "'] .col-type-lbl");
     if (btn) btn.textContent = t;
@@ -786,12 +786,12 @@ function tblTypeSelect(idx, type) {
 // テーブル保存
 function tblSave() {
     tblSyncFromDOM();
-    const tbl = _TABLE_MODAL.edit;
+    const tbl = TABLE_MODAL.edit;
     if (!tbl.name.trim()) { showVjaAlert("テーブル名を入力してください"); return; }
     // テーブル名重複チェック（自分自身は除外）
-    const dupIdx = getProjectData().tables.findIndex((t, i) => t.name === tbl.name.trim() && i !== _TABLE_MODAL.editIdx);
+    const dupIdx = getProjectData().tables.findIndex((t, i) => t.name === tbl.name.trim() && i !== TABLE_MODAL.editIdx);
     if (dupIdx >= 0) { showVjaAlert("テーブル名「" + tbl.name + "」は既に存在します"); return; }
-    // 空カラムを除去（バリデーション用。_TABLE_MODAL.edit.columnsはまだ書き換えない）
+    // 空カラムを除去（バリデーション用。TABLE_MODAL.edit.columnsはまだ書き換えない）
     const validCols = (tbl.columns || []).filter(c => c.name.trim());
     if (validCols.length === 0) { showVjaAlert("カラムを1つ以上定義してください"); return; }
     // DEFAULTバリデーション
@@ -816,10 +816,10 @@ function tblSave() {
     tbl.name = tbl.name.trim();
     tbl.columns = validCols; // バリデーション通過後に空カラムを除去して代入
     tbl.updatedAt = new Date().toISOString(); // テーブル更新時刻を記録
-    if (_TABLE_MODAL.editIdx < 0) {
+    if (TABLE_MODAL.editIdx < 0) {
         getProjectData().tables.push(tbl);
     } else {
-        getProjectData().tables[_TABLE_MODAL.editIdx] = tbl;
+        getProjectData().tables[TABLE_MODAL.editIdx] = tbl;
     }
     pushUndo();
     showToast("テーブル「" + tbl.name + "」を保存しました");
@@ -873,19 +873,19 @@ function renderValidationListModal() {
 function openValidationEdit(idx) {
     const f = getProjectData().forms[getProjectData().curFormIdx];
     if (!Array.isArray(f.validations)) f.validations = [];
-    _VALID_MODAL.edit = idx < 0
+    VALID_MODAL.edit = idx < 0
         ? { name: "", toastDuration: 5000, rules: [] }
         : JSON.parse(JSON.stringify(f.validations[idx]));
-    _VALID_MODAL.edit._idx = idx;
+    VALID_MODAL.edit._idx = idx;
     // 初期表示で3件の空ルールを用意（既存ルールが3件未満の場合）
-    while (_VALID_MODAL.edit.rules.length < 3) {
-        _VALID_MODAL.edit.rules.push({ name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: "" });
+    while (VALID_MODAL.edit.rules.length < 3) {
+        VALID_MODAL.edit.rules.push({ name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: "" });
     }
     renderValidationEditModal();
 }
 
 function renderValidationEditModal() {
-    const v = _VALID_MODAL.edit;
+    const v = VALID_MODAL.edit;
     const rules = v.rules || [];
     let tbody = "";
     rules.forEach((r, i) => {
@@ -900,13 +900,13 @@ function renderValidationEditModal() {
         const nameOpts = widgetNames.map(n => ({ value: n, label: n === "" ? "（未選択）" : n }));
         tbody += "<tr>" +
             "<td>" + (i + 1) + "</td>" +
-            "<td>" + makePvSel(nid, nameOpts, r.name || "", "_VALID_MODAL.edit.rules[" + i + "].name={value}") + "</td>" +
-            "<td>" + makePvSel(sid, VALIDATION_TYPES, r.type || "required", "_VALID_MODAL.edit.rules[" + i + "].type={value}") + "</td>" +
-            "<td>" + makePvSel(notid, [{ value: "false", label: "OFF" }, { value: "true", label: "ON" }], r.not ? "true" : "false", "_VALID_MODAL.edit.rules[" + i + "].not=({value}==='true')") + "</td>" +
-            "<td><input type='text' class='pv-input' value='" + esc(r.arg1 || "") + "'" + evtAttr("oninput", "_VALID_MODAL.edit.rules[" + i + "].arg1=this.value") + " placeholder='arg1'></td>" +
-            "<td><input type='text' class='pv-input' value='" + esc(r.arg2 || "") + "'" + evtAttr("oninput", "_VALID_MODAL.edit.rules[" + i + "].arg2=this.value") + " placeholder='arg2'></td>" +
-            "<td><input type='text' class='pv-input' value='" + esc(r.arg3 || "") + "'" + evtAttr("oninput", "_VALID_MODAL.edit.rules[" + i + "].arg3=this.value") + " placeholder='arg3'></td>" +
-            "<td><input type='text' class='pv-input' value='" + esc(r.message || "") + "'" + evtAttr("oninput", "_VALID_MODAL.edit.rules[" + i + "].message=this.value") + " placeholder='エラーメッセージ'></td>" +
+            "<td>" + makePvSel(nid, nameOpts, r.name || "", "VALID_MODAL.edit.rules[" + i + "].name={value}") + "</td>" +
+            "<td>" + makePvSel(sid, VALIDATION_TYPES, r.type || "required", "VALID_MODAL.edit.rules[" + i + "].type={value}") + "</td>" +
+            "<td>" + makePvSel(notid, [{ value: "false", label: "OFF" }, { value: "true", label: "ON" }], r.not ? "true" : "false", "VALID_MODAL.edit.rules[" + i + "].not=({value}==='true')") + "</td>" +
+            "<td><input type='text' class='pv-input' value='" + esc(r.arg1 || "") + "'" + evtAttr("oninput", "VALID_MODAL.edit.rules[" + i + "].arg1=this.value") + " placeholder='arg1'></td>" +
+            "<td><input type='text' class='pv-input' value='" + esc(r.arg2 || "") + "'" + evtAttr("oninput", "VALID_MODAL.edit.rules[" + i + "].arg2=this.value") + " placeholder='arg2'></td>" +
+            "<td><input type='text' class='pv-input' value='" + esc(r.arg3 || "") + "'" + evtAttr("oninput", "VALID_MODAL.edit.rules[" + i + "].arg3=this.value") + " placeholder='arg3'></td>" +
+            "<td><input type='text' class='pv-input' value='" + esc(r.message || "") + "'" + evtAttr("oninput", "VALID_MODAL.edit.rules[" + i + "].message=this.value") + " placeholder='エラーメッセージ'></td>" +
             "<td style='white-space:nowrap'>" +
             "<button class='del-btn'" + evtAttr("onmousedown", "validInsertRow(" + i + ")") + " title='この行の前に挿入' style='margin-right:2px'>＋</button>" +
             "<button class='del-btn'" + evtAttr("onmousedown", "validDelRow(" + i + ")") + " title='削除'>✕</button>" +
@@ -917,12 +917,12 @@ function renderValidationEditModal() {
         mhdrHTML("✅ バリデーション編集") +
         "<div class='mbody tbl-edit-wrap' style='gap:6px'>" +
         "<div class='tbl-name-row'><label>定義名</label>" +
-        "<input id='valid-name' class='pv-input' value='" + esc(v.name || "") + "'" + evtAttr("oninput", "_VALID_MODAL.edit.name=this.value") + " placeholder='定義名'></div>" +
+        "<input id='valid-name' class='pv-input' value='" + esc(v.name || "") + "'" + evtAttr("oninput", "VALID_MODAL.edit.name=this.value") + " placeholder='定義名'></div>" +
         "<div class='tbl-name-row'><label>説明（任意）</label>" +
-        "<input id='valid-desc' class='pv-input' value='" + esc(v.description || "") + "'" + evtAttr("oninput", "_VALID_MODAL.edit.description=this.value") + " placeholder='バリデーションの説明（任意）'></div>" +
+        "<input id='valid-desc' class='pv-input' value='" + esc(v.description || "") + "'" + evtAttr("oninput", "VALID_MODAL.edit.description=this.value") + " placeholder='バリデーションの説明（任意）'></div>" +
         "<div style='display:flex;align-items:center;gap:8px;padding:4px 0'>" +
         "<label style='font-size:12px;color:var(--text2);white-space:nowrap'>トースト表示時間（ms）:</label>" +
-        "<input type='number' id='valid-toast-dur' class='pv-input' value='" + (v.toastDuration || 5000) + "'" + evtAttr("oninput", "_VALID_MODAL.edit.toastDuration=parseInt(this.value)||5000") + " min='1000' max='30000' style='width:100px'>" +
+        "<input type='number' id='valid-toast-dur' class='pv-input' value='" + (v.toastDuration || 5000) + "'" + evtAttr("oninput", "VALID_MODAL.edit.toastDuration=parseInt(this.value)||5000") + " min='1000' max='30000' style='width:100px'>" +
         "</div>" +
         "<div style='display:flex;justify-content:space-between;align-items:center'>" +
         "<span style='font-size:12px;color:var(--text2)'>ルール定義（" + rules.length + "件）</span>" +
@@ -956,19 +956,19 @@ function renderValidationEditModal() {
 // AddRow/InsertRow/DelRow の push/splice+render パターンを共通化。
 // getRows: 対象配列を返す関数、defaultRow: 新規行オブジェクトを返す関数
 // fallback: DelRow時に配列が空になった場合の補填行（nullなら補填しない）
-function _rowAdd(getRows, defaultRow, renderFn, maxLen = Infinity) {
+function rowAdd(getRows, defaultRow, renderFn, maxLen = Infinity) {
     const rows = getRows();
     if (!rows || rows.length >= maxLen) return;
     rows.push(defaultRow());
     renderFn();
 }
-function _rowInsert(getRows, idx, defaultRow, renderFn, maxLen = Infinity) {
+function rowInsert(getRows, idx, defaultRow, renderFn, maxLen = Infinity) {
     const rows = getRows();
     if (!rows || rows.length >= maxLen) return;
     rows.splice(idx, 0, defaultRow());
     renderFn();
 }
-function _rowDel(getRows, idx, fallback, renderFn) {
+function rowDel(getRows, idx, fallback, renderFn) {
     const rows = getRows();
     if (!rows) return;
     rows.splice(idx, 1);
@@ -1041,16 +1041,16 @@ function renderListManagerModal(opts) {
 }
 
 function validAddRow() {
-    if (!_VALID_MODAL.edit) return;
-    _rowAdd(() => _VALID_MODAL.edit.rules, () => ({ name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: "" }), renderValidationEditModal);
+    if (!VALID_MODAL.edit) return;
+    rowAdd(() => VALID_MODAL.edit.rules, () => ({ name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: "" }), renderValidationEditModal);
 }
 function validInsertRow(idx) {
-    if (!_VALID_MODAL.edit) return;
-    _rowInsert(() => _VALID_MODAL.edit.rules, idx, () => ({ name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: "" }), renderValidationEditModal);
+    if (!VALID_MODAL.edit) return;
+    rowInsert(() => VALID_MODAL.edit.rules, idx, () => ({ name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: "" }), renderValidationEditModal);
 }
 function validDelRow(idx) {
-    if (!_VALID_MODAL.edit) return;
-    _rowDel(() => _VALID_MODAL.edit.rules, idx, null, renderValidationEditModal);
+    if (!VALID_MODAL.edit) return;
+    rowDel(() => VALID_MODAL.edit.rules, idx, null, renderValidationEditModal);
 }
 function deleteValidation(idx) {
     const f = getProjectData().forms[getProjectData().curFormIdx];
@@ -1061,20 +1061,20 @@ function deleteValidation(idx) {
 }
 function validSave() {
     const f = getProjectData().forms[getProjectData().curFormIdx];
-    if (!f || !_VALID_MODAL.edit) return;
+    if (!f || !VALID_MODAL.edit) return;
     const name = $("valid-name")?.value?.trim();
     if (!name) { showVjaAlert("定義名を入力してください"); return; }
-    _VALID_MODAL.edit.name = name;
-    _VALID_MODAL.edit.description = $("valid-desc")?.value?.trim() || "";
-    _VALID_MODAL.edit.toastDuration = parseInt($("valid-toast-dur")?.value) || 5000;
-    // 空ルールを除去（バリデーション用。_VALID_MODAL.edit.rulesはまだ書き換えない）
-    const validRules = (_VALID_MODAL.edit.rules || []).filter(r => r.name.trim() && r.type);
+    VALID_MODAL.edit.name = name;
+    VALID_MODAL.edit.description = $("valid-desc")?.value?.trim() || "";
+    VALID_MODAL.edit.toastDuration = parseInt($("valid-toast-dur")?.value) || 5000;
+    // 空ルールを除去（バリデーション用。VALID_MODAL.edit.rulesはまだ書き換えない）
+    const validRules = (VALID_MODAL.edit.rules || []).filter(r => r.name.trim() && r.type);
     if (!Array.isArray(f.validations)) f.validations = [];
-    const saveData = { name: _VALID_MODAL.edit.name, description: _VALID_MODAL.edit.description, toastDuration: _VALID_MODAL.edit.toastDuration, rules: validRules };
-    if (_VALID_MODAL.edit._idx < 0) {
+    const saveData = { name: VALID_MODAL.edit.name, description: VALID_MODAL.edit.description, toastDuration: VALID_MODAL.edit.toastDuration, rules: validRules };
+    if (VALID_MODAL.edit._idx < 0) {
         f.validations.push(saveData);
     } else {
-        f.validations[_VALID_MODAL.edit._idx] = saveData;
+        f.validations[VALID_MODAL.edit._idx] = saveData;
     }
     pushUndo();
     showToast("バリデーション定義を保存しました");
@@ -1087,18 +1087,18 @@ function validSave() {
 Object.assign(window, {
     // 閉じる確認
     commitCurrentInput, isDirty, confirmClose,
-    showCloseConfirm, hideCloseConfirm, _onConfirmOk, doClose,
+    showCloseConfirm, hideCloseConfirm, onConfirmOk, doClose,
     // 定数編集・行リストモーダル共通テンプレート
     openConstEditor, renderConstModal, renderConstModalBase,
     syncConstFromDOM, constUpdate, constAddRow, constDelRow,
-    _constSaveBase, constSave,
+    constSaveBase, constSave,
     makePvSel, pvSelOpen, pvSelPick,
-    _rowAdd, _rowInsert, _rowDel, renderRowListModal, renderListManagerModal,
+    rowAdd, rowInsert, rowDel, renderRowListModal, renderListManagerModal,
     // テーブル管理
     openTableManager, renderTableManagerModal, deleteTable, openTableEdit,
-    defaultColumn, renderTableEditModal, _renderMasterCsvArea,
+    defaultColumn, renderTableEditModal, renderMasterCsvArea,
     tblUploadMasterCsv, tblReuploadMasterCsv, tblOnCsvSelected,
-    _compressCsv, _decompressCsv,
+    compressCsv, decompressCsv,
     tblDownloadMasterCsv, tblDeleteMasterCsv,
     defaultValueForType, validateDefaultValue,
     tblColUpdate, tblColUpdatePk, tblColAdd, tblColInsert, tblColDelete,

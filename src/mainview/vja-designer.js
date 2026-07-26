@@ -2,7 +2,7 @@
    vja-designer.js — デザイナー本体（描画・選択・ドラッグ・プロパティパネル）
    ─────────────────────────────────────────────────────────────
    【読み込み順序】2番目（vja-defs.js の直後）。
-   【依存】vja-defs.js（_CTX, WIDGET_DEFS, esc, $, evtAttr 等）
+   【依存】vja-defs.js（CTX, WIDGET_DEFS, esc, $, evtAttr 等）
    【提供するもの】
      - buildTools() / setTool()（ツールボックス）
      - applyForm() 系（フォーム設定の反映）
@@ -1008,7 +1008,7 @@ async function deleteYaml(wid, evName) {
     if (w.events) delete w.events[evName];
     // このイベントに紐づくオーバーライド（モック値・API/テーブル選択・検証定義等）も
     // あわせて削除する（残すと二度と参照されないゴミデータになるため）。
-    _purgeOverridesForKey(wid, evName);
+    purgeOverridesForKey(wid, evName);
     renderEventsAndPush();
 }
 

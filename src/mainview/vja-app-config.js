@@ -10,7 +10,7 @@
      - openAppEvents() / saveAppEvent()（OnStart/OnExit）
      - openProjectInfo()（プロジェクト情報モーダル）
      - openExtRuntime()（拡張ランタイムJS）
-     - openCloudInfraConfig() / _cloudInfraRow() 系
+     - openCloudInfraConfig() / cloudInfraRow() 系
        （クラウドインフラ設定、5関数に分割済み）
      - openColDefEditor() / openItemsDefEditor()（再掲・項目定義系）
      - openFontConfig()（フォント設定）
@@ -22,8 +22,8 @@ function openFormConstEditor() {
     const f = getProjectData().forms[getProjectData().curFormIdx];
     if (!f) return;
     if (!f.constants) f.constants = [];
-    _CONST_MODAL.rows = f.constants.map(c => ({ name: c.name || "", value: c.value || "" }));
-    if (_CONST_MODAL.rows.length === 0) _CONST_MODAL.rows.push({ name: "", value: "" });
+    CONST_MODAL.rows = f.constants.map(c => ({ name: c.name || "", value: c.value || "" }));
+    if (CONST_MODAL.rows.length === 0) CONST_MODAL.rows.push({ name: "", value: "" });
     renderFormConstModal();
 }
 
@@ -40,16 +40,16 @@ function renderFormConstModal() {
 }
 
 function formConstAddRow() {
-    if (!_CONST_MODAL.rows) return;
+    if (!CONST_MODAL.rows) return;
     syncConstFromDOM(); // 現在の入力値を先に保存
-    _CONST_MODAL.rows.push({ name: "", value: "" });
+    CONST_MODAL.rows.push({ name: "", value: "" });
     renderFormConstModal();
 }
 
 function saveFormConst() {
     const f = getProjectData().forms[getProjectData().curFormIdx];
     if (!f) return;
-    _constSaveBase(f);
+    constSaveBase(f);
 }
 
 
@@ -58,7 +58,7 @@ function saveFormConst() {
 
 function openAppEvents(evKey) {
     evKey = evKey || "onStart";
-    _APPEVENT_MODAL.curKey = evKey;
+    APPEVENT_MODAL.curKey = evKey;
     const ae = getProjectData().projectInfo.appEvents || {};
     const cur = ae[evKey + "_yaml"] || "# アプリイベント: " + evKey + "\n# YAML形式でAIへの指示を記述します\n";
     // OnStart/OnExitはBun側でTypeScriptとして実行される
@@ -94,8 +94,8 @@ function openAppEvents(evKey) {
 
 function saveAppEvent() {
     if (!getProjectData().projectInfo.appEvents) getProjectData().projectInfo.appEvents = {};
-    getProjectData().projectInfo.appEvents[_APPEVENT_MODAL.curKey + "_yaml"] = $("yaml-ta")?.value || "";
-    getProjectData().projectInfo.appEvents[_APPEVENT_MODAL.curKey] = $("js-ta")?.value || "";
+    getProjectData().projectInfo.appEvents[APPEVENT_MODAL.curKey + "_yaml"] = $("yaml-ta")?.value || "";
+    getProjectData().projectInfo.appEvents[APPEVENT_MODAL.curKey] = $("js-ta")?.value || "";
     closeModal();
     pushUndo();
     showToast("アプリイベントを保存しました");
@@ -178,18 +178,18 @@ function openExtRuntime() {
     requestAnimationFrame(() => {
         applyEditorConfig();
         [
-            { id: "ta-extrt-js", hlId: "hl-extrt-js", gutId: "gutter-extrt-js", tokenFn: jsTokenize, state: _EXTRT_EDITOR.jsUndo },
-            { id: "ta-extrt-doc", hlId: "hl-extrt-doc", gutId: "gutter-extrt-doc", tokenFn: yamlTokenize, state: _EXTRT_EDITOR.docUndo },
+            { id: "ta-extrt-js", hlId: "hl-extrt-js", gutId: "gutter-extrt-js", tokenFn: jsTokenize, state: EXTRT_EDITOR.jsUndo },
+            { id: "ta-extrt-doc", hlId: "hl-extrt-doc", gutId: "gutter-extrt-doc", tokenFn: yamlTokenize, state: EXTRT_EDITOR.docUndo },
         ].forEach(({ id, hlId, gutId, tokenFn, state }) => {
             const ta = $(id);
             if (!ta) return;
-            _hlUpdate(id, hlId, tokenFn);
+            hlUpdate(id, hlId, tokenFn);
             editorUpdateGutter(id, gutId);
             ta.addEventListener("keydown", editorKeyHandler);
             ta.addEventListener("mousedown", editorMouseDownHandler2);
             ta.addEventListener("dblclick", editorDblClickHandler);
-            ta.addEventListener("input", () => { _hlUpdate(id, hlId, tokenFn); editorUpdateGutter(id, gutId); });
-            ta.addEventListener("scroll", () => _hlSync(id, hlId));
+            ta.addEventListener("input", () => { hlUpdate(id, hlId, tokenFn); editorUpdateGutter(id, gutId); });
+            ta.addEventListener("scroll", () => hlSync(id, hlId));
             editorUndoInit(id, state, ta.value);
         });
         rAfBind("#tab-extrt-js", "click", () => {
@@ -262,14 +262,14 @@ function openDebugTools() {
 
 function openCloudInfraConfig() {
     closeAllMenus();
-    _CLOUD_MODAL.draft = getProjectData().cloudInfras.map(c => JSON.parse(JSON.stringify(c)));
-    _renderCloudModal();
+    CLOUD_MODAL.draft = getProjectData().cloudInfras.map(c => JSON.parse(JSON.stringify(c)));
+    renderCloudModal();
 }
 
 // クラウドインフラ設定モーダルの内容を再描画する。
-// _CLOUD_MODAL.draft（編集中の一時データ）を元に表示を構築する。
-function _renderCloudModal() {
-    const rows = _CLOUD_MODAL.draft.map((inf, i) => _cloudInfraRow(inf, i)).join("") ||
+// CLOUD_MODAL.draft（編集中の一時データ）を元に表示を構築する。
+function renderCloudModal() {
+    const rows = CLOUD_MODAL.draft.map((inf, i) => cloudInfraRow(inf, i)).join("") ||
         "<div style='color:var(--text3);font-size:12px;padding:8px'>登録なし</div>";
     showModal(
         mhdrHTML("☁️ クラウドインフラ設定") +
@@ -286,10 +286,10 @@ function _renderCloudModal() {
     );
 }
 
-function _cloudSelId(prefix, i) { return prefix + "_" + i; }
+function cloudSelId(prefix, i) { return prefix + "_" + i; }
 
 // クラウド種別セレクトの選択肢HTML生成
-function _cloudOptsHtml(inf, csid, i) {
+function cloudOptsHtml(inf, csid, i) {
     return CLOUD_PRESETS.map(p =>
         `<div class="pv-sel-opt ${inf.name === p.name ? "active" : ""}"
                     ${evtAttr("onmousedown", "pvSelPick('" + csid + "','" + esc(p.name) + "',event);selectCloudPreset(" + i + ",'" + esc(p.name) + "')")}>${esc(p.name)}</div>`
@@ -297,7 +297,7 @@ function _cloudOptsHtml(inf, csid, i) {
 }
 
 // サービスセレクトの選択肢HTML生成
-function _cloudSvcOptsHtml(preset, curSvc, ssid, i) {
+function cloudSvcOptsHtml(preset, curSvc, ssid, i) {
     return preset.services.map(s =>
         `<div class="pv-sel-opt ${curSvc === s.label ? "active" : ""}"
                     ${evtAttr("onmousedown", "pvSelPick('" + ssid + "','" + esc(s.label) + "',event);selectCloudService(" + i + ",'" + esc(s.label) + "')")}>${esc(s.label)}</div>`
@@ -307,7 +307,7 @@ function _cloudSvcOptsHtml(preset, curSvc, ssid, i) {
 // SDK URL入力欄HTML生成
 // service の input:true の場合のみ編集可（カスタム等）。
 // baseUrl がある場合は固定prefixとして表示し、続きのみ入力させる。
-function _cloudUrlFieldHtml(preset, curSvc, isCustomSvc, inf, i) {
+function cloudUrlFieldHtml(preset, curSvc, isCustomSvc, inf, i) {
     const curSvcDef = preset.services.find(s => s.label === curSvc);
     const urlEditable = curSvcDef ? curSvcDef.input : isCustomSvc;
     const baseUrl = curSvcDef?.url || "";
@@ -334,7 +334,7 @@ function _cloudUrlFieldHtml(preset, curSvc, isCustomSvc, inf, i) {
 // クレデンシャル欄HTML生成
 // カスタム×カスタムの場合はJSON一括入力欄、それ以外は credDefs の定義に従って
 // テキスト入力・パスワード入力・セレクト形式のいずれかを生成する。
-function _cloudCredFieldsHtml(inf, credDefs, isCustomCloud, i) {
+function cloudCredFieldsHtml(inf, credDefs, isCustomCloud, i) {
     if (isCustomCloud) {
         const jsonVal = inf.credentialsJson || JSON.stringify(inf.credentials || {});
         return `<div style="margin-top:6px">
@@ -393,7 +393,7 @@ function _cloudCredFieldsHtml(inf, credDefs, isCustomCloud, i) {
     }).join("");
 }
 
-function _cloudInfraRow(inf, i) {
+function cloudInfraRow(inf, i) {
     const preset = CLOUD_PRESETS.find(p => p.name === inf.name) || CLOUD_PRESETS[CLOUD_PRESETS.length - 1];
     // creds は {name, key, secret} の配列
     const credDefs = inf.credDefs && inf.credDefs.length ? inf.credDefs
@@ -402,13 +402,13 @@ function _cloudInfraRow(inf, i) {
     const isCustomCloud = inf.name === "カスタム";
     const isCustomSvc = curSvc === "カスタム";
 
-    const csid = _cloudSelId("cs", i);
-    const ssid = _cloudSelId("ss", i);
+    const csid = cloudSelId("cs", i);
+    const ssid = cloudSelId("ss", i);
 
-    const cloudOpts = _cloudOptsHtml(inf, csid, i);
-    const svcOpts = _cloudSvcOptsHtml(preset, curSvc, ssid, i);
-    const urlField = _cloudUrlFieldHtml(preset, curSvc, isCustomSvc, inf, i);
-    const credFields = _cloudCredFieldsHtml(inf, credDefs, isCustomCloud, i);
+    const cloudOpts = cloudOptsHtml(inf, csid, i);
+    const svcOpts = cloudSvcOptsHtml(preset, curSvc, ssid, i);
+    const urlField = cloudUrlFieldHtml(preset, curSvc, isCustomSvc, inf, i);
+    const credFields = cloudCredFieldsHtml(inf, credDefs, isCustomCloud, i);
 
     // 有効チェックボックスのラベル
     const enabledLabel = inf.enabled
@@ -420,7 +420,7 @@ function _cloudInfraRow(inf, i) {
                     <label style="display:flex;align-items:center;gap:3px;cursor:pointer"
                         title="ONにすると対象項目が有効になります">
                         <input type="checkbox" ${inf.enabled ? "checked" : ""}
-                            ${evtAttr("onchange", "updateCloudField(" + i + ",'enabled',this.checked);_refreshCloudList()")}>
+                            ${evtAttr("onchange", "updateCloudField(" + i + ",'enabled',this.checked);refreshCloudList()")}>
                         ${enabledLabel}
                     </label>
                     <div class="pv-sel" id="${csid}" style="width:100px;flex-shrink:0">
@@ -445,67 +445,67 @@ function _cloudInfraRow(inf, i) {
 
 function addCloudInfra() {
     const preset = CLOUD_PRESETS[0] || { name: "カスタム", services: [{ label: "カスタム", url: "", input: true }], creds: [] };
-    _CLOUD_MODAL.draft.push({
+    CLOUD_MODAL.draft.push({
         id: "ci_" + Date.now(), name: preset.name,
         service: preset.services[0].label, sdkUrl: preset.services[0].url,
         enabled: true, credDefs: preset.creds, credentials: {}, appInput: {},
     });
-    _refreshCloudList();
+    refreshCloudList();
 }
 function removeCloudInfra(i) {
-    _CLOUD_MODAL.draft.splice(i, 1);
-    _refreshCloudList();
+    CLOUD_MODAL.draft.splice(i, 1);
+    refreshCloudList();
 }
 function updateCloudField(i, key, val) {
-    if (_CLOUD_MODAL.draft[i]) _CLOUD_MODAL.draft[i][key] = val;
+    if (CLOUD_MODAL.draft[i]) CLOUD_MODAL.draft[i][key] = val;
 }
 function updateCloudCred(i, key, val) {
-    if (!_CLOUD_MODAL.draft[i]) return;
-    if (!_CLOUD_MODAL.draft[i].credentials) _CLOUD_MODAL.draft[i].credentials = {};
-    _CLOUD_MODAL.draft[i].credentials[key] = val;
+    if (!CLOUD_MODAL.draft[i]) return;
+    if (!CLOUD_MODAL.draft[i].credentials) CLOUD_MODAL.draft[i].credentials = {};
+    CLOUD_MODAL.draft[i].credentials[key] = val;
 }
 function updateCloudCredsJson(i, jsonStr) {
-    if (!_CLOUD_MODAL.draft[i]) return;
-    _CLOUD_MODAL.draft[i].credentialsJson = jsonStr;
+    if (!CLOUD_MODAL.draft[i]) return;
+    CLOUD_MODAL.draft[i].credentialsJson = jsonStr;
     try {
-        _CLOUD_MODAL.draft[i].credentials = JSON.parse(jsonStr);
+        CLOUD_MODAL.draft[i].credentials = JSON.parse(jsonStr);
     } catch (e) {
         console.debug("[vja] credentialsJson parse pending:", e.message);
     }
 }
 function updateCloudAppInput(i, key, checked) {
-    if (!_CLOUD_MODAL.draft[i]) return;
-    if (!_CLOUD_MODAL.draft[i].appInput) _CLOUD_MODAL.draft[i].appInput = {};
-    _CLOUD_MODAL.draft[i].appInput[key] = checked;
-    _refreshCloudList();
+    if (!CLOUD_MODAL.draft[i]) return;
+    if (!CLOUD_MODAL.draft[i].appInput) CLOUD_MODAL.draft[i].appInput = {};
+    CLOUD_MODAL.draft[i].appInput[key] = checked;
+    refreshCloudList();
 }
 // インフラプリセット（AWS/GCP等）を選択し、サービス・クレデンシャル欄を更新する。
 function selectCloudPreset(i, name) {
-    if (!_CLOUD_MODAL.draft[i]) return;
+    if (!CLOUD_MODAL.draft[i]) return;
     const preset = CLOUD_PRESETS.find(p => p.name === name);
     if (!preset) return;
-    _CLOUD_MODAL.draft[i].name = name;
-    _CLOUD_MODAL.draft[i].service = preset.services[0].label;
-    _CLOUD_MODAL.draft[i].sdkUrl = preset.services[0].url;
-    _CLOUD_MODAL.draft[i].credDefs = preset.creds;
-    _CLOUD_MODAL.draft[i].credentials = {};
-    _CLOUD_MODAL.draft[i].appInput = {};
-    _refreshCloudList();
+    CLOUD_MODAL.draft[i].name = name;
+    CLOUD_MODAL.draft[i].service = preset.services[0].label;
+    CLOUD_MODAL.draft[i].sdkUrl = preset.services[0].url;
+    CLOUD_MODAL.draft[i].credDefs = preset.creds;
+    CLOUD_MODAL.draft[i].credentials = {};
+    CLOUD_MODAL.draft[i].appInput = {};
+    refreshCloudList();
 }
 function selectCloudService(i, label) {
-    if (!_CLOUD_MODAL.draft[i]) return;
-    const preset = CLOUD_PRESETS.find(p => p.name === _CLOUD_MODAL.draft[i].name);
+    if (!CLOUD_MODAL.draft[i]) return;
+    const preset = CLOUD_PRESETS.find(p => p.name === CLOUD_MODAL.draft[i].name);
     if (!preset) return;
     const svc = preset.services.find(s => s.label === label);
     if (!svc) return;
-    _CLOUD_MODAL.draft[i].service = label;
-    if (svc.url) _CLOUD_MODAL.draft[i].sdkUrl = svc.url;
-    _refreshCloudList();
+    CLOUD_MODAL.draft[i].service = label;
+    if (svc.url) CLOUD_MODAL.draft[i].sdkUrl = svc.url;
+    refreshCloudList();
 }
-function _refreshCloudList() {
+function refreshCloudList() {
     const el = $("cloud-list");
     if (!el) return;
-    el.innerHTML = _CLOUD_MODAL.draft.map((inf, i) => _cloudInfraRow(inf, i)).join("") ||
+    el.innerHTML = CLOUD_MODAL.draft.map((inf, i) => cloudInfraRow(inf, i)).join("") ||
         "<div style='color:var(--text3);font-size:12px;padding:8px'>登録なし</div>";
 }
 // クラウドインフラ設定を Bun 側に送信して暗号化保存する。
@@ -513,10 +513,10 @@ function _refreshCloudList() {
 async function saveCloudInfraConfig() {
     try {
         // Bun側で暗号化して保存
-        const result = await window.bunSaveCloudInfras(_CLOUD_MODAL.draft);
+        const result = await window.bunSaveCloudInfras(CLOUD_MODAL.draft);
         if (!result?.ok) throw new Error(result?.error || "保存失敗");
         // フロント側にも反映（次回モーダルオープン時のベースになる）
-        getProjectData().cloudInfras = _CLOUD_MODAL.draft.map(c => JSON.parse(JSON.stringify(c)));
+        getProjectData().cloudInfras = CLOUD_MODAL.draft.map(c => JSON.parse(JSON.stringify(c)));
         closeModal();
         showToast("クラウドインフラ設定を保存しました");
         pushUndo();
@@ -554,7 +554,7 @@ function openFontConfig() {
         "<span style='color:var(--text2);font-size:var(--ui-font-size)'>px (10〜20)</span>" +
         "</div></div>" +
         "<div class='ai-cfg-row'><label>フォント</label>" +
-        makePvSel("uf-font-sel", UI_FONT_LIST, curUiFont, "setTimeout(function(){_updateFontPreview('ui',null)},0)") +
+        makePvSel("uf-font-sel", UI_FONT_LIST, curUiFont, "setTimeout(function(){updateFontPreview('ui',null)},0)") +
         "</div>" +
         // UIフォントプレビュー
         "<div style='display:flex;flex-direction:column;gap:6px'>" +
@@ -575,7 +575,7 @@ function openFontConfig() {
         "<span style='color:var(--text2);font-size:var(--ui-font-size)'>px (10〜32)</span>" +
         "</div></div>" +
         "<div class='ai-cfg-row'><label>フォント</label>" +
-        makePvSel("ef-font-sel", EDITOR_FONTS, curFont, "setTimeout(function(){_updateFontPreview('editor',null)},0)") +
+        makePvSel("ef-font-sel", EDITOR_FONTS, curFont, "setTimeout(function(){updateFontPreview('editor',null)},0)") +
         "</div>" +
 
         // エディタプレビュー
@@ -599,15 +599,15 @@ function openFontConfig() {
     requestAnimationFrame(function () {
         var ufSize = $("uf-size");
         var efSize = $("ef-size");
-        if (ufSize) ufSize.addEventListener("input", function () { _updateFontPreview("ui", null); });
-        if (efSize) efSize.addEventListener("input", function () { _updateFontPreview("editor", null); });
+        if (ufSize) ufSize.addEventListener("input", function () { updateFontPreview("ui", null); });
+        if (efSize) efSize.addEventListener("input", function () { updateFontPreview("editor", null); });
     });
 }
 
 // フォントプレビューを即時更新する
 // kind: "ui" → UIフォントプレビュー, "editor" → エディタプレビュー
 // fontValue: CSS font-family 値。null の場合は現在のpv-sel-btnラベルから逆引き
-function _updateFontPreview(kind, fontValue) {
+function updateFontPreview(kind, fontValue) {
     if (kind === "ui") {
         var prev = $("uf-preview");
         var sizeIn = $("uf-size");
@@ -636,13 +636,13 @@ function _updateFontPreview(kind, fontValue) {
 }
 
 // フォントサイズ入力の▲▼ステップ共通処理（ステップ後プレビューも更新）
-function _fontSizeStep(id, dir, min, max, defaultVal) {
+function fontSizeStep(id, dir, min, max, defaultVal) {
     var el = $(id);
     if (!el) return;
     el.value = Math.max(min, Math.min(max, (parseInt(el.value) || defaultVal) + dir));
 }
-function efSizeStep(dir) { _fontSizeStep("ef-size", dir, 10, 32, 16); _updateFontPreview("editor", null); }
-function ufSizeStep(dir) { _fontSizeStep("uf-size", dir, 10, 20, 13); _updateFontPreview("ui", null); }
+function efSizeStep(dir) { fontSizeStep("ef-size", dir, 10, 32, 16); updateFontPreview("editor", null); }
+function ufSizeStep(dir) { fontSizeStep("uf-size", dir, 10, 20, 13); updateFontPreview("ui", null); }
 
 function saveFontConfig() {
     // エディタフォント: pv-sel-btn の表示ラベルから value を逆引き
@@ -672,9 +672,9 @@ function openColDefEditor(wid) {
         return { label: parts[0] || "", width: parts[1] || "20", displayName: parts[2] || "" };
     });
     if (rows.length === 0) rows.push({ label: "", width: "20", displayName: "" });
-    _COLDEF_MODAL.wid = wid;
-    _COLDEF_MODAL.rows = rows;
-    _COLDEF_MODAL.maxRows = w.props.maxRows || 0;
+    COLDEF_MODAL.wid = wid;
+    COLDEF_MODAL.rows = rows;
+    COLDEF_MODAL.maxRows = w.props.maxRows || 0;
     renderColDefModal();
 }
 function renderColDefModal() {
@@ -682,7 +682,7 @@ function renderColDefModal() {
         modalId: "coldef-modal",
         title: "📊 カラム定義エディタ",
         infoText: "カラム名と幅(%)を定義します。Noは自動採番。",
-        rows: _COLDEF_MODAL.rows,
+        rows: COLDEF_MODAL.rows,
         maxLen: 100,
         headerHtml: "<th style='width:36px'>No</th><th>カラム名</th><th>表示名</th><th style='width:80px'>幅(%)</th><th style='width:56px'></th>",
         rowHtmlFn: (r, i) => "<tr>"
@@ -698,27 +698,27 @@ function renderColDefModal() {
         saveAction: "coldefSave()",
         extraHtml: "<div style='display:flex;align-items:center;gap:8px;padding:4px 0'>"
             + "<label style='font-size:12px;color:var(--text2);white-space:nowrap'>最大表示件数（0=無制限）:</label>"
-            + "<input type='number' id='coldef-maxrows' value='" + (_COLDEF_MODAL.maxRows || 0) + "' min='0' class='pv-input' style='width:80px'>"
+            + "<input type='number' id='coldef-maxrows' value='" + (COLDEF_MODAL.maxRows || 0) + "' min='0' class='pv-input' style='width:80px'>"
             + "</div>",
     });
 }
 function coldefUpdate(idx, key, val) {
-    if (_COLDEF_MODAL.rows) _COLDEF_MODAL.rows[idx][key] = val;
+    if (COLDEF_MODAL.rows) COLDEF_MODAL.rows[idx][key] = val;
 }
 function coldefAddRow() {
-    _rowAdd(() => _COLDEF_MODAL.rows, () => ({ label: "", width: "20", displayName: "" }), renderColDefModal, 100);
+    rowAdd(() => COLDEF_MODAL.rows, () => ({ label: "", width: "20", displayName: "" }), renderColDefModal, 100);
 }
 function coldefInsertRow(idx) {
-    _rowInsert(() => _COLDEF_MODAL.rows, idx, () => ({ label: "", width: "20", displayName: "" }), renderColDefModal, 100);
+    rowInsert(() => COLDEF_MODAL.rows, idx, () => ({ label: "", width: "20", displayName: "" }), renderColDefModal, 100);
 }
 function coldefDelRow(idx) {
-    _rowDel(() => _COLDEF_MODAL.rows, idx, () => ({ label: "", width: "80" }), renderColDefModal);
+    rowDel(() => COLDEF_MODAL.rows, idx, () => ({ label: "", width: "80" }), renderColDefModal);
 }
 function coldefSave() {
-    const wid = _COLDEF_MODAL.wid;
+    const wid = COLDEF_MODAL.wid;
     const w = getWidget(wid);
     if (!w) return;
-    const valid = (_COLDEF_MODAL.rows || []).filter(r => r.label.trim());
+    const valid = (COLDEF_MODAL.rows || []).filter(r => r.label.trim());
     if (valid.length === 0) { showVjaAlert("カラム名を1つ以上入力してください"); return; }
     w.props.columns = valid.map(r => r.label.trim() + ":" + (parseInt(r.width) || 20) + (r.displayName?.trim() ? ":" + r.displayName.trim() : "")).join("\n");
     w.props.maxRows = parseInt($("coldef-maxrows")?.value) || 0;
@@ -740,8 +740,8 @@ function openItemsDefEditor(wid) {
         return { label: s.trim(), value: "" };
     });
     if (rows.length === 0) rows.push({ label: "", value: "" });
-    _ITEMSDEF_EDITOR.wid = wid;
-    _ITEMSDEF_EDITOR.rows = rows;
+    ITEMSDEF_EDITOR.wid = wid;
+    ITEMSDEF_EDITOR.rows = rows;
     renderItemsDefModal();
 }
 function renderItemsDefModal() {
@@ -749,12 +749,12 @@ function renderItemsDefModal() {
         modalId: "itemsdef-modal",
         title: "📋 項目定義エディタ",
         infoText: "選択肢を定義します。Value省略時は表示名が使われます。",
-        rows: _ITEMSDEF_EDITOR.rows,
+        rows: ITEMSDEF_EDITOR.rows,
         headerHtml: "<th style='width:36px'>No</th><th>表示名</th><th>Value（省略可）</th><th style='width:56px'></th>",
         rowHtmlFn: (r, i) => "<tr>"
             + "<td>" + (i + 1) + "</td>"
-            + "<td><input type='text' class='pv-input' value='" + esc(r.label) + "'" + evtAttr("oninput", "_ITEMSDEF_EDITOR.rows[" + i + "].label=this.value") + " placeholder='表示名'></td>"
-            + "<td><input type='text' class='pv-input' value='" + esc(r.value || "") + "'" + evtAttr("oninput", "_ITEMSDEF_EDITOR.rows[" + i + "].value=this.value") + " placeholder='Value（省略可）'></td>"
+            + "<td><input type='text' class='pv-input' value='" + esc(r.label) + "'" + evtAttr("oninput", "ITEMSDEF_EDITOR.rows[" + i + "].label=this.value") + " placeholder='表示名'></td>"
+            + "<td><input type='text' class='pv-input' value='" + esc(r.value || "") + "'" + evtAttr("oninput", "ITEMSDEF_EDITOR.rows[" + i + "].value=this.value") + " placeholder='Value（省略可）'></td>"
             + "<td style='white-space:nowrap'>"
             + "<button class='del-btn'" + evtAttr("onmousedown", "itemsdefInsertRow(" + i + ")") + " title='この行の前に挿入' style='margin-right:2px'>＋</button>"
             + "<button class='del-btn'" + evtAttr("onmousedown", "itemsdefDelRow(" + i + ")") + " title='削除'>✕</button>"
@@ -764,19 +764,19 @@ function renderItemsDefModal() {
     });
 }
 function itemsdefAddRow() {
-    _rowAdd(() => _ITEMSDEF_EDITOR.rows, () => ({ label: "", value: "" }), renderItemsDefModal);
+    rowAdd(() => ITEMSDEF_EDITOR.rows, () => ({ label: "", value: "" }), renderItemsDefModal);
 }
 function itemsdefInsertRow(idx) {
-    _rowInsert(() => _ITEMSDEF_EDITOR.rows, idx, () => ({ label: "", value: "" }), renderItemsDefModal);
+    rowInsert(() => ITEMSDEF_EDITOR.rows, idx, () => ({ label: "", value: "" }), renderItemsDefModal);
 }
 function itemsdefDelRow(idx) {
-    _rowDel(() => _ITEMSDEF_EDITOR.rows, idx, () => ({ label: "", value: "" }), renderItemsDefModal);
+    rowDel(() => ITEMSDEF_EDITOR.rows, idx, () => ({ label: "", value: "" }), renderItemsDefModal);
 }
 function itemsdefSave() {
-    const wid = _ITEMSDEF_EDITOR.wid;
+    const wid = ITEMSDEF_EDITOR.wid;
     const w = getWidget(wid);
     if (!w) return;
-    const valid = (_ITEMSDEF_EDITOR.rows || []).filter(r => r.label.trim());
+    const valid = (ITEMSDEF_EDITOR.rows || []).filter(r => r.label.trim());
     if (valid.length === 0) { showVjaAlert("表示名を1つ以上入力してください"); return; }
     w.props.items = valid.map(r => r.value?.trim() ? r.label.trim() + "=" + r.value.trim() : r.label.trim()).join("\n");
     closeModal();
@@ -907,13 +907,13 @@ Object.assign(window, {
     openExtRuntime, saveExtRuntime, extRtGenDoc,
     openDebugTools,
     // クラウドインフラ設定
-    openCloudInfraConfig, _renderCloudModal, _cloudSelId,
-    _cloudOptsHtml, _cloudSvcOptsHtml, _cloudUrlFieldHtml, _cloudCredFieldsHtml,
-    _cloudInfraRow, addCloudInfra, removeCloudInfra,
+    openCloudInfraConfig, renderCloudModal, cloudSelId,
+    cloudOptsHtml, cloudSvcOptsHtml, cloudUrlFieldHtml, cloudCredFieldsHtml,
+    cloudInfraRow, addCloudInfra, removeCloudInfra,
     updateCloudField, updateCloudCred, updateCloudCredsJson, updateCloudAppInput,
-    selectCloudPreset, selectCloudService, _refreshCloudList, saveCloudInfraConfig,
+    selectCloudPreset, selectCloudService, refreshCloudList, saveCloudInfraConfig,
     // フォント設定
-    openFontConfig, _updateFontPreview, _fontSizeStep, efSizeStep, ufSizeStep, saveFontConfig,
+    openFontConfig, updateFontPreview, fontSizeStep, efSizeStep, ufSizeStep, saveFontConfig,
     // カラム定義・項目定義エディタ
     openColDefEditor, renderColDefModal,
     coldefUpdate, coldefAddRow, coldefInsertRow, coldefDelRow, coldefSave,

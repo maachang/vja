@@ -5,8 +5,8 @@
    【依存】なし（init-params.js / prompt-def.js / vja-runtime.js /
             bridge.ts が読み込み済みであることだけを前提とする）。
    【提供するもの】
-     - _CTX（状態管理オブジェクト本体）と getDesignerState() 等のgetter群
-     - 機能別ローカル状態オブジェクト（_CLOUD_MODAL, _TABLE_MODAL 等）
+     - CTX（状態管理オブジェクト本体）と getDesignerState() 等のgetter群
+     - 機能別ローカル状態オブジェクト（CLOUD_MODAL, TABLE_MODAL 等）
      - WIDGET_DEFS（全ウィジェットの定義: label/icon/def/events/pdefs/preview。
        themeSync: ["font","color"]等でフォームテーマ連動対象を明示。
        未指定＝連動対象外。"font"未指定でも"color"のみのタグもある）
@@ -60,10 +60,10 @@
 
    ④ 新しい状態・値を追加する際の置き場所の判断基準
    - 状態（変化する・複数ファイルで共有される値）
-     → _CTX（getDesignerState() / getProjectData() 等のgetter経由）
+     → CTX（getDesignerState() / getProjectData() 等のgetter経由）
    - 一時的なモーダル編集状態
-     → 機能別ローカルオブジェクト（_CLOUD_MODAL, _TABLE_MODAL 等。
-        _CTX に何でも入れると第二のグローバル化になるため意図的に分離）
+     → 機能別ローカルオブジェクト（CLOUD_MODAL, TABLE_MODAL 等。
+        CTX に何でも入れると第二のグローバル化になるため意図的に分離）
    - 静的な定義値（一度作ったら変わらないマスターデータ）
      → init-params.js に window.XXXX の形で直接展開
         （_INIT_PARAMS という間接的な名前空間は撤廃済み。使わない）
@@ -114,7 +114,7 @@
    （pvSelPickは表示ラベルしかDOMに残さないため）。この場合は
    onPickCode経由のコールバックで data-* 属性に値を保存し、保存時は
    DOMの表示テキストではなくdata-*属性から読み取ること
-   （vja-yaml-editor.js の _mockEditorOnTypeChange() が実装例）。
+   （vja-yaml-editor.js の mockEditorOnTypeChange() が実装例）。
 
    ⑧ 既知の制約（実行時プレビュー・Electrobun起因、修正不可）
    プロジェクト実行ウィンドウの「起動直後の最初のフォーム」でのみ、
@@ -797,11 +797,11 @@ function makeFormData(title = "Form1") {
 }
 
 /* ═══════════════════════════════════════════
-    _CTX — 状態管理オブジェクト
+    CTX — 状態管理オブジェクト
     デザイナー全体の状態をグループごとに管理する。
     各グループへのアクセスは getter 関数経由で行う。
 ═══════════════════════════════════════════ */
-var _CTX = {
+var CTX = {
     // デザイナーのUI操作状態
     _state: {
         selIds: [],
@@ -893,66 +893,66 @@ var _CTX = {
     },
 };
 
-// ── _CTX getter 関数 ──────────────────────────
-function getDesignerState() { return _CTX._state; }
-function getProjectData() { return _CTX._project; }
-function getEditHistory() { return _CTX._history; }
-function getEditorContext() { return _CTX._editor; }
-function getAiContext() { return _CTX._ai; }
-function getUiConfig() { return _CTX._ui.config; }
+// ── CTX getter 関数 ──────────────────────────
+function getDesignerState() { return CTX._state; }
+function getProjectData() { return CTX._project; }
+function getEditHistory() { return CTX._history; }
+function getEditorContext() { return CTX._editor; }
+function getAiContext() { return CTX._ai; }
+function getUiConfig() { return CTX._ui.config; }
 
 /* ═══════════════════════════════════════════
     機能別ローカル状態オブジェクト
-    _CTX とは別に、特定の1モーダル・1エディタの中でしか
+    CTX とは別に、特定の1モーダル・1エディタの中でしか
     使わない局所的な一時状態をここにまとめる。
 ═══════════════════════════════════════════ */
 // クラウドインフラ設定モーダル専用の一時状態
-var _CLOUD_MODAL = {
+var CLOUD_MODAL = {
     draft: [],
 };
 // アプリイベント編集モーダル専用の一時状態
-var _APPEVENT_MODAL = {
+var APPEVENT_MODAL = {
     curKey: "onStart",
 };
 // 拡張ランタイムエディタ専用のUndo状態
-var _EXTRT_EDITOR = {
+var EXTRT_EDITOR = {
     jsUndo: { stack: [], idx: -1, busy: false },
     docUndo: { stack: [], idx: -1, busy: false },
 };
 // AIフォーム設計エディタ専用のUndo状態
-var _FORMDESIGN_EDITOR = {
+var FORMDESIGN_EDITOR = {
     taUndo: { stack: [], idx: -1, busy: false },
 };
 // 項目定義エディタ専用の一時状態
-var _ITEMSDEF_EDITOR = {
+var ITEMSDEF_EDITOR = {
     wid: null,
     rows: [],
 };
 // 確認ダイアログ専用の一時状態
-var _CONFIRM_MODAL = {
+var CONFIRM_MODAL = {
     okCb: null,
 };
 // カラム定義エディタ専用の一時状態
-var _COLDEF_MODAL = {
+var COLDEF_MODAL = {
     wid: null,
     rows: [],
     maxRows: 0,
 };
 // 定数編集モーダル専用の一時状態
-var _CONST_MODAL = {
+var CONST_MODAL = {
     rows: [],
 };
 // バリデーション編集モーダル専用の一時状態
-var _VALID_MODAL = {
+var VALID_MODAL = {
     edit: null,
 };
 // テーブル編集モーダル専用の一時状態
-var _TABLE_MODAL = {
+var TABLE_MODAL = {
     edit: null,
     editIdx: -1,
 };
 
-// _CTX._project の初期データを設定
+// CTX._project の初期データを設定
 getProjectData().forms = [makeFormData("Form1")];
 getProjectData().startFormId = getProjectData().forms[0]?.id ?? "";
 
@@ -967,7 +967,7 @@ const UI_FONT_LIST = [
     { label: "serif", value: "serif" },
 ];
 
-// 現在フォームへのショートカット（_CTX._project に統合済み）
+// 現在フォームへのショートカット（CTX._project に統合済み）
 getProjectData().widgets = getProjectData().forms[0].widgets;
 getProjectData().formCfg = getProjectData().forms[0].cfg;
 getProjectData().idCnt = getProjectData().forms[0].idCnt;
@@ -1005,10 +1005,10 @@ const sn = (v) => (getDesignerState().snapOn ? Math.round(v / SNAP) * SNAP : v);
 ═══════════════════════════════════════════ */
 
 // ① グローバルブリッジ共通管理
-const _pvRegistry = {};
-function pvRegister(key, fn) { _pvRegistry[key] = fn; }
+const pvRegistry = {};
+function pvRegister(key, fn) { pvRegistry[key] = fn; }
 function pvCall(key, ...args) {
-    if (_pvRegistry[key]) _pvRegistry[key](...args);
+    if (pvRegistry[key]) pvRegistry[key](...args);
     else console.warn("[pvCall] not registered:", key);
 }
 
@@ -1100,24 +1100,24 @@ function showToast(msg, duration = 2500) {
     init-params.js と同様に window オブジェクトへ
     明示的に代入する必要がある。
     このファイルが他ファイルへ提供するものを全てここに列挙する。
-    （widgets/formCfg/idCnt は _CTX._project に統合済みのため、
+    （widgets/formCfg/idCnt は CTX._project に統合済みのため、
     個別の window.widgets 等は不要。getProjectData().widgets の形で参照する）
 ═══════════════════════════════════════════ */
 Object.assign(window, {
     // 状態管理オブジェクト・getter
-    _CTX,
+    CTX,
     getDesignerState, getProjectData, getEditHistory,
     getEditorContext, getAiContext, getUiConfig,
     // 機能別ローカル状態オブジェクト
-    _CLOUD_MODAL, _APPEVENT_MODAL, _EXTRT_EDITOR, _ITEMSDEF_EDITOR, _FORMDESIGN_EDITOR,
-    _CONFIRM_MODAL, _COLDEF_MODAL, _CONST_MODAL, _VALID_MODAL, _TABLE_MODAL,
+    CLOUD_MODAL, APPEVENT_MODAL, EXTRT_EDITOR, ITEMSDEF_EDITOR, FORMDESIGN_EDITOR,
+    CONFIRM_MODAL, COLDEF_MODAL, CONST_MODAL, VALID_MODAL, TABLE_MODAL,
     // ウィジェット定義
     PP_POS, PP_FONT, PP_BORDER, PP_TAIL,
     POINTER_TOOL, WIDGET_DEFS, getToolById,
     // UI定義・定数
     UI_FONT_LIST, SNAP, sn,
     // 共通ユーティリティ
-    esc, $, fb, evtAttr, _pvRegistry, pvRegister, pvCall, rAfBind, showToast,
+    esc, $, fb, evtAttr, pvRegistry, pvRegister, pvCall, rAfBind, showToast,
     getFormTheme, darkenColor,
     // フォームデータ生成・現在フォームのショートカット同期関数
     makeFormData, refreshAll, syncCurForm, commitIdCnt,

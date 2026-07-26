@@ -9,7 +9,7 @@
      - editorUndoPush() / editorUndo() / editorRedo()（エディタ内Undo/Redo）
      - editorSearch()（Ctrl+F検索）
      - jsTokenize() / yamlTokenize() 等のシンタックスハイライト
-     - _saveYamlData()（YAML/JS内容の保存。wid==="form"→フォーム
+     - saveYamlData()（YAML/JS内容の保存。wid==="form"→フォーム
        イベント、wid==="appev"→アプリイベント、それ以外→ウィジェット
        イベントに分岐。saveYaml()/openFormYaml()/saveFormYaml()/
        deleteFormYaml()も本ファイルで提供）
@@ -49,9 +49,9 @@ function yamlTabSwitch(tab) {
     const yamlPane = $("pane-yaml");
     const jsPane = $("pane-js");
     if (!yamlTab || !jsTab || !yamlPane || !jsPane) return;
-    _clearBracketMatch(); // 表示中のペインが切り替わるため、対応括弧ハイライトは一旦消す
+    clearBracketMatch(); // 表示中のペインが切り替わるため、対応括弧ハイライトは一旦消す
     if (tab === "yaml") {
-        _closeCompletionPopup(); // JSペイン限定の入力補完ポップアップが表示されたままにならないよう閉じる
+        closeCompletionPopup(); // JSペイン限定の入力補完ポップアップが表示されたままにならないよう閉じる
         yamlTab.classList.add("active");
         jsTab.classList.remove("active");
         yamlPane.classList.add("active");
@@ -156,7 +156,7 @@ function editorUndo(taId, state) {
     ta.value = entry.val;
     _editorRestoreSel(ta, entry);
     editorHlUpdate(taId);
-    _ensureCursorVisible(ta);
+    ensureCursorVisible(ta);
     setTimeout(() => { state.busy = false; }, 50);
 }
 
@@ -171,7 +171,7 @@ function editorRedo(taId, state) {
     ta.value = entry.val;
     _editorRestoreSel(ta, entry);
     editorHlUpdate(taId);
-    _ensureCursorVisible(ta);
+    ensureCursorVisible(ta);
     setTimeout(() => { state.busy = false; }, 50);
 }
 
@@ -181,7 +181,7 @@ function editorRedo(taId, state) {
 // スクロール位置・サイズ同期して疑似シンタックスハイライトを実現する。
 
 // カーソル位置が表示範囲に収まるよう textarea をスクロールする。
-function _ensureCursorVisible(ta) {
+function ensureCursorVisible(ta) {
     const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 20;
     const cursorLine = ta.value.slice(0, ta.selectionStart).split("\n").length;
     const cursorTop = (cursorLine - 1) * lineHeight;
@@ -196,23 +196,23 @@ function _ensureCursorVisible(ta) {
 // textarea と hl のスクロール位置を transform で同期する。
 // nowrap前提: hl は scrollWidth/scrollHeight サイズで固定し
 // transform で textarea のスクロール量だけずらす。
-function _hlSync(taId, hlId) {
+function hlSync(taId, hlId) {
     const ta = $(taId), hl = $(hlId);
     if (!ta || !hl) return;
     hl.style.transform = `translate(${-ta.scrollLeft}px, ${-ta.scrollTop}px)`;
 }
 // hl の innerHTML をトークナイズ結果で更新し、サイズを同期する。
 // tokenizeFn には yamlTokenize / jsTokenize を渡す。
-function _hlUpdate(taId, hlId, tokenizeFn) {
+function hlUpdate(taId, hlId, tokenizeFn) {
     const ta = $(taId), hl = $(hlId);
     if (!ta || !hl) return;
     hl.innerHTML = tokenizeFn(ta.value);
     // nowrap前提: 横幅のみscrollWidthに合わせる（縦はflexで固定）
     hl.style.width = ta.scrollWidth + "px";
-    _hlSync(taId, hlId);
+    hlSync(taId, hlId);
 }
-function yamlHlUpdate() { _hlUpdate("yaml-ta", "yaml-hl", yamlTokenize); }
-function yamlHlSync() { _hlSync("yaml-ta", "yaml-hl"); }
+function yamlHlUpdate() { hlUpdate("yaml-ta", "yaml-hl", yamlTokenize); }
+function yamlHlSync() { hlSync("yaml-ta", "yaml-hl"); }
 function yamlTokenize(text) {
     return text.split("\n").map(line => {
         // コメント行
@@ -253,8 +253,8 @@ function escHl(s) {
 }
 
 /* ── JavaScript シンタックスハイライト ── */
-function jsHlUpdate() { _hlUpdate("js-ta", "js-hl", jsTokenize); }
-function jsHlSync() { _hlSync("js-ta", "js-hl"); }
+function jsHlUpdate() { hlUpdate("js-ta", "js-hl", jsTokenize); }
+function jsHlSync() { hlSync("js-ta", "js-hl"); }
 function jsTokenize(code) {
     const KW = /^(function|return|if|else|for|while|do|switch|case|break|continue|const|let|var|new|this|typeof|instanceof|try|catch|finally|throw|await|async|of|in|class|extends|import|export|default|void|delete|yield)$/;
     const BOOL = /^(true|false|null|undefined|NaN|Infinity)$/;
@@ -299,10 +299,10 @@ function jsTokenize(code) {
 }
 
 // YAMLデータをウィジェットに保存する（モーダルは閉じない）
-function _saveYamlData(wid, evName) {
+function saveYamlData(wid, evName) {
     // 保存直前に、有効化されている「利用テーブル」の状態をYAML本文へ再同期する。
     // （手動でブロックを消してしまっていても、保存時に補完される）
-    if (typeof _applyTableYamlSync === "function") _applyTableYamlSync(wid, evName);
+    if (typeof applyTableYamlSync === "function") applyTableYamlSync(wid, evName);
     if (wid === "form") {
         const f = getProjectData().forms[getProjectData().curFormIdx];
         if (!f.events) f.events = {};
@@ -325,7 +325,7 @@ function _saveYamlData(wid, evName) {
     renderEventsAndPush();
 }
 function saveYaml(wid, evName) {
-    _saveYamlData(wid, evName);
+    saveYamlData(wid, evName);
     closeModal();
 }
 
@@ -365,7 +365,7 @@ async function deleteFormYaml(evName) {
     if (f.events) { delete f.events[evName]; delete f.events["_js_" + evName]; }
     // フォームイベントのオーバーライド（wid="form"固定）もあわせて削除する
     // （残すと二度と参照されないゴミデータになるため）。
-    _purgeOverridesForKey("form", evName);
+    purgeOverridesForKey("form", evName);
     renderEventsAndPush();
 }
 
@@ -375,8 +375,8 @@ async function deleteFormYaml(evName) {
 Object.assign(window, {
     editorUpdateGutter, editorSyncGutter, yamlTabSwitch,
     editorUndoPush, editorUndoInit, editorUndo, editorRedo,
-    _hlSync, _hlUpdate, yamlHlUpdate, yamlHlSync, yamlTokenize,
+    hlSync, hlUpdate, yamlHlUpdate, yamlHlSync, yamlTokenize,
     jsHlUpdate, jsHlSync, jsTokenize,
-    colorVal, escHl, _ensureCursorVisible,
-    _saveYamlData, saveYaml, openFormYaml, saveFormYaml, deleteFormYaml,
+    colorVal, escHl, ensureCursorVisible,
+    saveYamlData, saveYaml, openFormYaml, saveFormYaml, deleteFormYaml,
 });

@@ -68,7 +68,7 @@
 ═══════════════════════════════════════════ */
 
 // YAMLテキストからナビゲーション項目を解析
-function _parseApiRefNav(text) {
+function parseApiRefNav(text) {
     const nav = []; // { type: 'category'|'func', label, anchor }
     let catIdx = 0, fnIdx = 0;
     text.split("\n").forEach(line => {
@@ -88,7 +88,7 @@ function openApiRef(isAppEvent) {
         ? window._PROMPT_DEF.VJA_USE_BACK_JS_INFO
         : window._PROMPT_DEF.VJA_USE_FRONT_JS_INFO;
     const title = isAppEvent ? "📖 APIリファレンス（バックエンド）" : "📖 APIリファレンス（フロントエンド）";
-    const nav = _parseApiRefNav(info);
+    const nav = parseApiRefNav(info);
 
     // 左パネルのナビゲーションHTML生成（カテゴリのみ）
     const navHtml = nav.filter(item => item.type === "category").map(item => {
@@ -561,10 +561,10 @@ function yamlSetTableOpt(wid, evName, tableName, value) {
     // プロジェクト内のテーブル定義順に整列して保存（表示・出力の安定化のため）
     const ordered = getProjectData().tables.map((t) => t.name).filter((n) => state.has(n));
     _setTableOptState(wid, evName, ordered);
-    _applyTableYamlSync(wid, evName);
+    applyTableYamlSync(wid, evName);
 }
 // 現在の有効化状態を、YAMLエディタ本文（yaml-ta）に即時反映する。
-function _applyTableYamlSync(wid, evName) {
+function applyTableYamlSync(wid, evName) {
     const ta = $("yaml-ta");
     if (!ta) return;
     const enabled = _getTableOptState(wid, evName) || [];
@@ -806,7 +806,7 @@ function yamlInsert(text) {
     ta.focus();
     if (ta.id === "yaml-ta") yamlHlUpdate();
     else if (ta.id === "js-ta") jsHlUpdate();
-    else if (ta.id.startsWith("ta-")) _hlUpdate(ta.id, "hl-" + ta.id.slice(3), yamlTokenize);
+    else if (ta.id.startsWith("ta-")) hlUpdate(ta.id, "hl-" + ta.id.slice(3), yamlTokenize);
 }
 
 // AI生成（llama-server 経由）
@@ -915,7 +915,7 @@ function _getCompletionWidgetNames() {
 function _editorCompletionOnInput(e) {
     const ta = e.target;
     const info = _getCompletionPartial(ta);
-    if (!info || info.partial.length < 1) { _closeCompletionPopup(); return; }
+    if (!info || info.partial.length < 1) { closeCompletionPopup(); return; }
 
     const isAppEvent = !!getEditorContext().isAppEvent;
     const pool = info.mode === "api" ? _getCompletionApiNames(isAppEvent) : _getCompletionWidgetNames();
@@ -925,7 +925,7 @@ function _editorCompletionOnInput(e) {
         .filter((name) => name.toLowerCase() !== lp)
         .sort()
         .slice(0, 8);
-    if (list.length === 0) { _closeCompletionPopup(); return; }
+    if (list.length === 0) { closeCompletionPopup(); return; }
 
     const comp = getEditorContext().completion;
     comp.active = true;
@@ -1005,7 +1005,7 @@ function _renderCompletionPopup(ta) {
     const el = _completionPopupEl();
     el.innerHTML = comp.list.map((name, i) =>
         "<div class='editor-completion-item" + (i === comp.sel ? " sel" : "") + "'" +
-        evtAttr("onmousedown", "event.preventDefault();_acceptCompletionAt(" + i + ")") + ">" + esc(name) + "</div>"
+        evtAttr("onmousedown", "event.preventDefault();acceptCompletionAt(" + i + ")") + ">" + esc(name) + "</div>"
     ).join("");
     const pos = _getCaretScreenPos(ta);
     // ポップアップがテキストエリアの外（タブバー側等）にはみ出してクリックを
@@ -1019,7 +1019,7 @@ function _renderCompletionPopup(ta) {
 }
 
 // 補完ポップアップを閉じる。
-function _closeCompletionPopup() {
+function closeCompletionPopup() {
     const comp = getEditorContext().completion;
     comp.active = false;
     comp.list = [];
@@ -1028,7 +1028,7 @@ function _closeCompletionPopup() {
 }
 
 // ポップアップ内の候補をクリックで確定する。
-function _acceptCompletionAt(i) {
+function acceptCompletionAt(i) {
     const comp = getEditorContext().completion;
     if (!comp.active) return;
     comp.sel = i;
@@ -1048,7 +1048,7 @@ function _acceptCompletion(ta, state) {
     ta.value = v.slice(0, s) + name + v.slice(en);
     ta.selectionStart = ta.selectionEnd = s + name.length;
     editorHlUpdate(ta.id);
-    _closeCompletionPopup();
+    closeCompletionPopup();
     ta.focus();
 }
 
@@ -1175,15 +1175,15 @@ function _saveMockOverrideRows(wid, evName, rows) {
 // ウィジェット削除・イベント削除時にこれらのエントリを消し忘れると、
 // 二度と参照されないゴミデータとしてプロジェクトJSONに残り続けるため、
 // 削除処理側から呼び出す共通クリーンアップ関数をここにまとめる。
-const _OVERRIDE_MAP_NAMES = [
+const OVERRIDE_MAP_NAMES = [
     "mockOverrides", "apiOptOverrides", "tableOptOverrides",
     "validationOverrides", "mockCheckOverrides", "learnedFixes",
 ];
 // 指定したwid・evNameの組み合わせに完全一致するキーだけを6マップから削除する
 // （1イベント単位でのYAML削除時に使用）。
-function _purgeOverridesForKey(wid, evName) {
+function purgeOverridesForKey(wid, evName) {
     const key = wid + "_" + evName;
-    _OVERRIDE_MAP_NAMES.forEach((name) => {
+    OVERRIDE_MAP_NAMES.forEach((name) => {
         const map = getProjectData()[name];
         if (map) delete map[key];
     });
@@ -1191,9 +1191,9 @@ function _purgeOverridesForKey(wid, evName) {
 // 指定したwid（ウィジェットid）で始まるキーを全て6マップから削除する
 // （ウィジェット自体の削除時に使用。そのウィジェットの全イベント分の
 // オーバーライドが対象になるため、evName側は問わずprefix一致で消す）。
-function _purgeOverridesForWid(wid) {
+function purgeOverridesForWid(wid) {
     const prefix = wid + "_";
-    _OVERRIDE_MAP_NAMES.forEach((name) => {
+    OVERRIDE_MAP_NAMES.forEach((name) => {
         const map = getProjectData()[name];
         if (!map) return;
         Object.keys(map).forEach((key) => {
@@ -1287,7 +1287,7 @@ function _mockEditorRowHtml(row, idx) {
     const typeOpts = Object.keys(_MOCK_TYPE_LABELS).map((t) => ({ value: t, label: _MOCK_TYPE_LABELS[t] }));
     return "<div class='mock-editor-row' data-idx='" + idx + "' data-type='" + type + "' style='display:flex;gap:6px;margin-bottom:6px;align-items:flex-start'>" +
         "<div style='width:120px;flex-shrink:0'>" +
-        makePvSel("mock-type-" + idx, typeOpts, type, "_mockEditorOnTypeChange(" + idx + ",{value})") +
+        makePvSel("mock-type-" + idx, typeOpts, type, "mockEditorOnTypeChange(" + idx + ",{value})") +
         "</div>" +
         "<div class='mock-target-wrap' id='mock-target-wrap-" + idx + "' style='width:140px;flex-shrink:0'>" +
         _mockEditorTargetCellHtml(type, target, idx) +
@@ -1298,7 +1298,7 @@ function _mockEditorRowHtml(row, idx) {
 }
 // モックタイプが変更された時、対象名欄をそのタイプに応じたものに差し替え、
 // 選択中の値（英語キー）をdata-type属性に保存する（makePvSelの制約への対応）。
-function _mockEditorOnTypeChange(idx, newType) {
+function mockEditorOnTypeChange(idx, newType) {
     const row = document.querySelector(".mock-editor-row[data-idx='" + idx + "']");
     if (!row) return;
     row.dataset.type = newType;
@@ -1308,7 +1308,7 @@ function _mockEditorOnTypeChange(idx, newType) {
 // 行を一意に識別するための連番。openMockOverrideEditor()を開く度にリセットする。
 let _mockEditorRowSeq = 0;
 // 「＋ 行を追加」ボタン用。既存行はそのまま保持し、末尾に空行を1つ追加する。
-function _mockEditorAddRow() {
+function mockEditorAddRow() {
     const container = $("mock-editor-rows");
     if (!container) return;
     const idx = _mockEditorRowSeq++;
@@ -1328,7 +1328,7 @@ function openMockOverrideEditor(wid, evName) {
         "対応するのはウィジェット・イベント・定数・セッション・ユーティリティの5種類のみです（DB操作は対象外）。" +
         "</div>" +
         "<div id='mock-editor-rows' style='max-height:min(50vh,420px);overflow-y:auto;padding-right:4px'>" + rowsHtml + "</div>" +
-        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "_mockEditorAddRow()") + ">＋ 行を追加</button>" +
+        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "mockEditorAddRow()") + ">＋ 行を追加</button>" +
         "</div>" +
         "<div class='mfoot'>" +
         mfootHTML([{ label: "キャンセル", action: 'closeModal("modal-layer-1")' }]) +
@@ -2501,7 +2501,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
         return;
     }
     // AI生成前にデータを保存（モーダルは閉じない）
-    _saveYamlData(wid, evName);
+    saveYamlData(wid, evName);
     if (btn) btn.disabled = true;
     if (randomBtn) randomBtn.disabled = true;
     if (status) status.textContent = "⏳ コンテキスト収集中…";
@@ -2647,16 +2647,16 @@ function openFormDesignAi() {
     showModal(buildYamlEditorHTML("", "", false, mhdrHTML("🤖 AIでフォーム設計"), "", tabConfig));
     requestAnimationFrame(() => {
         applyEditorConfig();
-        _hlUpdate("ta-fd", "hl-fd", yamlTokenize);
+        hlUpdate("ta-fd", "hl-fd", yamlTokenize);
         editorUpdateGutter("ta-fd", "gutter-fd");
         const ta = $("ta-fd");
         if (ta) {
             ta.addEventListener("keydown", editorKeyHandler);
             ta.addEventListener("mousedown", editorMouseDownHandler2);
             ta.addEventListener("dblclick", editorDblClickHandler);
-            ta.addEventListener("input", () => { _hlUpdate("ta-fd", "hl-fd", yamlTokenize); editorUpdateGutter("ta-fd", "gutter-fd"); });
-            ta.addEventListener("scroll", () => _hlSync("ta-fd", "hl-fd"));
-            editorUndoInit("ta-fd", _FORMDESIGN_EDITOR.taUndo, ta.value);
+            ta.addEventListener("input", () => { hlUpdate("ta-fd", "hl-fd", yamlTokenize); editorUpdateGutter("ta-fd", "gutter-fd"); });
+            ta.addEventListener("scroll", () => hlSync("ta-fd", "hl-fd"));
+            editorUndoInit("ta-fd", FORMDESIGN_EDITOR.taUndo, ta.value);
         }
         yamlInitResize();
         yamlInitRpanelEvents();
@@ -2816,9 +2816,9 @@ function editorKeyHandler(e) {
     const ctrl = e.ctrlKey || e.metaKey;
     const isJs = ta.id === "js-ta" || ta.id === "ta-extrt-js";
     const state = ta.id === "js-ta" ? getEditorContext().ju
-        : ta.id === "ta-extrt-js" ? _EXTRT_EDITOR.jsUndo
-            : ta.id === "ta-extrt-doc" ? _EXTRT_EDITOR.docUndo
-                : ta.id === "ta-fd" ? _FORMDESIGN_EDITOR.taUndo
+        : ta.id === "ta-extrt-js" ? EXTRT_EDITOR.jsUndo
+            : ta.id === "ta-extrt-doc" ? EXTRT_EDITOR.docUndo
+                : ta.id === "ta-fd" ? FORMDESIGN_EDITOR.taUndo
                     : getEditorContext().yu;
 
     // ── Mac: Ctrl+C / Ctrl+V を無効化（OS側のEmacsキーバインド干渉防止）──
@@ -2839,7 +2839,7 @@ function editorKeyHandler(e) {
             e.preventDefault(); _acceptCompletion(ta, state); return;
         }
         if (e.key === "Escape") {
-            e.preventDefault(); _closeCompletionPopup(); return;
+            e.preventDefault(); closeCompletionPopup(); return;
         }
     }
 
@@ -3025,7 +3025,7 @@ function editorKeyHandler(e) {
                 const insert = "\n" + baseIndent.slice(4);
                 ta.value = v.slice(0, s) + insert + v.slice(en);
                 ta.selectionStart = ta.selectionEnd = s + insert.length;
-                editorHlUpdate(ta.id); _ensureCursorVisible(ta); return;
+                editorHlUpdate(ta.id); ensureCursorVisible(ta); return;
             }
         } else {
             // YAML Enter の動作
@@ -3038,12 +3038,12 @@ function editorKeyHandler(e) {
                 const insert = "\n" + baseIndent + bullet;
                 ta.value = v.slice(0, s) + insert + v.slice(en);
                 ta.selectionStart = ta.selectionEnd = s + insert.length;
-                editorHlUpdate(ta.id); _ensureCursorVisible(ta); return;
+                editorHlUpdate(ta.id); ensureCursorVisible(ta); return;
             } else if (!isYamlComment && /^-\s*$/.test(t)) {
                 // "- " だけの空行 → リスト終了（行を削除して通常改行）
                 ta.value = v.slice(0, ls) + "\n" + v.slice(en);
                 ta.selectionStart = ta.selectionEnd = ls + 1;
-                editorHlUpdate(ta.id); _ensureCursorVisible(ta); return;
+                editorHlUpdate(ta.id); ensureCursorVisible(ta); return;
             } else if (!isYamlComment && /:\s*$/.test(t) && !t.startsWith("-")) {
                 extra = "  ";
             }
@@ -3051,7 +3051,7 @@ function editorKeyHandler(e) {
         const insert = "\n" + baseIndent + extra;
         ta.value = v.slice(0, s) + insert + v.slice(en);
         ta.selectionStart = ta.selectionEnd = s + insert.length;
-        editorHlUpdate(ta.id); _ensureCursorVisible(ta); return;
+        editorHlUpdate(ta.id); ensureCursorVisible(ta); return;
     }
 }
 
@@ -3095,14 +3095,14 @@ function editorDblClickHandler(e) {
 }
 
 // taId に対応するハイライト更新を行う共通ディスパッチャ。
-// _hlUpdate + editorUpdateGutter の組み合わせを ID で振り分ける。
+// hlUpdate + editorUpdateGutter の組み合わせを ID で振り分ける。
 function editorHlUpdate(taId) {
     if (taId === "yaml-ta") { yamlHlUpdate(); editorUpdateGutter("yaml-ta", "yaml-gutter"); }
     else if (taId === "js-ta") { jsHlUpdate(); editorUpdateGutter("js-ta", "js-gutter"); }
-    else if (taId === "ta-extrt-js") { _hlUpdate("ta-extrt-js", "hl-extrt-js", jsTokenize); editorUpdateGutter("ta-extrt-js", "gutter-extrt-js"); }
-    else if (taId === "ta-extrt-doc") { _hlUpdate("ta-extrt-doc", "hl-extrt-doc", yamlTokenize); editorUpdateGutter("ta-extrt-doc", "gutter-extrt-doc"); }
-    else if (taId === "ta-fd") { _hlUpdate("ta-fd", "hl-fd", yamlTokenize); editorUpdateGutter("ta-fd", "gutter-fd"); }
-    _updateBracketMatch(taId);
+    else if (taId === "ta-extrt-js") { hlUpdate("ta-extrt-js", "hl-extrt-js", jsTokenize); editorUpdateGutter("ta-extrt-js", "gutter-extrt-js"); }
+    else if (taId === "ta-extrt-doc") { hlUpdate("ta-extrt-doc", "hl-extrt-doc", yamlTokenize); editorUpdateGutter("ta-extrt-doc", "gutter-extrt-doc"); }
+    else if (taId === "ta-fd") { hlUpdate("ta-fd", "hl-fd", yamlTokenize); editorUpdateGutter("ta-fd", "gutter-fd"); }
+    updateBracketMatch(taId);
 }
 
 /* ═══════════════════════════════════════════
@@ -3177,17 +3177,17 @@ function _positionBracketEl(el, r) {
 }
 
 // 対応括弧のハイライトを消す（存在する全editorペイン分をまとめて消す）。
-function _clearBracketMatch() {
+function clearBracketMatch() {
     document.querySelectorAll(".editor-bracket-match").forEach((el) => { el.style.display = "none"; });
 }
 
 // taId のカーソル位置に対応する括弧ハイライトを再計算して表示/非表示を更新する。
-function _updateBracketMatch(taId) {
+function updateBracketMatch(taId) {
     const ta = $(taId);
     if (!ta) return;
-    if (ta.selectionStart !== ta.selectionEnd) { _clearBracketMatch(); return; }
+    if (ta.selectionStart !== ta.selectionEnd) { clearBracketMatch(); return; }
     const match = _findMatchingBracket(ta.value, ta.selectionStart);
-    if (!match) { _clearBracketMatch(); return; }
+    if (!match) { clearBracketMatch(); return; }
     const els = _bracketMatchEls(ta);
     if (!els) return;
     const [elA, elB] = els;
@@ -3219,7 +3219,7 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
                 `<div class='${hlBg}' id='hl-${t.id}'></div>` +
                 `<textarea class='yaml' id='ta-${t.id}' autocorrect='off' autocapitalize='off' spellcheck='false' style='height:100%;min-height:300px'` +
                 evtAttr("oninput", `editorHlUpdate("ta-${t.id}")`) +
-                evtAttr("onscroll", `_hlSync("ta-${t.id}","hl-${t.id}");editorSyncGutter("ta-${t.id}","gutter-${t.id}")`) +
+                evtAttr("onscroll", `hlSync("ta-${t.id}","hl-${t.id}");editorSyncGutter("ta-${t.id}","gutter-${t.id}")`) +
                 (t.ph ? ` placeholder='${esc(t.ph)}'` : "") + `>` + esc(t.val || "") + `</textarea>` +
                 `</div></div></div></div>`;
         }).join("");
@@ -3355,17 +3355,17 @@ function initYamlEditorModal(cur, curJs, onAfterInit, isAppEvent = false) {
         if (jta) jta.addEventListener("dblclick", editorDblClickHandler);
         // JSペインの入力補完（vja API名/ウィジェット名）
         if (jta) jta.addEventListener("input", _editorCompletionOnInput);
-        if (jta) jta.addEventListener("blur", _closeCompletionPopup);
+        if (jta) jta.addEventListener("blur", closeCompletionPopup);
         // 対応括弧のハイライト（入力だけでなく、クリック・カーソル移動キーでも再計算する）
-        if (yta) yta.addEventListener("input", () => _updateBracketMatch("yaml-ta"));
-        if (yta) yta.addEventListener("keyup", () => _updateBracketMatch("yaml-ta"));
-        if (yta) yta.addEventListener("mouseup", () => _updateBracketMatch("yaml-ta"));
-        if (yta) yta.addEventListener("blur", _clearBracketMatch);
-        if (jta) jta.addEventListener("input", () => _updateBracketMatch("js-ta"));
-        if (jta) jta.addEventListener("keyup", () => _updateBracketMatch("js-ta"));
-        if (jta) jta.addEventListener("mouseup", () => _updateBracketMatch("js-ta"));
-        if (jta) jta.addEventListener("blur", _clearBracketMatch);
-        _clearBracketMatch();
+        if (yta) yta.addEventListener("input", () => updateBracketMatch("yaml-ta"));
+        if (yta) yta.addEventListener("keyup", () => updateBracketMatch("yaml-ta"));
+        if (yta) yta.addEventListener("mouseup", () => updateBracketMatch("yaml-ta"));
+        if (yta) yta.addEventListener("blur", clearBracketMatch);
+        if (jta) jta.addEventListener("input", () => updateBracketMatch("js-ta"));
+        if (jta) jta.addEventListener("keyup", () => updateBracketMatch("js-ta"));
+        if (jta) jta.addEventListener("mouseup", () => updateBracketMatch("js-ta"));
+        if (jta) jta.addEventListener("blur", clearBracketMatch);
+        clearBracketMatch();
         editorUndoInit("yaml-ta", getEditorContext().yu, cur);
         editorUndoInit("js-ta", getEditorContext().ju, curJs);
         yamlInitResize();
@@ -3586,7 +3586,7 @@ function editorSearch() {
     ta.focus();
     ta.selectionStart = idx;
     ta.selectionEnd = idx + word.length;
-    _ensureCursorVisible(ta);
+    ensureCursorVisible(ta);
     editorHlUpdate(ta.id);
 
     // 次回検索のために終端位置を記録
@@ -3668,7 +3668,7 @@ function editorReplaceAll() {
    window へのエクスポート（他ファイルから参照される関数のみ）
 ═══════════════════════════════════════════ */
 Object.assign(window, {
-    _parseApiRefNav, openApiRef, openYaml,
+    parseApiRefNav, openApiRef, openYaml,
     yamlBuildRightPanel, yamlBuildFormDesignRightPanel, yamlRpSection, yamlToggleRpSection, yamlToggleTblCols,
     yamlInitRpanelEvents, yamlInitResize, yamlInsert, yamlAiGenerate,
     editorKeyHandler, editorMouseDownHandler2, editorDblClickHandler, editorHlUpdate,
@@ -3680,11 +3680,11 @@ Object.assign(window, {
     validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
     openAiValidationDetailModal,
     dismissAiValidationBanner, manualRetryAiFix, manualMockCheck,
-    openMockOverrideEditor, saveMockOverrides, _mockEditorAddRow, _mockEditorOnTypeChange,
+    openMockOverrideEditor, saveMockOverrides, mockEditorAddRow, mockEditorOnTypeChange,
     yamlSetApiOpt,
-    yamlSetTableOpt, yamlSetValidationOpt, _applyTableYamlSync,
+    yamlSetTableOpt, yamlSetValidationOpt, applyTableYamlSync,
     yamlSetMockCheckOpt,
     yamlPinLearnedFix, yamlDeleteLearnedFix,
-    _closeCompletionPopup, _acceptCompletionAt, _clearBracketMatch, _updateBracketMatch,_purgeOverridesForWid,
-    _OVERRIDE_MAP_NAMES, _purgeOverridesForKey,
+    closeCompletionPopup, acceptCompletionAt, clearBracketMatch, updateBracketMatch,purgeOverridesForWid,
+    OVERRIDE_MAP_NAMES, purgeOverridesForKey,
 });
