@@ -68,6 +68,11 @@ function yamlTabSwitch(tab) {
 
 // UNDO_DELIMITERS（区切り文字）は init-params.js で window.UNDO_DELIMITERS として定義済み
 
+// 文字入力を伴わない、カーソル移動のみのキー（初期スナップショットの位置追跡に使用）
+const EDITOR_NAV_KEYS = new Set([
+    "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown",
+]);
+
 // エディタの Undo 履歴にテキスト値を積む。最大1000件保持。
 // sel: そのスナップショット時点のカーソル位置 {start,end}（省略時はUndo/Redo時にカーソル位置を復元しない）
 function editorUndoPush(state, val, sel) {
@@ -81,7 +86,7 @@ function editorUndoPush(state, val, sel) {
 
 // エディタの Undo 状態を初期化する。モーダルオープン時に呼ぶ。
 function editorUndoInit(taId, state, initVal) {
-    state.stack = [{ val: initVal, sel: null }];
+    state.stack = [{ val: initVal, sel: { start: 0, end: 0 } }];
     state.idx = 0;
     state.busy = false;
     state.inBackspaceRun = false;
@@ -113,6 +118,19 @@ function editorUndoInit(taId, state, initVal) {
         if (state.pushOnInput) {
             editorUndoPush(state, ta.value, { start: ta.selectionStart, end: ta.selectionEnd });
         }
+    });
+    // まだ一度も編集していない間（履歴が初期スナップショットのみ）は、
+    // クリックやカーソル移動キーで動いた位置を初期スナップショットのカーソル位置として更新し続ける。
+    // これにより「最初の編集を始める直前の位置」までUndoで正しく戻れるようにする
+    // （通常の文字入力によるカーソル移動は、まだ履歴に積まれていない分だけ位置がずれるため対象外）
+    const trackInitialSel = () => {
+        if (state.stack.length === 1) {
+            state.stack[0].sel = { start: ta.selectionStart, end: ta.selectionEnd };
+        }
+    };
+    ta.addEventListener("mouseup", trackInitialSel);
+    ta.addEventListener("keyup", function (e) {
+        if (EDITOR_NAV_KEYS.has(e.key)) trackInitialSel();
     });
 }
 
