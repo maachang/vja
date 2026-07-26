@@ -112,3 +112,6 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
   - 汎用モーダルダイアログ（alert/confirm以外の、入力付きプロンプトや子ウィンドウ）
   - 外部プログラム起動（生成したPDFを既定アプリで開く等）
   - バーコード/QR対応、画像サムネイル生成、ドラッグ&ドロップファイル入力
+    （QR生成用に `src/mainview/qrcode.js` を配置済み。実装時はこれを利用する。
+    文字数が多いとQRコードが生成されなくなるため、生成時は
+    `correctLevel: QRCode.CorrectLevel.L` を指定する必要がある）

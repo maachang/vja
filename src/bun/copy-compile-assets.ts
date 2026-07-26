@@ -24,6 +24,7 @@ export const COPY_BUILD_FILES: [string, string][] = [
     ["mainview/bridge-common.ts", "mainview/bridge-common.ts"],
     ["mainview/vja-runtime.js", "mainview/vja-runtime.js"],
     ["mainview/marked.umd.js", "mainview/marked.umd.js"],
+    ["mainview/qrcode.js", "mainview/qrcode.js"],
 ];
 
 // build後のsrcパスを取得.
