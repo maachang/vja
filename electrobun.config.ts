@@ -27,6 +27,16 @@ const conf = {
                 entrypoint: "src/mainview/project-bridge.ts",
             },
         },
+        // アイコン設定.
+        mac: {
+            icons: "icon/icon.iconset",
+        },
+        win: {
+            icon: "icon/vja.ico",
+        },
+        linux: {
+            icon: "icon/vja.png",
+        },
         // build時のみ実行.
         // ここでプロジェクトコンパイルで必要なファイルをコピー.
         copy: {},

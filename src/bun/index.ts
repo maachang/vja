@@ -12,6 +12,7 @@ import {
     mkdirSync,
     rmSync,
     copyFileSync,
+    cpSync,
 } from "fs";
 import { Database } from "bun:sqlite";
 import { type VjaRPCType, type DbRow, type DbResult } from "../shared/types";
@@ -801,6 +802,13 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
         // ── スタンドアロン版 index.ts をコピー ────────
         copyFileSync(join(vjaRoot, "src", "bun", "standalone-index.ts"), join(srcBunDir, "index.ts"));
 
+        // ── アプリアイコンをコピー ──────────────────
+        const iconOutDir = join(distPath, "icon");
+        mkdirSync(iconOutDir, { recursive: true });
+        copyFileSync(join(vjaRoot, "icon", "vja.ico"), join(iconOutDir, "vja.ico"));
+        copyFileSync(join(vjaRoot, "icon", "vja.png"), join(iconOutDir, "vja.png"));
+        cpSync(join(vjaRoot, "icon", "icon.iconset"), join(iconOutDir, "icon.iconset"), { recursive: true });
+
         // ── フォームHTMLを生成 ────────────────────────
         const extRuntimeJs = (_currentProjectExtRuntime || "").trim();
         const copyEntries: Record<string, string> = {
@@ -852,6 +860,16 @@ export default {
             mainview: {
                 entrypoint: "src/mainview/project-bridge.ts",
             },
+        },
+        // アイコン設定.
+        mac: {
+            icons: "icon/icon.iconset",
+        },
+        win: {
+            icon: "icon/vja.ico",
+        },
+        linux: {
+            icon: "icon/vja.png",
         },
         copy: ${copyEntriesStr},
     },
