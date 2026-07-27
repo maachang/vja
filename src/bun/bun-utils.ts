@@ -1,6 +1,10 @@
 // src/bun/bun-utils.ts
 // index.ts / standalone-index.ts 共通ユーティリティ
 
+// CSVパースは src/shared/csv-utils.ts に統一（webview側と共通）。
+// 呼び出し元の互換のためここでも re-export する。
+export { parseCsvLine } from "../shared/csv-utils";
+
 // ── gzip+Base64 → テキスト展開 ───────────────────────
 export const decompressGzip = async (b64: string): Promise<string> => {
     const binary = atob(b64);
@@ -24,22 +28,3 @@ export const decompressGzip = async (b64: string): Promise<string> => {
     return new TextDecoder().decode(result);
 };
 
-// ── CSV1行パーサ（ダブルクォート対応） ───────────────────
-export const parseCsvLine = (line: string): string[] => {
-    const result: string[] = [];
-    let cur = "", inQ = false;
-    for (let i = 0; i < line.length; i++) {
-        const c = line[i];
-        if (inQ) {
-            if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
-            else if (c === '"') inQ = false;
-            else cur += c;
-        } else {
-            if (c === '"') inQ = true;
-            else if (c === ',') { result.push(cur); cur = ""; }
-            else cur += c;
-        }
-    }
-    result.push(cur);
-    return result;
-};

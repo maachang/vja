@@ -74,6 +74,7 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 | src/mainview/vja-runtime.js | vja.* API ランタイム |
 | src/mainview/prompt-def.js | AI プロンプト定義 |
 | src/shared/types.ts | types.tsファイル |
+| src/shared/csv-utils.ts | CSVパース共通処理（Bun側・webview側・project-bridge.tsで共有） |
 | *.test.ts | 各対象ファイルと同じディレクトリに置くユニットテスト（bun test）。対象はユニットテスト（bun test）節を参照 |
 | docs/ | ドキュメント関連(mdファイルなど) |
 | icon/ | electrobun で利用する vja のアイコンファイル(windows, mac, linux用) |
@@ -114,7 +115,6 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 
 # 未対応・残課題(随時更新)
 
-- CSVパース処理はproject-bridge.ts（TS/Electrobunブリッジ層）側にまだ重複が残っている（あえて対応見送り）
 - 学習履歴機能は「たたき台」段階（UI・淘汰ロジックとも簡易実装のまま）
 - 【AI生成の既知の混同要因・未対応】prompt-def.js内で「テーブル」という言葉が、DBのテーブル（vja.db.*）とdatagridタグのウィジェット（テーブル型ウィジェット、vja.widget.set/setTableData等）の両方を指して使われている。ローカルLLMがYAML定義中の「テーブル」という語からどちらの操作か混同し、意図しない実装（ウィジェット側を触るべき所でDB操作をしようとする等）をするケースが確認されている。対応案は用語の書き分け（datagridウィジェット側を「テーブル」ではなく「データグリッド」等に統一）だが、まだ未着手。
 - 既存プロジェクトの後方互換性（旧検証:記法のマイグレーション）は「今は自分しか使っていない」との理由で対応見送り

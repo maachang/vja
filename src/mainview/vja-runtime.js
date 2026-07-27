@@ -7,6 +7,10 @@
  * console.log 等のRPC転送は project-bridge.js 側で行う
  */
 
+// CSV1行のパースは src/shared/csv-utils.ts に統一（Bun側・
+// project-bridge.tsと共通）。
+import { parseCsvLine } from "../shared/csv-utils";
+
 (function (global) {
     "use strict";
 
@@ -16,27 +20,8 @@
     // 内部ユーティリティ
     // ════════════════════════════════════════════════
 
-    // CSV1行をパースする（ダブルクォートのエスケープ "" にも対応）。
     // vja-table-validation.js（デザイナー画面）と共通で使用するため、
     // windowにも公開している（同一ウィンドウ内で読み込まれるため）。
-    const parseCsvLine = (line) => {
-        const result = [];
-        let cur = "", inQ = false;
-        for (let i = 0; i < line.length; i++) {
-            const c = line[i];
-            if (inQ) {
-                if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
-                else if (c === '"') { inQ = false; }
-                else { cur += c; }
-            } else {
-                if (c === '"') { inQ = true; }
-                else if (c === ",") { result.push(cur); cur = ""; }
-                else { cur += c; }
-            }
-        }
-        result.push(cur);
-        return result;
-    };
     global.parseCsvLine = parseCsvLine;
 
     // ウィジェット名→DOM要素を取得

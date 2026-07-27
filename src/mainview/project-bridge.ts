@@ -5,6 +5,7 @@
 import { Electroview } from "electrobun/view";
 import "./vja-runtime.js";
 import type { VjaRPCType } from "../shared/types";
+import { parseCsvLine } from "../shared/csv-utils";
 import {
     makeFetchMaps, makeVjaFetch, makeFetchResultHandlers,
     makeDbWrappers, makeFileWrappers, makeDirWrappers, makeDialogHelpers,
@@ -36,26 +37,6 @@ const _ev = new Electroview({ rpc });
 const s = _ev.rpc.send;
 const r = _ev.rpc.request;
 const w = window as any;
-
-// ── 共通ユーティリティ ────────────────────────────────
-const _parseCsvLine = (line: string): string[] => {
-    const result: string[] = [];
-    let cur = "", inQ = false;
-    for (let i = 0; i < line.length; i++) {
-        const c = line[i];
-        if (inQ) {
-            if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
-            else if (c === '"') inQ = false;
-            else cur += c;
-        } else {
-            if (c === '"') inQ = true;
-            else if (c === ",") { result.push(cur); cur = ""; }
-            else cur += c;
-        }
-    }
-    result.push(cur);
-    return result;
-};
 
 // ── vja.* API をプロジェクトウィンドウ用に上書き ─────
 w.vja = w.vja || {};
@@ -149,9 +130,9 @@ w.vja.db = {
     importCsv: async (tableName: string, csv: string): Promise<void> => {
         const lines = csv.split("\n").filter((l: string) => l.trim());
         if (lines.length < 2) return;
-        const headers = _parseCsvLine(lines[0]);
+        const headers = parseCsvLine(lines[0]);
         const statements = lines.slice(1).map((line: string) => {
-            const vals = _parseCsvLine(line);
+            const vals = parseCsvLine(line);
             return {
                 sql: `INSERT INTO ${tableName} (${headers.join(",")}) VALUES (${headers.map(() => "?").join(",")})`,
                 params: vals,

@@ -31,6 +31,7 @@ export const COPY_BUILD_FILES: [string, string][] = [
     ["bun/project-runner.ts", "bun/project-runner.ts"],
     ["bun/fs-rpc-handlers.ts", "bun/fs-rpc-handlers.ts"],
     ["shared/types.ts", "shared/types.ts"],
+    ["shared/csv-utils.ts", "shared/csv-utils.ts"],
     ["mainview/project-bridge.ts", "mainview/project-bridge.ts"],
     ["mainview/bridge-common.ts", "mainview/bridge-common.ts"],
     // WEBVIEW_RUNTIME_LIBS（vja-runtime.js/qrcode.js/marked.umd.js等）から自動生成
