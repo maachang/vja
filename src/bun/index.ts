@@ -12,7 +12,6 @@ import {
     mkdirSync,
     rmSync,
     copyFileSync,
-    cpSync,
 } from "fs";
 import { Database } from "bun:sqlite";
 import { type VjaRPCType, type DbRow, type DbResult } from "../shared/types";
@@ -803,11 +802,14 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
         copyFileSync(join(vjaRoot, "src", "bun", "standalone-index.ts"), join(srcBunDir, "index.ts"));
 
         // ── アプリアイコンをコピー ──────────────────
-        const iconOutDir = join(distPath, "icon");
-        mkdirSync(iconOutDir, { recursive: true });
-        copyFileSync(join(vjaRoot, "icon", "vja.ico"), join(iconOutDir, "vja.ico"));
-        copyFileSync(join(vjaRoot, "icon", "vja.png"), join(iconOutDir, "vja.png"));
-        cpSync(join(vjaRoot, "icon", "icon.iconset"), join(iconOutDir, "icon.iconset"), { recursive: true });
+        // NOTE: WindowsでElectrobun本体側のバグ（rcedit解決失敗）によりアイコン埋め込みが
+        // 機能しないため、一旦コメントアウトして無効化している。
+        // 詳細は .claude/CLAUDE.md の「既知の制約」を参照。Electrobun側修正後に復活させること。
+        // const iconOutDir = join(distPath, "icon");
+        // mkdirSync(iconOutDir, { recursive: true });
+        // copyFileSync(join(vjaRoot, "icon", "vja.ico"), join(iconOutDir, "vja.ico"));
+        // copyFileSync(join(vjaRoot, "icon", "vja.png"), join(iconOutDir, "vja.png"));
+        // cpSync(join(vjaRoot, "icon", "icon.iconset"), join(iconOutDir, "icon.iconset"), { recursive: true });
 
         // ── フォームHTMLを生成 ────────────────────────
         const extRuntimeJs = (_currentProjectExtRuntime || "").trim();
@@ -862,15 +864,18 @@ export default {
             },
         },
         // アイコン設定.
-        mac: {
-            icons: "icon/icon.iconset",
-        },
-        win: {
-            icon: "icon/vja.ico",
-        },
-        linux: {
-            icon: "icon/vja.png",
-        },
+        // NOTE: WindowsでElectrobun本体側のバグ（rcedit解決失敗）によりアイコン埋め込みが
+        // 機能しないため、一旦コメントアウトして無効化している。
+        // 詳細は .claude/CLAUDE.md の「既知の制約」を参照。Electrobun側修正後に復活させること。
+        // mac: {
+        //     icons: "icon/icon.iconset",
+        // },
+        // win: {
+        //     icon: "icon/vja.ico",
+        // },
+        // linux: {
+        //     icon: "icon/vja.png",
+        // },
         copy: ${copyEntriesStr},
     },
 } satisfies ElectrobunConfig;

@@ -28,15 +28,18 @@ const conf = {
             },
         },
         // アイコン設定.
-        mac: {
-            icons: "icon/icon.iconset",
-        },
-        win: {
-            icon: "icon/vja.ico",
-        },
-        linux: {
-            icon: "icon/vja.png",
-        },
+        // NOTE: WindowsでElectrobun本体側のバグ（rcedit解決失敗）によりアイコン埋め込みが
+        // 機能しないため、一旦全OS分をコメントアウトして無効化している。
+        // 詳細は .claude/CLAUDE.md の「既知の制約」を参照。Electrobun側修正後に復活させること。
+        // mac: {
+        //     icons: "icon/icon.iconset",
+        // },
+        // win: {
+        //     icon: "icon/vja.ico",
+        // },
+        // linux: {
+        //     icon: "icon/vja.png",
+        // },
         // build時のみ実行.
         // ここでプロジェクトコンパイルで必要なファイルをコピー.
         copy: {},

@@ -101,6 +101,17 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 等が、RPC経由の生パスをルート制限なしでそのまま使用。dirDeleteRequest({path:"/"})のような呼び出しで任意ファイル削除が可能なども、ローカルアプリなので、考慮しない
 - ハードコードされた暗号鍵も、これもローカルアプリでの組み込み（主にクラウドインフラ関連のトークン関連で利用）なので問題なしとしている
 
+# 既知の制約
+
+- **Linux開発実行時のタスクバーアイコンが反映されない**: `electrobun.config.ts`の`build.linux.icon`設定・アイコンファイルのコピー自体は正しく行われている（`Resources/appIcon.png`等に反映済み）ことを確認済み。しかしElectrobunが生成する`.desktop`ファイルの`Icon=`指定がファイル名のみ（絶対パスでない）であり、Linuxデスクトップ環境は`.desktop`ファイルが`~/.local/share/applications/`等の標準位置にインストールされ、アイコンもXDGアイコンテーマの検索パス上に見つかる場合のみタスクバー表示に反映する仕様。`bun run dev`（未インストールの開発実行）の`build/dev-linux-x64/`配下に生成される`.desktop`ではこの条件を満たさないため、タスクバーアイコンが変わらないのはVJA側の設定不備ではなくElectrobunのdev実行時の制約と推定される（未確認）。`bun run build`でパッケージング・インストールした状態、または別のLinuxデスクトップ環境で実際に変わるか要確認。
+
+- **Windowsで`.exe`へのアイコン埋め込みが失敗する（Electrobun本体のバグ）**: `bun run dev`実行時、以下の警告が出てアイコンが`launcher.exe`/`bun.exe`に埋め込まれない。
+  ```
+  Warning: Failed to embed icon into launcher.exe: ResolveMessage: Cannot find module
+  'D:\a\electrobun\electrobun\package\node_modules\rcedit\package.json' from 'B:\~BUN\root\electrobun'
+  ```
+  原因はVJA側の設定ではなく、npm配布されているElectrobun本体（CLIバンドル）が`rcedit`モジュールを、Electrobun本体をビルドしたCIマシン上の絶対パス（`D:\a\electrobun\electrobun\package\node_modules\rcedit`）でrequireするようハードコードしてしまっているバグ。どの環境でインストールしてもこのパスは存在せず解決できない。VJA側での修正は不可能なため、Electrobun側の修正（バージョンアップ）待ち。自前でのワークアラウンド（`rcedit`を後処理で直接呼んで埋め込む等）は今回あえて対応しない。
+
 # 未対応・残課題(随時更新)
 
 - CSVパース処理はproject-bridge.ts（TS/Electrobunブリッジ層）側にまだ重複が残っている（あえて対応見送り）
