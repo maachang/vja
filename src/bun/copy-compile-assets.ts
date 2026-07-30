@@ -39,12 +39,12 @@ export const COPY_BUILD_FILES: [string, string][] = [
 ];
 
 // build後のsrcパスを取得.
-export const BUILD_VJA_SRC_PATH = join(process.env.PWD, "..", "Resources/app");
+export const BUILD_VJA_SRC_PATH = join(process.cwd(), "..", "Resources/app");
 
-// vjaRoot: vjaプロジェクトルート（省略時は process.env.PWD を使用）
+// vjaRoot: vjaプロジェクトルート（省略時は process.cwd() を使用）
 export const copyCompileAssets = (vjaRoot?: string): void => {
     // 指定引数をを整理.
-    let root = vjaRoot || process.env.PWD || "";
+    let root = vjaRoot || process.cwd() || "";
     if (existsSync(BUILD_VJA_SRC_PATH)) {
         // build後とみなして root にコンパイル済みでのパスをセット.
         root = BUILD_VJA_SRC_PATH;
@@ -79,7 +79,7 @@ export const copyCompileAssets = (vjaRoot?: string): void => {
 // 実行モジュールのバージョンを返却します.
 export const getVersion = (): any => {
     // カレントパス.
-    const current = process.env.PWD;
+    const current = process.cwd();
     // モジュール名の名前とバージョンを取得.
     let json = null;
     let runMode = "unknwon"; // 実行モード不明.

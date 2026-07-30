@@ -706,9 +706,9 @@ const buildProjectFiles = async (): Promise<{
         // されずファイルそのものとして必要。vja-runtime.jsはproject-bridge.js側にバンドル
         // 済みのためここでは不要だが、リスト共通化のためまとめて対象にしてスキップする。
         // import.meta.dir（実行中index.jsの場所）配下にはsrc/mainviewの生ファイルが無いため、
-        // compileProject()と同じ「vjaRoot（PWD、ビルド後はBUILD_VJA_SRC_PATH）/src/mainview」
+        // compileProject()と同じ「vjaRoot（process.cwd()、ビルド後はBUILD_VJA_SRC_PATH）/src/mainview」
         // から解決する。
-        let vjaRootForLibs = process.env.PWD || "";
+        let vjaRootForLibs = process.cwd() || "";
         if (existsSync(BUILD_VJA_SRC_PATH)) vjaRootForLibs = BUILD_VJA_SRC_PATH;
         for (const libName of WEBVIEW_RUNTIME_LIBS) {
             if (libName === "vja-runtime.js") continue; // project-bridge.jsにバンドル済み
@@ -769,14 +769,14 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
         }
 
         // ── 既存ファイルをコピー ───────────────────────
-        // vjaプロジェクトルートは PWD 環境変数から取得（bun run dev 実行時のカレントディレクトリ）
-        let vjaRoot = process.env.PWD || "";
+        // vjaプロジェクトルートは process.cwd()（bun run dev 実行時のカレントディレクトリ）から取得
+        let vjaRoot = process.cwd() || "";
         if (existsSync(BUILD_VJA_SRC_PATH)) {
             // build後とみなして root にコンパイル済みでのパスをセット.
             vjaRoot = BUILD_VJA_SRC_PATH;
         }
         console.info("# compile src vjaRoot: " + vjaRoot);
-        if (!vjaRoot) throw new Error("PWD 環境変数が取得できません");
+        if (!vjaRoot) throw new Error("プロジェクトルートが取得できません");
 
         // COPY_BUILD_FILES リストを使って一元管理（copy-compile-assets.tsと共通）
         const destDirMap: Record<string, string> = {
