@@ -107,5 +107,102 @@ server.registerTool(
     async (args) => toToolResult(await callVja("testGetOverrides", args)),
 );
 
+// ── Validate関連 ──────────────────────────────────────
+server.registerTool(
+    "vja_get_validations",
+    {
+        description: "現在フォームに定義されているバリデーション定義の一覧を取得する",
+        inputSchema: {},
+    },
+    async () => toToolResult(await callVja("testGetValidations", {})),
+);
+
+server.registerTool(
+    "vja_save_validation",
+    {
+        description: "バリデーション定義を追加・更新する（idxに-1を指定すると新規追加）",
+        inputSchema: {
+            idx: z.number().describe("更新対象のインデックス。新規追加の場合は-1"),
+            name: z.string().describe("定義名"),
+            description: z.string().optional().describe("説明（任意）"),
+            toastDuration: z.number().optional().describe("エラートースト表示時間(ms)。省略時5000"),
+            rules: z.array(z.object({
+                name: z.string(),
+                type: z.string(),
+                not: z.boolean().optional(),
+                arg1: z.string().optional(),
+                arg2: z.string().optional(),
+                arg3: z.string().optional(),
+                message: z.string().optional(),
+            })).optional().describe("ルール定義配列（name/typeが空の行は保存時に除去される）"),
+        },
+    },
+    async (args) => toToolResult(await callVja("testSaveValidation", args)),
+);
+
+server.registerTool(
+    "vja_delete_validation",
+    {
+        description: "指定インデックスのバリデーション定義を削除する",
+        inputSchema: { idx: z.number().describe("削除対象のインデックス") },
+    },
+    async (args) => toToolResult(await callVja("testDeleteValidation", args)),
+);
+
+server.registerTool(
+    "vja_get_tables",
+    {
+        description: "プロジェクトに定義されているSQLiteテーブル定義の一覧を取得する",
+        inputSchema: {},
+    },
+    async () => toToolResult(await callVja("testGetTables", {})),
+);
+
+const columnSchema = z.object({
+    name: z.string(),
+    type: z.string().describe("SQLite型（TEXT/INTEGER/REAL/NUMERIC/BLOB等）"),
+    notNull: z.boolean().optional(),
+    pk: z.boolean().optional(),
+    index: z.boolean().optional(),
+    useDefault: z.boolean().optional(),
+    default: z.string().optional(),
+});
+
+server.registerTool(
+    "vja_save_table",
+    {
+        description: "テーブル定義を追加・更新する（idxに-1を指定すると新規追加）。テーブル名重複・カラム未定義・DEFAULT値の型不整合はエラーで返る",
+        inputSchema: {
+            idx: z.number().describe("更新対象のインデックス。新規追加の場合は-1"),
+            name: z.string().describe("テーブル名"),
+            description: z.string().optional().describe("説明（任意）"),
+            columns: z.array(columnSchema).describe("カラム定義配列"),
+        },
+    },
+    async (args) => toToolResult(await callVja("testSaveTable", args)),
+);
+
+server.registerTool(
+    "vja_delete_table",
+    {
+        description: "指定インデックスのテーブル定義を削除する",
+        inputSchema: { idx: z.number().describe("削除対象のインデックス") },
+    },
+    async (args) => toToolResult(await callVja("testDeleteTable", args)),
+);
+
+server.registerTool(
+    "vja_generate_ddl",
+    {
+        description: "テーブル名・カラム定義からCREATE TABLE/INDEX DDLを生成する（プロジェクトデータへの保存は行わない、確認専用）",
+        inputSchema: {
+            name: z.string().describe("テーブル名"),
+            description: z.string().optional(),
+            columns: z.array(columnSchema).describe("カラム定義配列"),
+        },
+    },
+    async (args) => toToolResult(await callVja("testGenerateDdl", args)),
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);

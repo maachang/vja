@@ -107,10 +107,13 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 
 - 目視確認頼みだった「画面関連（ウィジェット配置・削除のデータ整合性）」「YAML関連（保存・削除時のオーバーライドpurge）」を自動テストするため、`mcp/vja-mcp-server.ts`（MCPサーバー、stdioトランスポート）を用意している
 - 使い方: `VJA_TEST_MODE=1 bun run dev` でvjaを起動すると、`src/bun/index.ts`内にテスト用HTTPサーバー（デフォルトポート4570、`VJA_TEST_PORT`で変更可）が起動する。このサーバーが`browserWindow.webview.rpc.request.testXxx(...)`経由で`src/mainview/bridge.ts`のテスト用ハンドラを呼び出す
-- MCPサーバー（`mcp/vja-mcp-server.ts`）はこのHTTPサーバーを叩くtool（`vja_add_widget`/`vja_delete_widget`/`vja_get_widgets`/`vja_save_yaml`/`vja_delete_yaml`/`vja_get_overrides`）を公開する。Claude Code等のMCPクライアントに`{ "command": "bun", "args": ["run", "mcp/vja-mcp-server.ts"] }`として登録して使う
+- MCPサーバー（`mcp/vja-mcp-server.ts`）はこのHTTPサーバーを叩くtoolを公開する。Claude Code等のMCPクライアントに`{ "command": "bun", "args": ["run", "mcp/vja-mcp-server.ts"] }`として登録して使う（プロジェクト直下の`.mcp.json`に登録済み。ただしMCPサーバーの追加は既存セッションには反映されないため、Claude Codeの再起動/MCP再接続が必要）
+  - 画面関連: `vja_add_widget`/`vja_delete_widget`/`vja_get_widgets`
+  - YAML関連: `vja_save_yaml`/`vja_delete_yaml`/`vja_get_overrides`
+  - Validate関連: `vja_get_validations`/`vja_save_validation`/`vja_delete_validation`/`vja_get_tables`/`vja_save_table`/`vja_delete_table`/`vja_generate_ddl`
 - `VJA_TEST_MODE`未設定時はテスト用HTTPサーバー自体が起動しないため、通常起動には影響しない
-- テスト用ハンドラは、確認ダイアログを伴う既存のUI関数（`deleteYaml`等）は自動化に不向きなため使わず、データ操作部分のみを`src/mainview/bridge.ts`側に直接再実装している（`_testAddWidget`等）
-- 2026-08-01時点でPhase 1（画面関連・YAML関連の基本操作）のみ実装済み。Validate関連・保存/実行/コンパイルフロー等は未着手（詳細は`.claudeWork/mcp-webview-test-idea.md`参照）
+- テスト用ハンドラは、確認ダイアログやDOM読み取りを伴う既存のUI関数（`deleteYaml`/`validSave`/`tblSave`等）は自動化に不向きなため使わず、データ検証・操作ロジックのみを`src/mainview/bridge.ts`側に直接再実装している（`_testAddWidget`等）
+- 2026-08-01時点でPhase 1（画面関連・YAML関連）・Phase 2（Validate関連: バリデーション定義・テーブル/カラム定義・DDL生成）まで実装済み。保存/オープン/実行/コンパイルフロー、AI生成フローの自動テスト化は未着手（詳細は`.claudeWork/mcp-webview-test-idea.md`参照）
 
 # 既知の制約
 

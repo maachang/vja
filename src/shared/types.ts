@@ -281,6 +281,51 @@ export type VjaRPCType = {
                 params: { wid: number; evName: string };
                 response: { ok: boolean; overrides?: Record<string, any>; error?: string };
             };
+
+            // ── Validate関連 ──────────────────────────────
+            testGetValidations: {
+                params: { _?: never };
+                response: { ok: boolean; validations?: any[]; error?: string };
+            };
+            testSaveValidation: {
+                params: {
+                    idx: number; // -1で新規追加
+                    name: string;
+                    description?: string;
+                    toastDuration?: number;
+                    rules?: any[];
+                };
+                response: { ok: boolean; idx?: number; error?: string };
+            };
+            testDeleteValidation: {
+                params: { idx: number };
+                response: { ok: boolean; error?: string };
+            };
+            testGetTables: {
+                params: { _?: never };
+                response: { ok: boolean; tables?: any[]; error?: string };
+            };
+            testSaveTable: {
+                params: {
+                    idx: number; // -1で新規追加
+                    name: string;
+                    description?: string;
+                    columns: TableColumnDef[];
+                };
+                response: { ok: boolean; idx?: number; error?: string };
+            };
+            testDeleteTable: {
+                params: { idx: number };
+                response: { ok: boolean; error?: string };
+            };
+            testGenerateDdl: {
+                params: {
+                    name: string;
+                    description?: string;
+                    columns: TableColumnDef[];
+                };
+                response: { ok: boolean; ddl?: string; error?: string };
+            };
         };
         messages: {
             // ── プロジェクト停止結果（詳細はbun.messagesのコメント参照） ──

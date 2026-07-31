@@ -106,6 +106,103 @@ const _testGetOverrides = (p: { wid: number; evName: string }) => {
     }
 };
 
+// ── Validate関連 ──────────────────────────────────────
+// validSave()/tblSave()等はDOM（$("valid-name")等）から値を読むため
+// 自動化に不向き。データ検証ロジックのみを直接再実装している。
+const _curForm = () => {
+    const g = window as any;
+    return g.getProjectData().forms[g.getProjectData().curFormIdx];
+};
+const _testGetValidations = () => {
+    try {
+        return { ok: true, validations: _curForm().validations || [] };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+const _testSaveValidation = (p: { idx: number; name: string; description?: string; toastDuration?: number; rules?: any[] }) => {
+    try {
+        const f = _curForm();
+        if (!p.name?.trim()) return { ok: false, error: "定義名を入力してください" };
+        if (!Array.isArray(f.validations)) f.validations = [];
+        const validRules = (p.rules || []).filter((r: any) => r.name?.trim() && r.type);
+        const saveData = { name: p.name.trim(), description: p.description || "", toastDuration: p.toastDuration || 5000, rules: validRules };
+        const idx = p.idx < 0 ? f.validations.length : p.idx;
+        if (p.idx < 0) f.validations.push(saveData);
+        else f.validations[p.idx] = saveData;
+        (window as any).pushUndo();
+        return { ok: true, idx };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+const _testDeleteValidation = (p: { idx: number }) => {
+    try {
+        const f = _curForm();
+        if (!f.validations?.[p.idx]) return { ok: false, error: `バリデーション定義が見つかりません: idx=${p.idx}` };
+        f.validations.splice(p.idx, 1);
+        (window as any).pushUndo();
+        return { ok: true };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+const _testGetTables = () => {
+    try {
+        return { ok: true, tables: (window as any).getProjectData().tables || [] };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+const _testSaveTable = (p: { idx: number; name: string; description?: string; columns: any[] }) => {
+    const g = window as any;
+    try {
+        const tables = g.getProjectData().tables;
+        if (!p.name?.trim()) return { ok: false, error: "テーブル名を入力してください" };
+        const name = p.name.trim();
+        const dupIdx = tables.findIndex((t: any, i: number) => t.name === name && i !== p.idx);
+        if (dupIdx >= 0) return { ok: false, error: `テーブル名「${name}」は既に存在します` };
+        const validCols = (p.columns || []).filter((c: any) => c.name?.trim());
+        if (validCols.length === 0) return { ok: false, error: "カラムを1つ以上定義してください" };
+        for (const c of validCols) {
+            if (!c.useDefault) continue;
+            if (!c.default || c.default.trim() === "") {
+                c.default = g.defaultValueForType(c.type);
+            } else if (!g.validateDefaultValue(c.type, c.default.trim())) {
+                return { ok: false, error: `カラム「${c.name}」のDEFAULT値が不正です（型: ${c.type}）` };
+            }
+        }
+        const tbl = { name, description: p.description || "", columns: validCols, updatedAt: new Date().toISOString() };
+        const idx = p.idx < 0 ? tables.length : p.idx;
+        if (p.idx < 0) tables.push(tbl);
+        else tables[p.idx] = tbl;
+        g.pushUndo();
+        return { ok: true, idx };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+const _testDeleteTable = (p: { idx: number }) => {
+    const g = window as any;
+    try {
+        const tables = g.getProjectData().tables;
+        if (!tables?.[p.idx]) return { ok: false, error: `テーブルが見つかりません: idx=${p.idx}` };
+        tables.splice(p.idx, 1);
+        g.pushUndo();
+        return { ok: true };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+const _testGenerateDdl = (p: { name: string; description?: string; columns: any[] }) => {
+    try {
+        const ddl = (window as any).generateDDL({ name: p.name, description: p.description || "", columns: p.columns || [] });
+        return { ok: true, ddl };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+
 const rpc = Electroview.defineRPC({
     maxRequestTime: Infinity,
     handlers: {
@@ -116,6 +213,13 @@ const rpc = Electroview.defineRPC({
             testSaveYaml: _testSaveYaml,
             testDeleteYaml: _testDeleteYaml,
             testGetOverrides: _testGetOverrides,
+            testGetValidations: _testGetValidations,
+            testSaveValidation: _testSaveValidation,
+            testDeleteValidation: _testDeleteValidation,
+            testGetTables: _testGetTables,
+            testSaveTable: _testSaveTable,
+            testDeleteTable: _testDeleteTable,
+            testGenerateDdl: _testGenerateDdl,
         },
         messages: {
             loadScriptResult: (v: any) => { /* フロント側で処理 */ },
