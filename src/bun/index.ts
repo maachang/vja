@@ -1487,3 +1487,34 @@ const browserWindow = new BrowserWindow({
 if (!isWin) {
     browserWindow.maximize();
 }
+
+// ── テスト自動化用HTTPサーバー ────────────────────────
+// VJA_TEST_MODE=1 の時のみ起動する。MCPサーバー（mcp/vja-mcp-server.ts）が
+// これを叩き、browserWindow.webview.rpc.request.testXxx(...)経由で
+// デザイナーwebview側のテスト用ハンドラ（src/mainview/bridge.ts）を呼び出す。
+// 通常起動時（VJA_TEST_MODE未設定）はサーバー自体が起動しないため無害。
+if (process.env.VJA_TEST_MODE === "1") {
+    const testMethods = [
+        "testAddWidget", "testDeleteWidget", "testGetWidgets",
+        "testSaveYaml", "testDeleteYaml", "testGetOverrides",
+    ] as const;
+    const testPort = Number(process.env.VJA_TEST_PORT || "4570");
+    Bun.serve({
+        port: testPort,
+        fetch: async (req) => {
+            const url = new URL(req.url);
+            const method = url.pathname.replace(/^\//, "");
+            if (!(testMethods as readonly string[]).includes(method)) {
+                return new Response(JSON.stringify({ ok: false, error: `未知のテストメソッド: ${method}` }), { status: 404 });
+            }
+            try {
+                const params = req.method === "POST" ? await req.json() : {};
+                const result = await (browserWindow.webview.rpc.request as any)[method](params);
+                return new Response(JSON.stringify(result), { headers: { "Content-Type": "application/json" } });
+            } catch (e: any) {
+                return new Response(JSON.stringify({ ok: false, error: e.message }), { status: 500 });
+            }
+        },
+    });
+    console.log(`[vja-test] テスト用HTTPサーバー起動: http://localhost:${testPort}`);
+}

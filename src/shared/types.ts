@@ -249,7 +249,39 @@ export type VjaRPCType = {
     // Webview 側で実行される関数（Bun からのコールバック）
     // ════════════════════════════════════════════════
     webview: RPCSchema<{
-        requests: {};
+        // 【テスト自動化専用】src/mainview/bridge.ts側では常時ハンドラを登録するが、
+        // 呼び出し経路（src/bun/index.tsのテスト用HTTPサーバー）はVJA_TEST_MODE=1の
+        // 時のみ起動するため、実質的にテストモード時以外は呼び出されない。
+        // MCPサーバー（mcp/vja-mcp-server.ts）がこのHTTPサーバー経由で叩く。
+        requests: {
+            // ── 画面関連 ──────────────────────────────────
+            testAddWidget: {
+                params: { tag: string; x: number; y: number; w: number; h: number };
+                response: { ok: boolean; id?: number; error?: string };
+            };
+            testDeleteWidget: {
+                params: { id: number };
+                response: { ok: boolean; error?: string };
+            };
+            testGetWidgets: {
+                params: { _?: never };
+                response: { ok: boolean; widgets: any[]; error?: string };
+            };
+
+            // ── YAML関連 ──────────────────────────────────
+            testSaveYaml: {
+                params: { wid: number; evName: string; yaml: string };
+                response: { ok: boolean; error?: string };
+            };
+            testDeleteYaml: {
+                params: { wid: number; evName: string };
+                response: { ok: boolean; error?: string };
+            };
+            testGetOverrides: {
+                params: { wid: number; evName: string };
+                response: { ok: boolean; overrides?: Record<string, any>; error?: string };
+            };
+        };
         messages: {
             // ── プロジェクト停止結果（詳細はbun.messagesのコメント参照） ──
             stopProjectResult: { ok: boolean };

@@ -28,10 +28,95 @@ const _waitStopProject = (): Promise<{ ok: boolean }> => new Promise((resolve) =
 // maxRequestTime: Infinity（タイムアウト無し）。理由はsrc/bun/index.tsの
 // 同項目コメント参照（openFileRequest等ユーザー操作待ちのrequestと、
 // dbQuery等の高速なrequestが同一RPCインスタンス上に混在するため）。
+// ── テスト自動化用ハンドラ ────────────────────────────
+// MCPサーバー（mcp/vja-mcp-server.ts）がsrc/bun/index.tsのテスト用HTTP
+// サーバー経由でこれらを呼び出す。呼び出し経路自体がVJA_TEST_MODE=1の時
+// しか起動しないため、常時ハンドラを登録していても通常起動時は影響しない
+// （詳細はsrc/shared/types.tsのVjaRPCType.webview.requestsコメント参照）。
+// ダイアログ確認（vja.app.showConfirm等）を伴う既存関数（deleteYaml等）は
+// 自動化に不向きなため使わず、データ操作部分のみを直接再実装している。
+const _testAddWidget = (p: { tag: string; x: number; y: number; w: number; h: number }) => {
+    const g = window as any;
+    try {
+        const tool = g.getToolById(p.tag);
+        if (!tool) return { ok: false, error: `未知のウィジェットタグ: ${p.tag}` };
+        const widget = g.addWidget(tool, p.x, p.y, p.w, p.h);
+        return { ok: true, id: widget.id };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+const _testDeleteWidget = (p: { id: number }) => {
+    const g = window as any;
+    try {
+        if (!g.getWidget(p.id)) return { ok: false, error: `ウィジェットが見つかりません: id=${p.id}` };
+        g.getDesignerState().selIds = [p.id];
+        g.actDelete();
+        return { ok: true };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+const _testGetWidgets = () => {
+    const g = window as any;
+    try {
+        return { ok: true, widgets: g.getProjectData().widgets };
+    } catch (e: any) {
+        return { ok: false, widgets: [], error: e.message };
+    }
+};
+const _testSaveYaml = (p: { wid: number; evName: string; yaml: string }) => {
+    const g = window as any;
+    try {
+        const w = g.getWidget(p.wid);
+        if (!w) return { ok: false, error: `ウィジェットが見つかりません: id=${p.wid}` };
+        if (!w.events) w.events = {};
+        w.events[p.evName] = p.yaml;
+        g.renderEventsAndPush();
+        return { ok: true };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+const _testDeleteYaml = (p: { wid: number; evName: string }) => {
+    const g = window as any;
+    try {
+        const w = g.getWidget(p.wid);
+        if (!w) return { ok: false, error: `ウィジェットが見つかりません: id=${p.wid}` };
+        if (w.events) delete w.events[p.evName];
+        g.purgeOverridesForKey(p.wid, p.evName);
+        g.renderEventsAndPush();
+        return { ok: true };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+const _testGetOverrides = (p: { wid: number; evName: string }) => {
+    const g = window as any;
+    try {
+        const key = `${p.wid}_${p.evName}`;
+        const overrides: Record<string, any> = {};
+        (g.OVERRIDE_MAP_NAMES as string[]).forEach((name) => {
+            const map = g.getProjectData()[name];
+            if (map && key in map) overrides[name] = map[key];
+        });
+        return { ok: true, overrides };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+
 const rpc = Electroview.defineRPC({
     maxRequestTime: Infinity,
     handlers: {
-        requests: {},
+        requests: {
+            testAddWidget: _testAddWidget,
+            testDeleteWidget: _testDeleteWidget,
+            testGetWidgets: _testGetWidgets,
+            testSaveYaml: _testSaveYaml,
+            testDeleteYaml: _testDeleteYaml,
+            testGetOverrides: _testGetOverrides,
+        },
         messages: {
             loadScriptResult: (v: any) => { /* フロント側で処理 */ },
             stopProjectResult: (v: any) => {
