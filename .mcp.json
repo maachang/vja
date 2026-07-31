@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "vja-test": {
+            "command": "bun",
+            "args": ["run", "mcp/vja-mcp-server.ts"],
+            "env": {
+                "VJA_TEST_PORT": "4570"
+            }
+        }
+    }
+}
