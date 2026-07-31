@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "vja-test": {
+      "command": "bun",
+      "args": ["run", "mcp/vja-mcp-server.ts"]
+    }
+  }
+}
