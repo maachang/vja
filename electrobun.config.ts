@@ -46,10 +46,12 @@ const conf = {
     },
 } satisfies ElectrobunConfig;
 
-// build時のみ実行(実行コマンドに "build" が含まれているか判定).
+// build時・dev時に実行(実行コマンドに "build" または "dev" が含まれているか判定).
+// dev実行時もWEBVIEW_RUNTIME_LIBS（qrcode.js/marked.umd.js等）がResources/app/src/mainview配下に
+// 存在しないと、プロジェクト実行時のライブラリコピー（index.tsのbuildProjectFiles）が失敗するため対象に含める。
 // ここでプロジェクトコンパイルで必要なファイルをコピー.
 // COPY_BUILD_FILES=copy-compile-assets
-if (process.argv.includes("build")) {
+if (process.argv.includes("build") || process.argv.includes("dev")) {
     const target = conf.build.copy;
     for (const [srcRel, destRel] of COPY_BUILD_FILES) {
         const src = join("src", srcRel);

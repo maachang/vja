@@ -1077,6 +1077,18 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
   - 良い例: let sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]);
   - ただし、カラム名・テーブル名など「識別子」（値ではないもの）をテンプレートリテラルで組み立てるのは問題ありません（例: \`SELECT * FROM t WHERE \${columnName} = ?\`。この場合も、実際に検索する値自体は\`?\`経由で渡すこと）。
 
+## YAML定義の構造
+- YAML仕様には以下のキーがあります。それぞれの意味を正しく理解してください。
+  - イベント: 参考情報に過ぎません。実装の根拠にしてはいけません。
+  - 説明: 処理の概要です。実装の直接の指示ではありません。
+  - 利用テーブル: 参照するDBテーブル名です。
+  - アクション: 実際に実装すべき処理内容です。実装の唯一の根拠となります。
+  - 正常終了: 処理が正しく完了した際の状態です。
+- 「アクション:」の中に以下の見出し表現が使われている場合、それぞれ次のプログラム構造として実装してください。
+  - 「〇〇の場合:」「それ以外の場合:」という見出しは、if/elseの条件分岐として実装してください。
+  - 「〇〇に対して繰り返し:」という見出しは、for/forEachの繰り返し処理として実装してください。
+  - これらの見出しの配下にさらに同様の見出しがネストされている場合、対応するブロックをその通りに入れ子で実装してください。
+
 ## YAMLへの忠実性
 - YAMLに記載のない処理（navigate、setVisible、show/hideなど）の追加は絶対禁止です。
 - 「YAML仕様」の指示内容に従い実装を厳守してください。
@@ -1115,6 +1127,18 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
   - 悪い例: \`SELECT * FROM users WHERE name = \${name}\`
   - 良い例: var sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]);
   - ただし、カラム名・テーブル名など「識別子」（値ではないもの）をテンプレートリテラルで組み立てるのは問題ありません（例: \`SELECT * FROM t WHERE \${columnName} = ?\`。この場合も、実際に検索する値自体は\`?\`経由で渡すこと）。
+
+## YAML定義の構造
+- YAML仕様には以下のキーがあります。それぞれの意味を正しく理解してください。
+  - イベント: 参考情報に過ぎません。実装の根拠にしてはいけません。
+  - 説明: 処理の概要です。実装の直接の指示ではありません。
+  - 利用テーブル: 参照するDBテーブル名です。
+  - アクション: 実際に実装すべき処理内容です。実装の唯一の根拠となります。
+  - 正常終了: 処理が正しく完了した際の状態です。
+- 「アクション:」の中に以下の見出し表現が使われている場合、それぞれ次のプログラム構造として実装してください。
+  - 「〇〇の場合:」「それ以外の場合:」という見出しは、if/elseの条件分岐として実装してください。
+  - 「〇〇に対して繰り返し:」という見出しは、for/forEachの繰り返し処理として実装してください。
+  - これらの見出しの配下にさらに同様の見出しがネストされている場合、対応するブロックをその通りに入れ子で実装してください。
 
 ## YAMLへの忠実性
 - YAMLに記載のない処理（navigate、setVisible、show/hideなど）の追加は絶対禁止です。
@@ -1214,6 +1238,18 @@ ${_safeYamlFence(vjaUseJsInfo)}
   - Good: let sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]);
   - Embedding a column/table NAME (an identifier, not a data value) via template literal is acceptable when the identifier itself is fixed or comes from a controlled source (e.g., a dropdown of known column names) — e.g., \`SELECT * FROM t WHERE \${columnName} = ?\` is fine as long as columnName is an identifier and the actual searched value still goes through \`?\`.
 
+## YAML Definition Structure
+- The YAML specification uses the following keys. Make sure you understand the meaning of each correctly.
+  - イベント (Event): Reference information only. NEVER use it as a basis for implementation.
+  - 説明 (Description): A summary of the processing. It is not a direct implementation instruction.
+  - 利用テーブル (Tables Used): The names of the DB tables referenced.
+  - アクション (Action): The actual processing to implement. This is the ONLY basis for implementation.
+  - 正常終了 (Normal Completion): The state when the processing has completed successfully.
+- When the following heading expressions appear inside "アクション:" (Action), implement them as the corresponding program structure:
+  - Headings of the form "〇〇の場合:" (When 〇〇) / "それ以外の場合:" (Otherwise) must be implemented as an if/else conditional branch.
+  - Headings of the form "〇〇に対して繰り返し:" (Repeat for each 〇〇) must be implemented as a for/forEach loop.
+  - If such headings are further nested beneath one another, implement the corresponding blocks as nested structures accordingly.
+
 ## Fidelity to YAML
 - Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.
 - Strictly adhere to the implementation requirements specified in "the YAML specification".
@@ -1252,6 +1288,18 @@ ${_safeYamlFence(vjaUseJsInfo)}
   - Bad: \`SELECT * FROM users WHERE name = \${name}\`
   - Good: var sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]);
   - Embedding a column/table NAME (an identifier, not a data value) via template literal is acceptable when the identifier itself is fixed or comes from a controlled source (e.g., a dropdown of known column names) — e.g., \`SELECT * FROM t WHERE \${columnName} = ?\` is fine as long as columnName is an identifier and the actual searched value still goes through \`?\`.
+
+## YAML Definition Structure
+- The YAML specification uses the following keys. Make sure you understand the meaning of each correctly.
+  - イベント (Event): Reference information only. NEVER use it as a basis for implementation.
+  - 説明 (Description): A summary of the processing. It is not a direct implementation instruction.
+  - 利用テーブル (Tables Used): The names of the DB tables referenced.
+  - アクション (Action): The actual processing to implement. This is the ONLY basis for implementation.
+  - 正常終了 (Normal Completion): The state when the processing has completed successfully.
+- When the following heading expressions appear inside "アクション:" (Action), implement them as the corresponding program structure:
+  - Headings of the form "〇〇の場合:" (When 〇〇) / "それ以外の場合:" (Otherwise) must be implemented as an if/else conditional branch.
+  - Headings of the form "〇〇に対して繰り返し:" (Repeat for each 〇〇) must be implemented as a for/forEach loop.
+  - If such headings are further nested beneath one another, implement the corresponding blocks as nested structures accordingly.
 
 ## Fidelity to YAML
 - Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.
