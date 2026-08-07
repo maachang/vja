@@ -2720,149 +2720,50 @@ function openFormDesignAi() {
     });
 }
 
-// 依頼テキストの下書きを保存して閉じる（既存の拡張ランタイム設定と同じ「保存」の考え方）
-function saveFormDesignDraft() {
-    getProjectData().formDesignDraft = $("ta-fd")?.value || "";
-    closeModal();
-}
-
-// 「説明:」「入力項目:」「参照テーブル:」の3セクションを正規表現で抽出する
-// （このプロジェクトはYAMLを厳密パースせず、既存の「利用テーブル:」抽出と同じ
-//  軽量な正規表現方式に統一している）
-function _parseFormDesignYaml(text) {
-    const descM = text.match(/説明\s*:\s*(.*)$/m);
-    let desc = descM ? descM[1].trim().replace(/^["']|["']$/g, "") : "";
-    const tblM = text.match(/参照テーブル\s*:\s*\n([\s\S]*?)(?:\n\S|\n\n|$)/);
-    const tables = [];
-    if (tblM) {
-        tblM[1].split("\n").forEach((l) => {
-            const name = l.replace(/^\s*-\s*/, "").replace(/#.*$/, "").trim();
-            if (name) tables.push(name);
-        });
-    }
-    return { desc, tables };
-}
-
-// AI（フォームデザイン）出力テキストを配列としてパースする。
-// 1. まずそのままJSON.parseを試みる
-// 2. 失敗した場合、AIが前後に説明文を付けてしまうケースを救うため、
-//    最初の "[" ～ 最後の "]" を抜き出して再度パースを試みる
-// 成功時はウィジェット配列を、失敗時（配列でない場合含む）はnullを返す。
-function parseFormDesignJson(text) {
-    const tryParse = (s) => {
-        try {
-            const v = JSON.parse(s);
-            return Array.isArray(v) ? v : null;
-        } catch (e) {
-            return null;
-        }
-    };
-    const direct = tryParse(text);
-    if (direct) return direct;
-    const s = text.indexOf("[");
-    const e = text.lastIndexOf("]");
-    if (s !== -1 && e !== -1 && e > s) {
-        const extracted = tryParse(text.slice(s, e + 1));
-        if (extracted) return extracted;
-    }
-    return null;
-}
-
-// AI出力の解析に失敗した際、生データを確認できるモーダルを表示する。
-// テキストエリアに生データを表示し、コピーして原因調査できるようにする。
-function openAiRawOutputModal(rawText) {
-    showModal(
-        mhdrHTML("⚠ AI出力の解析に失敗しました") +
-        "<div class='mbody' style='display:flex;flex-direction:column;gap:8px'>" +
-        "<div style='color:var(--text2);font-size:13px'>" +
-        "AIの生データ（JSON形式として解釈できませんでした）。内容を確認・コピーできます。" +
-        "</div>" +
-        "<textarea readonly style='width:100%;height:320px;font-family:monospace;font-size:12px'>" +
-        esc(rawText) +
-        "</textarea>" +
-        "</div>" +
-        mfootHTML([{ label: "閉じる", action: "closeModal()" }])
-    );
-}
-
-async function formDesignAiGenerate() {
-    if (getProjectData().widgets.length > 0) {
-        const ok = await vja.app.showConfirm(
-            "AI生成を実行すると、現在のフォームの\n" +
-            "全ウィジェットが削除されます。\n" +
-            "設定済みのイベント処理（コード）も\n" +
-            "全て失われます。\n" +
-            "（Ctrl+Zで元に戻すことは可能です）\n\n" +
-            "続行しますか？"
-        );
-        if (!ok) return;
-    }
-    const ta = $("ta-fd");
-    const rawText = ta?.value || "";
-    const { desc, tables } = _parseFormDesignYaml(rawText);
-    const curForm = getProjectData().forms[getProjectData().curFormIdx];
-
-    const targetTables = getProjectData().tables.filter((t) => tables.includes(t.name));
-    const tablesCtx = buildTablesCtxText(targetTables);
-
-    // 「説明:」が空の場合のみ、その行をフォームの説明で置き換える。
-    // それ以外の内容は選別・再構築せず、書かれたテキストをそのままAIへ渡す。
-    let designText = rawText;
-    if (!desc) {
-        const fallbackDesc = curForm?.cfg?.description || "";
-        if (fallbackDesc) {
-            designText = /説明\s*:.*$/m.test(rawText)
-                ? rawText.replace(/説明\s*:.*$/m, "説明: " + fallbackDesc)
-                : "説明: " + fallbackDesc + "\n" + rawText;
-        }
-    }
-
-    const addPrompt = $("fd-prompt-in")?.value || "";
-    const btn = $("fd-gen-btn");
-    if (btn) btn.disabled = true;
-
-    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_SYS_PROMPT({
-        formW: getProjectData().formCfg.w,
-        formH: getProjectData().formCfg.h,
-        tablesCtx,
-    });
-    const userPrompt = _PROMPT_DEF.FORM_DESIGN_USER_PROMPT(designText, addPrompt);
-
-    // AI生成前に依頼テキストを下書き保存（モーダルは閉じない）
-    getProjectData().formDesignDraft = rawText;
-
-    await runAiGenerate({
-        systemPrompt: sysPrompt,
-        userPrompt: userPrompt,
-        loadingMsg: "画面デザインを生成中…",
-        onSuccess: async (generated) => {
-            const items2 = parseFormDesignJson(generated);
-            if (!items2) {
-                showToast("AI出力の解析に失敗しました（JSON形式ではありません）", 5000);
-                window.vja?.log?.warn?.("[FormDesignAi] JSON parse failed. raw=" + generated.slice(0, 300));
-                openAiRawOutputModal(generated);
-                if (btn) btn.disabled = false;
-                return;
+// AIプリセットの初期化保証
+function _initAiPresets() {
+    if (!Array.isArray(getProjectData().aiPresets) || getProjectData().aiPresets.length === 0) {
+        getProjectData().aiPresets = [
+            {
+                id: "preset-default-local",
+                name: "ローカル (localhost:8080)",
+                config: {
+                    endpoint: "http://localhost:8080",
+                    apiKey: "",
+                    enabled: false,
+                    routerMode: false,
+                    model: "",
+                    models: [],
+                    maxTokens: "",
+                    temperature: "",
+                    thinking: true,
+                    mockCheckEnabled: true,
+                }
+            },
+            {
+                id: "preset-default-openai",
+                name: "OpenAI (gpt-4o-mini)",
+                config: {
+                    endpoint: "https://api.openai.com",
+                    apiKey: "",
+                    enabled: false,
+                    routerMode: true,
+                    model: "gpt-4o-mini",
+                    models: ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo"],
+                    maxTokens: "",
+                    temperature: "",
+                    thinking: true,
+                    mockCheckEnabled: true,
+                }
             }
-            // 既存ウィジェットを全削除してからAI結果を配置する
-            // （削除前の状態をpushUndo()で退避＝Ctrl+Zで復元可能）
-            if (getProjectData().widgets.length > 0) {
-                pushUndo();
-                getProjectData().widgets = [];
-                getProjectData().forms[getProjectData().curFormIdx].widgets = getProjectData().widgets;
-                getDesignerState().selIds = [];
-                const po = $("prop-obj");
-                if (po) po.textContent = getProjectData().formCfg.title;
-                fullRedraw();
-            }
-            applyAiFormDesign(items2);
-            closeModal();
-        },
-        onCancel: async () => { },
-        onError: async () => { },
-    });
-    if (btn) btn.disabled = false;
+        ];
+    }
+    if (!getProjectData().currentAiPresetId) {
+        getProjectData().currentAiPresetId = getProjectData().aiPresets[0]?.id || "preset-default-local";
+    }
 }
+
+
 
 /* ── エディタ共通キーハンドラ ── */
 function editorKeyHandler(e) {
@@ -3434,8 +3335,197 @@ function initYamlEditorModal(cur, curJs, onAfterInit, isAppEvent = false) {
     });
 }
 
+// 依頼テキストの下書きを保存して閉じる（既存の拡張ランタイム設定と同じ「保存」の考え方）
+function saveFormDesignDraft() {
+    getProjectData().formDesignDraft = $("ta-fd")?.value || "";
+    closeModal();
+}
+
+// 「説明:」「入力項目:」「参照テーブル:」の3セクションを正規表現で抽出する
+// （このプロジェクトはYAMLを厳密パースせず、既存の「利用テーブル:」抽出と同じ
+//  軽量な正規表現方式に統一している）
+function _parseFormDesignYaml(text) {
+    const descM = text.match(/説明\s*:\s*(.*)$/m);
+    let desc = descM ? descM[1].trim().replace(/^["']|["']$/g, "") : "";
+    const tblM = text.match(/参照テーブル\s*:\s*\n([\s\S]*?)(?:\n\S|\n\n|$)/);
+    const tables = [];
+    if (tblM) {
+        tblM[1].split("\n").forEach((l) => {
+            const name = l.replace(/^\s*-\s*/, "").replace(/#.*$/, "").trim();
+            if (name) tables.push(name);
+        });
+    }
+    return { desc, tables };
+}
+
+// AI（フォームデザイン）出力テキストを配列としてパースする。
+// 1. まずそのままJSON.parseを試みる
+// 2. 失敗した場合、AIが前後に説明文を付けてしまうケースを救うため、
+//    最初の "[" ～ 最後の "]" を抜き出して再度パースを試みる
+// 成功時はウィジェット配列を、失敗時（配列でない場合含む）はnullを返す。
+function parseFormDesignJson(text) {
+    const tryParse = (s) => {
+        try {
+            const v = JSON.parse(s);
+            return Array.isArray(v) ? v : null;
+        } catch (e) {
+            return null;
+        }
+    };
+    const direct = tryParse(text);
+    if (direct) return direct;
+    const s = text.indexOf("[");
+    const e = text.lastIndexOf("]");
+    if (s !== -1 && e !== -1 && e > s) {
+        const extracted = tryParse(text.slice(s, e + 1));
+        if (extracted) return extracted;
+    }
+    return null;
+}
+
+// AI出力の解析に失敗した際、生データを確認できるモーダルを表示する。
+// テキストエリアに生データを表示し、コピーして原因調査できるようにする。
+function openAiRawOutputModal(rawText) {
+    showModal(
+        mhdrHTML("⚠ AI出力の解析に失敗しました") +
+        "<div class='mbody' style='display:flex;flex-direction:column;gap:8px'>" +
+        "<div style='color:var(--text2);font-size:13px'>" +
+        "AIの生データ（JSON形式として解釈できませんでした）。内容を確認・コピーできます。" +
+        "</div>" +
+        "<textarea readonly style='width:100%;height:320px;font-family:monospace;font-size:12px'>" +
+        esc(rawText) +
+        "</textarea>" +
+        "</div>" +
+        mfootHTML([{ label: "閉じる", action: "closeModal()" }])
+    );
+}
+
+async function formDesignAiGenerate() {
+    if (getProjectData().widgets.length > 0) {
+        const ok = await vja.app.showConfirm(
+            "AI生成を実行すると、現在のフォームの\n" +
+            "全ウィジェットが削除されます。\n" +
+            "設定済みのイベント処理（コード）も\n" +
+            "全て失われます。\n" +
+            "（Ctrl+Zで元に戻すことは可能です）\n\n" +
+            "続行しますか？"
+        );
+        if (!ok) return;
+    }
+    const ta = $("ta-fd");
+    const rawText = ta?.value || "";
+    const { desc, tables } = _parseFormDesignYaml(rawText);
+    const curForm = getProjectData().forms[getProjectData().curFormIdx];
+
+    const targetTables = getProjectData().tables.filter((t) => tables.includes(t.name));
+    const tablesCtx = buildTablesCtxText(targetTables);
+
+    // 「説明:」が空の場合のみ、その行をフォームの説明で置き換える。
+    // それ以外の内容は選別・再構築せず、書かれたテキストをそのままAIへ渡す。
+    let designText = rawText;
+    if (!desc) {
+        const fallbackDesc = curForm?.cfg?.description || "";
+        if (fallbackDesc) {
+            designText = /説明\s*:.*$/m.test(rawText)
+                ? rawText.replace(/説明\s*:.*$/m, "説明: " + fallbackDesc)
+                : "説明: " + fallbackDesc + "\n" + rawText;
+        }
+    }
+
+    const addPrompt = $("fd-prompt-in")?.value || "";
+    const btn = $("fd-gen-btn");
+    if (btn) btn.disabled = true;
+
+    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_SYS_PROMPT({
+        formW: getProjectData().formCfg.w,
+        formH: getProjectData().formCfg.h,
+        tablesCtx,
+    });
+    const userPrompt = _PROMPT_DEF.FORM_DESIGN_USER_PROMPT(designText, addPrompt);
+
+    // AI生成前に依頼テキストを下書き保存（モーダルは閉じない）
+    getProjectData().formDesignDraft = rawText;
+
+    await runAiGenerate({
+        systemPrompt: sysPrompt,
+        userPrompt: userPrompt,
+        loadingMsg: "画面デザインを生成中…",
+        onSuccess: async (generated) => {
+            const items2 = parseFormDesignJson(generated);
+            if (!items2) {
+                showToast("AI出力の解析に失敗しました（JSON形式ではありません）", 5000);
+                window.vja?.log?.warn?.("[FormDesignAi] JSON parse failed. raw=" + generated.slice(0, 300));
+                openAiRawOutputModal(generated);
+                if (btn) btn.disabled = false;
+                return;
+            }
+            // 既存ウィジェットを全削除してからAI結果を配置する
+            // （削除前の状態をpushUndo()で退避＝Ctrl+Zで復元可能）
+            if (getProjectData().widgets.length > 0) {
+                pushUndo();
+                getProjectData().widgets = [];
+                getProjectData().forms[getProjectData().curFormIdx].widgets = getProjectData().widgets;
+                getDesignerState().selIds = [];
+                const po = $("prop-obj");
+                if (po) po.textContent = getProjectData().formCfg.title;
+                fullRedraw();
+            }
+            applyAiFormDesign(items2);
+            closeModal();
+        },
+        onCancel: async () => { },
+        onError: async () => { },
+    });
+    if (btn) btn.disabled = false;
+}
+
 // AI接続設定モーダル
+// AIプリセットの初期化保証
+function _initAiPresets() {
+    if (!Array.isArray(getProjectData().aiPresets) || getProjectData().aiPresets.length === 0) {
+        getProjectData().aiPresets = [
+            {
+                id: "preset-default-local",
+                name: "ローカル (localhost:8080)",
+                config: {
+                    endpoint: "http://localhost:8080",
+                    apiKey: "",
+                    enabled: false,
+                    routerMode: false,
+                    model: "",
+                    models: [],
+                    maxTokens: "",
+                    temperature: "",
+                    thinking: true,
+                    mockCheckEnabled: true,
+                }
+            },
+            {
+                id: "preset-default-openai",
+                name: "OpenAI (gpt-4o-mini)",
+                config: {
+                    endpoint: "https://api.openai.com",
+                    apiKey: "",
+                    enabled: false,
+                    routerMode: true,
+                    model: "gpt-4o-mini",
+                    models: ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo"],
+                    maxTokens: "",
+                    temperature: "",
+                    thinking: true,
+                    mockCheckEnabled: true,
+                }
+            }
+        ];
+    }
+    if (!getProjectData().currentAiPresetId) {
+        getProjectData().currentAiPresetId = getProjectData().aiPresets[0]?.id || "preset-default-local";
+    }
+}
+
 function openAiConfig() {
+    _initAiPresets();
+
     // getProjectData().aiConfig の初期値保証
     if (!getProjectData().aiConfig.routerMode) getProjectData().aiConfig.routerMode = false;
     if (!getProjectData().aiConfig.apiKey) getProjectData().aiConfig.apiKey = "";
@@ -3443,6 +3533,13 @@ function openAiConfig() {
     if (!getProjectData().aiConfig.endpoint) getProjectData().aiConfig.endpoint = "http://localhost:8080";
     if (getProjectData().aiConfig.thinking === undefined) getProjectData().aiConfig.thinking = true;
     if (getProjectData().aiConfig.mockCheckEnabled === undefined) getProjectData().aiConfig.mockCheckEnabled = true;
+
+    const presets = getProjectData().aiPresets || [];
+    let curPresetId = getProjectData().currentAiPresetId || presets[0]?.id;
+    let curPreset = presets.find(p => p.id === curPresetId) || presets[0];
+    if (curPreset) getProjectData().currentAiPresetId = curPreset.id;
+
+    const presetOpts = presets.map(p => ({ value: p.id, label: p.name }));
 
     const isEnabled = getProjectData().aiConfig.enabled === true;
     const isRouter = getProjectData().aiConfig.routerMode === true;
@@ -3454,6 +3551,16 @@ function openAiConfig() {
         mhdrHTML("🤖 AI接続設定") +
         "<div class='mbody' style='gap:12px'>" +
         "<div class='infobox'>llama-server（またはOpenAI互換API）の接続設定を行います。</div>" +
+
+        // プリセット切替ヘッダー
+        "<div style='display:flex;gap:8px;align-items:center;background:var(--bg2);padding:10px;border-radius:6px;border:1px solid var(--border)'>" +
+        "<label style='font-size:12px;font-weight:bold;min-width:70px'>プリセット</label>" +
+        "<div style='flex:1'>" +
+        makePvSel("ai-preset-sel", presetOpts, curPresetId, "aiCfgSelectPreset({value})") +
+        "</div>" +
+        "<button class='tb-btn' style='padding:4px 8px;font-size:12px;white-space:nowrap' onclick='aiCfgSaveAsPreset()'>💾 名前保存</button>" +
+        "<button class='tb-btn' style='padding:4px 8px;font-size:12px;color:#ff5f56;white-space:nowrap' onclick='aiCfgDeletePreset()'>🗑 削除</button>" +
+        "</div>" +
 
         // AI生成を有効
         "<div class='ai-cfg-row'><label>AI生成を有効</label>" +
@@ -3510,6 +3617,95 @@ function openAiConfig() {
         "<button class='pri'" + evtAttr("onmousedown", "saveAiConfig()") + ">保存</button>" +
         "</div>"
     );
+}
+
+function aiCfgSelectPreset(presetId) {
+    _initAiPresets();
+    const presets = getProjectData().aiPresets || [];
+    const p = presets.find(item => item.id === presetId);
+    if (!p) return;
+    getProjectData().currentAiPresetId = p.id;
+    getProjectData().aiConfig = { ...getProjectData().aiConfig, ...p.config };
+    openAiConfig();
+}
+
+function aiCfgSaveAsPreset() {
+    const ep = $("ai-ep")?.value?.trim() || "http://localhost:8080";
+    const apiKey = $("ai-apikey")?.value?.trim() || "";
+    const modSel = document.querySelector("#ai-model-label");
+    const rtrSel = document.querySelector("#ai-router-sel .pv-sel-btn span:first-child");
+    const enaSel = document.querySelector("#ai-ena-sel .pv-sel-btn span:first-child");
+    const thnSel = document.querySelector("#ai-thinking-sel .pv-sel-btn span:first-child");
+    const mckSel = document.querySelector("#ai-mockcheck-sel .pv-sel-btn span:first-child");
+    const routerMode = rtrSel?.textContent === "ON";
+    const enabled = enaSel?.textContent === "ON";
+    const thinking = thnSel?.textContent !== "OFF";
+    const mockCheckEnabled = mckSel?.textContent !== "OFF";
+    const model = modSel?.textContent || "";
+    const maxTokensRaw = $("ai-max-tokens")?.value?.trim() || "";
+    const maxTokens = maxTokensRaw !== "" ? parseInt(maxTokensRaw, 10) || "" : "";
+    const temperatureRaw = $("ai-temperature")?.value?.trim() || "";
+    const temperature = temperatureRaw !== "" ? parseFloat(temperatureRaw) : "";
+
+    const curCfg = {
+        endpoint: ep, apiKey, enabled, routerMode, thinking, mockCheckEnabled,
+        model: routerMode ? model : "", models: getProjectData().aiConfig.models || [],
+        maxTokens, temperature
+    };
+    getProjectData().aiConfig = curCfg;
+
+    const html = `
+    ${mhdrHTML("💾 AI設定をプリセット保存")}
+    <div style="padding:16px; display:flex; flex-direction:column; gap:12px;">
+        <label style="font-size:12px; font-weight:bold;">プリセット名を入力してください</label>
+        <input type="text" id="ai-preset-name-in" placeholder="例: OpenAI (gpt-4o-mini)" style="padding:8px; font-size:13px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px;" />
+    </div>
+    <div class="mfoot">
+        ${mfootHTML([{ label: "キャンセル", action: "openAiConfig()" }])}
+        <button class="pri" onclick="aiCfgDoSaveAsPreset()">保存</button>
+    </div>
+    `;
+    showModal(html);
+}
+
+function aiCfgDoSaveAsPreset() {
+    const name = $("ai-preset-name-in")?.value?.trim();
+    if (!name) {
+        showToast("プリセット名を入力してください");
+        return;
+    }
+    _initAiPresets();
+    const id = "preset_" + Date.now();
+    const newPreset = {
+        id,
+        name,
+        config: { ...getProjectData().aiConfig }
+    };
+    getProjectData().aiPresets.push(newPreset);
+    getProjectData().currentAiPresetId = id;
+    pushUndo();
+    showToast("プリセット「" + name + "」を保存しました");
+    openAiConfig();
+}
+
+function aiCfgDeletePreset() {
+    _initAiPresets();
+    const presets = getProjectData().aiPresets || [];
+    if (presets.length <= 1) {
+        showToast("これ以上プリセットを削除することはできません");
+        return;
+    }
+    const curId = getProjectData().currentAiPresetId;
+    const idx = presets.findIndex(p => p.id === curId);
+    if (idx < 0) return;
+    const deletedName = presets[idx].name;
+    presets.splice(idx, 1);
+    getProjectData().aiPresets = presets;
+    getProjectData().currentAiPresetId = presets[0].id;
+    getProjectData().aiConfig = { ...getProjectData().aiConfig, ...presets[0].config };
+    pushUndo();
+    showToast("プリセット「" + deletedName + "」を削除しました");
+    openAiConfig();
 }
 
 // モデルリストのHTML生成
@@ -3580,7 +3776,8 @@ function saveAiConfig() {
     const maxTokens = maxTokensRaw !== "" ? parseInt(maxTokensRaw, 10) || "" : "";
     const temperatureRaw = $("ai-temperature")?.value?.trim() || "";
     const temperature = temperatureRaw !== "" ? parseFloat(temperatureRaw) : "";
-    getProjectData().aiConfig = {
+
+    const newCfg = {
         endpoint: ep,
         apiKey,
         enabled,
@@ -3592,6 +3789,17 @@ function saveAiConfig() {
         maxTokens,
         temperature,
     };
+    getProjectData().aiConfig = newCfg;
+
+    // 現在選択中のプリセットがあればそのconfigも更新
+    _initAiPresets();
+    const curId = getProjectData().currentAiPresetId;
+    const presets = getProjectData().aiPresets || [];
+    const curPreset = presets.find(p => p.id === curId);
+    if (curPreset) {
+        curPreset.config = { ...newCfg };
+    }
+
     closeModal();
     pushUndo();
     showToast("AI設定を保存しました");
@@ -3853,7 +4061,7 @@ Object.assign(window, {
     editorKeyHandler, editorMouseDownHandler2, editorDblClickHandler, editorHlUpdate,
     buildYamlEditorHTML, initYamlEditorModal,
     openAiConfig, aiCfgModelListHtml, aiCfgToggleRouter, aiCfgToggleEnabled,
-    aiCfgFetchModels, saveAiConfig,
+    aiCfgFetchModels, saveAiConfig, aiCfgSelectPreset, aiCfgSaveAsPreset, aiCfgDoSaveAsPreset, aiCfgDeletePreset,
     editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, formDesignAiGenerate, saveFormDesignDraft,
     parseFormDesignJson, openAiRawOutputModal,
     validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,

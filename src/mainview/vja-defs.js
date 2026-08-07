@@ -846,6 +846,8 @@ var CTX = {
             temperature: "",
             thinking: true,
         },
+        aiPresets: [],
+        currentAiPresetId: "",
         projectInfo: {
             name: "",
             description: "",

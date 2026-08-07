@@ -269,6 +269,8 @@ function snapshot() {
         validationOverrides: p.validationOverrides || {},
         mockCheckOverrides: p.mockCheckOverrides || {},
         learnedFixes: p.learnedFixes || {},
+        aiPresets: p.aiPresets || [],
+        currentAiPresetId: p.currentAiPresetId || "",
     };
 }
 // 現在の状態を undoStack に積む。redoStack はクリアする。
@@ -306,6 +308,8 @@ function applyProjectData(d) {
     getProjectData().validationOverrides = d.validationOverrides || {};
     getProjectData().mockCheckOverrides = d.mockCheckOverrides || {};
     getProjectData().learnedFixes = d.learnedFixes || {};
+    getProjectData().aiPresets = d.aiPresets || [];
+    getProjectData().currentAiPresetId = d.currentAiPresetId || "";
     getDesignerState().snapOn = d.snapOn !== undefined ? d.snapOn : true;
     getDesignerState().showGrid = d.showGrid !== undefined ? d.showGrid : false;
     // editorConfigはvja設定ファイルで管理するためプロジェクトからは読み込まない
