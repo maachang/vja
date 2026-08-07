@@ -2068,4 +2068,49 @@ ${tablesCtx || "(No DB tables)"}
 
     o.TEXT_TO_YAML_SYS_PROMPT = ENG_TEXT_TO_YAML_SYS_PROMPT;
     o.TEXT_TO_YAML_USER_PROMPT = ENG_TEXT_TO_YAML_USER_PROMPT;
+
+    // [プロンプト]自然言語要求からフォームデザインYAMLを生成
+    const ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT = function ({ tablesCtx }) {
+        return (`
+You are an expert AI assistant for VJA (Visual JavaScript for AI).
+Your task is to convert a user's natural language request (written in Japanese) describing a desired screen layout and form requirements into a clean, structured VJA Form Design YAML specification.
+
+[VJA Form Design YAML Format Specification]
+Output strictly formatted YAML with the following sections:
+
+説明: "<Brief Japanese summary of the screen purpose>"
+
+フォームレイアウト:
+  カラム数: 1  # 1, 2, or 3
+  ラベル位置: 左  # 左 (left) or 上 (top)
+  ボタン位置: 右下  # 右下 (bottom-right), 右 (top-right for search), or 下部中央 (bottom-center)
+
+入力項目:
+  - <Field Name>: <Widget type (e.g. inputtype with text/number/date, selectBox, datagrid, text, image, checkbox, label, textarea, groupbox, tabs)>
+
+参照テーブル:
+  - <table_name> (Include if database table integration is mentioned or relevant)
+
+アクション項目:
+  - <Button text or action name> (e.g. 検索ボタン, 保存ボタン, キャンセル)
+
+[Strict Output Rules]
+- Output ONLY the raw YAML text. Do NOT wrap response in markdown code blocks (\`\`\`yaml).
+- Do not include any intro, explanations, or conversational text.
+
+[Available Database Tables Context]
+${tablesCtx || "(No DB tables)"}
+`.trim() + "\n");
+    };
+
+    const ENG_FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT = function (userReq) {
+        return (
+            "Based on the following natural language request, generate a structured VJA Form Design YAML specification:\n\n" +
+            "[User Request]\n" + userReq.trim() + "\n\n" +
+            "[CRITICAL] Output raw YAML only. Do NOT wrap in markdown code blocks (```yaml). No conversational text."
+        );
+    };
+
+    o.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT = ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT;
+    o.FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT = ENG_FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT;
 })();

@@ -42,35 +42,22 @@ function editorSyncGutter(taId, gutId) {
 
 // Tab / Shift+Tab 処理
 
-/* ── YAMLエディタ タブ切り替え ── */
+/* ── YAMLエディタ タブ切り替え ──
+   任意のタブID（"yaml"/"js"/"prompt"に限らず、buildYamlEditorHTML()の
+   汎用tabConfig.tabsで生成される"fd"/"fd-doc"等）に対応するため、
+   tab-${id} / pane-${id} という命名規則に沿って全タブ・全ペインを
+   走査してactiveクラスを付け替える汎用実装にしている ── */
 function yamlTabSwitch(tab) {
-    const promptTab = $("tab-prompt");
-    const yamlTab = $("tab-yaml");
-    const jsTab = $("tab-js");
-    const promptPane = $("pane-prompt");
-    const yamlPane = $("pane-yaml");
-    const jsPane = $("pane-js");
-
     clearBracketMatch(); // 表示中のペインが切り替わるため、対応括弧ハイライトは一旦消す
     closeCompletionPopup(); // JSペイン限定の入力補完ポップアップが表示されたままにならないよう閉じる
 
-    if (promptTab) promptTab.classList.remove("active");
-    if (yamlTab) yamlTab.classList.remove("active");
-    if (jsTab) jsTab.classList.remove("active");
-    if (promptPane) promptPane.classList.remove("active");
-    if (yamlPane) yamlPane.classList.remove("active");
-    if (jsPane) jsPane.classList.remove("active");
+    document.querySelectorAll(".yaml-tab").forEach((el) => el.classList.remove("active"));
+    document.querySelectorAll(".yaml-pane").forEach((el) => el.classList.remove("active"));
 
-    if (tab === "prompt" && promptTab && promptPane) {
-        promptTab.classList.add("active");
-        promptPane.classList.add("active");
-    } else if (tab === "js" && jsTab && jsPane) {
-        jsTab.classList.add("active");
-        jsPane.classList.add("active");
-    } else if (yamlTab && yamlPane) {
-        yamlTab.classList.add("active");
-        yamlPane.classList.add("active");
-    }
+    const targetTab = $("tab-" + tab);
+    const targetPane = $("pane-" + tab);
+    if (targetTab) targetTab.classList.add("active");
+    if (targetPane) targetPane.classList.add("active");
 }
 
 /* ── JavaScript エディタ Undo（ネイティブに委譲） ── */

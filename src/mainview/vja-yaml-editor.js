@@ -2859,7 +2859,6 @@ async function textToYamlGenerate(wid, evName) {
 
 function openFormDesignAi() {
     // 複数選択中にAI設計ボタンを操作した場合は選択を解除する
-    // （deselect()でハイライト・ヘッダー表示も含めて更新する）
     if (getDesignerState().selIds.length > 1) deselect();
     if (!getProjectData().aiConfig.enabled) {
         vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？").then((yes) => {
@@ -2868,16 +2867,19 @@ function openFormDesignAi() {
         return;
     }
     const template = getProjectData().formDesignDraft || _PROMPT_DEF.DEFAULT_FORM_DESIGN_YAML;
+    const docTemplate = getProjectData().formDesignDocDraft || "";
 
     const tabConfig = {
         tabs: [
-            { id: "fd", label: "📋 画面デザイン依頼", type: "yaml", val: template },
+            { id: "fd", label: "📋 YAML", type: "yaml", val: template },
+            { id: "fd-doc", label: "✨ 依頼", type: "doc", val: docTemplate, ph: "✨ 作成したい画面デザインの要望を日本語で自由に記述できます（複数行可）\n\n例:\n1. ユーザー情報登録フォーム\n2. 氏名、メールアドレス、部署（セレクトボックス）の入力項目\n3. 保存ボタンとクリアボタンを配置する" },
         ],
         aiBar:
-            "<div style='display:flex;gap:8px;align-items:center;width:100%'>" +
-            "<button class='modal-btn' style='font-size:12px;padding:4px 12px;white-space:nowrap' onclick='openFormDesignTemplateModal()'>📋 テンプレート選択…</button>" +
-            "<input id='fd-prompt-in' placeholder='追加指示（任意）例：入力欄は必須のものだけにしてほしい' style='flex:1'>" +
-            "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "formDesignAiGenerate()") + " id='fd-gen-btn'>🤖 生成</button>" +
+            "<div style='display:flex;gap:6px;align-items:center;width:100%'>" +
+            "<button class='modal-btn' style='font-size:12px;padding:4px 10px;white-space:nowrap' onclick='openFormDesignTemplateModal()'>📋 テンプレート選択…</button>" +
+            "<input id='fd-prompt-in' placeholder='AIへの補足指示（任意）' style='flex:1'>" +
+            "<button class='yaml-ai-btn' id='fd-gen-yaml-btn' title='依頼文章から画面デザインYAMLを作成します' " + evtAttr("onmousedown", "formDesignTextToYamlGenerate()") + ">✨ YAMLドラフト生成</button>" +
+            "<button class='yaml-ai-btn' id='fd-gen-btn' " + evtAttr("onmousedown", "formDesignAiGenerate()") + ">🤖 画面反映</button>" +
             "</div>",
         saveAction: "saveFormDesignDraft()",
         rightPanel: "formDesign",
@@ -2887,17 +2889,112 @@ function openFormDesignAi() {
         applyEditorConfig();
         hlUpdate("ta-fd", "hl-fd", yamlTokenize);
         editorUpdateGutter("ta-fd", "gutter-fd");
-        const ta = $("ta-fd");
-        if (ta) {
-            ta.addEventListener("keydown", editorKeyHandler);
-            ta.addEventListener("mousedown", editorMouseDownHandler2);
-            ta.addEventListener("dblclick", editorDblClickHandler);
-            ta.addEventListener("input", () => { hlUpdate("ta-fd", "hl-fd", yamlTokenize); editorUpdateGutter("ta-fd", "gutter-fd"); });
-            ta.addEventListener("scroll", () => hlSync("ta-fd", "hl-fd"));
-            editorUndoInit("ta-fd", FORMDESIGN_EDITOR.taUndo, ta.value);
+        editorUpdateGutter("ta-fd-doc", "gutter-fd-doc");
+
+        const taYaml = $("ta-fd");
+        if (taYaml) {
+            taYaml.addEventListener("keydown", editorKeyHandler);
+            taYaml.addEventListener("mousedown", editorMouseDownHandler2);
+            taYaml.addEventListener("dblclick", editorDblClickHandler);
+            taYaml.addEventListener("input", () => { hlUpdate("ta-fd", "hl-fd", yamlTokenize); editorUpdateGutter("ta-fd", "gutter-fd"); });
+            taYaml.addEventListener("scroll", () => hlSync("ta-fd", "hl-fd"));
+            editorUndoInit("ta-fd", FORMDESIGN_EDITOR.taUndo, taYaml.value);
         }
+
+        const taDoc = $("ta-fd-doc");
+        if (taDoc) {
+            taDoc.addEventListener("keydown", editorKeyHandler);
+            taDoc.addEventListener("mousedown", editorMouseDownHandler2);
+            taDoc.addEventListener("dblclick", editorDblClickHandler);
+            taDoc.addEventListener("input", () => editorUpdateGutter("ta-fd-doc", "gutter-fd-doc"));
+            taDoc.addEventListener("scroll", () => editorSyncGutter("ta-fd-doc", "gutter-fd-doc"));
+            if (!FORMDESIGN_EDITOR.docUndo) FORMDESIGN_EDITOR.docUndo = {};
+            editorUndoInit("ta-fd-doc", FORMDESIGN_EDITOR.docUndo, taDoc.value);
+        }
+
+        rAfBind("#tab-fd", "click", () => yamlTabSwitch("fd"));
+        rAfBind("#tab-fd-doc", "click", () => yamlTabSwitch("fd-doc"));
         yamlInitResize();
         yamlInitRpanelEvents();
+    });
+}
+
+// 自然言語から画面デザインYAMLを生成する関数
+async function formDesignTextToYamlGenerate() {
+    if (!getProjectData().aiConfig.enabled) {
+        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
+            closeModal();
+            openAiConfig();
+        }
+        return;
+    }
+
+    const docEl = $("ta-fd-doc");
+    const promptInEl = $("fd-prompt-in");
+    const inputText = docEl?.value?.trim() || promptInEl?.value?.trim() || "";
+    if (!inputText) {
+        showToast("「✨ 依頼」タブまたはAI指示欄にやりたい画面の概要を入力してください");
+        if (docEl) docEl.focus();
+        else if (promptInEl) promptInEl.focus();
+        return;
+    }
+
+    // AI実行前に現在のドラフト（YAML・依頼）を保存
+    getProjectData().formDesignDraft = $("ta-fd")?.value || "";
+    getProjectData().formDesignDocDraft = docEl?.value || "";
+
+    const curYaml = $("ta-fd")?.value || "";
+    if (curYaml.trim().length > 0 && curYaml.trim() !== _PROMPT_DEF.DEFAULT_FORM_DESIGN_YAML.trim()) {
+        const ok = await vja.app.showConfirm(
+            "画面デザインYAMLエディタに既存の記述があります。\n" +
+            "AIが作成するYAMLで上書きしますか？"
+        );
+        if (!ok) return;
+    }
+
+    // プロジェクトの全DBテーブル情報を抽出してコンテキスト生成
+    const tablesCtx = (getProjectData().tables || [])
+        .map((t) => {
+            const cols = (t.columns || []).map((c) => "  - " + c.name + " (" + c.type + ")").join("\n");
+            return t.name + ":\n" + cols;
+        })
+        .join("\n");
+
+    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT({ tablesCtx: tablesCtx });
+    const userPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT(inputText);
+
+    showLoadingModal("画面YAMLドラフト作成中…");
+
+    await runAiGenerate({
+        systemPrompt: sysPrompt,
+        userPrompt: userPrompt,
+        loadingMsg: "画面YAMLドラフト作成中…",
+        onSuccess: async (cleanYaml) => {
+            const stripped = cleanYaml.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+
+            getProjectData().formDesignDraft = stripped;
+            getProjectData().formDesignDocDraft = inputText;
+
+            openFormDesignAi();
+
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                const taFd = $("ta-fd");
+                if (taFd) {
+                    taFd.value = stripped;
+                    hlUpdate("ta-fd", "hl-fd", yamlTokenize);
+                    editorUpdateGutter("ta-fd", "gutter-fd");
+                }
+                const taDoc = $("ta-fd-doc");
+                if (taDoc) {
+                    taDoc.value = inputText;
+                    editorUpdateGutter("ta-fd-doc", "gutter-fd-doc");
+                }
+                yamlTabSwitch("fd");
+                showToast("✨ 画面デザインYAMLを作成しました（📋 YAMLタブを確認）");
+            }));
+        },
+        onCancel: async () => {},
+        onError: async () => {},
     });
 }
 
@@ -3343,23 +3440,36 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
     if (tabConfig) {
         const tabs = tabConfig.tabs || [];
         const tabBar = tabs.map((t, idx) =>
-            `<div class='yaml-tab ${idx === 0 ? "active" : ""}' id='tab-${t.id}'>${t.label}</div>`
+            `<div class='yaml-tab ${idx === 0 ? "active" : ""}' id='tab-${t.id}' ${evtAttr("onmousedown", `yamlTabSwitch("${t.id}")`)}>${t.label}</div>`
         ).join("");
         const panes = tabs.map((t, idx) => {
+            const isDoc = t.type === "doc";
             const isJs = t.type === "js";
             const hlWrap = isJs ? "js-hl-wrap" : "yaml-hl-wrap";
             const hlBg = isJs ? "js-hl-bg" : "yaml-hl-bg";
+            const styleAttr = isDoc
+                ? `style='color:var(--text) !important;background:transparent;caret-color:var(--text);width:100%;height:100%;display:block;box-sizing:border-box;resize:none'`
+                : `style='height:100%;min-height:300px'`;
+
+            const mainInner = isDoc
+                ? `<textarea class='yaml' id='ta-${t.id}' autocorrect='off' autocapitalize='off' spellcheck='false' ${styleAttr}` +
+                  evtAttr("oninput", `editorUpdateGutter("ta-${t.id}","gutter-${t.id}")`) +
+                  evtAttr("onscroll", `editorSyncGutter("ta-${t.id}","gutter-${t.id}")`) +
+                  (t.ph ? ` placeholder='${esc(t.ph)}'` : "") + `>` + esc(t.val || "") + `</textarea>`
+                : `<div class='${hlWrap}'>` +
+                  `<div class='${hlBg}' id='hl-${t.id}'></div>` +
+                  `<textarea class='yaml' id='ta-${t.id}' autocorrect='off' autocapitalize='off' spellcheck='false' ${styleAttr}` +
+                  evtAttr("oninput", `editorHlUpdate("ta-${t.id}")`) +
+                  evtAttr("onscroll", `hlSync("ta-${t.id}","hl-${t.id}");editorSyncGutter("ta-${t.id}","gutter-${t.id}")`) +
+                  (t.ph ? ` placeholder='${esc(t.ph)}'` : "") + `>` + esc(t.val || "") + `</textarea>` +
+                  `</div>`;
+
             return `<div class='yaml-pane ${idx === 0 ? "active" : ""}' id='pane-${t.id}'>` +
                 `<div class='editor-wrap'>` +
                 `<div class='editor-gutter' id='gutter-${t.id}'></div>` +
                 `<div class='editor-main'>` +
-                `<div class='${hlWrap}'>` +
-                `<div class='${hlBg}' id='hl-${t.id}'></div>` +
-                `<textarea class='yaml' id='ta-${t.id}' autocorrect='off' autocapitalize='off' spellcheck='false' style='height:100%;min-height:300px'` +
-                evtAttr("oninput", `editorHlUpdate("ta-${t.id}")`) +
-                evtAttr("onscroll", `hlSync("ta-${t.id}","hl-${t.id}");editorSyncGutter("ta-${t.id}","gutter-${t.id}")`) +
-                (t.ph ? ` placeholder='${esc(t.ph)}'` : "") + `>` + esc(t.val || "") + `</textarea>` +
-                `</div></div></div></div>`;
+                mainInner +
+                `</div></div></div>`;
         }).join("");
         const aiBar = tabConfig.aiBar
             ? `<div class='yaml-ai-bar'>${tabConfig.aiBar}</div>`
@@ -3534,7 +3644,8 @@ function initYamlEditorModal(cur, curJs, onAfterInit, isAppEvent = false, curDoc
 
 // 依頼テキストの下書きを保存して閉じる（既存の拡張ランタイム設定と同じ「保存」の考え方）
 function saveFormDesignDraft() {
-    getProjectData().formDesignDraft = $("ta-fd")?.value || "";
+    if ($("ta-fd")) getProjectData().formDesignDraft = $("ta-fd").value;
+    if ($("ta-fd-doc")) getProjectData().formDesignDocDraft = $("ta-fd-doc").value;
     closeModal();
 }
 
@@ -4259,7 +4370,7 @@ Object.assign(window, {
     buildYamlEditorHTML, initYamlEditorModal,
     openAiConfig, aiCfgModelListHtml, aiCfgToggleRouter, aiCfgToggleEnabled,
     aiCfgFetchModels, saveAiConfig, aiCfgSelectPreset, aiCfgSaveAsPreset, aiCfgDoSaveAsPreset, aiCfgDeletePreset,
-    editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, insertFormDesignTemplate, openFormDesignTemplateModal, confirmApplyFormDesignTemplate, textToYamlGenerate, formDesignAiGenerate, saveFormDesignDraft,
+    editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, insertFormDesignTemplate, openFormDesignTemplateModal, confirmApplyFormDesignTemplate, textToYamlGenerate, formDesignTextToYamlGenerate, formDesignAiGenerate, saveFormDesignDraft,
     parseFormDesignJson, openAiRawOutputModal,
     validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
     openAiValidationDetailModal,
