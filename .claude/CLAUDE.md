@@ -125,7 +125,17 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
    - 初回登録時・`.mcp.json`変更時はClaude Codeの再起動/MCP再接続が必要
    - 組織のエンタープライズポリシーでローカル（stdio）MCPサーバーの追加自体がブロックされる環境では、`.mcp.json`の設定が正しくても`vja-test`が`/mcp`に出てこない（`claude mcp add-json`も`not allowed by enterprise policy`で拒否される）。この場合はプロジェクト側の設定不備ではないため、ポリシー制約のない環境で試す
 3. 接続済みなら、各tool（`vja_add_widget`等）をClaude Codeから呼び出してテストを行う
-4. 終了時はvjaのウィンドウを閉じればテスト用HTTPサーバーも停止する
+# 学習履歴機能（AIプロンプト記憶）
+
+- AIコード生成時の過去修正・注意事項を学習・蓄積する機能
+- **保存スコープ・単位**: プロジェクト単位（`getProjectData().learnedFixes`）。`.vjaproj` ファイルに同梱保存される
+- **スコープ階層**:
+  - `wid_evName`: イベント個別ルール
+  - `tag_<tagName>`: ウィジェットタグ共有ルール（同一タグで2回以上類似エラーが修正された場合に自動昇格）
+  - `global`: プロジェクト全体共通ルール（手動追加・ピン留め可能）
+- **プロンプト生成 (`_buildLearnedFixesCtx`)**: AIコード生成時、該当イベントの個別学習、タグ共通注意点、プロジェクト共通ルールを統合しプロンプトに自動挿入
+- **UI（学習ノウハウ管理）**: メニューバーの [表示] ➔ [学習ノウハウ…] (`openLearnedFixesModal`) から一覧確認・ピン留め（固定）・手動ルール追加・削除が可能
+- **テスト**: `src/mainview/learned-fixes.test.ts` でユニットテスト実装・検証済み
 
 # 既知の制約
 

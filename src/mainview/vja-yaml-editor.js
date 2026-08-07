@@ -3766,6 +3766,17 @@ function renderLearnedFixesModal() {
         rowsHtml = `<div style="padding:24px; text-align:center; color:var(--text2); font-size:13px;">学習済みのノウハウや個別ルールはまだありません</div>`;
     }
 
+    const curScope = getEditorContext().lfSelectedScope || "global";
+    const scopeOptions = [
+        { value: "global", label: "プロジェクト共通ルール" },
+        { value: "tag_datagrid", label: "datagrid 共通ルール" },
+        { value: "tag_textbox", label: "textbox 共通ルール" },
+        { value: "tag_button", label: "button 共通ルール" },
+        { value: "tag_combobox", label: "combobox 共通ルール" },
+        { value: "tag_checkbox", label: "checkbox 共通ルール" },
+    ];
+    const scopeSelHtml = makePvSel("lf-new-scope", scopeOptions, curScope, "getEditorContext().lfSelectedScope={value}");
+
     const html = `
     ${mhdrHTML("🧠 学習ノウハウ（AIプロンプト記憶）管理")}
     <div style="padding:16px; display:flex; flex-direction:column; gap:12px; max-height:70vh; overflow-y:auto;">
@@ -3775,12 +3786,9 @@ function renderLearnedFixesModal() {
 
         <!-- 手動ルール追加エリア -->
         <div style="display:flex; gap:8px; align-items:center; background:var(--bg2); padding:10px; border-radius:6px; border:1px solid var(--border);">
-            <select id="lf-new-scope" style="padding:6px; font-size:12px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px;">
-                <option value="global">プロジェクト共通ルール</option>
-                <option value="tag_datagrid">datagrid 共通ルール</option>
-                <option value="tag_textbox">textbox 共通ルール</option>
-                <option value="tag_button">button 共通ルール</option>
-            </select>
+            <div style="width:180px; flex-shrink:0;">
+                ${scopeSelHtml}
+            </div>
             <input type="text" id="lf-new-text" placeholder="例: 日付文字列は YYYY-MM-DD 形式で展開すること" style="flex:1; padding:6px; font-size:12px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px;" />
             <button class="tb-btn" style="padding:6px 12px; font-size:12px; background:var(--accent); color:#fff;" onclick="addManualLearnedFix()">追加</button>
         </div>
@@ -3790,7 +3798,7 @@ function renderLearnedFixesModal() {
             ${rowsHtml}
         </div>
     </div>
-    ${mfootHTML('<button class="btn-cancel" onclick="closeModal()">閉じる</button>')}
+    ${mfootHTML([{ label: "閉じる", action: "closeModal()" }])}
     `;
 
     showModal(html);
@@ -3813,7 +3821,7 @@ function deleteLearnedFixItem(key, id) {
 }
 
 function addManualLearnedFix() {
-    const scope = $("lf-new-scope")?.value || "global";
+    const scope = getEditorContext().lfSelectedScope || "global";
     const text = $("lf-new-text")?.value?.trim();
     if (!text) {
         showToast("ルール内容を入力してください");
