@@ -2680,6 +2680,76 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
   「説明/入力項目/参照テーブル」を書いた依頼テキストをAIに渡し、
   ウィジェット構成JSON配列を生成→applyAiFormDesign()で現在フォームへ反映する。
 ═══════════════════════════════════════════ */
+function insertFormDesignTemplate(type) {
+    const ta = $("ta-fd");
+    if (!ta) return;
+    let template = "";
+    if (type === "search") {
+        template = `# 検索一覧画面定義
+説明: 一覧データを検索・閲覧する画面
+フォームレイアウト:
+  パターン: 検索一覧画面
+  カラム数: 2
+  ラベル位置: 左
+  ボタン位置: 右
+
+入力項目:
+  - 検索キーワード: inputtype で text
+  - ステータス: selectBox
+    - 未処理
+    - 処理中
+    - 完了
+  - 検索結果: datagrid
+
+アクション項目:
+  - 検索ボタン
+  - クリアボタン
+`;
+    } else if (type === "form") {
+        template = `# 登録フォーム画面定義
+説明: 情報を登録・編集する入力画面
+フォームレイアウト:
+  パターン: 登録フォーム画面
+  カラム数: 2
+  ラベル位置: 左
+  ボタン位置: 右下
+
+入力項目:
+  - 氏名: inputtype で text
+  - メールアドレス: inputtype で email
+  - 電話番号: inputtype で tel
+  - 備考: textarea
+
+アクション項目:
+  - 保存ボタン
+  - キャンセルボタン
+`;
+    } else if (type === "dialog") {
+        template = `# ダイアログ画面定義
+説明: 確認・設定用のコンパクトダイアログ
+フォームレイアウト:
+  パターン: ダイアログ
+  カラム数: 1
+  ラベル位置: 左
+  ボタン位置: 下部中央
+
+入力項目:
+  - 対象名: inputtype で text
+  - 通知を有効にする: checkbox
+
+アクション項目:
+  - OK
+  - キャンセル
+`;
+    }
+    if (template) {
+        ta.value = template.trim() + "\n\n";
+        hlUpdate("ta-fd", "hl-fd", yamlTokenize);
+        editorUpdateGutter("ta-fd", "gutter-fd");
+        showToast("テンプレートを挿入しました");
+    }
+}
+
 function openFormDesignAi() {
     // 複数選択中にAI設計ボタンを操作した場合は選択を解除する
     // （deselect()でハイライト・ヘッダー表示も含めて更新する）
@@ -2696,8 +2766,17 @@ function openFormDesignAi() {
             { id: "fd", label: "📋 画面デザイン依頼", type: "yaml", val: template },
         ],
         aiBar:
+            "<div style='display:flex;flex-direction:column;gap:6px;width:100%'>" +
+            "<div style='display:flex;gap:6px;align-items:center'>" +
+            "<span style='font-size:11px;color:var(--text2);font-weight:bold'>📋 テンプレート挿入:</span>" +
+            "<button class='tb-btn' style='padding:2px 8px;font-size:11px' onclick=\"insertFormDesignTemplate('search')\">🔍 検索一覧</button>" +
+            "<button class='tb-btn' style='padding:2px 8px;font-size:11px' onclick=\"insertFormDesignTemplate('form')\">📝 登録フォーム</button>" +
+            "<button class='tb-btn' style='padding:2px 8px;font-size:11px' onclick=\"insertFormDesignTemplate('dialog')\">💬 ダイアログ</button>" +
+            "</div>" +
+            "<div style='display:flex;gap:6px;width:100%'>" +
             "<input id='fd-prompt-in' placeholder='追加指示（任意）例：入力欄は必須のものだけにしてほしい' style='flex:1'>" +
-            "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "formDesignAiGenerate()") + " id='fd-gen-btn'>🤖 生成</button>",
+            "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "formDesignAiGenerate()") + " id='fd-gen-btn'>🤖 生成</button>" +
+            "</div></div>",
         saveAction: "saveFormDesignDraft()",
         rightPanel: "formDesign",
     };
@@ -4062,7 +4141,7 @@ Object.assign(window, {
     buildYamlEditorHTML, initYamlEditorModal,
     openAiConfig, aiCfgModelListHtml, aiCfgToggleRouter, aiCfgToggleEnabled,
     aiCfgFetchModels, saveAiConfig, aiCfgSelectPreset, aiCfgSaveAsPreset, aiCfgDoSaveAsPreset, aiCfgDeletePreset,
-    editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, formDesignAiGenerate, saveFormDesignDraft,
+    editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, insertFormDesignTemplate, formDesignAiGenerate, saveFormDesignDraft,
     parseFormDesignJson, openAiRawOutputModal,
     validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
     openAiValidationDetailModal,
