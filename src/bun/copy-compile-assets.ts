@@ -34,6 +34,7 @@ export const COPY_BUILD_FILES: [string, string][] = [
     ["shared/csv-utils.ts", "shared/csv-utils.ts"],
     ["mainview/project-bridge.ts", "mainview/project-bridge.ts"],
     ["mainview/bridge-common.ts", "mainview/bridge-common.ts"],
+    ["mainview/form-design-templates.js", "mainview/form-design-templates.js"],
     // WEBVIEW_RUNTIME_LIBS（vja-runtime.js/qrcode.js/marked.umd.js等）から自動生成
     ...WEBVIEW_RUNTIME_LIBS.map((f): [string, string] => [`mainview/${f}`, `mainview/${f}`]),
 ];
