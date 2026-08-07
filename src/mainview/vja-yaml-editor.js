@@ -2866,12 +2866,12 @@ function openFormDesignAi() {
         });
         return;
     }
-    const template = getProjectData().formDesignDraft || _PROMPT_DEF.DEFAULT_FORM_DESIGN_YAML;
+    const template = getProjectData().formDesignDraft || "";
     const docTemplate = getProjectData().formDesignDocDraft || "";
 
     const tabConfig = {
         tabs: [
-            { id: "fd", label: "📋 YAML", type: "yaml", val: template },
+            { id: "fd", label: "📋 YAML", type: "yaml", val: template, ph: _PROMPT_DEF.DEFAULT_FORM_DESIGN_YAML },
             { id: "fd-doc", label: "✨ 依頼", type: "doc", val: docTemplate, ph: "✨ 作成したい画面デザインの要望を日本語で自由に記述できます（複数行可）\n\n例:\n1. ユーザー情報登録フォーム\n2. 氏名、メールアドレス、部署（セレクトボックス）の入力項目\n3. 保存ボタンとクリアボタンを配置する" },
         ],
         aiBar:
@@ -2944,7 +2944,7 @@ async function formDesignTextToYamlGenerate() {
     getProjectData().formDesignDocDraft = docEl?.value || "";
 
     const curYaml = $("ta-fd")?.value || "";
-    if (curYaml.trim().length > 0 && curYaml.trim() !== _PROMPT_DEF.DEFAULT_FORM_DESIGN_YAML.trim()) {
+    if (curYaml.trim().length > 0) {
         const ok = await vja.app.showConfirm(
             "画面デザインYAMLエディタに既存の記述があります。\n" +
             "AIが作成するYAMLで上書きしますか？"

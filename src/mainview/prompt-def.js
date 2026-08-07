@@ -2011,6 +2011,10 @@ ${tablesCtx || "(No reference table specified)"}
     o.YAML_TO_JS_SYS_PROMPT = ENG_YAML_TO_JS_SYS_PROMPT;
     o.YAML_TO_JS_USER_PROMPT = ENG_YAML_TO_JS_USER_PROMPT;
 
+    // [プロンプト]画面デザイン自動生成（ウィジェット配置JSON生成）.
+    o.FORM_DESIGN_SYS_PROMPT = ENG_FORM_DESIGN_SYS_PROMPT;
+    o.FORM_DESIGN_USER_PROMPT = ENG_FORM_DESIGN_USER_PROMPT;
+
     // [プロンプト]拡張ランタイムyamlから js AI生成依頼.
     // 日本語版
     //o.EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT = EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT;

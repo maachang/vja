@@ -781,6 +781,11 @@ function makeFormData(title = "Form1") {
         idCnt: 1,
         constants: [], // フォーム単位の定数
         events: {},    // フォームイベント
+        // 画面デザイン依頼（AIフォームデザイン）のドラフト。フォームごとに保持する
+        // （以前はプロジェクト直下の単一値だったため、別フォームで生成した内容が
+        // 他のフォームでもそのまま表示されてしまう不具合があった）
+        formDesignDraft: "",
+        formDesignDocDraft: "",
         // ── バリデーション定義 ──────────────────────────────
         // テーブル管理と同じ構成。validationsは定義の配列。
         // 各定義: { name, toastDuration, rules: [{ name, type, arg1, arg2, arg3, message }] }
@@ -973,6 +978,8 @@ const UI_FONT_LIST = [
 getProjectData().widgets = getProjectData().forms[0].widgets;
 getProjectData().formCfg = getProjectData().forms[0].cfg;
 getProjectData().idCnt = getProjectData().forms[0].idCnt;
+getProjectData().formDesignDraft = getProjectData().forms[0].formDesignDraft || "";
+getProjectData().formDesignDocDraft = getProjectData().forms[0].formDesignDocDraft || "";
 
 const SNAP = 8;
 
@@ -992,10 +999,19 @@ function syncCurForm() {
     getProjectData().widgets = f.widgets;
     getProjectData().formCfg = f.cfg;
     getProjectData().idCnt = f.idCnt;
+    getProjectData().formDesignDraft = f.formDesignDraft || "";
+    getProjectData().formDesignDocDraft = f.formDesignDocDraft || "";
 }
 // idCnt の書き戻し（追加・削除時）
 function commitIdCnt() {
     getProjectData().forms[getProjectData().curFormIdx].idCnt = getProjectData().idCnt;
+}
+// 画面デザイン依頼ドラフト（YAML・依頼文）の書き戻し（フォーム切替前に呼ぶ）
+function commitFormDesignDraft() {
+    const f = getProjectData().forms[getProjectData().curFormIdx];
+    if (!f) return;
+    f.formDesignDraft = getProjectData().formDesignDraft || "";
+    f.formDesignDocDraft = getProjectData().formDesignDocDraft || "";
 }
 
 /* ═══════════════════════════════════════════
@@ -1122,5 +1138,5 @@ Object.assign(window, {
     esc, $, fb, evtAttr, pvRegistry, pvRegister, pvCall, rAfBind, showToast,
     getFormTheme, darkenColor,
     // フォームデータ生成・現在フォームのショートカット同期関数
-    makeFormData, refreshAll, syncCurForm, commitIdCnt,
+    makeFormData, refreshAll, syncCurForm, commitIdCnt, commitFormDesignDraft,
 });

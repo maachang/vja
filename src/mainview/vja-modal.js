@@ -262,7 +262,6 @@ function snapshot() {
         showGrid: getDesignerState().showGrid,
         projectInfo: p.projectInfo,
         extRuntime: p.extRuntime,
-        formDesignDraft: p.formDesignDraft || "",
         mockOverrides: p.mockOverrides || {},
         apiOptOverrides: p.apiOptOverrides || {},
         tableOptOverrides: p.tableOptOverrides || {},
@@ -276,6 +275,7 @@ function snapshot() {
 // 現在の状態を undoStack に積む。redoStack はクリアする。
 function pushUndo() {
     commitIdCnt();
+    commitFormDesignDraft();
     getEditHistory().undoStack.push(JSON.stringify(snapshot()));
     if (getEditHistory().undoStack.length > 60) getEditHistory().undoStack.shift();
     getEditHistory().redoStack = [];
@@ -301,7 +301,12 @@ function applyProjectData(d) {
     getProjectData().constants = d.constants || [];
     getProjectData().startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
     getProjectData().tables = d.tables || [];
-    getProjectData().formDesignDraft = d.formDesignDraft || "";
+    // 旧形式互換: 画面デザイン依頼ドラフトがプロジェクト直下の単一値だった頃の
+    // 保存データを読み込んだ場合、先頭フォームの値として引き継ぐ
+    // （旧形式にはフォーム別の値の区別が無いため、先頭フォームにのみ割り当てる）
+    if (d.formDesignDraft && getProjectData().forms[0] && !getProjectData().forms[0].formDesignDraft) {
+        getProjectData().forms[0].formDesignDraft = d.formDesignDraft;
+    }
     getProjectData().mockOverrides = d.mockOverrides || {};
     getProjectData().apiOptOverrides = d.apiOptOverrides || {};
     getProjectData().tableOptOverrides = d.tableOptOverrides || {};

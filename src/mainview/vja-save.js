@@ -110,6 +110,7 @@ async function _doActOpen() {
 async function actSave() {
     commitCurrentInput();
     commitIdCnt();
+    commitFormDesignDraft();
     const snap = snapshot();
     const content = JSON.stringify(snap);
     const projName = getProjectData().projectInfo.name?.trim() || "project";
@@ -324,6 +325,7 @@ function switchForm(idx) {
     idx = parseInt(idx);
     if (idx === getProjectData().curFormIdx) return;
     commitIdCnt();
+    commitFormDesignDraft();
     getProjectData().curFormIdx = idx;
     getDesignerState().selIds = [];
     refreshAll();
