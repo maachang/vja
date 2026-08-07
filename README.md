@@ -122,6 +122,7 @@ try {
 - VB スタイルのドラッグ＆ドロップ UI
 - 複数フォーム（画面）管理・切り替え
 - リアルタイムプレビュー
+- **AI 画面デザイン自動生成**: YAML依頼文からウィジェット配置（x, y, w, h）を自動計算。テンプレートダイアログ（検索一覧・マスタ保守・伝票明細等）からワンタップ選択、4pxグリッドスナップ・自動整列補正を搭載
 
 ### 🤖 AI コード生成
 - YAML でイベント処理の指示を記述 → AI が JavaScript を生成
@@ -424,6 +425,7 @@ vja/
     │   ├── vja-designer.js         # デザイナー本体（描画・選択・プロパティパネル）
     │   ├── vja-modal.js            # モーダル基盤・Undo/Redo・削除/複製
     │   ├── vja-yaml-editor.js      # YAML/JSエディタ・AI生成
+    │   ├── form-design-templates.js # 画面デザイン依頼（YAML）テンプレート定義
     │   ├── vja-editor-utils.js     # エディタ共通ユーティリティ
     │   ├── vja-mock-runtime.js     #モック共通ユーティリティ
     │   ├── vja-save.js             # 保存・開く・実行・マルチフォーム管理

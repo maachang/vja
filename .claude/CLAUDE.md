@@ -62,6 +62,7 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 | src/mainview/vja-designer.js | デザイナー本体（描画・選択・プロパティパネル） |
 | src/mainview/vja-modal.js | モーダル基盤・Undo/Redo・削除/複製 |
 | src/mainview/vja-yaml-editor.js | YAML/JSエディタ・AI生成 |
+| src/mainview/form-design-templates.js | 画面デザイン依頼（YAML）テンプレート定義一覧・取得共通モジュール |
 | src/mainview/vja-editor-utils.js | エディタ共通ユーティリティ |
 | src/mainview/vja-mock-runtime.js | モック共通ユーティリティ |
 | src/mainview/vja-save.js | 保存・開く・実行・マルチフォーム管理 |
@@ -136,6 +137,16 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 - **プロンプト生成 (`_buildLearnedFixesCtx`)**: AIコード生成時、該当イベントの個別学習、タグ共通注意点、プロジェクト共通ルールを統合しプロンプトに自動挿入
 - **UI（学習ノウハウ管理）**: メニューバーの [表示] ➔ [学習ノウハウ…] (`openLearnedFixesModal`) から一覧確認・ピン留め（固定）・手動ルール追加・削除が可能
 - **テスト**: `src/mainview/learned-fixes.test.ts` でユニットテスト実装・検証済み
+
+# 画面デザイン自動生成機能 (AI Form Design & Templates)
+
+- **概要**: ユーザーがYAML形式で記述した画面目的・項目・レイアウト指示から、AIがウィジェットの配置座標（x, y, w, h）を含んだJSONを生成・自動配置する機能
+- **レイアウトテンプレート分離構造**: `src/mainview/form-design-templates.js` にテンプレート定義（`FORM_DESIGN_TEMPLATES`）を独立管理。検索一覧、登録フォーム、ダイアログ、マスタ保守、伝票・明細入力、ダッシュボード等に対応
+- **テンプレート選択UI**: 「🤖 AIでフォーム設計」モーダル上から `openFormDesignTemplateModal()` を呼び出し、`modal-layer-1` を用いたダイアログ形式でテンプレートを選択。既存記述がある場合は `vja.app.showConfirm` で上書き確認を実施
+- **レイアウト自動生成プロンプト & 整列エンジン**:
+  - `prompt-def.js`: パターン（検索一覧、登録、ダイアログ等）および YAMLパラメータ（`カラム数`, `ラベル位置`, `ボタン位置`, `密度`）の明確な解釈ルールを記述
+  - `vja-designer.js` (`applyAiFormDesign`): 4px単位のグリッドスナップ、同一行のラベル・入力コントロールの垂直中央自動揃え、フッター領域の複数ボタンのきれいな右寄せ横一列整列（`gap: 10px`）、同一グループのラジオボタン整列を自動実行
+- **テスト**: `src/mainview/form-design-templates.test.ts` でテンプレート取得ロジックのユニットテスト実装・検証済み
 
 # 既知の制約
 
