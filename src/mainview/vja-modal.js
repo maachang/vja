@@ -105,12 +105,16 @@ async function runAiGenerate(options) {
     };
     // temperatureOverride: リトライ時など、その回だけ一時的にtemperatureを
     // 上書きしたい場合に指定する（プロジェクト設定自体は変更しない）。
-    if (temperatureOverride !== undefined) {
-        body.temperature = temperatureOverride;
-    } else if (getProjectData().aiConfig.temperature !== "" && getProjectData().aiConfig.temperature !== undefined) {
-        body.temperature = getProjectData().aiConfig.temperature;
+    // OpenAI公式API（gpt-5系等）はtemperatureにデフォルト値(1)以外を受け付けないため付与しない
+    if (!hasApiKey) {
+        if (temperatureOverride !== undefined) {
+            body.temperature = temperatureOverride;
+        } else if (getProjectData().aiConfig.temperature !== "" && getProjectData().aiConfig.temperature !== undefined) {
+            body.temperature = getProjectData().aiConfig.temperature;
+        }
     }
-    if (getProjectData().aiConfig.maxTokens) body.max_tokens = getProjectData().aiConfig.maxTokens;
+    // OpenAI公式API（gpt-5系等）はmax_tokensパラメータ自体を受け付けないため付与しない
+    if (!hasApiKey && getProjectData().aiConfig.maxTokens) body.max_tokens = getProjectData().aiConfig.maxTokens;
     if (modelName) body.model = modelName;
     // 推論モードOFFの場合、各サーバー向けのパラメータを付与
     // llama.cpp / mlx-lm: chat_template_kwargs, Ollama: think, vLLM: reasoning_effort
