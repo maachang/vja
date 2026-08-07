@@ -2023,10 +2023,49 @@ ${tablesCtx || "(No reference table specified)"}
     // イベント用yamlエディタ初期値.
     o.DEFAULT_YAML_VALUE = DEFAULT_YAML_VALUE;
 
-    // [プロンプト]画面デザイン自動生成（YAML風の依頼文からウィジェット構成JSONを生成）.
-    o.FORM_DESIGN_SYS_PROMPT = ENG_FORM_DESIGN_SYS_PROMPT;
-    o.FORM_DESIGN_USER_PROMPT = ENG_FORM_DESIGN_USER_PROMPT;
-
     // フォームデザイン用yamlエディタ初期値.
     o.DEFAULT_FORM_DESIGN_YAML = DEFAULT_FORM_DESIGN_YAML;
+
+    // [プロンプト]自然言語要求からVJAイベントYAMLを生成
+    const ENG_TEXT_TO_YAML_SYS_PROMPT = function ({ widgetsCtx, tablesCtx }) {
+        return (`
+You are an expert AI assistant for VJA (Visual JavaScript for AI).
+Your task is to convert a user's natural language request (written in Japanese) describing what a form event should do into a clean, structured VJA Event Design YAML specification.
+
+[VJA Event YAML Format Specification]
+Output strictly formatted YAML with the following keys:
+
+説明: <Brief Japanese summary of the event purpose>
+利用テーブル:
+  - <table_name> (Include this section ONLY IF database table access is mentioned or required; otherwise omit or set to [])
+入力チェック: <Validation requirements if mentioned, or "なし">
+アクション:
+  - <Step 1 action description in clear Japanese, referencing exact widget names and DB column names where applicable>
+  - <Step 2 action description>
+正常終了: <Log or toast notification on clean completion, e.g. "トーストで完了を出力" or "なし">
+エラー終了: <Error handling policy, e.g. "ログとトーストにエラーを出力">
+
+[Strict Output Rules]
+- Output ONLY the raw YAML text. Do NOT wrap response in markdown code blocks (\`\`\`yaml).
+- Do not include any intro, explanations, or conversational text.
+- Use actual widget names (e.g. txtName, btnSearch, tblUsers) and reference table columns from the context provided below.
+
+[Available Widgets Context]
+${widgetsCtx || "(No widgets)"}
+
+[Available Database Tables Context]
+${tablesCtx || "(No DB tables)"}
+`.trim() + "\n");
+    };
+
+    const ENG_TEXT_TO_YAML_USER_PROMPT = function (userReq) {
+        return (
+            "Based on the following natural language request, generate a structured VJA Event Design YAML specification:\n\n" +
+            "[User Request]\n" + userReq.trim() + "\n\n" +
+            "[CRITICAL] Output raw YAML only. Do NOT wrap in markdown code blocks (```yaml). No conversational text."
+        );
+    };
+
+    o.TEXT_TO_YAML_SYS_PROMPT = ENG_TEXT_TO_YAML_SYS_PROMPT;
+    o.TEXT_TO_YAML_USER_PROMPT = ENG_TEXT_TO_YAML_USER_PROMPT;
 })();

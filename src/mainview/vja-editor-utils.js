@@ -44,23 +44,32 @@ function editorSyncGutter(taId, gutId) {
 
 /* ── YAMLエディタ タブ切り替え ── */
 function yamlTabSwitch(tab) {
+    const promptTab = $("tab-prompt");
     const yamlTab = $("tab-yaml");
     const jsTab = $("tab-js");
+    const promptPane = $("pane-prompt");
     const yamlPane = $("pane-yaml");
     const jsPane = $("pane-js");
-    if (!yamlTab || !jsTab || !yamlPane || !jsPane) return;
+
     clearBracketMatch(); // 表示中のペインが切り替わるため、対応括弧ハイライトは一旦消す
-    if (tab === "yaml") {
-        closeCompletionPopup(); // JSペイン限定の入力補完ポップアップが表示されたままにならないよう閉じる
-        yamlTab.classList.add("active");
-        jsTab.classList.remove("active");
-        yamlPane.classList.add("active");
-        jsPane.classList.remove("active");
-    } else {
+    closeCompletionPopup(); // JSペイン限定の入力補完ポップアップが表示されたままにならないよう閉じる
+
+    if (promptTab) promptTab.classList.remove("active");
+    if (yamlTab) yamlTab.classList.remove("active");
+    if (jsTab) jsTab.classList.remove("active");
+    if (promptPane) promptPane.classList.remove("active");
+    if (yamlPane) yamlPane.classList.remove("active");
+    if (jsPane) jsPane.classList.remove("active");
+
+    if (tab === "prompt" && promptTab && promptPane) {
+        promptTab.classList.add("active");
+        promptPane.classList.add("active");
+    } else if (tab === "js" && jsTab && jsPane) {
         jsTab.classList.add("active");
-        yamlTab.classList.remove("active");
         jsPane.classList.add("active");
-        yamlPane.classList.remove("active");
+    } else if (yamlTab && yamlPane) {
+        yamlTab.classList.add("active");
+        yamlPane.classList.add("active");
     }
 }
 
@@ -337,13 +346,15 @@ function openFormYaml(evName) {
         // 空の場合はデフォルトのYAMLセット.
         _PROMPT_DEF.DEFAULT_YAML_VALUE(evName, "form");
     const curJs = f.events["_js_" + evName] || "";
+    const curDoc = f.events["_doc_" + evName] || "";
     pvRegister("yamlSave", () => saveFormYaml(evName));
+    pvRegister("yamlTextToYaml", () => textToYamlGenerate("form", evName));
     pvRegister("yamlAiGen", () => yamlAiGenerate("form", evName));
     pvRegister("yamlAiGenRandom", () => yamlAiGenerate("form", evName, _getBoostedTemperature()));
     pvRegister("yamlMockCheck", () => manualMockCheck(false, evName, undefined, "form"));
     pvRegister("yamlMockEdit", () => openMockOverrideEditor("form", evName));
-    showModal(buildYamlEditorHTML(cur, curJs, true, mhdrHTML("📋 フォーム — " + esc(evName)), "", null, false, "form", evName));
-    initYamlEditorModal(cur, curJs);
+    showModal(buildYamlEditorHTML(cur, curJs, true, mhdrHTML("📋 フォーム — " + esc(evName)), "", null, false, "form", evName, curDoc));
+    initYamlEditorModal(cur, curJs, undefined, false, curDoc);
 }
 
 function saveFormYaml(evName) {

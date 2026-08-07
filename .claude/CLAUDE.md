@@ -149,6 +149,13 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
   - `vja-designer.js` (`applyAiFormDesign`): 4px単位のグリッドスナップ、同一行のラベル・入力コントロールの垂直中央自動揃え、フッター領域の複数ボタンのきれいな右寄せ横一列整列（`gap: 10px`）、同一グループのラジオボタン整列を自動実行
 - **テスト**: `src/mainview/form-design-templates.test.ts` でテンプレート取得ロジックのユニットテスト実装・検証済み
 
+# イベントYAMLドラフト自動生成機能 (Text to YAML)
+
+- **概要**: ユーザーが「やりたいこと」を普通の一言日本語で入力するだけで、AIがフォーム内のウィジェットやDBテーブル情報を考慮し、イベント用YAML定義のドラフトを自動生成する機能
+- **アクセス点**: イベントYAMLエディタ上部の **`✨ やりたいことからYAML作成…`** ボタンから呼び出し（`openTextToYamlModal`）
+- **プロンプト定義**: `prompt-def.js` の `ENG_TEXT_TO_YAML_SYS_PROMPT` / `ENG_TEXT_TO_YAML_USER_PROMPT`
+- **テスト**: `src/mainview/text-to-yaml-prompt.test.ts` でユニットテスト実装・検証済み
+
 # 既知の制約
 
 - **Linux開発実行時のタスクバーアイコンが反映されない**: `electrobun.config.ts`の`build.linux.icon`設定・アイコンファイルのコピー自体は正しく行われている（`Resources/appIcon.png`等に反映済み）ことを確認済み。しかしElectrobunが生成する`.desktop`ファイルの`Icon=`指定がファイル名のみ（絶対パスでない）であり、Linuxデスクトップ環境は`.desktop`ファイルが`~/.local/share/applications/`等の標準位置にインストールされ、アイコンもXDGアイコンテーマの検索パス上に見つかる場合のみタスクバー表示に反映する仕様。`bun run dev`（未インストールの開発実行）の`build/dev-linux-x64/`配下に生成される`.desktop`ではこの条件を満たさないため、タスクバーアイコンが変わらないのはVJA側の設定不備ではなくElectrobunのdev実行時の制約と推定される（未確認）。`bun run build`でパッケージング・インストールした状態、または別のLinuxデスクトップ環境で実際に変わるか要確認。

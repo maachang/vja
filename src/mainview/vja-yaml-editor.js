@@ -157,14 +157,16 @@ function openYaml(wid, evName) {
         // 空の場合はデフォルトのYAMLセット.
         _PROMPT_DEF.DEFAULT_YAML_VALUE(evName, w.name);
     const curJs = (w.jsCode && w.jsCode[evName]) || "";
+    const curDoc = (w.docCode && w.docCode[evName]) || "";
     const isAppEvent = (wid === "appev");
     pvRegister("yamlSave", () => saveYaml(wid, evName));
+    pvRegister("yamlTextToYaml", () => textToYamlGenerate(wid, evName));
     pvRegister("yamlAiGen", () => yamlAiGenerate(wid, evName));
     pvRegister("yamlAiGenRandom", () => yamlAiGenerate(wid, evName, _getBoostedTemperature()));
     pvRegister("yamlMockCheck", () => manualMockCheck(false, evName, getWidget(wid)?.tag, wid));
     pvRegister("yamlMockEdit", () => openMockOverrideEditor(wid, evName));
-    showModal(buildYamlEditorHTML(cur, curJs, true, mhdrHTML("📋 " + esc(w.name) + " — " + esc(evName)), "", null, isAppEvent, wid, evName));
-    initYamlEditorModal(cur, curJs, undefined, isAppEvent);
+    showModal(buildYamlEditorHTML(cur, curJs, true, mhdrHTML("📋 " + esc(w.name) + " — " + esc(evName)), "", null, isAppEvent, wid, evName, curDoc));
+    initYamlEditorModal(cur, curJs, undefined, isAppEvent, curDoc);
 }
 
 /* ── YAMLエディタ 右パネル ── */
@@ -2544,6 +2546,9 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
     const status = $("ai-status");
     const aiStartTime = Date.now(); // AI実行開始時刻を記録
 
+    // AI生成操作の前に現在のエディタ内容（依頼・YAML・JS）を即時保存
+    saveYamlData(wid, evName);
+
     // 確認ダイアログ
     const jsTaCur = $("js-ta")?.value || "";
     const jsTaHasCode = jsTaCur.split("\n")
@@ -2557,8 +2562,6 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
         if (status) status.textContent = "";
         return;
     }
-    // AI生成前にデータを保存（モーダルは閉じない）
-    saveYamlData(wid, evName);
     if (btn) btn.disabled = true;
     if (randomBtn) randomBtn.disabled = true;
     if (status) status.textContent = "⏳ コンテキスト収集中…";
@@ -2641,17 +2644,25 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
             // モーダルを再表示してJSタブに切り替え
             // ウィジェット/フォーム/アプリイベントで「開き直す」関数が異なるため出し分ける
             if (isFormEvent) {
+                const f = getProjectData().forms[getProjectData().curFormIdx];
+                if (!f.events) f.events = {};
+                f.events["_js_" + evName] = finalCode;
                 openFormYaml(evName);
             } else if (isAppEvent) {
+                if (!getProjectData().projectInfo.appEvents) getProjectData().projectInfo.appEvents = {};
+                getProjectData().projectInfo.appEvents[evName] = finalCode;
                 openAppEvents(evName);
             } else {
                 const w2 = getWidget(wid);
                 if (!w2) return;
+                if (!w2.jsCode) w2.jsCode = {};
+                w2.jsCode[evName] = finalCode;
                 openYaml(wid, evName);
             }
             requestAnimationFrame(() => requestAnimationFrame(() => {
                 const jsTa = $("js-ta");
                 if (jsTa) jsTa.value = finalCode;
+                if (typeof saveYamlData === "function") saveYamlData(wid, evName);
                 yamlTabSwitch("js");
                 jsHlUpdate();
                 editorUpdateGutter("js-ta", "js-gutter");
@@ -2751,6 +2762,99 @@ async function confirmApplyFormDesignTemplate() {
         }
         insertFormDesignTemplate(id);
     }
+}
+
+async function textToYamlGenerate(wid, evName) {
+    if (!getProjectData().aiConfig.enabled) {
+        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
+            closeModal();
+            openAiConfig();
+        }
+        return;
+    }
+
+    const promptTa = $("prompt-ta");
+    const aiPromptIn = $("ai-prompt-in");
+    const inputText = promptTa?.value?.trim() || aiPromptIn?.value?.trim() || "";
+    if (!inputText) {
+        showToast("「✨ 依頼」タブまたはAI指示欄にやりたい内容を入力してください");
+        if (promptTa) promptTa.focus();
+        else if (aiPromptIn) aiPromptIn.focus();
+        return;
+    }
+
+    // AI生成操作の前に現在のエディタ内容（依頼・YAML・JS）を即時保存
+    saveYamlData(wid, evName);
+
+    const yamlTaCur = $("yaml-ta");
+    if (yamlTaCur && yamlTaCur.value.trim().length > 0) {
+        const ok = await vja.app.showConfirm(
+            "YAMLエディタに既存の記述があります。\n" +
+            "AIが作成するYAMLで上書きしますか？"
+        );
+        if (!ok) return;
+    }
+
+    const isAppEvent = (wid === "appev");
+    const isFormEvent = (wid === "form");
+    const { allWidgetsCtx, tablesCtx } = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent);
+
+    const sysPrompt = _PROMPT_DEF.TEXT_TO_YAML_SYS_PROMPT({ widgetsCtx: allWidgetsCtx, tablesCtx: tablesCtx });
+    const userPrompt = _PROMPT_DEF.TEXT_TO_YAML_USER_PROMPT(inputText);
+
+    showLoadingModal("YAMLドラフト作成中…");
+
+    await runAiGenerate({
+        systemPrompt: sysPrompt,
+        userPrompt: userPrompt,
+        loadingMsg: "YAMLドラフト作成中…",
+        onSuccess: async (cleanYaml) => {
+            // マークダウンコードブロック (```yaml) を除去
+            const stripped = cleanYaml.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+
+            // モーダルを再表示する前にデータモデルに新YAMLと依頼テキストを書き込み
+            if (isFormEvent) {
+                const f = getProjectData().forms[getProjectData().curFormIdx];
+                if (!f.events) f.events = {};
+                f.events[evName] = stripped;
+                f.events["_doc_" + evName] = inputText;
+                openFormYaml(evName);
+            } else if (isAppEvent) {
+                if (!getProjectData().projectInfo.appEvents) getProjectData().projectInfo.appEvents = {};
+                getProjectData().projectInfo.appEvents[evName + "_yaml"] = stripped;
+                getProjectData().projectInfo.appEvents[evName + "_doc"] = inputText;
+                openAppEvents(evName);
+            } else {
+                const w = getWidget(wid);
+                if (w) {
+                    if (!w.events) w.events = {};
+                    if (!w.docCode) w.docCode = {};
+                    w.events[evName] = stripped;
+                    w.docCode[evName] = inputText;
+                }
+                openYaml(wid, evName);
+            }
+
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                const newYamlTa = $("yaml-ta");
+                if (newYamlTa) {
+                    newYamlTa.value = stripped;
+                    yamlHlUpdate();
+                    editorUpdateGutter("yaml-ta", "yaml-gutter");
+                }
+                const newPromptTa = $("prompt-ta");
+                if (newPromptTa) {
+                    newPromptTa.value = inputText;
+                    editorUpdateGutter("prompt-ta", "prompt-gutter");
+                }
+                if (typeof saveYamlData === "function") saveYamlData(wid, evName);
+                yamlTabSwitch("yaml");
+                showToast("✨ YAMLドラフトを作成・反映しました（📋 YAMLタブを確認）");
+            }));
+        },
+        onCancel: async () => {},
+        onError: async () => {},
+    });
 }
 
 function openFormDesignAi() {
@@ -3231,9 +3335,8 @@ function updateBracketMatch(taId) {
 }
 
 
-/* ── YAMLエディタ共通HTML生成 ── */
-// tabConfig: null=通常(YAML+JS), {tabs:[{id,label,type:'yaml'|'js',val,ph}], aiBar, saveAction}
-function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", extraTabsHTML = "", tabConfig = null, isAppEvent = false, wid = null, evName = null) {
+// 通常構成（✨ 依頼 + 📋 YAML + 📜 JavaScript）
+function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", extraTabsHTML = "", tabConfig = null, isAppEvent = false, wid = null, evName = null, curDoc = "") {
     const aiEnabled = getProjectData().aiConfig.enabled;
 
     // カスタムタブ構成
@@ -3264,8 +3367,6 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         const saveBtn = tabConfig.saveAction
             ? `<button class='pri'${evtAttr("onmousedown", tabConfig.saveAction)}>保存</button>`
             : "";
-        // rightPanel: tabConfig利用画面のうち、フォームデザインエディタのみ右パネルを表示する
-        // （拡張ランタイムエディタ等、他のtabConfig利用箇所には影響させない）
         const rightPanelHtml = tabConfig.rightPanel === "formDesign"
             ? "<div class='yaml-resize-handle' id='yaml-rhandle'></div>" +
               "<div class='yaml-editor-right' id='yaml-rpanel'>" + yamlBuildFormDesignRightPanel() + "</div>"
@@ -3291,7 +3392,6 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         );
     }
 
-    // 通常構成（YAML + JS）
     return (
         "<div class='modal-yaml'>" +
         headerHTML +
@@ -3300,8 +3400,9 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         "<div class='yaml-editor-layout' id='yaml-layout'>" +
         "<div class='yaml-editor-left'>" +
         "<div class='yaml-tab-bar'>" +
-        "<div class='yaml-tab active' id='tab-yaml'>📋 YAML</div>" +
-        "<div class='yaml-tab' id='tab-js'>📜 JavaScript</div>" +
+        "<div class='yaml-tab active' id='tab-yaml'" + evtAttr("onmousedown", "yamlTabSwitch(\"yaml\")") + ">📋 YAML</div>" +
+        "<div class='yaml-tab' id='tab-js'" + evtAttr("onmousedown", "yamlTabSwitch(\"js\");jsHlUpdate();") + ">📜 JavaScript</div>" +
+        "<div class='yaml-tab' id='tab-prompt'" + evtAttr("onmousedown", "yamlTabSwitch(\"prompt\")") + ">✨ 依頼</div>" +
         "<button class='yaml-api-ref-btn' style='margin-left:auto'" + evtAttr("onmousedown", "openApiRef(" + isAppEvent + ")") + ">📖 API</button>" +
         "<button class='yaml-api-ref-btn' id='ai-mock-btn' style='margin-left:0' title='現在JavaScriptタブに表示されている内容を、モックVJAランタイムで試験実行します'" +
         evtAttr("onmousedown", "pvCall(\"yamlMockCheck\")") + ">🧪 モック</button>" +
@@ -3330,13 +3431,24 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         evtAttr("onscroll", "jsHlSync();editorSyncGutter(\"js-ta\",\"js-gutter\")") + " " +
         "placeholder='// AIでJavaScriptを生成、または直接編集できます'>" + esc(curJs) + "</textarea>" +
         "</div></div></div></div>" +
+        "<div class='yaml-pane' id='pane-prompt'>" +
+        "<div class='editor-wrap'>" +
+        "<div class='editor-gutter' id='prompt-gutter'></div>" +
+        "<div class='editor-main'>" +
+        "<textarea class='yaml' id='prompt-ta' autocorrect='off' autocapitalize='off' spellcheck='false' style='color:var(--text) !important;background:transparent;caret-color:var(--text);width:100%;height:100%;display:block;box-sizing:border-box;resize:none' " +
+        evtAttr("oninput", "editorUpdateGutter(\"prompt-ta\",\"prompt-gutter\")") + " " +
+        evtAttr("onscroll", "editorSyncGutter(\"prompt-ta\",\"prompt-gutter\")") + " " +
+        "placeholder='✨ やりたい処理の概要を日本語で自由に記述できます（複数行可）&#10;&#10;例:&#10;1. 入力されたユーザー名で users テーブルをSQL部分一致検索する&#10;2. 検索結果を datagrid (tblResult) に表示する&#10;3. 検索件数をトーストで表示する'>" + esc(curDoc) + "</textarea>" +
+        "</div></div></div>" +
         "<div class='yaml-ai-bar' style='padding-bottom:8px;flex-direction:column;align-items:stretch;gap:4px'>" +
         "<div style='display:flex;align-items:center;gap:4px'>" +
-        "<input id='ai-prompt-in' placeholder='AIへの追加指示（任意）' style='flex:1'>" +
+        "<input id='ai-prompt-in' placeholder='AIへの補足指示（任意）' style='flex:1'>" +
+        "<button class='yaml-ai-btn' id='ai-gen-yaml-btn' title='依頼内容からイベントYAMLドラフトを作成します'" +
+        evtAttr("onmousedown", "pvCall(\"yamlTextToYaml\")") + ">✨ YAMLドラフト生成</button>" +
         "<button class='yaml-ai-btn' id='ai-gen-random-btn' title='temperatureを一時的に上げて再生成します（同じ間違いを繰り返す場合に）'" +
-        evtAttr("onmousedown", "pvCall(\"yamlAiGenRandom\")") + ">🎲 ランダム性を上げて再生成</button>" +
+        evtAttr("onmousedown", "pvCall(\"yamlAiGenRandom\")") + ">🎲 再生成</button>" +
         "<button class='yaml-ai-btn' id='ai-gen-btn'" + evtAttr("onmousedown", "pvCall(\"yamlAiGen\")") + ">" +
-        (aiEnabled ? "🤖 AI生成" : "🤖 AI生成（設定要）") + "</button>" +
+        (aiEnabled ? "🤖 JSコード生成" : "🤖 JSコード生成（設定要）") + "</button>" +
         "<span class='yaml-ai-right-spacer' id='ai-status'></span>" +
         "</div>" +
         "<div style='display:flex;align-items:center;gap:4px'>" +
@@ -3371,7 +3483,7 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
 }
 
 /* ── YAMLエディタ初期化（requestAnimationFrame内の共通処理） ── */
-function initYamlEditorModal(cur, curJs, onAfterInit, isAppEvent = false) {
+function initYamlEditorModal(cur, curJs, onAfterInit, isAppEvent = false, curDoc = "") {
     getEditorContext().isAppEvent = isAppEvent;
     getEditorContext().completion = { active: false, list: [], sel: 0, wordStart: 0, wordEnd: 0, mode: "api" };
     requestAnimationFrame(() => {
@@ -3380,12 +3492,17 @@ function initYamlEditorModal(cur, curJs, onAfterInit, isAppEvent = false) {
         editorUpdateGutter("yaml-ta", "yaml-gutter");
         jsHlUpdate();
         editorUpdateGutter("js-ta", "js-gutter");
+        editorUpdateGutter("prompt-ta", "prompt-gutter");
+        const pta = $("prompt-ta");
         const yta = $("yaml-ta");
         const jta = $("js-ta");
+        if (pta) pta.addEventListener("keydown", editorKeyHandler);
         if (yta) yta.addEventListener("keydown", editorKeyHandler);
         if (jta) jta.addEventListener("keydown", editorKeyHandler);
+        if (pta) pta.addEventListener("mousedown", editorMouseDownHandler2);
         if (yta) yta.addEventListener("mousedown", editorMouseDownHandler2);
         if (jta) jta.addEventListener("mousedown", editorMouseDownHandler2);
+        if (pta) pta.addEventListener("dblclick", editorDblClickHandler);
         if (yta) yta.addEventListener("dblclick", editorDblClickHandler);
         if (jta) jta.addEventListener("dblclick", editorDblClickHandler);
         // JSペインの入力補完（vja API名/ウィジェット名）
@@ -3401,12 +3518,15 @@ function initYamlEditorModal(cur, curJs, onAfterInit, isAppEvent = false) {
         if (jta) jta.addEventListener("mouseup", () => updateBracketMatch("js-ta"));
         if (jta) jta.addEventListener("blur", clearBracketMatch);
         clearBracketMatch();
+        if (!getEditorContext().pu) getEditorContext().pu = {};
+        editorUndoInit("prompt-ta", getEditorContext().pu, curDoc);
         editorUndoInit("yaml-ta", getEditorContext().yu, cur);
         editorUndoInit("js-ta", getEditorContext().ju, curJs);
         yamlInitResize();
         yamlInitRpanelEvents();
         rAfBind("#tab-yaml", "click", () => yamlTabSwitch("yaml"));
         rAfBind("#tab-js", "click", () => { yamlTabSwitch("js"); jsHlUpdate(); });
+        rAfBind("#tab-prompt", "click", () => yamlTabSwitch("prompt"));
         jsHlUpdate();
         if (onAfterInit) onAfterInit();
     });
@@ -4139,7 +4259,7 @@ Object.assign(window, {
     buildYamlEditorHTML, initYamlEditorModal,
     openAiConfig, aiCfgModelListHtml, aiCfgToggleRouter, aiCfgToggleEnabled,
     aiCfgFetchModels, saveAiConfig, aiCfgSelectPreset, aiCfgSaveAsPreset, aiCfgDoSaveAsPreset, aiCfgDeletePreset,
-    editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, insertFormDesignTemplate, openFormDesignTemplateModal, confirmApplyFormDesignTemplate, formDesignAiGenerate, saveFormDesignDraft,
+    editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, insertFormDesignTemplate, openFormDesignTemplateModal, confirmApplyFormDesignTemplate, textToYamlGenerate, formDesignAiGenerate, saveFormDesignDraft,
     parseFormDesignJson, openAiRawOutputModal,
     validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
     openAiValidationDetailModal,

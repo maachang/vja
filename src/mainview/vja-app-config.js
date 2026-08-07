@@ -66,11 +66,13 @@ function openAppEvents(evKey) {
         ? "// ⚠️ このコードはBun側でTypeScriptとして実行されます\n// vja.db.query() / vja.session.get() 等が使用できます\n\n"
         : "// ⚠️ このコードはBun側でTypeScriptとして実行されます（アプリ終了時）\n// vja.db / vja.session 等が使用できます\n\n";
     const curJs = ae[evKey] || _tsHint;
+    const curDoc = ae[evKey + "_doc"] || "";
     const evTabs = APP_EV_TYPES.map(t =>
         "<div class='yaml-tab " + (t.key === evKey ? "active" : "") + "' " +
         "id='appev-tab-" + t.key + "'>" + t.label + "</div>"
     ).join("");
     pvRegister("yamlSave", saveAppEvent);
+    pvRegister("yamlTextToYaml", () => textToYamlGenerate("appev", evKey));
     pvRegister("yamlAiGen", () => yamlAiGenerate("appev", evKey));
     pvRegister("yamlAiGenRandom", () => yamlAiGenerate("appev", evKey, _getBoostedTemperature()));
     pvRegister("yamlMockCheck", () => manualMockCheck(true, evKey, undefined, "appev"));
@@ -83,13 +85,13 @@ function openAppEvents(evKey) {
         "</div>" +
         "<button class='mclose'" + evtAttr("onmousedown", "closeModal()") + ">✕</button>" +
         "</div>";
-    showModal(buildYamlEditorHTML(cur, curJs, false, appEvHeader, "", null, true, "appev", evKey));
+    showModal(buildYamlEditorHTML(cur, curJs, false, appEvHeader, "", null, true, "appev", evKey, curDoc));
     initYamlEditorModal(cur, curJs, () => {
         APP_EV_TYPES.forEach(t => {
             const tabEl = $("appev-tab-" + t.key);
             if (tabEl) tabEl.addEventListener("click", () => openAppEvents(t.key));
         });
-    }, true);
+    }, true, curDoc);
 }
 
 function saveAppEvent() {
