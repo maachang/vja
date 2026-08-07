@@ -1838,43 +1838,60 @@ ${tablesCtx || "（参照テーブル未指定）"}
     // [英語:プロンプト]画面デザイン自動生成（YAML風の依頼文からウィジェット構成JSONを生成）
     const ENG_FORM_DESIGN_SYS_PROMPT = function ({ formW, formH, tablesCtx }) {
         return (`
-You are an AI specializing in screen layout design for VJA (a form designer for business applications).
-Your task is to read a Japanese YAML screen definition (including screen purpose, form layout policy, input fields, and action items) provided by the user, determine the widgets to be placed, and output a layout JSON array containing specific coordinates (x, y, w, h) for each widget.
+You are an expert business application UI designer specializing in screen layout design for VJA (a form designer for desktop/web business apps).
+Your task is to read a Japanese YAML screen definition (including screen purpose, form layout directives, input fields, and action items), determine appropriate widgets, and output a precise layout JSON array with non-overlapping pixel coordinates (x, y, w, h).
 
-[Layout Generation Rules]
-- Highest Priority of "フォームレイアウト" (Form Layout): If the YAML contains a "フォームレイアウト" (or formLayout) field, you MUST interpret the layout concept or design assistance instructions specified there (e.g., "2-column composition", "place labels above inputs", "align buttons to the bottom right") as the highest priority constraint. Calculate coordinates in strict accordance with these instructions.
-- Form Size: Width = ${formW}px, Height = ${formH}px. All widgets must fit within these dimensions (x + w <= ${formW}, y + h <= ${formH}).
-- Layout Flow: Unless otherwise specified in the "フォームレイアウト" field, arrange elements sequentially from top to bottom based on the order of fields in the user's request.
-- Strict No-Overlap: For any two widgets, their rectangular areas (defined by x, y, w, h) must never intersect or overlap.
+[Layout Directives & High-Priority Rules]
+1. Highest Priority of "フォームレイアウト" (Form Layout Directives):
+   - You MUST strictly follow directives written in "フォームレイアウト" (or formLayout).
+   - Recognize layout parameters:
+     - Columns ("カラム数" / "columns"): 1 | 2 | 3. Divide inputs into clean columns (e.g., 2 columns: Col 1 x=20, Col 2 x=${Math.floor(formW / 2) + 10}).
+     - Label Position ("ラベル位置" / "labelPosition"): "左" (left / label on the left of input, e.g., lbl x=20 w=100, input x=125 w=180, same y) OR "上" (top / label above input, e.g., lbl x=20 y=Y w=180 h=20, input x=20 y=Y+22 w=180 h=26). Default is "left".
+     - Button Alignment ("ボタン位置" / "buttonPosition"): "右下" (bottom-right / x=${formW - 220}, y=${formH - 45}) | "右" (top-right for search buttons) | "下部中央" (bottom-center).
+     - Density ("密度" / "density"): "コンパクト" (compact: item height 24px, gapY 28px) | "標準" (normal: item height 28px, gapY 36px).
+
+2. Recognized Screen Layout Patterns:
+   - Search & List Screen (検索・一覧画面):
+     - Search Condition Area (Top): Place labels and inputs in 1 or 2 rows (y: 20~80). Place Search/Clear buttons to the right of inputs or on the right.
+     - Data Grid Area (Bottom): Place a "datagrid" filling the remaining width and height (x: 20, y: searchAreaBottom + 15, w: ${formW - 40}, h: ${formH} - y - 30).
+   - Form & Registration Screen (登録・詳細画面):
+     - Place labels and inputs structured in 1 or 2 clean columns with uniform row gaps (yDelta: 36~40px).
+     - Action buttons (Save, Cancel, Close, etc.) MUST be aligned at the bottom right (x: ${formW - 220}, y: ${formH - 45}, h: 30) or bottom center.
+
+3. Coordinates & Sizing Guidelines:
+   - Form Bounds: Width = ${formW}px, Height = ${formH}px. All widgets MUST fit within x+w <= ${formW} and y+h <= ${formH}.
+   - Standard Heights: label=22~24px, inputtype/selectBox=26~28px, textarea=60~100px, button=28~32px, datagrid=200~400px.
+   - Strict No-Overlap: No two widgets may intersect or overlap. Leave a minimum 6px gap between widgets.
 
 [Output Format Rules - Strict Adherence Required]
 - Output MUST be a raw JSON array only.
-- Do NOT wrap the JSON in markdown code blocks (e.g., do not use \`\`\`json). Start your response directly with [ and end with ].
+- Do NOT wrap the JSON in markdown code blocks (e.g., do not use \`\`\`json). Start directly with [ and end with ].
 - Do not include any explanations, introduction, or comments.
 
 [JSON Schema per Element]
 Each object in the array must have the following keys:
 - "tag": "inputtype" | "textarea" | "checkbox" | "radio" | "selectBox" | "listbox" | "button" | "label" | "datagrid" | "qrcode" | "markdown"
-- "name": Unique VB6-style Hungarian notation (e.g., txtUserId, lblUserId, btnSubmit, chkAgree, radMale, cmbCategory, lstItems, txaMemo, tblResult). Ensure names are unique within the array.
-- "text": Caption text for "label", "button", "checkbox", "radio" (required). For "qrcode", the raw text/URL to encode. For "markdown", the raw Markdown source text to display. Omit or leave empty "" for "inputtype", "textarea", and "datagrid".
+- "name": Unique VB6-style Hungarian notation (e.g., txtUserId, lblUserId, btnSubmit, chkAgree, radMale, cmbCategory, lstItems, txaMemo, tblResult). Unique within array.
+- "text": Caption text for "label", "button", "checkbox", "radio" (required). For "qrcode", the raw text/URL. For "markdown", raw Markdown source. Empty "" for others.
 - "inputType": (Required only when tag is "inputtype") "text" | "password" | "number" | "email" | "tel" | "date" | "time" | "url"
-- "placeholder": (Optional) Sample input text for "inputtype" or "textarea".
-- "group": (Required only when tag is "radio") Group name string. Assign the same value to radio buttons belonging to the same selection group (e.g., "Gender", "MemberType").
-- "options": (Required only when tag is "selectBox" or "listbox") An array of selectable choices, in either of the following two forms:
-  - Plain strings, when the display label and the internal value should be the same (e.g., ["Pending", "In Progress", "Done"])
-  - {"label": display text, "value": internal value} objects, when the display label and internal value differ. If the request explicitly maps a display label to an internal value (e.g., a Japanese "表示名: 内部値" style mapping such as "馬名: name"), you MUST use this object form (e.g., [{"label": "馬名", "value": "name"}, {"label": "父馬", "value": "father"}])
-  - Infer concrete, realistic options from the request text, form layout, and reference table content. Never leave this an empty array; if the specific options are not stated, create reasonable general-purpose options instead.
-- "columns": (Required only when tag is "datagrid") An array of column definitions. Each element is {"name": the actual data column name (use the reference table's column name when a reference table is specified), "displayName": the header caption shown on screen (omit only if it should be identical to "name"; when a Japanese-style caption is expected, you MUST set this), "width": approximate relative width as an integer, with all columns in the same datagrid summing to roughly 100}. If a reference table is specified, base the columns on that table's column definitions.
-- "x", "y", "w", "h": Integers (pixels). Determine these values to satisfy the "フォームレイアウト" concept while ensuring practical widget dimensions.
+- "placeholder": (Optional) Sample text for "inputtype" or "textarea".
+- "group": (Required only when tag is "radio") Group name.
+- "options": (Required only when tag is "selectBox" or "listbox") Array of options: ["Item1", "Item2"] or [{"label": "馬名", "value": "name"}, ...].
+- "columns": (Required only when tag is "datagrid") Array of column definitions: [{"name": "col_name", "displayName": "表示名", "width": 25}, ...].
+- "x", "y", "w", "h": Integers (pixels).
 
-- Reference tables: Do not arbitrarily create column names that are not listed in the reference table definition.
-- Number of buttons: Adhere strictly to the number of action items specified in the request (do not arbitrarily add or reduce actions).
+- Reference tables: Do not arbitrarily invent column names not in the reference table.
+- Number of buttons: Match the number of action items specified in the request.
 
 [Few-Shot Example]
 Input YAML Example:
 ---
 説明: horse_info 内容を検索して表示するための画面
-フォームレイアウト: 検索条件は画面上部、検索結果の一覧は画面下部に表示する。
+フォームレイアウト: 
+  パターン: 検索一覧画面
+  カラム数: 2
+  ラベル位置: 左
+  ボタン位置: 右下
 参照テーブル:
   - horse_info
 入力項目:
@@ -1891,21 +1908,22 @@ Input YAML Example:
 ---
 Output JSON Example:
 [
-  {"tag": "label", "name": "lblSearchWord", "text": "検索ワード", "x": 20, "y": 20, "w": 100, "h": 25},
-  {"tag": "inputtype", "name": "txtSearchWord", "text": "", "inputType": "text", "x": 130, "y": 20, "w": 150, "h": 25},
+  {"tag": "label", "name": "lblSearchWord", "text": "検索ワード", "x": 20, "y": 20, "w": 90, "h": 24},
+  {"tag": "inputtype", "name": "txtSearchWord", "text": "", "inputType": "text", "placeholder": "検索ワードを入力", "x": 115, "y": 20, "w": 160, "h": 26},
+  {"tag": "label", "name": "lblSearchCol", "text": "検索対象", "x": 295, "y": 20, "w": 75, "h": 24},
   {"tag": "selectBox", "name": "cmbSearchCol", "options": [
     {"label": "馬名", "value": "name"},
     {"label": "父馬", "value": "father"},
     {"label": "母馬", "value": "mother"},
     {"label": "性別", "value": "sex"}
-  ], "x": 290, "y": 20, "w": 120, "h": 25},
-  {"tag": "button", "name": "btnSearch", "text": "検索ボタン", "x": 420, "y": 20, "w": 90, "h": 25},
+  ], "x": 375, "y": 20, "w": 130, "h": 26},
+  {"tag": "button", "name": "btnSearch", "text": "検索ボタン", "x": 515, "y": 20, "w": 85, "h": 26},
   {"tag": "datagrid", "name": "tblHorseInfo", "columns": [
     {"name": "name", "displayName": "馬名", "width": 25},
     {"name": "father", "displayName": "父馬", "width": 25},
     {"name": "mother", "displayName": "母馬", "width": 25},
     {"name": "sex", "displayName": "性別", "width": 25}
-  ], "x": 20, "y": 60, "w": 490, "h": 200}
+  ], "x": 20, "y": 60, "w": ${formW - 40}, "h": ${Math.max(180, formH - 90)}}
 ]
 
 [Reference Table Definition]
@@ -1944,16 +1962,29 @@ ${tablesCtx || "(No reference table specified)"}
 
     // フォームデザインにおけるYAMLが存在しない場合にセット
     const DEFAULT_FORM_DESIGN_YAML = `
-# フォームデザイン定義.
+# フォームデザイン定義
 
-説明: 
-フォームレイアウト: 
+説明: ユーザー情報を検索・登録するための画面
+フォームレイアウト:
+  パターン: 検索一覧画面   # 検索一覧画面 / 登録フォーム画面 / ダイアログ
+  カラム数: 2               # 1 / 2 / 3
+  ラベル位置: 左            # 左 / 上
+  ボタン位置: 右下          # 右下 / 右 / 下部中央
+
 #参照テーブル: 
+#  - users
+
 入力項目: 
-  - 
+  - 検索ワード: inputtype で text
+  - 権限フィルター: selectBox
+    - 一般ユーザー: user
+    - 管理者: admin
+  - 一覧表示: datagrid
+
 アクション項目: 
-  - 
-`.trim() + "\n\n\n\n\n";
+  - 検索ボタン
+  - クリアボタン
+`.trim() + "\n\n";
 
     //////////////////
     // グローバル展開.

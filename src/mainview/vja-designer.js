@@ -416,6 +416,11 @@ function applyAiFormDesign(items) {
         if (!Number.isFinite(w) || w <= 0) w = tool.def.w || 100;
         let h = Number(item.h);
         if (!Number.isFinite(h) || h <= 0) h = tool.def.h || 24;
+
+        // グリッドスナップ (4px単位)
+        w = Math.round(w / 4) * 4;
+        h = Math.round(h / 4) * 4;
+
         // フォーム内に収まる上限まで縮める（隠れウィジェット防止）
         w = Math.min(w, Math.max(40, formW - MARGIN * 2));
         h = Math.min(h, Math.max(20, formH - MARGIN * 2));
@@ -423,9 +428,14 @@ function applyAiFormDesign(items) {
         // ── 座標：不正値はMARGINにフォールバックし、範囲外ははみ出さない位置へ補正 ──
         let x = Number(item.x);
         if (!Number.isFinite(x)) x = MARGIN;
-        x = Math.max(MARGIN, Math.min(x, formW - MARGIN - w));
         let y = Number(item.y);
         if (!Number.isFinite(y)) y = MARGIN;
+
+        // 4px単位のグリッドスナップ
+        x = Math.round(x / 4) * 4;
+        y = Math.round(y / 4) * 4;
+
+        x = Math.max(MARGIN, Math.min(x, formW - MARGIN - w));
         y = Math.max(MARGIN, Math.min(y, Math.max(MARGIN, formH - MARGIN - h)));
 
         const widget = buildWidgetObject(tool, x, y, w, h);
@@ -462,6 +472,21 @@ function applyAiFormDesign(items) {
         }
 
         renderWidget(widget, true);
+    });
+
+    // ── ポストプロセッシング：同一行にあるラベルと入力コントロールの垂直位置を微調整・統一する ──
+    const generatedWidgets = getProjectData().widgets;
+    const labels = generatedWidgets.filter(w => w.tag === "label");
+    const inputs = generatedWidgets.filter(w => w.tag === "inputtype" || w.tag === "selectBox" || w.tag === "listbox" || w.tag === "checkbox" || w.tag === "radio");
+
+    labels.forEach(lbl => {
+        const rowInput = inputs.find(inp => Math.abs(inp.y - lbl.y) <= 8);
+        if (rowInput) {
+            const centerY = rowInput.y + Math.floor((rowInput.h - lbl.h) / 2);
+            lbl.y = Math.max(MARGIN, Math.round(centerY / 4) * 4);
+            const el = document.getElementById("w-" + lbl.id);
+            if (el) el.style.top = lbl.y + "px";
+        }
     });
 
     pushUndo();
