@@ -42,6 +42,7 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
   - electrobun: https://github.com/blackboardsh/electrobun
 - VB6のような開発環境を実装するので「VJAあら実行＝vjaから起動」と「VJAからコンパイル＝コンパイル」の機能が必要
 - bun.js に sqlite3 が入ってるので、このRDBMSを利用する
+- **LLM利用方針**: 完全無料のローカルLLM（Qwen2.5 / Gemma等）を主軸としつつ、ローカルLLM環境がないPCでもOpenAIの超低コストモデル（`gpt-5.6-luna` / `gpt-4o-mini` 等）を活用可能な設計。1イベント単位の細分化リクエストによりトークン消費が極小であり、クラウドAPIでも実質数円レベル（ほぼ無償感覚）で利用できる強みをドキュメント等で積極推進している
 
 # ディレクトリ構成 
 
