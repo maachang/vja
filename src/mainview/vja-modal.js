@@ -125,12 +125,11 @@ async function runAiGenerate(options) {
     }
     getAiContext().fetchId = null;
     showLoadingModal(loadingMsg || "AI生成中…");
-    let startTime;
+    const startTime = Date.now(); // 開始時間.
     let res = null;
     try {
         // リクエスト送信前ログ
         window.vja?.log?.debug?.("[AI] request: endpoint=" + endpoint + " model=" + (modelName || "none") + " temperature=" + (body.temperature !== undefined ? body.temperature : "(server default)") + " systemLen=" + systemPrompt.length + " userLen=" + userPrompt.length);
-        startTime = Date.now(); // 開始時間.
         const fetchReq = window.vja.fetch(endpoint + "/v1/chat/completions", {
             method: "POST",
             headers,
@@ -148,7 +147,7 @@ async function runAiGenerate(options) {
         const raw = (msg.content || msg.reasoning_content || "");
 
         // AI返却結果をデバッグ出力.
-        vja.log.debug("# AI返却結果:\n" + raw + "\n---EOF");
+        window.vja?.log?.debug?.("# AI返却結果:\n" + raw + "\n---EOF");
 
         const generated = (() => {
             // <think>ブロックを除去
@@ -183,7 +182,7 @@ async function runAiGenerate(options) {
     } finally {
         getAiContext().fetchId = null;
         // AI処理時間を出力.
-        vja.log.debug("# AI処理時間: " + (Date.now() - startTime) + " msec");
+        window.vja?.log?.debug?.("# AI処理時間: " + (Date.now() - startTime) + " msec");
     }
 }
 /* ═══════════════════════════════════════════

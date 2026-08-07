@@ -2103,7 +2103,11 @@ function dismissAiValidationBanner() {
    自動的に淘汰する（「👍 役に立った」で明示的にpinしたものは淘汰対象外）。
    - 記録後、同種の問題（mistakeSummary一致）が2回再発 → 自動削除（効いていない）
    - 再発しなければそのまま残る（効いている、とみなす） */
-function _learnedFixesKey(wid, evName) { return wid + "_" + evName; }
+function _learnedFixesKey(wid, evName) {
+    if (wid === "global") return "global";
+    if (wid === "tag") return "tag_" + evName;
+    return wid + "_" + evName;
+}
 function _getLearnedFixes(wid, evName) {
     return (getProjectData().learnedFixes || {})[_learnedFixesKey(wid, evName)] || [];
 }
@@ -2112,39 +2116,76 @@ function _setLearnedFixes(wid, evName, arr) {
     getProjectData().learnedFixes[_learnedFixesKey(wid, evName)] = arr;
 }
 // AI修正（manualRetryAiFix）が成功した直後に、修正前の問題内容を1件記録する。
-// 同一内容が既にあれば追加しない。上限3件を超える分は、pinned以外の最古から間引く。
+// 同一内容が既にあれば追加しない。上限5件を超える分は、pinned以外の最古から間引く。
+// また同一タグの複数ウィジェットで同様の修正が記録された場合は、タグ共有ルール(tag_<tagName>)に自動昇格する。
 function _recordLearnedFix(wid, evName, mistakeSummary) {
     if (!mistakeSummary || mistakeSummary === "(詳細なし)") return;
     let list = _getLearnedFixes(wid, evName);
-    if (list.some(e => e.mistakeSummary === mistakeSummary)) return;
-    list = [...list, {
-        id: Date.now() + "_" + Math.random().toString(36).slice(2, 7),
-        createdAt: Date.now(), mistakeSummary, pinned: false, recurCount: 0,
-    }];
-    const MAX = 3;
-    while (list.length > MAX) {
-        const idx = list.findIndex(e => !e.pinned);
-        if (idx === -1) break; // 全件pinned済みならMAX超過もやむを得ず残す
-        list.splice(idx, 1);
+    if (!list.some(e => e.mistakeSummary === mistakeSummary)) {
+        list = [...list, {
+            id: Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+            createdAt: Date.now(), mistakeSummary, pinned: false, recurCount: 0, scope: "event",
+        }];
+        const MAX = 5;
+        while (list.length > MAX) {
+            const idx = list.findIndex(e => !e.pinned);
+            if (idx === -1) break;
+            list.splice(idx, 1);
+        }
+        _setLearnedFixes(wid, evName, list);
+        window.vja?.log?.debug?.("[学習履歴] 記録: " + wid + "_" + evName + " → " + mistakeSummary);
     }
-    _setLearnedFixes(wid, evName, list);
-    window.vja?.log?.debug?.("[学習履歴] 記録: " + wid + "_" + evName + " → " + mistakeSummary);
+
+    // タグ単位への自動昇格チェック
+    const w = typeof getWidget === "function" ? getWidget(wid) : null;
+    if (w && w.tag) {
+        const tagKey = "tag_" + w.tag;
+        let tagList = _getLearnedFixes("tag", w.tag);
+        // 他の同一タグで同種エラーが記録されているか判定
+        const allFixes = getProjectData().learnedFixes || {};
+        let tagOccurrences = 0;
+        for (const [k, arr] of Object.entries(allFixes)) {
+            if (k.startsWith("tag_")) continue;
+            if (arr.some(e => e.mistakeSummary === mistakeSummary)) {
+                tagOccurrences++;
+            }
+        }
+        if (tagOccurrences >= 2 && !tagList.some(e => e.mistakeSummary === mistakeSummary)) {
+            tagList = [...tagList, {
+                id: Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+                createdAt: Date.now(), mistakeSummary: `[${w.tag}共通] ${mistakeSummary}`, pinned: true, recurCount: 0, scope: "tag",
+            }];
+            _setLearnedFixes("tag", w.tag, tagList);
+            window.vja?.log?.debug?.("[学習履歴] タグ共通ルールへ自動昇格: tag_" + w.tag + " → " + mistakeSummary);
+        }
+    }
 }
 // 生成・検証のたびに呼び、今回の失敗が過去に記録した「直したはずの間違い」と
-// 同じ内容であれば再発とみなしrecurCountを+1する。2回再発したエントリは
+// 同じ内容であれば再発とみなしrecurCountを+1する。3回再発したエントリは
 // 「効いていない」と判断し、pinned以外は自動的に削除する。
 function _trackLearnedFixRecurrence(wid, evName, mistakeSummary) {
     if (!mistakeSummary || mistakeSummary === "(詳細なし)") return;
-    let changed = false;
-    let list = _getLearnedFixes(wid, evName).map(e => {
-        if (e.mistakeSummary !== mistakeSummary) return e;
-        changed = true;
-        return { ...e, recurCount: (e.recurCount || 0) + 1 };
-    });
-    if (!changed) return;
-    list = list.filter(e => e.pinned || (e.recurCount || 0) < 2);
-    _setLearnedFixes(wid, evName, list);
-    window.vja?.log?.debug?.("[学習履歴] 再発検知: " + wid + "_" + evName + " → " + mistakeSummary);
+    const keysToCheck = [_learnedFixesKey(wid, evName)];
+    const w = typeof getWidget === "function" ? getWidget(wid) : null;
+    if (w && w.tag) keysToCheck.push(_learnedFixesKey("tag", w.tag));
+    keysToCheck.push(_learnedFixesKey("global", "all"));
+
+    for (const key of keysToCheck) {
+        const allFixes = getProjectData().learnedFixes || {};
+        const curArr = allFixes[key];
+        if (!curArr || curArr.length === 0) continue;
+        let changed = false;
+        let list = curArr.map(e => {
+            if (!mistakeSummary.includes(e.mistakeSummary) && !e.mistakeSummary.includes(mistakeSummary)) return e;
+            changed = true;
+            return { ...e, recurCount: (e.recurCount || 0) + 1 };
+        });
+        if (changed) {
+            list = list.filter(e => e.pinned || (e.recurCount || 0) < 3);
+            allFixes[key] = list;
+            window.vja?.log?.debug?.("[学習履歴] 再発検知: key=" + key + " → " + mistakeSummary);
+        }
+    }
 }
 // 「👍 役に立った」ボタン。以後、再発しても自動削除の対象外にする。
 function yamlPinLearnedFix(wid, evName, id) {
@@ -2155,13 +2196,29 @@ function yamlDeleteLearnedFix(wid, evName, id) {
     const list = _getLearnedFixes(wid, evName).filter(e => e.id !== id);
     _setLearnedFixes(wid, evName, list);
 }
-// このイベントの学習履歴を、ユーザープロンプトに追加する文字列に変換する。
-// 1件も無ければ空文字（＝プロンプトへの追加なし）。
+// イベント固有、タグ共通、プロジェクト共通の学習履歴をプロンプト用に統合生成する
 function _buildLearnedFixesCtx(wid, evName) {
-    const list = _getLearnedFixes(wid, evName);
-    if (list.length === 0) return "";
-    return "## Past mistakes in this project for this event (already fixed once — avoid repeating)\n"
-        + list.map(e => "- " + e.mistakeSummary).join("\n");
+    const w = typeof getWidget === "function" ? getWidget(wid) : null;
+    const tag = w?.tag;
+
+    const eventList = _getLearnedFixes(wid, evName);
+    const tagList = tag ? _getLearnedFixes("tag", tag) : [];
+    const globalList = _getLearnedFixes("global", "all");
+
+    const sections = [];
+    if (globalList.length > 0) {
+        sections.push("【プロジェクト全体ルール】\n" + globalList.map(e => "- " + e.mistakeSummary).join("\n"));
+    }
+    if (tagList.length > 0) {
+        sections.push(`【${tag} ウィジェット共通の注意点】\n` + tagList.map(e => "- " + e.mistakeSummary).join("\n"));
+    }
+    if (eventList.length > 0) {
+        sections.push(`【${wid}.${evName} の過去の修正箇所】\n` + eventList.map(e => "- " + e.mistakeSummary).join("\n"));
+    }
+
+    if (sections.length === 0) return "";
+    return "## 過去に学習したプロジェクト固有の注意点（以下を固く遵守し、同じ間違いを繰り返さないこと）\n"
+        + sections.join("\n\n");
 }
 
 
@@ -3665,6 +3722,120 @@ function editorReplaceAll() {
 }
 
 /* ═══════════════════════════════════════════
+   学習履歴（AIプロンプト記憶）管理UI
+═══════════════════════════════════════════ */
+function openLearnedFixesModal() {
+    renderLearnedFixesModal();
+}
+
+function renderLearnedFixesModal() {
+    const allFixes = getProjectData().learnedFixes || {};
+    let rowsHtml = "";
+    let count = 0;
+
+    for (const [key, list] of Object.entries(allFixes)) {
+        if (!Array.isArray(list) || list.length === 0) continue;
+        let label = key;
+        if (key === "global") { label = "【共通ルール】"; }
+        else if (key.startsWith("tag_")) { label = `【${key.slice(4)} ウィジェット共通】`; }
+
+        list.forEach(item => {
+            count++;
+            const isPinned = !!item.pinned;
+            rowsHtml += `
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-bottom:1px solid var(--border); gap:8px;">
+                <div style="flex:1;">
+                    <span style="font-size:11px; padding:2px 6px; border-radius:4px; margin-right:6px; background:var(--bg3); color:var(--accent2);">${esc(label)}</span>
+                    <span style="font-size:13px;">${esc(item.mistakeSummary)}</span>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <button class="tb-btn" style="padding:2px 8px; font-size:12px; background:${isPinned ? 'var(--accent)' : 'transparent'}; color:${isPinned ? '#fff' : 'var(--text)'};"
+                            onclick="togglePinLearnedFixItem('${esc(key)}', '${esc(item.id)}')">
+                        ${isPinned ? '📌 固定済' : '📌 固定'}
+                    </button>
+                    <button class="tb-btn" style="padding:2px 8px; font-size:12px; color:#ff5f56;"
+                            onclick="deleteLearnedFixItem('${esc(key)}', '${esc(item.id)}')">
+                        削除
+                    </button>
+                </div>
+            </div>`;
+        });
+    }
+
+    if (count === 0) {
+        rowsHtml = `<div style="padding:24px; text-align:center; color:var(--text2); font-size:13px;">学習済みのノウハウや個別ルールはまだありません</div>`;
+    }
+
+    const html = `
+    ${mhdrHTML("🧠 学習ノウハウ（AIプロンプト記憶）管理")}
+    <div style="padding:16px; display:flex; flex-direction:column; gap:12px; max-height:70vh; overflow-y:auto;">
+        <p style="font-size:12px; color:var(--text2); margin:0;">
+            AIが過去のリトライで学習した注意事項や、手動で指定した開発ルールの一覧です。これらはAIへのコード生成プロンプトに自動挿入されます。
+        </p>
+
+        <!-- 手動ルール追加エリア -->
+        <div style="display:flex; gap:8px; align-items:center; background:var(--bg2); padding:10px; border-radius:6px; border:1px solid var(--border);">
+            <select id="lf-new-scope" style="padding:6px; font-size:12px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px;">
+                <option value="global">プロジェクト共通ルール</option>
+                <option value="tag_datagrid">datagrid 共通ルール</option>
+                <option value="tag_textbox">textbox 共通ルール</option>
+                <option value="tag_button">button 共通ルール</option>
+            </select>
+            <input type="text" id="lf-new-text" placeholder="例: 日付文字列は YYYY-MM-DD 形式で展開すること" style="flex:1; padding:6px; font-size:12px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px;" />
+            <button class="tb-btn" style="padding:6px 12px; font-size:12px; background:var(--accent); color:#fff;" onclick="addManualLearnedFix()">追加</button>
+        </div>
+
+        <!-- ルール一覧 -->
+        <div style="background:var(--bg); border:1px solid var(--border); border-radius:6px; max-height:360px; overflow-y:auto;">
+            ${rowsHtml}
+        </div>
+    </div>
+    ${mfootHTML('<button class="btn-cancel" onclick="closeModal()">閉じる</button>')}
+    `;
+
+    showModal(html);
+}
+
+function togglePinLearnedFixItem(key, id) {
+    const allFixes = getProjectData().learnedFixes || {};
+    const list = allFixes[key] || [];
+    allFixes[key] = list.map(item => item.id === id ? { ...item, pinned: !item.pinned } : item);
+    pushUndo();
+    renderLearnedFixesModal();
+}
+
+function deleteLearnedFixItem(key, id) {
+    const allFixes = getProjectData().learnedFixes || {};
+    const list = allFixes[key] || [];
+    allFixes[key] = list.filter(item => item.id !== id);
+    pushUndo();
+    renderLearnedFixesModal();
+}
+
+function addManualLearnedFix() {
+    const scope = $("lf-new-scope")?.value || "global";
+    const text = $("lf-new-text")?.value?.trim();
+    if (!text) {
+        showToast("ルール内容を入力してください");
+        return;
+    }
+    const allFixes = getProjectData().learnedFixes || {};
+    if (!allFixes[scope]) allFixes[scope] = [];
+    allFixes[scope].push({
+        id: Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+        createdAt: Date.now(),
+        mistakeSummary: text,
+        pinned: true,
+        recurCount: 0,
+        scope: scope === "global" ? "global" : "tag",
+    });
+    getProjectData().learnedFixes = allFixes;
+    pushUndo();
+    showToast("プロジェクトルールを追加しました");
+    renderLearnedFixesModal();
+}
+
+/* ═══════════════════════════════════════════
    window へのエクスポート（他ファイルから参照される関数のみ）
 ═══════════════════════════════════════════ */
 Object.assign(window, {
@@ -3685,6 +3856,8 @@ Object.assign(window, {
     yamlSetTableOpt, yamlSetValidationOpt, applyTableYamlSync,
     yamlSetMockCheckOpt,
     yamlPinLearnedFix, yamlDeleteLearnedFix,
+    openLearnedFixesModal, renderLearnedFixesModal, togglePinLearnedFixItem, deleteLearnedFixItem, addManualLearnedFix,
     closeCompletionPopup, acceptCompletionAt, clearBracketMatch, updateBracketMatch,purgeOverridesForWid,
     OVERRIDE_MAP_NAMES, purgeOverridesForKey,
 });
+
