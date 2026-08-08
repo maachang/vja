@@ -148,11 +148,18 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
   - `prompt-def.js`: パターン（検索一覧、登録、ダイアログ等）および YAMLパラメータ（`カラム数`, `ラベル位置`, `ボタン位置`, `密度`）の明確な解釈ルールを記述
   - `vja-designer.js` (`applyAiFormDesign`): 4px単位のグリッドスナップ、同一行のラベル・入力コントロールの垂直中央自動揃え、フッター領域の複数ボタンのきれいな右寄せ横一列整列（`gap: 10px`）、同一グループのラジオボタン整列を自動実行
 - **テスト**: `src/mainview/form-design-templates.test.ts` でテンプレート取得ロジックのユニットテスト実装・検証済み
+- **画面デザインYAMLドラフト生成（初心者導線）**: 「🤖 AIでフォーム設計」モーダルに **`✨ YAMLドラフト`** タブ（`fd-doc`）と **`📋 YAML`** タブ（`fd`）を用意し、以下の2段階フローで「YAML記法に不慣れな人」でも迷わず使えるようにしている
+  1. **`✨ YAMLドラフト`タブ**: 「氏名・メールアドレス・部署の入力欄と保存ボタンが欲しい」のような、AIへの通常の指示と同じ感覚の普通の日本語文章を書く
+  2. **`✨ YAMLドラフト生成`ボタン**（`formDesignTextToYamlGenerate()`）: 1の文章とプロジェクトのDBテーブル情報を元に、AIが `📋 YAML`タブへ画面デザインYAML（説明/フォームレイアウト/入力項目/参照テーブル/アクション項目）のドラフトを自動生成する
+  3. 生成された `📋 YAML`タブの内容を必要に応じて手直しした上で、**`🤖 画面反映`ボタン**（`formDesignAiGenerate()`、既存のレイアウト自動生成プロンプト & 整列エンジンを利用）を押すと、実際のウィジェット配置に反映される
+  - つまり「自然言語での指示 → AIによるYAMLドラフト化 → そのYAMLを土台に実装（画面レイアウト）へ進む」という導線であり、YAMLをいきなり手書きする必要はない
+  - `formDesignDraft`/`formDesignDocDraft`は各フォーム（`getProjectData().forms[idx]`）ごとに保持され、他フォームの内容が混入しないよう`syncCurForm()`/`commitFormDesignDraft()`で同期・書き戻しされる
+  - プロンプト定義: `prompt-def.js` の `ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT` / `ENG_FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT`
 
 # イベントYAMLドラフト自動生成機能 (Text to YAML)
 
-- **概要**: ユーザーが「やりたいこと」を普通の一言日本語で入力するだけで、AIがフォーム内のウィジェットやDBテーブル情報を考慮し、イベント用YAML定義のドラフトを自動生成する機能
-- **アクセス点**: イベントYAMLエディタ上部の **`✨ やりたいことからYAML作成…`** ボタンから呼び出し（`openTextToYamlModal`）
+- **概要**: ユーザーが「やりたいこと」を普通の一言日本語で入力するだけで、AIがフォーム内のウィジェットやDBテーブル情報を考慮し、イベント用YAML定義のドラフトを自動生成する機能。上記の画面デザインYAMLドラフトと同じ「初心者導線」の考え方（自然言語での指示 → AIによるYAMLドラフト化 → そのYAMLを土台に実装（JS生成）へ進む）をイベント側にも適用したもの
+- **アクセス点**: イベントYAMLエディタの **`✨ YAMLドラフト`タブ**（`tab-prompt`、旧称「✨ 依頼」タブ）に日本語のやりたいこと文章を入力し、`textToYamlGenerate(wid, evName)`を実行すると `📋 YAML`タブへドラフトが生成される（旧仕様の別モーダルボタン`openTextToYamlModal`は現在は存在せず、エディタ内タブに統合済み）
 - **プロンプト定義**: `prompt-def.js` の `ENG_TEXT_TO_YAML_SYS_PROMPT` / `ENG_TEXT_TO_YAML_USER_PROMPT`
 - **テスト**: `src/mainview/text-to-yaml-prompt.test.ts` でユニットテスト実装・検証済み
 
