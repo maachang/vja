@@ -366,7 +366,7 @@ function renderTableEditModal() {
         "<div class='tbl-desc-row'><label>✨ AI生成</label>" +
         "<div style='display:flex;gap:6px;align-items:flex-start;flex:1'>" +
         "<input id='tbl-ai-req-in' placeholder='どんなテーブルにしたいか自由に記述（任意。テーブル名・説明があれば自動で考慮します）' style='flex:1'>" +
-        "<button class='yaml-ai-btn' style='white-space:nowrap'" + evtAttr("onmousedown", "tblAiGenerateSchema()") + ">🤖 AIに雛形生成</button>" +
+        "<button class='yaml-ai-btn' style='white-space:nowrap'" + evtAttr("onmousedown", "tblAiGenerateSchema()") + ">🤖 AI生成</button>" +
         "</div></div>" +
         // マスターCSV
         renderMasterCsvArea(tbl) +
@@ -1001,6 +1001,11 @@ function renderValidationEditModal() {
         "<input id='valid-name' class='pv-input' value='" + esc(v.name || "") + "'" + evtAttr("oninput", "VALID_MODAL.edit.name=this.value") + " placeholder='定義名'></div>" +
         "<div class='tbl-name-row'><label>説明（任意）</label>" +
         "<input id='valid-desc' class='pv-input' value='" + esc(v.description || "") + "'" + evtAttr("oninput", "VALID_MODAL.edit.description=this.value") + " placeholder='バリデーションの説明（任意）'></div>" +
+        "<div class='tbl-name-row'><label>✨ AI生成</label>" +
+        "<div style='display:flex;gap:6px;align-items:center;flex:1'>" +
+        "<input id='valid-ai-req-in' placeholder='どんな検証にしたいか自由に記述（任意。定義名・説明があれば自動で考慮します）' style='flex:1'>" +
+        "<button class='yaml-ai-btn' style='white-space:nowrap'" + evtAttr("onmousedown", "validAiGenerateRules()") + ">🤖 AI生成</button>" +
+        "</div></div>" +
         "<div style='display:flex;align-items:center;gap:8px;padding:4px 0'>" +
         "<label style='font-size:12px;color:var(--text2);white-space:nowrap'>トースト表示時間（ms）:</label>" +
         "<input type='number' id='valid-toast-dur' class='pv-input' value='" + (v.toastDuration || 5000) + "'" + evtAttr("oninput", "VALID_MODAL.edit.toastDuration=parseInt(this.value)||5000") + " min='1000' max='30000' style='width:100px'>" +
@@ -1133,6 +1138,89 @@ function validDelRow(idx) {
     if (!VALID_MODAL.edit) return;
     rowDel(() => VALID_MODAL.edit.rules, idx, null, renderValidationEditModal);
 }
+
+// AIに依頼して、定義名・説明・自由記述の依頼文からバリデーションルール一覧の雛形を生成する
+async function validAiGenerateRules() {
+    if (!getProjectData().aiConfig.enabled) {
+        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
+            closeModal();
+            openAiConfig();
+        }
+        return;
+    }
+
+    const v = VALID_MODAL.edit;
+    if (!v) return;
+    const reqText = $("valid-ai-req-in")?.value?.trim() || "";
+    if (!reqText && !v.name && !v.description) {
+        showToast("定義名・説明・依頼文のいずれかを入力してください");
+        $("valid-ai-req-in")?.focus();
+        return;
+    }
+
+    const INPUT_TAGS = ["inputtype", "textarea", "checkbox", "radiobutton", "selectBox", "listbox", "slider"];
+    const widgetNames = (getProjectData().forms[getProjectData().curFormIdx]?.widgets || [])
+        .filter(w => INPUT_TAGS.includes(w.tag))
+        .map(w => w.name)
+        .filter(Boolean);
+    if (widgetNames.length === 0) {
+        showToast("フォームに入力系ウィジェットがありません（AI生成の対象がありません）");
+        return;
+    }
+
+    // 既に意味のあるルール定義がある場合は上書き確認
+    const hasExistingRules = (v.rules || []).some(r => (r.name || "").trim() !== "");
+    if (hasExistingRules) {
+        const ok = await vja.app.showConfirm(
+            "既にルール定義があります。\nAIが生成する内容で上書きしますか？"
+        );
+        if (!ok) return;
+    }
+
+    const sysPrompt = _PROMPT_DEF.VALIDATION_SCHEMA_GEN_SYS_PROMPT({
+        name: v.name, description: v.description, widgetsCtx: widgetNames.join("\n"),
+    });
+    const userPrompt = _PROMPT_DEF.VALIDATION_SCHEMA_GEN_USER_PROMPT(reqText);
+
+    await runAiGenerate({
+        systemPrompt: sysPrompt,
+        userPrompt: userPrompt,
+        loadingMsg: "バリデーションルールを生成中…",
+        onSuccess: async (generated) => {
+            let rules;
+            try {
+                rules = JSON.parse(generated);
+                if (!Array.isArray(rules)) throw new Error("not array");
+            } catch (e) {
+                showToast("AI生成結果の解析に失敗しました");
+                return;
+            }
+            const sanitized = rules
+                .filter(r => widgetNames.includes(r.name))
+                .map(r => ({
+                    name: r.name,
+                    type: VALIDATION_TYPES.some(t => t.value === r.type) ? r.type : "required",
+                    not: !!r.not,
+                    arg1: r.arg1 != null ? String(r.arg1) : "",
+                    arg2: r.arg2 != null ? String(r.arg2) : "",
+                    arg3: r.arg3 != null ? String(r.arg3) : "",
+                    message: r.message != null ? String(r.message) : "",
+                }));
+            if (sanitized.length === 0) {
+                showToast("AI生成結果に有効なルールがありませんでした（対象ウィジェット名が一致しない可能性があります）");
+                return;
+            }
+            while (sanitized.length < 3) {
+                sanitized.push({ name: "", type: "required", not: false, arg1: "", arg2: "", arg3: "", message: "" });
+            }
+            VALID_MODAL.edit.rules = sanitized;
+            renderValidationEditModal();
+            showToast("✨ AIがバリデーションルールを生成しました");
+        },
+        onCancel: async () => {},
+        onError: async () => {},
+    });
+}
 function deleteValidation(idx) {
     const f = getProjectData().forms[getProjectData().curFormIdx];
     if (!f || !f.validations) return;
@@ -1187,5 +1275,5 @@ Object.assign(window, {
     // バリデーション編集
     openValidationEditor, renderValidationListModal, openValidationEdit,
     renderValidationEditModal,
-    validAddRow, validInsertRow, validDelRow, deleteValidation, validSave,
+    validAddRow, validInsertRow, validDelRow, deleteValidation, validSave, validAiGenerateRules,
 });
