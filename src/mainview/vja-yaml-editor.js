@@ -3511,8 +3511,8 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         "<div class='yaml-editor-left'>" +
         "<div class='yaml-tab-bar'>" +
         "<div class='yaml-tab active' id='tab-yaml'" + evtAttr("onmousedown", "yamlTabSwitch(\"yaml\")") + ">📋 YAML</div>" +
-        "<div class='yaml-tab' id='tab-js'" + evtAttr("onmousedown", "yamlTabSwitch(\"js\");jsHlUpdate();") + ">📜 JavaScript</div>" +
         "<div class='yaml-tab' id='tab-prompt'" + evtAttr("onmousedown", "yamlTabSwitch(\"prompt\")") + ">✨ YAMLドラフト</div>" +
+        "<div class='yaml-tab' id='tab-js'" + evtAttr("onmousedown", "yamlTabSwitch(\"js\");jsHlUpdate();") + ">📜 JavaScript</div>" +
         "<button class='yaml-api-ref-btn' style='margin-left:auto'" + evtAttr("onmousedown", "openApiRef(" + isAppEvent + ")") + ">📖 API</button>" +
         "<button class='yaml-api-ref-btn' id='ai-mock-btn' style='margin-left:0' title='現在JavaScriptタブに表示されている内容を、モックVJAランタイムで試験実行します'" +
         evtAttr("onmousedown", "pvCall(\"yamlMockCheck\")") + ">🧪 モック</button>" +
@@ -3530,6 +3530,15 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         evtAttr("onscroll", "yamlHlSync();editorSyncGutter(\"yaml-ta\",\"yaml-gutter\")") + " " +
         ">" + esc(cur) + "</textarea>" +
         "</div></div></div></div>" +
+        "<div class='yaml-pane' id='pane-prompt'>" +
+        "<div class='editor-wrap'>" +
+        "<div class='editor-gutter' id='prompt-gutter'></div>" +
+        "<div class='editor-main'>" +
+        "<textarea class='yaml' id='prompt-ta' autocorrect='off' autocapitalize='off' spellcheck='false' style='color:var(--text) !important;background:transparent;caret-color:var(--text);width:100%;height:100%;display:block;box-sizing:border-box;resize:none' " +
+        evtAttr("oninput", "editorUpdateGutter(\"prompt-ta\",\"prompt-gutter\")") + " " +
+        evtAttr("onscroll", "editorSyncGutter(\"prompt-ta\",\"prompt-gutter\")") + " " +
+        "placeholder='✨ やりたい処理の概要を日本語で自由に記述できます（複数行可）&#10;&#10;例:&#10;1. 入力されたユーザー名で users テーブルをSQL部分一致検索する&#10;2. 検索結果を datagrid (tblResult) に表示する&#10;3. 検索件数をトーストで表示する'>" + esc(curDoc) + "</textarea>" +
+        "</div></div></div>" +
         "<div class='yaml-pane' id='pane-js'>" +
         "<div class='editor-wrap'>" +
         "<div class='editor-gutter' id='js-gutter'></div>" +
@@ -3541,15 +3550,6 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         evtAttr("onscroll", "jsHlSync();editorSyncGutter(\"js-ta\",\"js-gutter\")") + " " +
         "placeholder='// AIでJavaScriptを生成、または直接編集できます'>" + esc(curJs) + "</textarea>" +
         "</div></div></div></div>" +
-        "<div class='yaml-pane' id='pane-prompt'>" +
-        "<div class='editor-wrap'>" +
-        "<div class='editor-gutter' id='prompt-gutter'></div>" +
-        "<div class='editor-main'>" +
-        "<textarea class='yaml' id='prompt-ta' autocorrect='off' autocapitalize='off' spellcheck='false' style='color:var(--text) !important;background:transparent;caret-color:var(--text);width:100%;height:100%;display:block;box-sizing:border-box;resize:none' " +
-        evtAttr("oninput", "editorUpdateGutter(\"prompt-ta\",\"prompt-gutter\")") + " " +
-        evtAttr("onscroll", "editorSyncGutter(\"prompt-ta\",\"prompt-gutter\")") + " " +
-        "placeholder='✨ やりたい処理の概要を日本語で自由に記述できます（複数行可）&#10;&#10;例:&#10;1. 入力されたユーザー名で users テーブルをSQL部分一致検索する&#10;2. 検索結果を datagrid (tblResult) に表示する&#10;3. 検索件数をトーストで表示する'>" + esc(curDoc) + "</textarea>" +
-        "</div></div></div>" +
         "<div class='yaml-ai-bar' style='padding-bottom:8px;flex-direction:column;align-items:stretch;gap:4px'>" +
         "<div style='display:flex;align-items:center;gap:4px'>" +
         "<input id='ai-prompt-in' placeholder='AIへの補足指示（任意）' style='flex:1'>" +
@@ -3875,7 +3875,7 @@ function openAiConfig() {
         "<div style='flex:1'>" +
         makePvSel("ai-preset-sel", presetOpts, curPresetId, "aiCfgSelectPreset({value})") +
         "</div>" +
-        "<button class='tb-btn' style='padding:4px 8px;font-size:12px;white-space:nowrap' onclick='aiCfgSaveAsPreset()'>💾 名前保存</button>" +
+        "<button class='tb-btn' style='padding:4px 8px;font-size:12px;white-space:nowrap' onclick='aiCfgSaveAsPreset()'>💾 プリセット保存</button>" +
         "<button class='tb-btn' style='padding:4px 8px;font-size:12px;color:#ff5f56;white-space:nowrap' onclick='aiCfgDeletePreset()'>🗑 削除</button>" +
         "</div>" +
 
@@ -3931,13 +3931,34 @@ function openAiConfig() {
         "</div>" +
         "<div class='mfoot'>" +
         mfootHTML([{ label: "キャンセル", action: "closeModal()" }]) + "" +
-        "<button class='pri'" + evtAttr("onmousedown", "saveAiConfig()") + ">保存</button>" +
+        "<button class='pri'" + evtAttr("onmousedown", "aiCfgConfirm()") + ">確定</button>" +
         "</div>"
     );
 }
 
-function aiCfgSelectPreset(presetId) {
+async function aiCfgSelectPreset(presetId) {
     _initAiPresets();
+
+    // 切替前に、現在選択中プリセットに対して未保存の変更がないか確認する
+    const curId = getProjectData().currentAiPresetId;
+    if (curId && curId !== presetId) {
+        const curPreset = _getAllAiPresets().find(p => p.id === curId);
+        if (curPreset) {
+            const editedCfg = _readAiCfgFromForm();
+            if (!deepEqual(editedCfg, curPreset.config)) {
+                const doSave = await vja.app.showConfirm(
+                    "現在の入力内容はプリセット「" + curPreset.name + "」の保存内容と異なります。\n" +
+                    "プリセットとして保存しますか？\n（「いいえ」を選ぶと、保存せずに切り替えます）"
+                );
+                if (doSave) {
+                    getProjectData().aiConfig = editedCfg;
+                    aiCfgSaveAsPreset();
+                    return;
+                }
+            }
+        }
+    }
+
     const p = _getAllAiPresets().find(item => item.id === presetId);
     if (!p) return;
     getProjectData().currentAiPresetId = p.id;
@@ -3945,7 +3966,9 @@ function aiCfgSelectPreset(presetId) {
     openAiConfig();
 }
 
-function aiCfgSaveAsPreset() {
+// AI接続設定モーダルの入力欄から、現在編集中の内容をaiConfig形式で読み取る
+// （下部の「確定」ボタンと「💾 プリセット保存」の両方で使う共通処理）
+function _readAiCfgFromForm() {
     const ep = $("ai-ep")?.value?.trim() || "http://localhost:8080";
     const apiKey = $("ai-apikey")?.value?.trim() || "";
     const modSel = document.querySelector("#ai-model-label");
@@ -3957,26 +3980,35 @@ function aiCfgSaveAsPreset() {
     const enabled = enaSel?.textContent === "ON";
     const thinking = thnSel?.textContent !== "OFF";
     const mockCheckEnabled = mckSel?.textContent !== "OFF";
-    const model = modSel?.textContent || "";
+    const model = modSel?.textContent || getProjectData().aiConfig.model || "";
     const maxTokensRaw = $("ai-max-tokens")?.value?.trim() || "";
     const maxTokens = maxTokensRaw !== "" ? parseInt(maxTokensRaw, 10) || "" : "";
     const temperatureRaw = $("ai-temperature")?.value?.trim() || "";
     const temperature = temperatureRaw !== "" ? parseFloat(temperatureRaw) : "";
-
-    const curCfg = {
+    return {
         endpoint: ep, apiKey, enabled, routerMode, thinking, mockCheckEnabled,
         model: routerMode ? model : "", models: getProjectData().aiConfig.models || [],
         maxTokens, temperature
     };
-    getProjectData().aiConfig = curCfg;
+}
+
+function aiCfgSaveAsPreset() {
+    getProjectData().aiConfig = _readAiCfgFromForm();
+
+    // 現在選択中のプリセットがあれば、その名前・保存先区分を初期値として表示する
+    // （同じ名前のまま保存＝上書き更新、という自然な導線にするため）
+    const curPreset = _getAllAiPresets().find(p => p.id === getProjectData().currentAiPresetId);
+    const curName = curPreset?.name || "";
+    const curScope = curPreset?.scope || "project";
 
     const html = `
     ${mhdrHTML("💾 AI設定をプリセット保存")}
     <div style="padding:16px; display:flex; flex-direction:column; gap:12px;">
         <label style="font-size:12px; font-weight:bold;">プリセット名を入力してください</label>
-        <input type="text" id="ai-preset-name-in" placeholder="例: OpenAI (gpt-4o-mini)" style="padding:8px; font-size:13px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px;" />
+        <input type="text" id="ai-preset-name-in" value="${esc(curName)}" placeholder="例: OpenAI (gpt-4o-mini)" style="padding:8px; font-size:13px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px;" />
+        <div class="infobox" style="font-size:11px">既存のプリセットと同じ名前・保存先で保存すると、新規作成ではなく上書き更新されます</div>
         <label style="font-size:12px; font-weight:bold;">保存先</label>
-        ${makePvSel("ai-preset-scope-sel", _AI_PRESET_SCOPE_OPTS, "project", "")}
+        ${makePvSel("ai-preset-scope-sel", _AI_PRESET_SCOPE_OPTS, curScope, "")}
     </div>
     <div class="mfoot">
         ${mfootHTML([{ label: "キャンセル", action: "openAiConfig()" }])}
@@ -4007,22 +4039,40 @@ function aiCfgDoSaveAsPreset() {
     }
     _initAiPresets();
     const scope = _readAiPresetScopeSel();
-    const id = "preset_" + Date.now();
-    const newPreset = {
-        id,
-        name,
-        config: { ...getProjectData().aiConfig }
-    };
+    const config = { ...getProjectData().aiConfig };
+
+    let id;
+    let toastMsg;
     if (scope === "global") {
         if (!Array.isArray(window._aiGlobalPresets)) window._aiGlobalPresets = [];
-        window._aiGlobalPresets.push(newPreset);
+        // 同名・同区分（プロジェクト共通）のプリセットが既にあれば新規作成せず上書き更新する
+        const existing = window._aiGlobalPresets.find(p => p.name === name);
+        if (existing) {
+            existing.config = config;
+            id = existing.id;
+            toastMsg = "プリセット「" + name + "」を上書き保存しました";
+        } else {
+            id = "preset_" + Date.now();
+            window._aiGlobalPresets.push({ id, name, config });
+            toastMsg = "プリセット「" + name + "」を保存しました";
+        }
         window.bunSaveAiGlobalPresets?.(window._aiGlobalPresets);
     } else {
-        getProjectData().aiPresets.push(newPreset);
+        // 同名・同区分（プロジェクト固有）のプリセットが既にあれば新規作成せず上書き更新する
+        const existing = getProjectData().aiPresets.find(p => p.name === name);
+        if (existing) {
+            existing.config = config;
+            id = existing.id;
+            toastMsg = "プリセット「" + name + "」を上書き保存しました";
+        } else {
+            id = "preset_" + Date.now();
+            getProjectData().aiPresets.push({ id, name, config });
+            toastMsg = "プリセット「" + name + "」を保存しました";
+        }
     }
     getProjectData().currentAiPresetId = id;
     pushUndo();
-    showToast("プリセット「" + name + "」を保存しました");
+    showToast(toastMsg);
     openAiConfig();
 }
 
@@ -4102,50 +4152,30 @@ async function aiCfgFetchModels() {
     }
 }
 
-function saveAiConfig() {
-    const ep = $("ai-ep")?.value?.trim() || "http://localhost:8080";
-    const apiKey = $("ai-apikey")?.value?.trim() || "";
-    const enaSel = document.querySelector("#ai-ena-sel    .pv-sel-btn span:first-child");
-    const rtrSel = document.querySelector("#ai-router-sel .pv-sel-btn span:first-child");
-    const thnSel = document.querySelector("#ai-thinking-sel .pv-sel-btn span:first-child");
-    const mckSel = document.querySelector("#ai-mockcheck-sel .pv-sel-btn span:first-child");
-    const modSel = document.querySelector("#ai-model-label");
-    const enabled = enaSel?.textContent === "ON";
-    const routerMode = rtrSel?.textContent === "ON";
-    const thinking = thnSel?.textContent !== "OFF";
-    const mockCheckEnabled = mckSel?.textContent !== "OFF";
-    const model = modSel?.textContent || getProjectData().aiConfig.model || "";
-    const maxTokensRaw = $("ai-max-tokens")?.value?.trim() || "";
-    const maxTokens = maxTokensRaw !== "" ? parseInt(maxTokensRaw, 10) || "" : "";
-    const temperatureRaw = $("ai-temperature")?.value?.trim() || "";
-    const temperature = temperatureRaw !== "" ? parseFloat(temperatureRaw) : "";
+// 下部「確定」ボタン。あくまで「今編集中の内容を、現在有効なAI設定として反映する」だけの役割で、
+// プリセットの中身は書き換えない（プリセットへの保存は常に「💾 プリセット保存」で明示的に行う）。
+// 選択中プリセットと内容が異なる場合は「プリセット保存」を促す確認を挟む。
+async function aiCfgConfirm() {
+    const newCfg = _readAiCfgFromForm();
 
-    const newCfg = {
-        endpoint: ep,
-        apiKey,
-        enabled,
-        routerMode,
-        thinking,
-        mockCheckEnabled,
-        model: routerMode ? model : "",
-        models: getProjectData().aiConfig.models || [],
-        maxTokens,
-        temperature,
-    };
-    getProjectData().aiConfig = newCfg;
-
-    // 現在選択中のプリセットがあればそのconfigも更新
     _initAiPresets();
-    const curId = getProjectData().currentAiPresetId;
-    const presets = getProjectData().aiPresets || [];
-    const curPreset = presets.find(p => p.id === curId);
-    if (curPreset) {
-        curPreset.config = { ...newCfg };
+    const curPreset = _getAllAiPresets().find(p => p.id === getProjectData().currentAiPresetId);
+    if (curPreset && !deepEqual(newCfg, curPreset.config)) {
+        const doSave = await vja.app.showConfirm(
+            "現在の入力内容はプリセット「" + curPreset.name + "」の保存内容と異なります。\n" +
+            "プリセットとして保存しますか？\n（「いいえ」を選ぶと、保存せずにこのまま反映します）"
+        );
+        if (doSave) {
+            getProjectData().aiConfig = newCfg;
+            aiCfgSaveAsPreset();
+            return;
+        }
     }
 
+    getProjectData().aiConfig = newCfg;
     closeModal();
     pushUndo();
-    showToast("AI設定を保存しました");
+    showToast("AI設定を反映しました");
 }
 
 // ── エディタ内検索 ────────────────────────────────────
@@ -4404,7 +4434,7 @@ Object.assign(window, {
     editorKeyHandler, editorMouseDownHandler2, editorDblClickHandler, editorHlUpdate,
     buildYamlEditorHTML, initYamlEditorModal,
     openAiConfig, aiCfgModelListHtml, aiCfgToggleRouter, aiCfgToggleEnabled,
-    aiCfgFetchModels, saveAiConfig, aiCfgSelectPreset, aiCfgSaveAsPreset, aiCfgDoSaveAsPreset, aiCfgDeletePreset,
+    aiCfgFetchModels, aiCfgConfirm, aiCfgSelectPreset, aiCfgSaveAsPreset, aiCfgDoSaveAsPreset, aiCfgDeletePreset,
     editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, insertFormDesignTemplate, openFormDesignTemplateModal, confirmApplyFormDesignTemplate, textToYamlGenerate, formDesignTextToYamlGenerate, formDesignAiGenerate, saveFormDesignDraft,
     parseFormDesignJson, openAiRawOutputModal,
     validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
