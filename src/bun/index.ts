@@ -1189,6 +1189,8 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     lines.push('const _vjaB64 = {};');
     // ── _vjaCache: 初回呼び出し時のみAsyncFunction化してキャッシュ ──
     lines.push('const _vjaCache = {};');
+    // ── _vjaRunningKeys: 実行中の widgetName_eventName を保持（自己再発火＝無限ループの検知用） ──
+    lines.push('const _vjaRunningKeys = {};');
     // ── _vjaRun: 共通実行関数（遅延初期化・キャッシュ・ログ・エラー補足） ──
     lines.push('const _vjaRun = async function(widgetName, eventName, event, eventData) {');
     lines.push('  const key = widgetName + "_" + eventName;');
@@ -1205,6 +1207,10 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     lines.push('    ? eventData');
     lines.push('    : { type: eventName.charAt(0).toLowerCase() + eventName.slice(1) };');
     lines.push('  try {');
+    lines.push('    if (_vjaRunningKeys[key]) {');
+    lines.push('      throw new Error("無限ループの可能性を検知したため処理を中断しました。" + label + " の実行中に、同じウィジェット・同じイベントが vja.trigger 等によって再度呼び出されました。イベントJS内の自己再発火（例: 自分自身と同じウィジェット名・同じイベントに対する vja.trigger 呼び出し）を見直してください。");');
+    lines.push('    }');
+    lines.push('    _vjaRunningKeys[key] = true;');
     lines.push('    if (!_vjaCache[key]) {');
     lines.push('      const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;');
     lines.push('      const code = decodeURIComponent(escape(atob(_vjaB64[key])));');
@@ -1225,6 +1231,8 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     lines.push('    // エラー終了時: スローエラーを優先してdebugで詳細出力');
     lines.push('    window.vja?.log?.debug?.(_vjaErrDetail(label, key, e));');
     lines.push('    await window.vja?.app?.showDialog?.("イベントエラー:\\n" + msg)?.catch(() => {});');
+    lines.push('  } finally {');
+    lines.push('    delete _vjaRunningKeys[key];');
     lines.push('  }');
     lines.push('};');
     lines.push('// エラー詳細のdebug出力を生成する共通関数');

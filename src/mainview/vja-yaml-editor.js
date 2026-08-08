@@ -1802,6 +1802,51 @@ function _findForbiddenPatterns(code) {
     return found;
 }
 
+// ウィジェットのイベント名（GotFocus等）と、それに対応する vja.trigger.* の
+// メソッド名（focus等）の対応表。vja.trigger.*は「値変更/クリック/フォーカス」
+// 等の限られた種類しか発火できないため、対応の無いイベント名
+// （KeyDown/RowClick/Load等）はここに含めない＝自己再発火の判定対象外になる。
+const _EVNAME_TO_TRIGGER_NAME = {
+    Click: "click",
+    MouseDown: "mouseDown",
+    MouseUp: "mouseUp",
+    MouseEnter: "mouseEnter",
+    MouseLeave: "mouseLeave",
+    GotFocus: "focus",
+    LostFocus: "blur",
+    TextChanged: "change",
+    CheckedChanged: "change",
+    SelectedIndexChanged: "change",
+    ValueChanged: "change",
+    Scroll: "scroll",
+};
+
+// 生成コードが「自分自身と同じウィジェット・同じイベント」を vja.trigger.* で
+// 再度発火させていないかを検出する（無限ループの原因になるため）。
+// 例: btnLoginのClickイベントJS内で vja.trigger.click('btnLogin') を呼ぶと、
+// clickイベントが再度発火→再度JSが実行→再度発火…と無限ループになる。
+function _findSelfTriggerRecursion(code, wid, evName) {
+    if (!wid || !evName) return [];
+    const w = getWidget(wid);
+    if (!w) return [];
+    const selfTriggerName = _EVNAME_TO_TRIGGER_NAME[evName];
+    if (!selfTriggerName) return [];
+    const found = [];
+    const re = /\bvja\.trigger\.(\w+)\s*\(\s*['"]([^'"]+)['"]/g;
+    let m;
+    while ((m = re.exec(code)) !== null) {
+        const [, triggerEvName, triggerWidgetName] = m;
+        if (triggerWidgetName === w.name && triggerEvName === selfTriggerName) {
+            const line = code.slice(0, m.index).split("\n").length;
+            found.push({
+                line,
+                message: "無限ループの危険: 自分自身（" + w.name + "の" + evName + "イベント）を vja.trigger." + triggerEvName + "() で再度発火させています",
+            });
+        }
+    }
+    return found;
+}
+
 // 変数宣言スタイル（var/let/const）の警告を検出する。
 // フロントエンド: varのみ許可（let/constは違反）
 // バックエンド: constのみ禁止（letは許可）
@@ -1882,7 +1927,7 @@ function validateGeneratedJs(code, isAppEvent, evName, wtag, wid) {
     const syntaxError = _checkJsSyntax(code);
     const disabledCategories = _getDisabledApiCategories(wid, evName, isAppEvent);
     const unknownApis = _findUnknownApis(code, isAppEvent, disabledCategories);
-    const forbiddenPatterns = _findForbiddenPatterns(code);
+    const forbiddenPatterns = _findForbiddenPatterns(code).concat(_findSelfTriggerRecursion(code, wid, evName));
     const missingAwaits = _findMissingAwaits(code, isAppEvent);
     const unknownWidgets = _findUnknownWidgetNames(code);
     const eventTypeMismatches = _findEventTypeMismatch(code, evName, wtag);
