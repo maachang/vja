@@ -2777,7 +2777,7 @@ async function textToYamlGenerate(wid, evName) {
     const aiPromptIn = $("ai-prompt-in");
     const inputText = promptTa?.value?.trim() || aiPromptIn?.value?.trim() || "";
     if (!inputText) {
-        showToast("「✨ 依頼」タブまたはAI指示欄にやりたい内容を入力してください");
+        showToast("「✨ YAMLドラフト」タブまたはAI指示欄にやりたい内容を入力してください");
         if (promptTa) promptTa.focus();
         else if (aiPromptIn) aiPromptIn.focus();
         return;
@@ -2872,7 +2872,7 @@ function openFormDesignAi() {
     const tabConfig = {
         tabs: [
             { id: "fd", label: "📋 YAML", type: "yaml", val: template, ph: _PROMPT_DEF.DEFAULT_FORM_DESIGN_YAML },
-            { id: "fd-doc", label: "✨ 依頼", type: "doc", val: docTemplate, ph: "✨ 作成したい画面デザインの要望を日本語で自由に記述できます（複数行可）\n\n例:\n1. ユーザー情報登録フォーム\n2. 氏名、メールアドレス、部署（セレクトボックス）の入力項目\n3. 保存ボタンとクリアボタンを配置する" },
+            { id: "fd-doc", label: "✨ YAMLドラフト", type: "doc", val: docTemplate, ph: "✨ 作成したい画面デザインの要望を日本語で自由に記述できます（複数行可）\n\n例:\n1. ユーザー情報登録フォーム\n2. 氏名、メールアドレス、部署（セレクトボックス）の入力項目\n3. 保存ボタンとクリアボタンを配置する" },
         ],
         aiBar:
             "<div style='display:flex;gap:6px;align-items:center;width:100%'>" +
@@ -2933,7 +2933,7 @@ async function formDesignTextToYamlGenerate() {
     const promptInEl = $("fd-prompt-in");
     const inputText = docEl?.value?.trim() || promptInEl?.value?.trim() || "";
     if (!inputText) {
-        showToast("「✨ 依頼」タブまたはAI指示欄にやりたい画面の概要を入力してください");
+        showToast("「✨ YAMLドラフト」タブまたはAI指示欄にやりたい画面の概要を入力してください");
         if (docEl) docEl.focus();
         else if (promptInEl) promptInEl.focus();
         return;
@@ -3432,7 +3432,7 @@ function updateBracketMatch(taId) {
 }
 
 
-// 通常構成（✨ 依頼 + 📋 YAML + 📜 JavaScript）
+// 通常構成（✨ YAMLドラフト + 📋 YAML + 📜 JavaScript）
 function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", extraTabsHTML = "", tabConfig = null, isAppEvent = false, wid = null, evName = null, curDoc = "") {
     const aiEnabled = getProjectData().aiConfig.enabled;
 
@@ -3512,7 +3512,7 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         "<div class='yaml-tab-bar'>" +
         "<div class='yaml-tab active' id='tab-yaml'" + evtAttr("onmousedown", "yamlTabSwitch(\"yaml\")") + ">📋 YAML</div>" +
         "<div class='yaml-tab' id='tab-js'" + evtAttr("onmousedown", "yamlTabSwitch(\"js\");jsHlUpdate();") + ">📜 JavaScript</div>" +
-        "<div class='yaml-tab' id='tab-prompt'" + evtAttr("onmousedown", "yamlTabSwitch(\"prompt\")") + ">✨ 依頼</div>" +
+        "<div class='yaml-tab' id='tab-prompt'" + evtAttr("onmousedown", "yamlTabSwitch(\"prompt\")") + ">✨ YAMLドラフト</div>" +
         "<button class='yaml-api-ref-btn' style='margin-left:auto'" + evtAttr("onmousedown", "openApiRef(" + isAppEvent + ")") + ">📖 API</button>" +
         "<button class='yaml-api-ref-btn' id='ai-mock-btn' style='margin-left:0' title='現在JavaScriptタブに表示されている内容を、モックVJAランタイムで試験実行します'" +
         evtAttr("onmousedown", "pvCall(\"yamlMockCheck\")") + ">🧪 モック</button>" +
