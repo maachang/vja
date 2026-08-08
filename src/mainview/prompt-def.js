@@ -2117,4 +2117,46 @@ ${tablesCtx || "(No DB tables)"}
 
     o.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT = ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT;
     o.FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT = ENG_FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT;
+
+    // [プロンプト]テーブル管理: 自然言語の依頼文からSQLiteテーブルのカラム構成（雛形）を生成
+    const ENG_TABLE_SCHEMA_GEN_SYS_PROMPT = function ({ tableName, description }) {
+        return (`
+You are an expert AI assistant for VJA (Visual JavaScript for AI), helping a user design a SQLite table schema.
+Your task is to convert the user's natural language request (written in Japanese) into a JSON array of column definitions.
+
+[Output Format — STRICT]
+Output ONLY a raw JSON array (starting with [ and ending with ]), where each element is:
+{
+  "name": "<column name, snake_case, English or romaji, no spaces>",
+  "type": "<one of: TEXT, INTEGER, REAL, BLOB, NULL>",
+  "notNull": <true|false>,
+  "pk": <true|false, at most ONE column should be true>,
+  "index": <true|false>,
+  "default": "<default value as a string, or empty string \"\" if none>"
+}
+
+[Rules]
+- Always include a primary key column first (typically "id" INTEGER pk=true notNull=true), unless the user's request clearly implies a different key.
+- Infer reasonable columns (name/type) from the table name, description, and request content.
+- Do NOT invent unrelated columns beyond what is implied by the context.
+- Do NOT wrap the response in markdown code blocks (\`\`\`json). Do not include any explanation, introduction, or comments.
+
+[Table Name]
+${tableName || "(not specified)"}
+
+[Table Description]
+${description || "(not specified)"}
+`.trim() + "\n");
+    };
+
+    const ENG_TABLE_SCHEMA_GEN_USER_PROMPT = function (userReq) {
+        return (
+            "Based on the following natural language request, generate the JSON array of column definitions for this table:\n\n" +
+            "[User Request]\n" + (userReq ? userReq.trim() : "(not specified — infer from the table name/description only)") + "\n\n" +
+            "[CRITICAL] Output raw JSON array only. Do NOT wrap in markdown code blocks (```json). No conversational text."
+        );
+    };
+
+    o.TABLE_SCHEMA_GEN_SYS_PROMPT = ENG_TABLE_SCHEMA_GEN_SYS_PROMPT;
+    o.TABLE_SCHEMA_GEN_USER_PROMPT = ENG_TABLE_SCHEMA_GEN_USER_PROMPT;
 })();

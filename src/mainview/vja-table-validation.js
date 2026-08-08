@@ -362,6 +362,12 @@ function renderTableEditModal() {
         // 説明
         "<div class='tbl-desc-row'><label>説明（任意）</label>" +
         "<textarea id='tbl-desc-in'" + evtAttr("oninput", "TABLE_MODAL.edit.description=this.value") + ">" + esc(tbl.description || "") + "</textarea></div>" +
+        // AIによるカラム構成の雛形生成
+        "<div class='tbl-desc-row'><label>✨ AI生成</label>" +
+        "<div style='display:flex;gap:6px;align-items:flex-start;flex:1'>" +
+        "<input id='tbl-ai-req-in' placeholder='どんなテーブルにしたいか自由に記述（任意。テーブル名・説明があれば自動で考慮します）' style='flex:1'>" +
+        "<button class='yaml-ai-btn' style='white-space:nowrap'" + evtAttr("onmousedown", "tblAiGenerateSchema()") + ">🤖 AIに雛形生成</button>" +
+        "</div></div>" +
         // マスターCSV
         renderMasterCsvArea(tbl) +
         // カラム一覧
@@ -696,6 +702,81 @@ function tblSyncFromDOM() {
         if (cbs[3] !== undefined) tbl.columns[i].useDefault = cbs[3].checked;
         const txts = tr.querySelectorAll("input[type=text]");
         if (txts[1]) tbl.columns[i].default = txts[1].value;
+    });
+}
+
+// AIに依頼して、テーブル名・説明・自由記述の依頼文からカラム構成の雛形を生成する
+async function tblAiGenerateSchema() {
+    if (!getProjectData().aiConfig.enabled) {
+        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
+            closeModal();
+            openAiConfig();
+        }
+        return;
+    }
+
+    tblSyncFromDOM();
+    const tbl = TABLE_MODAL.edit;
+    if (!tbl) return;
+    const reqText = $("tbl-ai-req-in")?.value?.trim() || "";
+    if (!reqText && !tbl.name && !tbl.description) {
+        showToast("テーブル名・説明・依頼文のいずれかを入力してください");
+        $("tbl-ai-req-in")?.focus();
+        return;
+    }
+
+    // 既に意味のあるカラム定義がある場合は上書き確認
+    const hasExistingCols = tbl.columns.some(c => (c.name || "").trim() !== "");
+    if (hasExistingCols) {
+        const ok = await vja.app.showConfirm(
+            "既にカラム定義があります。\nAIが生成する内容で上書きしますか？"
+        );
+        if (!ok) return;
+    }
+
+    const sysPrompt = _PROMPT_DEF.TABLE_SCHEMA_GEN_SYS_PROMPT({ tableName: tbl.name, description: tbl.description });
+    const userPrompt = _PROMPT_DEF.TABLE_SCHEMA_GEN_USER_PROMPT(reqText);
+
+    await runAiGenerate({
+        systemPrompt: sysPrompt,
+        userPrompt: userPrompt,
+        loadingMsg: "テーブル構成を生成中…",
+        onSuccess: async (generated) => {
+            let cols;
+            try {
+                cols = JSON.parse(generated);
+                if (!Array.isArray(cols) || cols.length === 0) throw new Error("empty");
+            } catch (e) {
+                showToast("AI生成結果の解析に失敗しました");
+                return;
+            }
+            const sanitized = cols.map(c => ({
+                name: String(c.name || "").trim(),
+                type: SQLITE_TYPES.includes(c.type) ? c.type : "TEXT",
+                notNull: !!c.notNull,
+                pk: !!c.pk,
+                index: !!c.index,
+                useDefault: !!(c.default && String(c.default).trim() !== ""),
+                default: c.default ? String(c.default) : "",
+            })).filter(c => c.name !== "");
+            if (sanitized.length === 0) {
+                showToast("AI生成結果にカラムがありませんでした");
+                return;
+            }
+            // PKは1つのみ許可（複数trueが返ってきた場合は先頭のみ有効にする）
+            let pkFound = false;
+            sanitized.forEach(c => {
+                if (c.pk) {
+                    if (pkFound) c.pk = false;
+                    else pkFound = true;
+                }
+            });
+            TABLE_MODAL.edit.columns = sanitized;
+            renderTableEditModal();
+            showToast("✨ AIがテーブル構成を生成しました");
+        },
+        onCancel: async () => {},
+        onError: async () => {},
     });
 }
 
@@ -1102,7 +1183,7 @@ Object.assign(window, {
     tblDownloadMasterCsv, tblDeleteMasterCsv,
     defaultValueForType, validateDefaultValue,
     tblColUpdate, tblColUpdatePk, tblColAdd, tblColInsert, tblColDelete,
-    tblSyncFromDOM, tblShowDdl, generateDDL, tblTypeOpen, tblTypeSelect, tblSave,
+    tblSyncFromDOM, tblShowDdl, generateDDL, tblTypeOpen, tblTypeSelect, tblSave, tblAiGenerateSchema,
     // バリデーション編集
     openValidationEditor, renderValidationListModal, openValidationEdit,
     renderValidationEditModal,

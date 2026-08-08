@@ -2090,6 +2090,21 @@ textarea.yaml:focus {
     border-color: var(--accent)
 }
 
+.tbl-desc-row input {
+    height: 28px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-size: var(--ui-font-size);
+    padding: 0 8px;
+    outline: none
+}
+
+.tbl-desc-row input:focus {
+    border-color: var(--accent)
+}
+
 .col-list-scroll {
     max-height: 340px;
     overflow-y: auto;
