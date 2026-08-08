@@ -154,6 +154,9 @@ function updateSelVisual() {
 ═══════════════════════════════════════════ */
 // 単体選択（既存の呼び出し元との互換のため単体専用のまま維持）
 function select(id) {
+    // プロパティ欄で入力中に選択を切り替えるとrenderProps()の再描画で
+    // 未確定の入力内容が消えてしまうため、切り替え前に必ずモデルへ確定する
+    commitCurrentInput();
     getDesignerState().selIds = [id];
     updateSelVisual();
     const w = getWidget(id);
@@ -166,6 +169,7 @@ function select(id) {
 function selectMultiple(ids) {
     if (!ids || ids.length === 0) { deselect(); return; }
     if (ids.length === 1) { select(ids[0]); return; }
+    commitCurrentInput();
     getDesignerState().selIds = ids;
     updateSelVisual();
     $("prop-obj").textContent = ids.length + "個選択中";
@@ -175,6 +179,7 @@ function selectMultiple(ids) {
 }
 
 function deselect() {
+    commitCurrentInput();
     getDesignerState().selIds = [];
     updateSelVisual();
     $("prop-obj").textContent = getProjectData().formCfg.title;
