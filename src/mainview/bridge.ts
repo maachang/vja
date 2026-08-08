@@ -261,6 +261,8 @@ w.bunGetVersion = () => r.getVersionRequest({});
 w.bunSaveUiConfig = (uiFontSize: number, uiFontFamily: string, editorFontSize: number, editorFontFamily: string, leftPanelW: number, rightPanelW: number) =>
     s.saveUiConfigRequest({ uiFontSize, uiFontFamily, editorFontSize, editorFontFamily, leftPanelW, rightPanelW });
 w.bunLoadUiConfig = () => r.loadUiConfigRequest({});
+w.bunLoadAiGlobalPresets = () => r.loadAiGlobalPresetsRequest({});
+w.bunSaveAiGlobalPresets = (presets: any[]) => s.saveAiGlobalPresetsRequest({ presets });
 
 // vja.db
 w.vja = {
@@ -331,4 +333,9 @@ r.loadUiConfigRequest({}).then((v: any) => {
     if (typeof (w as any)._onLoadUiConfigResult === "function") {
         (w as any)._onLoadUiConfigResult(v);
     }
+});
+
+// bridge.tsロード完了時にAI接続設定「プロジェクト共通」プリセットを自動読み込み
+r.loadAiGlobalPresetsRequest({}).then((v: any) => {
+    (w as any)._aiGlobalPresets = v.presets || [];
 });

@@ -3831,6 +3831,15 @@ function _initAiPresets() {
     }
 }
 
+// プロジェクト固有プリセット（getProjectData().aiPresets）と、
+// プロジェクト共通プリセット（window._aiGlobalPresets、~/.vja-designer/ai-global-presets.json 由来）を
+// 1つの一覧にまとめて返す。各要素にはどちらの区分かを示す scope（"project" / "global"）を必ず付与する
+function _getAllAiPresets() {
+    const projectPresets = (getProjectData().aiPresets || []).map(p => ({ ...p, scope: "project" }));
+    const globalPresets = (window._aiGlobalPresets || []).map(p => ({ ...p, scope: "global" }));
+    return [...projectPresets, ...globalPresets];
+}
+
 function openAiConfig() {
     _initAiPresets();
 
@@ -3842,12 +3851,12 @@ function openAiConfig() {
     if (getProjectData().aiConfig.thinking === undefined) getProjectData().aiConfig.thinking = true;
     if (getProjectData().aiConfig.mockCheckEnabled === undefined) getProjectData().aiConfig.mockCheckEnabled = true;
 
-    const presets = getProjectData().aiPresets || [];
+    const presets = _getAllAiPresets();
     let curPresetId = getProjectData().currentAiPresetId || presets[0]?.id;
     let curPreset = presets.find(p => p.id === curPresetId) || presets[0];
     if (curPreset) getProjectData().currentAiPresetId = curPreset.id;
 
-    const presetOpts = presets.map(p => ({ value: p.id, label: p.name }));
+    const presetOpts = presets.map(p => ({ value: p.id, label: (p.scope === "global" ? "🌐 共通: " : "📁 固有: ") + p.name }));
 
     const isEnabled = getProjectData().aiConfig.enabled === true;
     const isRouter = getProjectData().aiConfig.routerMode === true;
@@ -3929,8 +3938,7 @@ function openAiConfig() {
 
 function aiCfgSelectPreset(presetId) {
     _initAiPresets();
-    const presets = getProjectData().aiPresets || [];
-    const p = presets.find(item => item.id === presetId);
+    const p = _getAllAiPresets().find(item => item.id === presetId);
     if (!p) return;
     getProjectData().currentAiPresetId = p.id;
     getProjectData().aiConfig = { ...getProjectData().aiConfig, ...p.config };
@@ -3967,6 +3975,8 @@ function aiCfgSaveAsPreset() {
     <div style="padding:16px; display:flex; flex-direction:column; gap:12px;">
         <label style="font-size:12px; font-weight:bold;">プリセット名を入力してください</label>
         <input type="text" id="ai-preset-name-in" placeholder="例: OpenAI (gpt-4o-mini)" style="padding:8px; font-size:13px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px;" />
+        <label style="font-size:12px; font-weight:bold;">保存先</label>
+        ${makePvSel("ai-preset-scope-sel", _AI_PRESET_SCOPE_OPTS, "project", "")}
     </div>
     <div class="mfoot">
         ${mfootHTML([{ label: "キャンセル", action: "openAiConfig()" }])}
@@ -3976,6 +3986,19 @@ function aiCfgSaveAsPreset() {
     showModal(html);
 }
 
+// AIプリセットの保存先区分（プロジェクト固有 / プロジェクト共通）の選択肢
+const _AI_PRESET_SCOPE_OPTS = [
+    { value: "project", label: "📁 このプロジェクト固有" },
+    { value: "global", label: "🌐 プロジェクト共通（他のプロジェクトからも選択可）" },
+];
+
+// pv-sel（ai-preset-scope-sel）の表示ラベルから、保存先区分の値（"project"/"global"）を逆引きする
+function _readAiPresetScopeSel() {
+    const label = document.querySelector("#ai-preset-scope-sel .pv-sel-btn span:first-child")?.textContent;
+    const found = _AI_PRESET_SCOPE_OPTS.find(o => o.label === label);
+    return found ? found.value : "project";
+}
+
 function aiCfgDoSaveAsPreset() {
     const name = $("ai-preset-name-in")?.value?.trim();
     if (!name) {
@@ -3983,13 +4006,20 @@ function aiCfgDoSaveAsPreset() {
         return;
     }
     _initAiPresets();
+    const scope = _readAiPresetScopeSel();
     const id = "preset_" + Date.now();
     const newPreset = {
         id,
         name,
         config: { ...getProjectData().aiConfig }
     };
-    getProjectData().aiPresets.push(newPreset);
+    if (scope === "global") {
+        if (!Array.isArray(window._aiGlobalPresets)) window._aiGlobalPresets = [];
+        window._aiGlobalPresets.push(newPreset);
+        window.bunSaveAiGlobalPresets?.(window._aiGlobalPresets);
+    } else {
+        getProjectData().aiPresets.push(newPreset);
+    }
     getProjectData().currentAiPresetId = id;
     pushUndo();
     showToast("プリセット「" + name + "」を保存しました");
@@ -3998,19 +4028,24 @@ function aiCfgDoSaveAsPreset() {
 
 function aiCfgDeletePreset() {
     _initAiPresets();
-    const presets = getProjectData().aiPresets || [];
-    if (presets.length <= 1) {
+    const allPresets = _getAllAiPresets();
+    if (allPresets.length <= 1) {
         showToast("これ以上プリセットを削除することはできません");
         return;
     }
     const curId = getProjectData().currentAiPresetId;
-    const idx = presets.findIndex(p => p.id === curId);
-    if (idx < 0) return;
-    const deletedName = presets[idx].name;
-    presets.splice(idx, 1);
-    getProjectData().aiPresets = presets;
-    getProjectData().currentAiPresetId = presets[0].id;
-    getProjectData().aiConfig = { ...getProjectData().aiConfig, ...presets[0].config };
+    const cur = allPresets.find(p => p.id === curId);
+    if (!cur) return;
+    const deletedName = cur.name;
+    if (cur.scope === "global") {
+        window._aiGlobalPresets = (window._aiGlobalPresets || []).filter(p => p.id !== curId);
+        window.bunSaveAiGlobalPresets?.(window._aiGlobalPresets);
+    } else {
+        getProjectData().aiPresets = (getProjectData().aiPresets || []).filter(p => p.id !== curId);
+    }
+    const remaining = _getAllAiPresets();
+    getProjectData().currentAiPresetId = remaining[0]?.id || "";
+    getProjectData().aiConfig = { ...getProjectData().aiConfig, ...(remaining[0]?.config || {}) };
     pushUndo();
     showToast("プリセット「" + deletedName + "」を削除しました");
     openAiConfig();

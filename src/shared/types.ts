@@ -204,6 +204,12 @@ export type VjaRPCType = {
                     leftPanelW: number; rightPanelW: number;
                 };
             };
+
+            // ── AI接続設定「プロジェクト共通」プリセット読み込み ──
+            loadAiGlobalPresetsRequest: {
+                params: { _?: never };
+                response: { presets: Array<{ id: string; name: string; config: Record<string, any> }> };
+            };
         };
         messages: {
             closeAppRequest: { _?: never };
@@ -238,6 +244,9 @@ export type VjaRPCType = {
 
             // ── UI設定保存 ───────────────────────────────
             saveUiConfigRequest: { uiFontSize: number; uiFontFamily: string; editorFontSize: number; editorFontFamily: string; leftPanelW: number; rightPanelW: number };
+
+            // ── AI接続設定「プロジェクト共通」プリセット保存 ──
+            saveAiGlobalPresetsRequest: { presets: Array<{ id: string; name: string; config: Record<string, any> }> };
 
             // ── 汎用fetch（fetchIdで独自に相関管理済み） ──
             fetchRequest: { fetchId: string; url: string; method?: string; headers?: Record<string, string>; body?: string };

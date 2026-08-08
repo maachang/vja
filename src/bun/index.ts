@@ -487,6 +487,18 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 };
             },
 
+            // ── AI接続設定「プロジェクト共通」プリセット読み込み ──
+            loadAiGlobalPresetsRequest: () => {
+                try {
+                    const configPath = join(_configDir, "ai-global-presets.json");
+                    if (existsSync(configPath)) {
+                        const cfg = JSON.parse(readFileSync(configPath, "utf-8"));
+                        return { presets: Array.isArray(cfg.presets) ? cfg.presets : [] };
+                    }
+                } catch (e) { console.error("[vja] loadAiGlobalPresets failed:", e); }
+                return { presets: [] };
+            },
+
             // ══ コンパイル ════════════════════════════════
 
             compileProjectRequest: async () => {
@@ -625,6 +637,15 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                     if (!existsSync(_configDir)) mkdirSync(_configDir, { recursive: true });
                     await Bun.write(configPath, JSON.stringify({ uiFontSize, uiFontFamily, editorFontSize, editorFontFamily, leftPanelW, rightPanelW }, null, 2));
                 } catch (e) { console.error("[vja] saveUiConfig failed:", e); }
+            },
+
+            // ── AI接続設定「プロジェクト共通」プリセット保存 ──
+            saveAiGlobalPresetsRequest: async ({ presets }) => {
+                try {
+                    const configPath = join(_configDir, "ai-global-presets.json");
+                    if (!existsSync(_configDir)) mkdirSync(_configDir, { recursive: true });
+                    await Bun.write(configPath, JSON.stringify({ presets }, null, 2));
+                } catch (e) { console.error("[vja] saveAiGlobalPresets failed:", e); }
             },
         },
     },
