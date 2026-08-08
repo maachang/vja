@@ -3055,7 +3055,9 @@ function editorKeyHandler(e) {
         : ta.id === "ta-extrt-js" ? EXTRT_EDITOR.jsUndo
             : ta.id === "ta-extrt-doc" ? EXTRT_EDITOR.docUndo
                 : ta.id === "ta-fd" ? FORMDESIGN_EDITOR.taUndo
-                    : getEditorContext().yu;
+                    : ta.id === "prompt-ta" ? getEditorContext().pu
+                        : ta.id === "ta-fd-doc" ? FORMDESIGN_EDITOR.docUndo
+                            : getEditorContext().yu;
 
     // ── Mac: Ctrl+C / Ctrl+V を無効化（OS側のEmacsキーバインド干渉防止）──
     if (navigator.platform.startsWith("Mac") && e.ctrlKey && !e.metaKey && (e.key === "c" || e.key === "v")) {
