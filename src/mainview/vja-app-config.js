@@ -200,6 +200,8 @@ function openExtRuntime() {
                 $("pane-" + t)?.classList.toggle("active", t === "extrt-js");
             });
             editorHlUpdate("ta-extrt-js");
+            // タブ切替直後は非表示(display:none)から表示に変わった直後でfocus()が効かないことがあるため1ティック遅らせる
+            setTimeout(() => $("ta-extrt-js")?.focus(), 0);
         });
         rAfBind("#tab-extrt-doc", "click", () => {
             ["extrt-js", "extrt-doc"].forEach(t => {
@@ -207,7 +209,10 @@ function openExtRuntime() {
                 $("pane-" + t)?.classList.toggle("active", t === "extrt-doc");
             });
             editorHlUpdate("ta-extrt-doc");
+            setTimeout(() => $("ta-extrt-doc")?.focus(), 0);
         });
+        // 開いた直後から入力できるよう、最初にアクティブな📜JavaScriptタブへフォーカスする
+        setTimeout(() => $("ta-extrt-js")?.focus(), 0);
     });
 }
 
