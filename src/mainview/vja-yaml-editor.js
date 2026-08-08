@@ -3009,7 +3009,13 @@ async function formDesignTextToYamlGenerate() {
         })
         .join("\n");
 
-    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT({ tablesCtx: tablesCtx });
+    // 現在のフォームに既に配置済みのウィジェット一覧をコンテキスト生成
+    // （イベントJS生成時と同様、既存ウィジェットをAIに認識させ、重複作成や名前の不一致を防ぐ）
+    const widgetsCtx = (getProjectData().widgets || [])
+        .map((ww) => "  - " + ww.name + " (" + ww.tag + ")")
+        .join("\n");
+
+    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT({ tablesCtx: tablesCtx, widgetsCtx: widgetsCtx });
     const userPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT(inputText);
 
     showLoadingModal("画面YAMLドラフト作成中…");

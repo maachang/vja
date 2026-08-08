@@ -2074,7 +2074,7 @@ ${tablesCtx || "(No DB tables)"}
     o.TEXT_TO_YAML_USER_PROMPT = ENG_TEXT_TO_YAML_USER_PROMPT;
 
     // [プロンプト]自然言語要求からフォームデザインYAMLを生成
-    const ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT = function ({ tablesCtx }) {
+    const ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT = function ({ tablesCtx, widgetsCtx }) {
         return (`
 You are an expert AI assistant for VJA (Visual JavaScript for AI).
 Your task is to convert a user's natural language request (written in Japanese) describing a desired screen layout and form requirements into a clean, structured VJA Form Design YAML specification.
@@ -2101,9 +2101,13 @@ Output strictly formatted YAML with the following sections:
 [Strict Output Rules]
 - Output ONLY the raw YAML text. Do NOT wrap response in markdown code blocks (\`\`\`yaml).
 - Do not include any intro, explanations, or conversational text.
+- If the form already has existing widgets (see [Existing Widgets On This Form] below), do NOT duplicate them in 入力項目/アクション項目 unless the user's request clearly asks to change or add alongside them. Use their existing names as-is when referring to them.
 
 [Available Database Tables Context]
 ${tablesCtx || "(No DB tables)"}
+
+[Existing Widgets On This Form]
+${widgetsCtx || "(none — this form has no widgets yet)"}
 `.trim() + "\n");
     };
 
