@@ -163,6 +163,34 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 - **プロンプト定義**: `prompt-def.js` の `ENG_TEXT_TO_YAML_SYS_PROMPT` / `ENG_TEXT_TO_YAML_USER_PROMPT`
 - **テスト**: `src/mainview/text-to-yaml-prompt.test.ts` でユニットテスト実装・検証済み
 
+# DBテーブルAI生成機能
+
+- **概要**: テーブル編集モーダル（`openTableEdit`）の「テーブル名」「説明」欄の下に依頼文入力欄＋「✨ AI生成」ボタンを配置。依頼文＋テーブル名/説明（入力済みなら）をAIへ渡し、カラム定義（name/type/notNull/pk/index/default）のJSON配列を生成、カラム一覧を置き換える
+- **実装**: `vja-table-validation.js` の `tblAiGenerateSchema()`。既にカラム定義がある場合は上書き確認。AI生成結果は`SQLITE_TYPES`（TEXT/INTEGER/REAL/BLOB/NULL）でサニタイズし、PKは1件のみに強制補正
+- **プロンプト定義**: `prompt-def.js` の `ENG_TABLE_SCHEMA_GEN_SYS_PROMPT` / `ENG_TABLE_SCHEMA_GEN_USER_PROMPT`
+
+# 検証（バリデーション）AI生成機能
+
+- **概要**: バリデーション編集モーダル（`openValidationEdit`）の「定義名」「説明」欄の下に依頼文入力欄＋「✨ AI生成」ボタンを配置。依頼文＋定義名/説明＋現在フォームの入力系ウィジェット名一覧（`inputtype`/`textarea`/`checkbox`/`radiobutton`/`selectBox`/`listbox`/`slider`）をAIへ渡し、ルール定義（対象ウィジェット名/type/not/arg1-3/message）のJSON配列を生成する
+- **実装**: `vja-table-validation.js` の `validAiGenerateRules()`。AIが返したウィジェット名は**現在フォームに実在するものだけ**採用し（存在しない名前は破棄）、typeも`VALIDATION_TYPES`に無ければ`required`へ補正
+- **プロンプト定義**: `prompt-def.js` の `ENG_VALIDATION_SCHEMA_GEN_SYS_PROMPT` / `ENG_VALIDATION_SCHEMA_GEN_USER_PROMPT`
+
+# AI雛形生成機能 総覧（2026-08-08時点でカバーする主要対象）
+
+vjaの中核コンセプトである「AIに雛形を作ってもらい、それを土台に人間が仕上げる」という導線が、アプリ開発に必要な主要な構成要素すべてに行き渡った状態（2026-08-08時点）。各詳細は本ファイル内の対応する節を参照。
+
+| 対象 | 機能名 | アクセス点 |
+|------|--------|-----------|
+| 画面（フォームレイアウト） | 画面デザインYAMLドラフト生成 | 「🤖 AIでフォーム設計」モーダルの`✨ YAMLドラフト`タブ |
+| イベント処理（YAML→JS） | イベントYAMLドラフト自動生成 + AI JSコード生成 | イベントYAMLエディタの`✨ YAMLドラフト`タブ |
+| DBテーブル定義 | テーブルスキーマAI生成 | テーブル編集モーダルの「✨ AI生成」 |
+| 検証（バリデーション）定義 | バリデーションルールAI生成 | バリデーション編集モーダルの「✨ AI生成」 |
+
+いずれも「依頼文（自由記述の日本語） + 既に入力済みの関連情報（名前・説明・対象ウィジェット等）」をAIへのコンテキストとして渡し、JSON/YAML形式の雛形を生成 → 人間が確認・調整、という同じ設計パターンに統一されている。
+
+- **AI接続設定のプリセット**: 「🤖 AI接続設定」モーダルの「💾 プリセット保存」で、AI接続設定（エンドポイント/モデル/APIキー等）を「📁 プロジェクト固有」（`.vjaproj`に同梱保存）または「🌐 プロジェクト共通」（`~/.vja-designer/ai-global-presets.json`、`loadAiGlobalPresetsRequest`/`saveAiGlobalPresetsRequest`経由、他プロジェクトからも選択可能）のどちらかに保存先を選んで保存できる。同名・同区分のプリセットへ保存すると上書き更新される
+- **無限ループ対策**: AI生成コードが自分自身と同じウィジェット・同じイベントを`vja.trigger.*`で再度発火させる「自己再発火」を、AI生成直後の検証（`_findSelfTriggerRecursion`、生成時にAIへ再生成を促す）と、実行時ランタイム（`src/bun/index.ts`の`_vjaRun`内の`_vjaRunningKeys`による再入検知、検知時はエラーで処理を中断）の二段構えで防止している
+
 # 既知の制約
 
 - **Linux開発実行時のタスクバーアイコンが反映されない**: `electrobun.config.ts`の`build.linux.icon`設定・アイコンファイルのコピー自体は正しく行われている（`Resources/appIcon.png`等に反映済み）ことを確認済み。しかしElectrobunが生成する`.desktop`ファイルの`Icon=`指定がファイル名のみ（絶対パスでない）であり、Linuxデスクトップ環境は`.desktop`ファイルが`~/.local/share/applications/`等の標準位置にインストールされ、アイコンもXDGアイコンテーマの検索パス上に見つかる場合のみタスクバー表示に反映する仕様。`bun run dev`（未インストールの開発実行）の`build/dev-linux-x64/`配下に生成される`.desktop`ではこの条件を満たさないため、タスクバーアイコンが変わらないのはVJA側の設定不備ではなくElectrobunのdev実行時の制約と推定される（未確認）。`bun run build`でパッケージング・インストールした状態、または別のLinuxデスクトップ環境で実際に変わるか要確認。
