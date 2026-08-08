@@ -623,6 +623,15 @@ getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ
   - 使用例: "const text = await vja.crypto.decrypt(encrypted, 'mySecretKey');"
   - 使用例説明: 暗号化されたテキストを元の内容に復号する
 
+- 関数名: await vja.crypto.sha1(text) / await vja.crypto.sha256(text) / await vja.crypto.sha512(text):
+  - 説明: テキストを一方向ハッシュ化し、16進数文字列で返す（暗号化とは異なり復号は不可能）
+  - 引数:
+    - text: string - ハッシュ化する文字列
+  - 戻り値: string - 16進数文字列のハッシュ値（sha1は40文字、sha256は64文字、sha512は128文字）
+  - 【重要】パスワードそのものの保存目的でこれらの単純ハッシュを使うのは非推奨（ソルト・ストレッチングが無いため）。改ざん検知・重複チェック・簡易フィンガープリント等の用途に使用すること
+  - 使用例: "const digest = await vja.crypto.sha256('入力テキスト');"
+  - 使用例説明: テキストのSHA-256ハッシュ値（改ざん検知用など）を取得する
+
 ## クラウドインフラ (vja.getCloudInfraCredential)
 
 - 関数名: await vja.getCloudInfraCredential(infra, service?):
@@ -1819,7 +1828,7 @@ ${js.trim()}
     {"label": "母馬", "value": "mother"},
     {"label": "性別", "value": "sex"}
   ], "x": 290, "y": 20, "w": 120, "h": 25},
-  {"tag": "button", "name": "btnSearch", "text": "検索ボタン", "x": 420, "y": 20, "w": 90, "h": 25},
+  {"tag": "button", "name": "btnSearch", "text": "検索", "x": 420, "y": 20, "w": 90, "h": 25},
   {"tag": "datagrid", "name": "tblHorseInfo", "columns": [
     {"name": "name", "displayName": "馬名", "width": 25},
     {"name": "father", "displayName": "父馬", "width": 25},
@@ -1873,6 +1882,7 @@ Each object in the array must have the following keys:
 - "tag": "inputtype" | "textarea" | "checkbox" | "radio" | "selectBox" | "listbox" | "button" | "label" | "datagrid" | "qrcode" | "markdown"
 - "name": Unique VB6-style Hungarian notation (e.g., txtUserId, lblUserId, btnSubmit, chkAgree, radMale, cmbCategory, lstItems, txaMemo, tblResult). Unique within array.
 - "text": Caption text for "label", "button", "checkbox", "radio" (required). For "qrcode", the raw text/URL. For "markdown", raw Markdown source. Empty "" for others.
+  - For "button": strip generic type-indicating suffixes such as "ボタン"/"button" from the action item text before using it as the caption (e.g. アクション項目 "検索ボタン" → caption "検索", "ログインボタン" → "ログイン"). The shape of the widget already conveys it is a button, so repeating "ボタン" in the caption is redundant.
 - "inputType": (Required only when tag is "inputtype") "text" | "password" | "number" | "email" | "tel" | "date" | "time" | "url"
 - "placeholder": (Optional) Sample text for "inputtype" or "textarea".
 - "group": (Required only when tag is "radio") Group name.
@@ -1917,7 +1927,7 @@ Output JSON Example:
     {"label": "母馬", "value": "mother"},
     {"label": "性別", "value": "sex"}
   ], "x": 375, "y": 20, "w": 130, "h": 26},
-  {"tag": "button", "name": "btnSearch", "text": "検索ボタン", "x": 515, "y": 20, "w": 85, "h": 26},
+  {"tag": "button", "name": "btnSearch", "text": "検索", "x": 515, "y": 20, "w": 85, "h": 26},
   {"tag": "datagrid", "name": "tblHorseInfo", "columns": [
     {"name": "name", "displayName": "馬名", "width": 25},
     {"name": "father", "displayName": "父馬", "width": 25},

@@ -1579,6 +1579,9 @@ function _buildFrontMock(evName, wtag, overrides, widgets) {
         crypto: {
             encrypt: async () => "",
             decrypt: async () => "",
+            sha1: async () => "0".repeat(40),
+            sha256: async () => "0".repeat(64),
+            sha512: async () => "0".repeat(128),
         },
         getCloudInfraCredential: async () => ({}),
         validate: {

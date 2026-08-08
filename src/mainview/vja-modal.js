@@ -396,6 +396,12 @@ function actDuplicate() {
             y: src.y + SNAP * 2,
             props: { ...src.props },
             events: { ...src.events },
+            // jsCode/docCodeもprops/eventsと同様に明示的に複製する。
+            // スプレッドのみに任せると元ウィジェットと同じオブジェクト参照を
+            // 共有してしまい、複製後に片方のイベントJSを生成すると
+            // 元ウィジェット側の内容まで書き換わってしまう不具合があった
+            jsCode: { ...(src.jsCode || {}) },
+            docCode: { ...(src.docCode || {}) },
             name: src.name + "_2",
         };
         getProjectData().widgets.push(nw);

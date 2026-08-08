@@ -963,6 +963,18 @@ import { parseCsvLine } from "../shared/csv-utils";
             const raw = new TextEncoder().encode(keyStr.padEnd(32, "0").slice(0, 32));
             return crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
         },
+
+        // ハッシュ化（一方向・復号不可）→ 16進数文字列
+        async sha1(text) { return vja.crypto._digestHex("SHA-1", text); },
+        async sha256(text) { return vja.crypto._digestHex("SHA-256", text); },
+        async sha512(text) { return vja.crypto._digestHex("SHA-512", text); },
+
+        // ダイジェスト計算共通処理（アルゴリズム名→16進数文字列）
+        async _digestHex(algo, text) {
+            const enc = new TextEncoder();
+            const buf = await crypto.subtle.digest(algo, enc.encode(text));
+            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+        },
     };
 
     // ════════════════════════════════════════════════
