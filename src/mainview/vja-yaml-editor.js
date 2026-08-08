@@ -2916,6 +2916,10 @@ function openFormDesignAi() {
         rAfBind("#tab-fd-doc", "click", () => yamlTabSwitch("fd-doc"));
         yamlInitResize();
         yamlInitRpanelEvents();
+        // 開いた直後から入力できるよう、最初にアクティブな📋YAMLタブへフォーカスする。
+        // requestAnimationFrame直後だとWebViewがまだ描画/レイアウトを完了しておらず
+        // focus()が効かないことがあるため、setTimeoutで1ティック遅らせて実行する
+        setTimeout(() => taYaml?.focus(), 0);
     });
 }
 
@@ -3640,6 +3644,10 @@ function initYamlEditorModal(cur, curJs, onAfterInit, isAppEvent = false, curDoc
         rAfBind("#tab-js", "click", () => { yamlTabSwitch("js"); jsHlUpdate(); });
         rAfBind("#tab-prompt", "click", () => yamlTabSwitch("prompt"));
         jsHlUpdate();
+        // 開いた直後から入力できるよう、最初にアクティブな📋YAMLタブへフォーカスする。
+        // requestAnimationFrame直後だとWebViewがまだ描画/レイアウトを完了しておらず
+        // focus()が効かないことがあるため、setTimeoutで1ティック遅らせて実行する
+        setTimeout(() => yta?.focus(), 0);
         if (onAfterInit) onAfterInit();
     });
 }

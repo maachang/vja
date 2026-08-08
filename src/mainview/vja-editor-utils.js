@@ -57,7 +57,15 @@ function yamlTabSwitch(tab) {
     const targetTab = $("tab-" + tab);
     const targetPane = $("pane-" + tab);
     if (targetTab) targetTab.classList.add("active");
-    if (targetPane) targetPane.classList.add("active");
+    if (targetPane) {
+        targetPane.classList.add("active");
+        // タブ切替後、自分でクリックしなくてもすぐ入力できるよう対象のテキストエリアへフォーカスを移す
+        // （textarea idの命名規則はタブごとに異なる: "yaml-ta"/"js-ta"/"prompt-ta"や"ta-fd"/"ta-fd-doc"等）。
+        // ペインは切替直前まで display:none のため、classList反映直後にfocus()しても
+        // WebView側のレイアウト更新が間に合わず効かないことがあり、setTimeoutで1ティック遅らせる
+        const ta = targetPane.querySelector("textarea.yaml");
+        if (ta) setTimeout(() => ta.focus(), 0);
+    }
 }
 
 /* ── JavaScript エディタ Undo（ネイティブに委譲） ── */
