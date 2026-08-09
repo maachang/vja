@@ -414,8 +414,14 @@ async function wizardConfirmAndGenerate() {
     getProjectData().curFormIdx = 0;
     refreshAll();
 
-    let successCount = 0;
+    // 生成ループに入る前に、フォームの雛形が作られたことを一区切り伝える
+    // （AI生成にすぐ入ってしまうと「画面が作られた」実感が薄いため、
+    //  一瞬待ってからトーストを出し、生成フェーズへ進む）
     const total = getProjectData().forms.length;
+    showToast(total + "個の画面の雛形を作成しました。続けて画面デザインを生成します…");
+    await new Promise((r) => setTimeout(r, 800));
+
+    let successCount = 0;
     for (let i = 0; i < total; i++) {
         switchForm(i);
         const f = getProjectData().forms[i];
@@ -430,6 +436,18 @@ async function wizardConfirmAndGenerate() {
     refreshAll();
     pushUndo();
     showToast("ウィザード完了: " + successCount + "/" + total + "件のフォームを生成しました");
+
+    // テーブルは名前・説明のみの仮登録のため、カラム定義が必要なことを案内する
+    const tableNames = getProjectData().tables.map((t) => t.name);
+    if (tableNames.length > 0) {
+        showVjaAlert(
+            "画面生成が終わりました。\n\n" +
+            "テーブル（" + tableNames.join("、") + "）は名前と説明のみ作成されています。\n" +
+            "メニューの「テーブル管理」からテーブルを開き、「✨ AI生成」ボタンでカラム構成の生成を行ってください。"
+        );
+    } else {
+        showVjaAlert("画面生成が終わりました。");
+    }
 }
 
 // 1フォーム分の「画面デザインYAMLドラフト → YAML」生成（DOM非依存版）
