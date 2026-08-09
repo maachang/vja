@@ -31,8 +31,9 @@ const WIZARD_STATE = {
     qaStatus: [], // [{ label, done }]
 };
 
-// AIによる動的質問生成の暴走防止用の上限回数
-const WIZARD_QA_MAX_QUESTIONS = 6;
+// この件数を超えたら「完了で進めることもできます」とトーストで軽く促す目安値
+// （ブロックはしない。質問数が本当に必要なプロジェクトもあるため上限としては強制しない）
+const WIZARD_QA_SUGGEST_COMPLETE_AT = 6
 
 // ファイルメニュー「ウィザードでプロジェクト作成…」から呼ばれる起点。
 function actWizard() {
@@ -129,7 +130,12 @@ async function wizardQaFetchNext() {
                 _wizardRenderQaModal();
                 return;
             }
-            WIZARD_STATE.qaHistory.push({ question: parsed.question, answer: "" });
+            WIZARD_STATE.qaHistory.push({
+                question: parsed.question,
+                answer: "",
+                answerType: (parsed.answerType === "choice" || parsed.answerType === "multi_choice") ? parsed.answerType : "text",
+                options: Array.isArray(parsed.options) ? parsed.options : [],
+            });
             WIZARD_STATE.qaIndex = WIZARD_STATE.qaHistory.length - 1;
             WIZARD_STATE.qaStatus = Array.isArray(parsed.status) ? parsed.status : [];
             _wizardRenderQaModal();
@@ -149,8 +155,6 @@ function _wizardRenderQaModal() {
     const idx = WIZARD_STATE.qaIndex;
     const qa = WIZARD_STATE.qaHistory[idx];
     const isFirst = idx === 0;
-    const atFrontier = idx === WIZARD_STATE.qaHistory.length - 1;
-    const reachedMax = atFrontier && WIZARD_STATE.qaHistory.length >= WIZARD_QA_MAX_QUESTIONS;
 
     const statusHtml = WIZARD_STATE.qaStatus.length > 0
         ? "<div style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px'>" +
@@ -161,26 +165,75 @@ function _wizardRenderQaModal() {
         ).join("") + "</div>"
         : "";
 
+    const hasOptions = Array.isArray(qa.options) && qa.options.length > 0;
+    const isMulti = qa.answerType === "multi_choice";
+    const optionsHtml = hasOptions
+        ? "<div style='display:flex;flex-direction:column;gap:6px'>" +
+        qa.options.map((opt, i) =>
+            "<button class='tb-btn' style='text-align:left;padding:6px 10px'" +
+            evtAttr("onmousedown", "wizardQaPickOption(" + i + ")") + ">" + (i + 1) + ". " + esc(opt) + "</button>"
+        ).join("") + "</div>" +
+        "<div class='infobox' style='font-size:11px'>" +
+        (isMulti ? "複数選択可。ボタンで選ぶか、番号をカンマ区切りで入力してください（例: 1,3）" : "ボタンで選ぶか、番号を入力してください（例: 2）") +
+        "</div>"
+        : "";
+
     showModal(
         mhdrHTML("🧙 ウィザード（" + (idx + 1) + "問目）") +
         "<div class='mbody' style='gap:10px'>" +
         statusHtml +
         "<div class='infobox'>" + esc(qa.question) + "</div>" +
-        "<textarea id='wiz-qa-answer' class='pv-textarea' style='height:100px;font-size:13px'>" + esc(qa.answer || "") + "</textarea>" +
-        (reachedMax ? "<div class='infobox' style='font-size:11px'>質問数の上限に達しました。「完了」を押して次へ進んでください。</div>" : "") +
+        optionsHtml +
+        "<textarea id='wiz-qa-answer' class='pv-textarea' style='height:80px;font-size:13px' placeholder='" + (hasOptions ? "番号または自由入力" : "自由に入力してください") + "'>" + esc(qa.answer || "") + "</textarea>" +
         "</div>" +
         "<div class='mfoot'>" +
         "<button" + evtAttr("onmousedown", "wizardQaBack()") + (isFirst ? " disabled" : "") + ">← 戻る</button>" +
         "<button" + evtAttr("onmousedown", "wizardQaComplete()") + ">完了</button>" +
-        "<button class='pri'" + evtAttr("onmousedown", "wizardQaNext()") + (reachedMax ? " disabled" : "") + ">次へ →</button>" +
+        "<button class='pri'" + evtAttr("onmousedown", "wizardQaNext()") + ">次へ →</button>" +
         "</div>"
     );
 }
 
-// 現在の回答欄の値をqaHistoryへ保存する
+// 選択肢ボタン押下時: 単一選択(choice)は選んだ項目に置き換え、
+// 複数選択(multi_choice)は既に選ばれていれば外し、無ければ追記するトグル動作。
+function wizardQaPickOption(optIndex) {
+    const qa = WIZARD_STATE.qaHistory[WIZARD_STATE.qaIndex];
+    const label = qa.options[optIndex];
+    const ta = $("wiz-qa-answer");
+    if (!ta || label === undefined) return;
+    if (qa.answerType !== "multi_choice") {
+        ta.value = label;
+        return;
+    }
+    const picked = ta.value.split("、").map((s) => s.trim()).filter(Boolean);
+    const i = picked.indexOf(label);
+    if (i >= 0) picked.splice(i, 1);
+    else picked.push(label);
+    ta.value = picked.join("、");
+}
+
+// 回答欄の値が「番号（カンマ/読点区切り、複数可）」だけの場合、選択肢の
+// テキストに変換する（Claudeの選択肢回答のような、番号入力での回答を許容するため）。
+// 番号以外の文字が含まれる場合はそのまま自由記述として扱う。
+function _wizardResolveAnswerText(qa, rawValue) {
+    const value = (rawValue || "").trim();
+    if (!Array.isArray(qa.options) || qa.options.length === 0 || !value) return value;
+    const tokens = value.split(/[、,]/).map((s) => s.trim()).filter(Boolean);
+    if (tokens.length === 0) return value;
+    const isAllNumeric = tokens.every((t) => /^\d+$/.test(t));
+    if (!isAllNumeric) return value;
+    const labels = tokens
+        .map((t) => qa.options[parseInt(t, 10) - 1])
+        .filter((label) => label !== undefined);
+    return labels.length > 0 ? labels.join("、") : value;
+}
+
+// 現在の回答欄の値をqaHistoryへ保存する（選択肢問題は番号入力をテキストへ解釈する）
 function _wizardCommitCurrentAnswer() {
     const ta = $("wiz-qa-answer");
-    if (ta) WIZARD_STATE.qaHistory[WIZARD_STATE.qaIndex].answer = ta.value;
+    if (!ta) return;
+    const qa = WIZARD_STATE.qaHistory[WIZARD_STATE.qaIndex];
+    qa.answer = _wizardResolveAnswerText(qa, ta.value);
 }
 
 // 「戻る」: AI呼び出しなしで前の質問を再表示する
@@ -200,9 +253,8 @@ function wizardQaNext() {
         _wizardRenderQaModal();
         return;
     }
-    if (WIZARD_STATE.qaHistory.length >= WIZARD_QA_MAX_QUESTIONS) {
-        showToast("質問数の上限に達しました。「完了」を押して次へ進んでください");
-        return;
+    if (WIZARD_STATE.qaHistory.length >= WIZARD_QA_SUGGEST_COMPLETE_AT) {
+        showToast("質問数が多くなっています。「完了」で次へ進むこともできます");
     }
     wizardQaFetchNext();
 }
@@ -216,6 +268,6 @@ function wizardQaComplete() {
 
 Object.assign(window, {
     actWizard, wizardStartNewProject, wizardCheckAiConfig, wizardCheckProjectInfo, wizardStepBody,
-    wizardQaBack, wizardQaNext, wizardQaComplete,
+    wizardQaBack, wizardQaNext, wizardQaComplete, wizardQaPickOption,
     WIZARD_STATE,
 });

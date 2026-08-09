@@ -2148,6 +2148,8 @@ Based on the [Q&A History So Far] provided in the user message, decide the singl
 - JSON shape:
 {
   "question": "<the single next question, written in natural, polite Japanese, asking about ONE topic only>",
+  "answerType": "text" | "choice" | "multi_choice",
+  "options": ["<option 1>", "<option 2>", ...],
   "status": [
     { "label": "システム概要", "done": true },
     { "label": "主な機能", "done": false },
@@ -2156,6 +2158,8 @@ Based on the [Q&A History So Far] provided in the user message, decide the singl
 }
 - "question" must be exactly one concrete question in Japanese, answerable in a few sentences. Never ask two things at once.
 - Never repeat a question that has already been effectively answered in the history.
+- "answerType": use "text" for open-ended questions (e.g. describing the system's purpose in free prose). Use "choice" when the question naturally has a small set of concrete alternatives where the user picks exactly ONE (e.g. asking for a rough screen-count scale: 少なめ/標準/多め). Use "multi_choice" when the user may reasonably pick more than one (e.g. asking which of several common features are needed). Default to "text" when unsure.
+- "options": REQUIRED (2 to 5 short Japanese labels) when answerType is "choice" or "multi_choice". OMIT this field entirely when answerType is "text".
 - "status" always contains exactly these 3 items, in this order, with these exact labels: "システム概要", "主な機能", "画面数の目安". Mark "done": true only when that aspect has been sufficiently covered by the history so far.
 - Even if you believe all 3 status items are already "done", still output one more useful clarifying or confirming question (the user has their own "complete" button to stop the interview early — you must never emit an empty question).
 `.trim() + "\n");
