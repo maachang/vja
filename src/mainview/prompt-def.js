@@ -2157,7 +2157,7 @@ Based on the [Q&A History So Far] provided in the user message, decide the singl
   ]
 }
 - "question" must be exactly one concrete question in Japanese, answerable in a few sentences. Never ask two things at once.
-- Never repeat a question that has already been effectively answered in the history.
+- Before writing "question", re-read EVERY Q/A pair in [Q&A History So Far] one by one. Your new question is FORBIDDEN if it asks about the same topic/aspect as any prior question — this applies even when the wording is different, it is phrased more specifically/broadly, or it only rephrases something the user already covered in an earlier ANSWER (not just in a prior question). When in doubt about whether a topic is already covered, treat it as covered and move to a genuinely new topic instead.
 - "answerType": use "text" for open-ended questions (e.g. describing the system's purpose in free prose). Use "choice" when the question naturally has a small set of concrete alternatives where the user picks exactly ONE (e.g. asking for a rough screen-count scale: 少なめ/標準/多め). Use "multi_choice" when the user may reasonably pick more than one (e.g. asking which of several common features are needed). Default to "text" when unsure.
 - "options": REQUIRED (2 to 5 short Japanese labels) when answerType is "choice" or "multi_choice". OMIT this field entirely when answerType is "text".
 - "status" always contains exactly these 3 items, in this order, with these exact labels: "システム概要", "主な機能", "画面数の目安". Mark "done": true only when that aspect has been sufficiently covered by the history so far.

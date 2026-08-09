@@ -192,6 +192,7 @@ function _wizardRenderQaModal() {
         "<button class='pri'" + evtAttr("onmousedown", "wizardQaNext()") + ">次へ →</button>" +
         "</div>"
     );
+    setTimeout(() => $("wiz-qa-answer")?.focus(), 0);
 }
 
 // 選択肢ボタン押下時: 単一選択(choice)は選んだ項目に置き換え、
