@@ -98,6 +98,7 @@ function saveAppEvent() {
     if (!getProjectData().projectInfo.appEvents) getProjectData().projectInfo.appEvents = {};
     getProjectData().projectInfo.appEvents[APPEVENT_MODAL.curKey + "_yaml"] = $("yaml-ta")?.value || "";
     getProjectData().projectInfo.appEvents[APPEVENT_MODAL.curKey] = $("js-ta")?.value || "";
+    getProjectData().projectInfo.appEvents[APPEVENT_MODAL.curKey + "_doc"] = $("prompt-ta")?.value || "";
     closeModal();
     pushUndo();
     showToast("アプリイベントを保存しました");

@@ -389,21 +389,17 @@ function actDuplicate() {
     if (srcs.length === 0) return;
     const newIds = [];
     srcs.forEach((src) => {
-        const nw = {
-            ...src,
-            id: getProjectData().idCnt++,
-            x: src.x + SNAP * 2,
-            y: src.y + SNAP * 2,
-            props: { ...src.props },
-            events: { ...src.events },
-            // jsCode/docCodeもprops/eventsと同様に明示的に複製する。
-            // スプレッドのみに任せると元ウィジェットと同じオブジェクト参照を
-            // 共有してしまい、複製後に片方のイベントJSを生成すると
-            // 元ウィジェット側の内容まで書き換わってしまう不具合があった
-            jsCode: { ...(src.jsCode || {}) },
-            docCode: { ...(src.docCode || {}) },
-            name: src.name + "_2",
-        };
+        // ウィジェットのフィールド（props/events/jsCode/docCode等）を個別に
+        // 手動列挙してコピーすると、新しいフィールドが追加された際に
+        // この複製処理の更新が漏れて「元と参照を共有してしまう」不具合が
+        // 繰り返し発生していた。structuredCloneでオブジェクト全体を
+        // ディープコピーし、複製時に変更すべき値だけ上書きすることで
+        // 今後のフィールド追加にも自動的に追従できるようにする。
+        const nw = structuredClone(src);
+        nw.id = getProjectData().idCnt++;
+        nw.x = src.x + SNAP * 2;
+        nw.y = src.y + SNAP * 2;
+        nw.name = src.name + "_2";
         getProjectData().widgets.push(nw);
         renderWidget(nw, true);
         newIds.push(nw.id);

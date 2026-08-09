@@ -312,20 +312,24 @@ function saveYamlData(wid, evName) {
         if (!f.events) f.events = {};
         f.events[evName] = $("yaml-ta")?.value || "";
         f.events["_js_" + evName] = $("js-ta")?.value || "";
+        f.events["_doc_" + evName] = $("prompt-ta")?.value || "";
         return;
     }
     if (wid === "appev") {
         if (!getProjectData().projectInfo.appEvents) getProjectData().projectInfo.appEvents = {};
         getProjectData().projectInfo.appEvents[evName + "_yaml"] = $("yaml-ta")?.value || "";
         getProjectData().projectInfo.appEvents[evName] = $("js-ta")?.value || "";
+        getProjectData().projectInfo.appEvents[evName + "_doc"] = $("prompt-ta")?.value || "";
         return;
     }
     const w = getWidget(wid);
     if (!w) return;
     if (!w.events) w.events = {};
     if (!w.jsCode) w.jsCode = {};
+    if (!w.docCode) w.docCode = {};
     w.events[evName] = $("yaml-ta")?.value || "";
     w.jsCode[evName] = $("js-ta")?.value || "";
+    w.docCode[evName] = $("prompt-ta")?.value || "";
     renderEventsAndPush();
 }
 function saveYaml(wid, evName) {
@@ -357,6 +361,7 @@ function saveFormYaml(evName) {
     if (!f.events) f.events = {};
     f.events[evName] = $("yaml-ta")?.value || "";
     f.events["_js_" + evName] = $("js-ta")?.value || "";
+    f.events["_doc_" + evName] = $("prompt-ta")?.value || "";
     closeModal();
     renderEventsAndPush();
     showToast("フォームイベントを保存しました");
