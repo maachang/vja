@@ -24,6 +24,9 @@
                     <div class="dd-item" onmousedown="actNew()">
                         新規プロジェクト<span class="sc">Ctrl+N</span>
                     </div>
+                    <div class="dd-item" onmousedown="actWizard()">
+                        ウィザードでプロジェクト作成…
+                    </div>
                     <div class="dd-item" onmousedown="actOpen()">
                         プロジェクトを開く<span class="sc">Ctrl+O</span>
                     </div>
@@ -461,7 +464,8 @@
          7. vja-save.js             保存・開く・実行・マルチフォーム管理
          8. vja-table-validation.js 定数・テーブル・バリデーション編集
          9. vja-app-config.js       フォーム定数・アプリイベント・クラウド設定等
-         10. vja-ui.js              キーボード・ルーラー・INIT（必ず最後）
+         10. vja-wizard.js          プロジェクト新規作成ウィザード
+         11. vja-ui.js              キーボード・ルーラー・INIT（必ず最後）
     ═══════════════════════════════════════════════════════════════ -->
     <script src="./qrcode.js"></script>
     <script src="./marked.umd.js"></script>
@@ -475,6 +479,7 @@
     <script src="./vja-save.js"></script>
     <script src="./vja-table-validation.js"></script>
     <script src="./vja-app-config.js"></script>
+    <script src="./vja-wizard.js"></script>
     <script src="./vja-ui.js"></script>
 </body>
 

@@ -20,13 +20,14 @@ function actNew() {
             "未保存の変更があります。",
             "新規プロジェクトを作成すると現在の内容は失われます。続けますか？",
             "新規作成",
-            _doActNew
+            doActNew
         );
     } else {
-        _doActNew();
+        doActNew();
     }
 }
-function _doActNew() {
+// ウィザード機能（vja-wizard.js）からも呼ばれるため、他ファイル参照可能な名前にしている
+function doActNew() {
     getProjectData().forms = [makeFormData("Form1")];
     getProjectData().curFormIdx = 0;
     getDesignerState().selIds = [];
@@ -395,7 +396,7 @@ function formRename() {
    window へのエクスポート（他ファイルから参照される関数のみ）
 ═══════════════════════════════════════════ */
 Object.assign(window, {
-    actNew, loadProjectData, actOpen, actSave, actSaveAs,
+    actNew, doActNew, loadProjectData, actOpen, actSave, actSaveAs,
     actCompileProject, actRunProject, actClearProjectDb,
     actShowVersion, actStopProject,
     setStartForm, updateStartBtn, buildFormSelect,

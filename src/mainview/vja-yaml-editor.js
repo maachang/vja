@@ -4062,10 +4062,16 @@ function openAiConfig() {
 
         "</div>" +
         "<div class='mfoot'>" +
-        mfootHTML([{ label: "キャンセル", action: "closeModal()" }]) + "" +
+        mfootHTML([{ label: "キャンセル", action: "aiCfgCancel()" }]) + "" +
         "<button class='pri'" + evtAttr("onmousedown", "aiCfgConfirm()") + ">確定</button>" +
         "</div>"
     );
+}
+// AI接続設定モーダルのキャンセル。ウィザードから遷移中だった場合は、
+// 保留していた次ステップへの継続コールバックも破棄し、ウィザードを中断する
+function aiCfgCancel() {
+    if (typeof WIZARD_STATE !== "undefined") WIZARD_STATE.resumeAfterAiConfig = null;
+    closeModal();
 }
 
 async function aiCfgSelectPreset(presetId) {
@@ -4308,6 +4314,12 @@ async function aiCfgConfirm() {
     closeModal();
     pushUndo();
     showToast("AI設定を反映しました");
+    // ウィザードからの遷移中であれば、保存完了を受けてウィザードの次ステップへ戻る
+    if (typeof WIZARD_STATE !== "undefined" && WIZARD_STATE.resumeAfterAiConfig) {
+        const resume = WIZARD_STATE.resumeAfterAiConfig;
+        WIZARD_STATE.resumeAfterAiConfig = null;
+        resume();
+    }
 }
 
 // ── エディタ内検索 ────────────────────────────────────
@@ -4566,7 +4578,7 @@ Object.assign(window, {
     editorKeyHandler, editorMouseDownHandler2, editorDblClickHandler, editorHlUpdate,
     buildYamlEditorHTML, initYamlEditorModal,
     openAiConfig, aiCfgModelListHtml, aiCfgToggleRouter, aiCfgToggleEnabled,
-    aiCfgFetchModels, aiCfgConfirm, aiCfgSelectPreset, aiCfgSaveAsPreset, aiCfgDoSaveAsPreset, aiCfgDeletePreset,
+    aiCfgFetchModels, aiCfgConfirm, aiCfgCancel, aiCfgSelectPreset, aiCfgSaveAsPreset, aiCfgDoSaveAsPreset, aiCfgDeletePreset,
     editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, insertFormDesignTemplate, openFormDesignTemplateModal, confirmApplyFormDesignTemplate, textToYamlGenerate, formDesignTextToYamlGenerate, formDesignAiGenerate, saveFormDesignDraft,
     parseFormDesignJson, openAiRawOutputModal,
     validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,

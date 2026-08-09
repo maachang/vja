@@ -129,11 +129,17 @@ function openProjectInfo() {
         "</div>" +
         "</div>" +
         "<div class='mfoot'>" +
-        "<button" + evtAttr("onmousedown", "closeModal()") + ">キャンセル</button>" +
+        "<button" + evtAttr("onmousedown", "piCancel()") + ">キャンセル</button>" +
         "<button class='pri' id='pi-save-btn'>保存</button>" +
         "</div>"
     );
     rAfBind("#pi-save-btn", "click", saveProjectInfo);
+}
+// プロジェクト情報モーダルのキャンセル。ウィザードから遷移中だった場合は、
+// 保留していた次ステップへの継続コールバックも破棄し、ウィザードを中断する
+function piCancel() {
+    if (typeof WIZARD_STATE !== "undefined") WIZARD_STATE.resumeAfterProjectInfo = null;
+    closeModal();
 }
 
 function piVerStep(dir) {
@@ -159,6 +165,12 @@ function saveProjectInfo() {
     closeModal();
     pushUndo();
     showToast("プロジェクト情報を保存しました");
+    // ウィザードからの遷移中であれば、保存完了を受けてウィザードの次ステップへ戻る
+    if (typeof WIZARD_STATE !== "undefined" && WIZARD_STATE.resumeAfterProjectInfo) {
+        const resume = WIZARD_STATE.resumeAfterProjectInfo;
+        WIZARD_STATE.resumeAfterProjectInfo = null;
+        resume();
+    }
 }
 
 /* ── 拡張ランタイム ── */
@@ -911,7 +923,7 @@ Object.assign(window, {
     // フォーム定数・アプリイベント・プロジェクト情報・拡張ランタイム
     openFormConstEditor, renderFormConstModal, formConstAddRow, saveFormConst,
     openAppEvents, saveAppEvent,
-    openProjectInfo, piVerStep, saveProjectInfo,
+    openProjectInfo, piVerStep, saveProjectInfo, piCancel,
     openExtRuntime, saveExtRuntime, extRtGenDoc,
     openDebugTools,
     // クラウドインフラ設定

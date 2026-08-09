@@ -71,6 +71,7 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 | src/mainview/vja-save.js | 保存・開く・実行・マルチフォーム管理 |
 | src/mainview/vja-table-validation.js | 定数・テーブル・バリデーション編集 |
 | src/mainview/vja-app-config.js | フォーム定数・アプリイベント・クラウド設定等 |
+| src/mainview/vja-wizard.js | プロジェクト新規作成ウィザード |
 | src/mainview/vja-ui.js | キーボード・ルーラー・INIT（最後に読み込む） |
 | src/mainview/bridge.ts | Webview RPC ブリッジ |
 | src/mainview/bridge-common.ts | RPC ブリッジ共通処理 |
