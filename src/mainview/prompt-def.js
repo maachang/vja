@@ -2136,6 +2136,42 @@ ${widgetsCtx || "(none — this form has no widgets yet)"}
     o.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT = ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT;
     o.FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT = ENG_FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT;
 
+    // [プロンプト]プロジェクト新規作成ウィザード: それまでのQ&A履歴から次の1問を動的に生成する
+    const ENG_WIZARD_NEXT_QUESTION_SYS_PROMPT = function () {
+        return (`
+You are helping a non-technical user describe, in Japanese, the business application they want to build. This is an interactive interview: you ask ONE question at a time in Japanese, the user answers, and this repeats. The end goal is to gather enough information for a LATER step (not yours) to decompose the description into a list of screens (forms).
+
+Based on the [Q&A History So Far] provided in the user message, decide the single most useful next question to ask.
+
+[Output Rules]
+- Output STRICT JSON only. No markdown code fences, no intro, no explanations.
+- JSON shape:
+{
+  "question": "<the single next question, written in natural, polite Japanese, asking about ONE topic only>",
+  "status": [
+    { "label": "システム概要", "done": true },
+    { "label": "主な機能", "done": false },
+    { "label": "画面数の目安", "done": false }
+  ]
+}
+- "question" must be exactly one concrete question in Japanese, answerable in a few sentences. Never ask two things at once.
+- Never repeat a question that has already been effectively answered in the history.
+- "status" always contains exactly these 3 items, in this order, with these exact labels: "システム概要", "主な機能", "画面数の目安". Mark "done": true only when that aspect has been sufficiently covered by the history so far.
+- Even if you believe all 3 status items are already "done", still output one more useful clarifying or confirming question (the user has their own "complete" button to stop the interview early — you must never emit an empty question).
+`.trim() + "\n");
+    };
+
+    const ENG_WIZARD_NEXT_QUESTION_USER_PROMPT = function (historyCtx) {
+        return (
+            "[Q&A History So Far]\n" +
+            (historyCtx || "(まだ質問していません。これが最初の質問です)") +
+            "\n\nGenerate the next question and status as specified in the system prompt."
+        );
+    };
+
+    o.WIZARD_NEXT_QUESTION_SYS_PROMPT = ENG_WIZARD_NEXT_QUESTION_SYS_PROMPT;
+    o.WIZARD_NEXT_QUESTION_USER_PROMPT = ENG_WIZARD_NEXT_QUESTION_USER_PROMPT;
+
     // [プロンプト]テーブル管理: 自然言語の依頼文からSQLiteテーブルのカラム構成（雛形）を生成
     const ENG_TABLE_SCHEMA_GEN_SYS_PROMPT = function ({ tableName, description }) {
         return (`
