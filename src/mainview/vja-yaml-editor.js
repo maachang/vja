@@ -1793,6 +1793,7 @@ const _FORBIDDEN_PATTERNS = [
     { re: /\bwindow\.location\b/, message: "window.location の使用（画面遷移はvja.form.navigate()のみ使用してください）" },
     { re: /\bnew\s+Promise\s*\(/, message: "new Promise() の使用（Promiseの明示的な生成は禁止。awaitを使用してください）" },
     { re: /\baddEventListener\s*\(/, message: "addEventListener() の使用（VJAではイベント登録は不要。処理は直接記述してください）" },
+    { re: /\bcrypto\.subtle\b/, message: "crypto.subtle の使用（VJAではハッシュ化にvja.crypto.sha1/sha256/sha512を、暗号化/復号にvja.crypto.encrypt/decryptを使用してください）" },
 ];
 function _findForbiddenPatterns(code) {
     const lines = code.split("\n");

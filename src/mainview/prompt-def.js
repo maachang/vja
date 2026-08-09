@@ -1232,6 +1232,7 @@ ${_safeYamlFence(vjaUseJsInfo)}
 - Insert line breaks in the source code to make it easier to read.
 
 ## vja API
+- API selection priority (always follow this order, do NOT skip a tier): 1) If a vja.* API exists for the operation (see [vja Runtime(yaml)] below), you MUST use it. 2) If no vja.* API covers it, but a function is defined under the "### 拡張ランタイム(yaml)" section in the user message, use that. 3) Only if neither covers it, fall back to a standard/available JavaScript API. Never reimplement something a vja.* API already provides (e.g. do NOT use crypto.subtle directly — use vja.crypto.sha256/sha1/sha512 or vja.crypto.encrypt/decrypt instead).
 - All vja.* calls must use "await", except for the following synchronous calls: vja.event.*, vja.trigger.*, vja.widget.get, vja.widget.set, vja.widget.show, vja.widget.hide, vja.widget.enable, and vja.widget.disable.
 - Never use Promise, .then(), or .catch() directly. Use await instead.
 - Screen navigation must use vja.form.navigate('screen name') only. (window.location is prohibited)
@@ -1281,6 +1282,7 @@ ${_safeYamlFence(vjaUseJsInfo)}
 - Insert line breaks in the source code to make it easier to read.
 
 ## vja API
+- API selection priority (always follow this order, do NOT skip a tier): 1) If a vja.* API exists for the operation (see [vja Runtime(yaml)] below), you MUST use it. 2) If no vja.* API covers it, but a function is defined under the "### 拡張ランタイム(yaml)" section in the user message, use that. 3) Only if neither covers it, fall back to a standard/available JavaScript API. Never reimplement something a vja.* API already provides (e.g. do NOT use crypto.subtle directly — use vja.crypto.sha256/sha1/sha512 or vja.crypto.encrypt/decrypt instead).
 - All vja.* calls must use "await", except for the following synchronous calls: vja.event.*, vja.trigger.*, vja.widget.get, vja.widget.set, vja.widget.show, vja.widget.hide, vja.widget.enable, and vja.widget.disable.
 - Never use Promise, .then(), or .catch() directly. Use await instead.
 - Screen navigation must use vja.form.navigate('screen name') only. (window.location is prohibited)
