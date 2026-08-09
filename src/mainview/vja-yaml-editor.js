@@ -2812,6 +2812,30 @@ async function confirmApplyFormDesignTemplate() {
     }
 }
 
+// イベントYAMLドラフト生成AIへは、出力キー名を英語表記（description/tables/
+// validation/actions/on_success/on_error）で指示している（日本語キー名だと
+// 一部ローカルLLM＋llama-server環境で応答パースエラー(peg-native format)が
+// 発生する事象が確認されたため）。ここでその英語キーを、VJAイベントYAMLの
+// 正式仕様である日本語キー（説明/利用テーブル/入力チェック/アクション/
+// 正常終了/エラー終了）へ変換する。日本語キーは「利用テーブル」連動機能
+// （vja-yaml-editor.js内の正規表現抽出）やYAML→JS生成AIのプロンプトが
+// 前提としているため、変換せず英語キーのまま使うと他機能が壊れる。
+const _TEXT_TO_YAML_EN_TO_JP_KEYS = [
+    ["description", "説明"],
+    ["tables", "利用テーブル"],
+    ["validation", "入力チェック"],
+    ["actions", "アクション"],
+    ["on_success", "正常終了"],
+    ["on_error", "エラー終了"],
+];
+function _convertTextToYamlEngKeysToJp(yamlText) {
+    let result = yamlText;
+    _TEXT_TO_YAML_EN_TO_JP_KEYS.forEach(([en, jp]) => {
+        result = result.replace(new RegExp("^([ \\t]*)" + en + "[ \\t]*:", "gm"), "$1" + jp + ":");
+    });
+    return result;
+}
+
 async function textToYamlGenerate(wid, evName) {
     if (!getProjectData().aiConfig.enabled) {
         if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
@@ -2845,7 +2869,9 @@ async function textToYamlGenerate(wid, evName) {
 
     const isAppEvent = (wid === "appev");
     const isFormEvent = (wid === "form");
-    const { allWidgetsCtx, tablesCtx } = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent);
+    // YAMLドラフト生成時は依頼文にウィジェット名が出てこないケースが多いため、
+    // 絞り込みを行わず常にフォーム全体のウィジェット一覧をAIへ渡す
+    const { allWidgetsCtx, tablesCtx } = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, false);
 
     const sysPrompt = _PROMPT_DEF.TEXT_TO_YAML_SYS_PROMPT({ widgetsCtx: allWidgetsCtx, tablesCtx: tablesCtx });
     const userPrompt = _PROMPT_DEF.TEXT_TO_YAML_USER_PROMPT(inputText);
@@ -2858,7 +2884,11 @@ async function textToYamlGenerate(wid, evName) {
         loadingMsg: "YAMLドラフト作成中…",
         onSuccess: async (cleanYaml) => {
             // マークダウンコードブロック (```yaml) を除去
-            const stripped = cleanYaml.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+            const stripped0 = cleanYaml.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+            // AIへの出力キー指示は英語表記（description/tables等）にしているため
+            // （日本語キーだと一部ローカルLLM＋サーバー環境で応答パースエラーが
+            // 発生する事象への対策）、実際のVJAイベントYAML仕様（日本語キー）へ変換する
+            const stripped = _convertTextToYamlEngKeysToJp(stripped0);
 
             // モーダルを再表示する前にデータモデルに新YAMLと依頼テキストを書き込み
             if (isFormEvent) {
@@ -2972,6 +3002,42 @@ function openFormDesignAi() {
 }
 
 // 自然言語から画面デザインYAMLを生成する関数
+// 画面デザインYAMLドラフト生成AIへも、イベントYAMLドラフト生成と同様の理由
+// （一部ローカルLLM＋llama-server環境での応答パースエラー対策）で、出力キー名を
+// 英語表記（description/layout/fields/tables/actions、layout配下のcolumns/
+// label_position/button_position）で指示している。ここでVJA画面デザインYAML
+// の正式仕様である日本語キー（説明/フォームレイアウト/カラム数/ラベル位置/
+// ボタン位置/入力項目/参照テーブル/アクション項目）へ変換する。日本語キーは
+// 「説明:」「参照テーブル:」の正規表現抽出（_parseFormDesignYaml）が前提と
+// しているため、変換せず英語キーのまま使うと他機能が壊れる。
+const _FORM_DESIGN_EN_TO_JP_KEYS = [
+    ["description", "説明"],
+    ["layout", "フォームレイアウト"],
+    ["columns", "カラム数"],
+    ["label_position", "ラベル位置"],
+    ["button_position", "ボタン位置"],
+    ["fields", "入力項目"],
+    ["tables", "参照テーブル"],
+    ["actions", "アクション項目"],
+];
+const _FORM_DESIGN_EN_TO_JP_VALUES = [
+    ["bottom_right", "右下"],
+    ["top_right", "右"],
+    ["bottom_center", "下部中央"],
+    ["left", "左"],
+    ["top", "上"],
+];
+function _convertFormDesignEngKeysToJp(yamlText) {
+    let result = yamlText;
+    _FORM_DESIGN_EN_TO_JP_KEYS.forEach(([en, jp]) => {
+        result = result.replace(new RegExp("^([ \\t]*)" + en + "[ \\t]*:", "gm"), "$1" + jp + ":");
+    });
+    _FORM_DESIGN_EN_TO_JP_VALUES.forEach(([en, jp]) => {
+        result = result.replace(new RegExp(":([ \\t]*)" + en + "([ \\t]*(?:#.*)?)$", "gm"), ":$1" + jp + "$2");
+    });
+    return result;
+}
+
 async function formDesignTextToYamlGenerate() {
     if (!getProjectData().aiConfig.enabled) {
         if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
@@ -3028,7 +3094,8 @@ async function formDesignTextToYamlGenerate() {
         userPrompt: userPrompt,
         loadingMsg: "画面YAMLドラフト作成中…",
         onSuccess: async (cleanYaml) => {
-            const stripped = cleanYaml.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+            const stripped0 = cleanYaml.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+            const stripped = _convertFormDesignEngKeysToJp(stripped0);
 
             getProjectData().formDesignDraft = stripped;
             getProjectData().formDesignDocDraft = inputText;
@@ -4513,4 +4580,3 @@ Object.assign(window, {
     closeCompletionPopup, acceptCompletionAt, clearBracketMatch, updateBracketMatch,purgeOverridesForWid,
     OVERRIDE_MAP_NAMES, purgeOverridesForKey,
 });
-

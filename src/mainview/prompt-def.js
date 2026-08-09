@@ -2049,26 +2049,27 @@ Your task is to convert a user's natural language request (written in Japanese) 
 [VJA Event YAML Format Specification]
 Output strictly formatted YAML with the following keys:
 
-説明: <Brief Japanese summary of the event purpose>
-利用テーブル:
-  - <table_name> (Include this section ONLY IF database table access is mentioned or required; otherwise omit or set to [])
-入力チェック: <Validation requirements if mentioned, or "なし">
-アクション:
+description: <Brief Japanese summary of the event purpose>
+tables:
+  - <table_name> (Include this section ONLY IF database table access is mentioned or required; otherwise omit this section entirely)
+validation: <Validation requirements if mentioned, or "なし">
+actions:
   - <Step 1 action description in clear Japanese, referencing exact widget names and DB column names where applicable>
   - <Step 2 action description>
-正常終了: <Log or toast notification on clean completion, e.g. "トーストで完了を出力" or "なし">
-エラー終了: <Error handling policy, e.g. "ログとトーストにエラーを出力">
+on_success: <Log or toast notification on clean completion, e.g. "トーストで完了を出力" or "なし">
+on_error: <Error handling policy, e.g. "ログとトーストにエラーを出力">
 
 [Strict Output Rules]
 - Output ONLY the raw YAML text. Do NOT wrap response in markdown code blocks (\`\`\`yaml).
 - Do not include any intro, explanations, or conversational text.
+- Begin your response immediately with "description:".
 - Use actual widget names (e.g. txtName, btnSearch, tblUsers) and reference table columns from the context provided below.
 
 [Available Widgets Context]
 ${widgetsCtx || "(No widgets)"}
 
 [Available Database Tables Context]
-${tablesCtx || "(No DB tables)"}
+${tablesCtx || "(No DB tables)"}            
 `.trim() + "\n");
     };
 
@@ -2092,26 +2093,27 @@ Your task is to convert a user's natural language request (written in Japanese) 
 [VJA Form Design YAML Format Specification]
 Output strictly formatted YAML with the following sections:
 
-説明: "<Brief Japanese summary of the screen purpose>"
+description: "<Brief Japanese summary of the screen purpose>"
 
-フォームレイアウト:
-  カラム数: 1  # 1, 2, or 3
-  ラベル位置: 左  # 左 (left) or 上 (top)
-  ボタン位置: 右下  # 右下 (bottom-right), 右 (top-right for search), or 下部中央 (bottom-center)
+layout:
+  columns: 1  # 1, 2, or 3
+  label_position: left  # left or top
+  button_position: bottom_right  # bottom_right, top_right (for search), or bottom_center
 
-入力項目:
+fields:
   - <Field Name>: <Widget type (e.g. inputtype with text/number/date, selectBox, datagrid, text, image, checkbox, label, textarea, groupbox, tabs)>
 
-参照テーブル:
+tables:
   - <table_name> (Include if database table integration is mentioned or relevant)
 
-アクション項目:
+actions:
   - <Button text or action name> (e.g. 検索ボタン, 保存ボタン, キャンセル)
 
 [Strict Output Rules]
 - Output ONLY the raw YAML text. Do NOT wrap response in markdown code blocks (\`\`\`yaml).
 - Do not include any intro, explanations, or conversational text.
-- If the form already has existing widgets (see [Existing Widgets On This Form] below), do NOT duplicate them in 入力項目/アクション項目 unless the user's request clearly asks to change or add alongside them. Use their existing names as-is when referring to them.
+- Begin your response immediately with "description:".
+- If the form already has existing widgets (see [Existing Widgets On This Form] below), do NOT duplicate them in fields/actions unless the user's request clearly asks to change or add alongside them. Use their existing names as-is when referring to them.
 
 [Available Database Tables Context]
 ${tablesCtx || "(No DB tables)"}
