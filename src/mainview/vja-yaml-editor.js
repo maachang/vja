@@ -3009,7 +3009,7 @@ function openFormDesignAi() {
 // label_position/button_position）で指示している。ここでVJA画面デザインYAML
 // の正式仕様である日本語キー（説明/フォームレイアウト/カラム数/ラベル位置/
 // ボタン位置/入力項目/参照テーブル/アクション項目）へ変換する。日本語キーは
-// 「説明:」「参照テーブル:」の正規表現抽出（_parseFormDesignYaml）が前提と
+// 「説明:」「参照テーブル:」の正規表現抽出（parseFormDesignYaml）が前提と
 // しているため、変換せず英語キーのまま使うと他機能が壊れる。
 const _FORM_DESIGN_EN_TO_JP_KEYS = [
     ["description", "説明"],
@@ -3028,7 +3028,7 @@ const _FORM_DESIGN_EN_TO_JP_VALUES = [
     ["left", "左"],
     ["top", "上"],
 ];
-function _convertFormDesignEngKeysToJp(yamlText) {
+function convertFormDesignEngKeysToJp(yamlText) {
     let result = yamlText;
     _FORM_DESIGN_EN_TO_JP_KEYS.forEach(([en, jp]) => {
         result = result.replace(new RegExp("^([ \\t]*)" + en + "[ \\t]*:", "gm"), "$1" + jp + ":");
@@ -3096,7 +3096,7 @@ async function formDesignTextToYamlGenerate() {
         loadingMsg: "画面YAMLドラフト作成中…",
         onSuccess: async (cleanYaml) => {
             const stripped0 = cleanYaml.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
-            const stripped = _convertFormDesignEngKeysToJp(stripped0);
+            const stripped = convertFormDesignEngKeysToJp(stripped0);
 
             getProjectData().formDesignDraft = stripped;
             getProjectData().formDesignDocDraft = inputText;
@@ -3784,7 +3784,7 @@ function saveFormDesignDraft() {
 // 「説明:」「入力項目:」「参照テーブル:」の3セクションを正規表現で抽出する
 // （このプロジェクトはYAMLを厳密パースせず、既存の「利用テーブル:」抽出と同じ
 //  軽量な正規表現方式に統一している）
-function _parseFormDesignYaml(text) {
+function parseFormDesignYaml(text) {
     const descM = text.match(/説明\s*:\s*(.*)$/m);
     let desc = descM ? descM[1].trim().replace(/^["']|["']$/g, "") : "";
     const tblM = text.match(/参照テーブル\s*:\s*\n([\s\S]*?)(?:\n\S|\n\n|$)/);
@@ -3854,7 +3854,7 @@ async function formDesignAiGenerate() {
     }
     const ta = $("ta-fd");
     const rawText = ta?.value || "";
-    const { desc, tables } = _parseFormDesignYaml(rawText);
+    const { desc, tables } = parseFormDesignYaml(rawText);
     const curForm = getProjectData().forms[getProjectData().curFormIdx];
 
     const targetTables = getProjectData().tables.filter((t) => tables.includes(t.name));
@@ -4580,7 +4580,7 @@ Object.assign(window, {
     openAiConfig, aiCfgModelListHtml, aiCfgToggleRouter, aiCfgToggleEnabled,
     aiCfgFetchModels, aiCfgConfirm, aiCfgCancel, aiCfgSelectPreset, aiCfgSaveAsPreset, aiCfgDoSaveAsPreset, aiCfgDeletePreset,
     editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, insertFormDesignTemplate, openFormDesignTemplateModal, confirmApplyFormDesignTemplate, textToYamlGenerate, formDesignTextToYamlGenerate, formDesignAiGenerate, saveFormDesignDraft,
-    parseFormDesignJson, openAiRawOutputModal,
+    parseFormDesignJson, parseFormDesignYaml, convertFormDesignEngKeysToJp, openAiRawOutputModal,
     validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
     openAiValidationDetailModal,
     dismissAiValidationBanner, manualRetryAiFix, manualMockCheck,

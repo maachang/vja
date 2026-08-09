@@ -2176,6 +2176,65 @@ Based on the [Q&A History So Far] provided in the user message, decide the singl
     o.WIZARD_NEXT_QUESTION_SYS_PROMPT = ENG_WIZARD_NEXT_QUESTION_SYS_PROMPT;
     o.WIZARD_NEXT_QUESTION_USER_PROMPT = ENG_WIZARD_NEXT_QUESTION_USER_PROMPT;
 
+    // [プロンプト]プロジェクト新規作成ウィザード: Q&A履歴から必要なフォーム一覧に分解する
+    const ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT = function () {
+        return (`
+You are an expert VJA (Visual JavaScript for AI) application architect. Based on the [Q&A History] provided in the user message (a Japanese interview describing a business application the user wants to build), decompose the application into a list of screens (forms).
+
+[Output Rules]
+- Output STRICT JSON only (a JSON array). No markdown code fences, no intro, no explanations.
+- Array item shape:
+{
+  "formName": "<English PascalCase identifier ending in \"Form\", e.g. LoginForm, RegUserForm, CustomerListForm — must be unique across the array, ASCII letters/digits only>",
+  "formTitle": "<short Japanese display title for this screen, e.g. ログイン>",
+  "description": "<one-sentence Japanese description of this screen's purpose>",
+  "docDraft": "<a Japanese free-text paragraph describing what widgets/inputs/buttons this screen should have, written in the same natural style a user would type when requesting a screen design — this becomes the input to a LATER screen-layout-generation step, so be concrete about input fields and buttons>"
+}
+- Respect the requested screen-count scale if the history mentions one (少なめ/標準/多め). When not mentioned, default to a small, coherent set of screens that covers what was described (typically 2-5).
+- Do not invent major features that were never mentioned in the history.
+- If a login/authentication flow was mentioned or implied, include it as its own screen.
+`.trim() + "\n");
+    };
+
+    const ENG_WIZARD_DECOMPOSE_FORMS_USER_PROMPT = function (historyCtx) {
+        return (
+            "[Q&A History]\n" + historyCtx + "\n\n" +
+            "Generate the JSON array of forms as specified in the system prompt."
+        );
+    };
+
+    o.WIZARD_DECOMPOSE_FORMS_SYS_PROMPT = ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT;
+    o.WIZARD_DECOMPOSE_FORMS_USER_PROMPT = ENG_WIZARD_DECOMPOSE_FORMS_USER_PROMPT;
+
+    // [プロンプト]プロジェクト新規作成ウィザード: フォーム構成から必要そうなDBテーブル候補を切り出す
+    const ENG_WIZARD_TABLE_CANDIDATES_SYS_PROMPT = function () {
+        return (`
+You are an expert VJA (Visual JavaScript for AI) application architect. Based on the [Q&A History] and [Planned Forms] provided in the user message, suggest candidate SQLite database tables that this application will likely need.
+
+[Output Rules]
+- Output STRICT JSON only (a JSON array). No markdown code fences, no intro, no explanations.
+- Array item shape:
+{
+  "name": "<English snake_case or lowercase table name, e.g. users, products — must be unique across the array>",
+  "description": "<one-sentence Japanese description of what this table stores>"
+}
+- Only suggest tables that are clearly implied by the history/forms (e.g. a login screen implies a "users" table). Do not invent unrelated tables.
+- Do NOT include column definitions — only table name and description. Columns will be designed later.
+- If no database table appears to be needed at all, output an empty array [].
+`.trim() + "\n");
+    };
+
+    const ENG_WIZARD_TABLE_CANDIDATES_USER_PROMPT = function (historyCtx, formsCtx) {
+        return (
+            "[Q&A History]\n" + historyCtx + "\n\n" +
+            "[Planned Forms]\n" + formsCtx + "\n\n" +
+            "Generate the JSON array of candidate tables as specified in the system prompt."
+        );
+    };
+
+    o.WIZARD_TABLE_CANDIDATES_SYS_PROMPT = ENG_WIZARD_TABLE_CANDIDATES_SYS_PROMPT;
+    o.WIZARD_TABLE_CANDIDATES_USER_PROMPT = ENG_WIZARD_TABLE_CANDIDATES_USER_PROMPT;
+
     // [プロンプト]テーブル管理: 自然言語の依頼文からSQLiteテーブルのカラム構成（雛形）を生成
     const ENG_TABLE_SCHEMA_GEN_SYS_PROMPT = function ({ tableName, description }) {
         return (`

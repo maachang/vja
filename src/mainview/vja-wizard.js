@@ -26,9 +26,11 @@
 const WIZARD_STATE = {
     resumeAfterAiConfig: null,
     resumeAfterProjectInfo: null,
-    qaHistory: [], // [{ question, answer }]
+    qaHistory: [], // [{ question, answer, answerType, options }]
     qaIndex: 0,
     qaStatus: [], // [{ label, done }]
+    formPlan: [], // [{ formName, formTitle, description, docDraft }]
+    tableCandidates: [], // [{ name, description, selected }]
 };
 
 // この件数を超えたら「完了で進めることもできます」とトーストで軽く促す目安値
@@ -260,15 +262,231 @@ function wizardQaNext() {
     wizardQaFetchNext();
 }
 
-// 「完了」: 常時押せる。Q&Aを終了し次フェーズ（フォーム分解、次フェーズで実装予定）へ進む
+// 「完了」: 常時押せる。Q&Aを終了しフォーム分解ステップへ進む
 function wizardQaComplete() {
     _wizardCommitCurrentAnswer();
+    wizardDecomposeForms();
+}
+
+/* ═══════════════════════════════════════════
+  フォーム分解・テーブル候補抽出（ウィザード⑥⑦）
+═══════════════════════════════════════════ */
+
+// AI出力テキストをJSON配列としてパースする（既存のparseFormDesignJsonと同方式）
+function _wizardParseJsonArray(text) {
+    const tryParse = (s) => {
+        try {
+            const v = JSON.parse(s);
+            return Array.isArray(v) ? v : null;
+        } catch (e) {
+            return null;
+        }
+    };
+    const direct = tryParse(text);
+    if (direct) return direct;
+    const s = text.indexOf("[");
+    const e = text.lastIndexOf("]");
+    if (s !== -1 && e !== -1 && e > s) {
+        const extracted = tryParse(text.slice(s, e + 1));
+        if (extracted) return extracted;
+    }
+    return null;
+}
+
+// Q&A履歴からAIにフォーム一覧を分解させ、続けてテーブル候補抽出へ進む
+async function wizardDecomposeForms() {
+    const historyCtx = _wizardBuildQaHistoryCtx();
+    const sysPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_SYS_PROMPT();
+    const userPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_USER_PROMPT(historyCtx);
+
+    let forms = null;
+    await runAiGenerate({
+        systemPrompt: sysPrompt,
+        userPrompt: userPrompt,
+        loadingMsg: "画面構成を検討しています…",
+        onSuccess: async (raw) => { forms = _wizardParseJsonArray(raw); },
+        onCancel: async () => { },
+        onError: async () => { },
+    });
+
+    if (!forms || forms.length === 0) {
+        showToast("画面構成の生成に失敗しました。もう一度お試しください");
+        _wizardRenderQaModal();
+        return;
+    }
+    WIZARD_STATE.formPlan = forms;
+    wizardExtractTableCandidates();
+}
+
+// フォーム一覧を元にAIにテーブル候補を抽出させ、選択モーダルを表示する
+async function wizardExtractTableCandidates() {
+    const historyCtx = _wizardBuildQaHistoryCtx();
+    const formsCtx = WIZARD_STATE.formPlan
+        .map((f) => "- " + f.formName + " (" + f.formTitle + "): " + f.description)
+        .join("\n");
+    const sysPrompt = _PROMPT_DEF.WIZARD_TABLE_CANDIDATES_SYS_PROMPT();
+    const userPrompt = _PROMPT_DEF.WIZARD_TABLE_CANDIDATES_USER_PROMPT(historyCtx, formsCtx);
+
+    let tables = null;
+    await runAiGenerate({
+        systemPrompt: sysPrompt,
+        userPrompt: userPrompt,
+        loadingMsg: "必要そうなテーブルを検討しています…",
+        onSuccess: async (raw) => { tables = _wizardParseJsonArray(raw); },
+        onCancel: async () => { },
+        onError: async () => { },
+    });
+
+    // テーブル候補抽出に失敗しても、テーブルが無いケースと同様に扱い続行する
+    WIZARD_STATE.tableCandidates = (tables || []).map((t) => ({ name: t.name, description: t.description, selected: true }));
+    _wizardRenderReviewModal();
+}
+
+// フォーム一覧＋テーブル候補の確認モーダルを表示する（ウィザード最後の確認画面）
+function _wizardRenderReviewModal() {
+    const formsHtml = WIZARD_STATE.formPlan
+        .map((f) => "<div class='rp-tbl-row'><div class='rp-tbl-header'>" +
+            "<span class='rp-tbl-name'>" + esc(f.formTitle) + "</span>" +
+            "<span class='rp-tbl-desc'>" + esc(f.description || "") + "</span>" +
+            "</div></div>")
+        .join("");
+
+    const tablesHtml = WIZARD_STATE.tableCandidates.length > 0
+        ? WIZARD_STATE.tableCandidates.map((t, i) =>
+            "<label style='display:flex;align-items:center;gap:8px;padding:4px 0'>" +
+            "<input type='checkbox'" + (t.selected ? " checked" : "") + evtAttr("onchange", "wizardToggleTableCandidate(" + i + ")") + ">" +
+            "<span><b>" + esc(t.name) + "</b> — " + esc(t.description || "") + "</span>" +
+            "</label>"
+        ).join("")
+        : "<div class='infobox' style='font-size:11px'>DBテーブルは不要と判断されました</div>";
+
+    showModal(
+        mhdrHTML("🧙 ウィザード（確認）") +
+        "<div class='mbody' style='gap:10px'>" +
+        "<div class='infobox'>以下の構成でフォーム・テーブルを作成します。よければ「生成開始」を押してください。</div>" +
+        "<div><b>作成するフォーム</b></div>" +
+        formsHtml +
+        "<div><b>作成するテーブル（カラムは後で個別に作成します）</b></div>" +
+        tablesHtml +
+        "</div>" +
+        "<div class='mfoot'>" +
+        "<button" + evtAttr("onmousedown", "closeModal()") + ">キャンセル</button>" +
+        "<button class='pri'" + evtAttr("onmousedown", "wizardConfirmAndGenerate()") + ">生成開始</button>" +
+        "</div>"
+    );
+}
+
+function wizardToggleTableCandidate(i) {
+    WIZARD_STATE.tableCandidates[i].selected = !WIZARD_STATE.tableCandidates[i].selected;
+}
+
+/* ═══════════════════════════════════════════
+  一括生成（ウィザード⑧⑨）
+═══════════════════════════════════════════ */
+
+// 選択されたテーブルを仮登録（名前・説明のみ、カラムは後で個別作成）する
+function _wizardCommitSelectedTables() {
+    const existingNames = new Set(getProjectData().tables.map((t) => t.name));
+    WIZARD_STATE.tableCandidates
+        .filter((t) => t.selected && t.name && !existingNames.has(t.name))
+        .forEach((t) => {
+            getProjectData().tables.push({
+                name: t.name,
+                description: t.description || "",
+                columns: [],
+                updatedAt: new Date().toISOString(),
+            });
+        });
+}
+
+// 「生成開始」: テーブルを仮登録し、フォームを作成して一括生成を開始する
+async function wizardConfirmAndGenerate() {
     closeModal();
-    showToast("フォーム分解・一括生成は次のフェーズで実装予定です");
+    _wizardCommitSelectedTables();
+
+    getProjectData().forms = WIZARD_STATE.formPlan.map((f) => {
+        const nf = makeFormData(f.formName || "Form1");
+        nf.cfg.title = f.formTitle || nf.cfg.title;
+        nf.cfg.description = f.description || "";
+        nf.formDesignDocDraft = f.docDraft || "";
+        return nf;
+    });
+    getProjectData().curFormIdx = 0;
+    refreshAll();
+
+    let successCount = 0;
+    const total = getProjectData().forms.length;
+    for (let i = 0; i < total; i++) {
+        switchForm(i);
+        const f = getProjectData().forms[i];
+        showToast("フォーム" + (i + 1) + "/" + total + ": " + f.cfg.title + " を生成中…");
+        const yaml = await _wizardGenerateFormYaml(f.formDesignDocDraft);
+        if (!yaml) continue; // 失敗した場合はこのフォームは空のまま次へ進む
+        f.formDesignDraft = yaml;
+        const ok = await _wizardGenerateFormLayout(yaml);
+        if (ok) successCount++;
+    }
+
+    refreshAll();
+    pushUndo();
+    showToast("ウィザード完了: " + successCount + "/" + total + "件のフォームを生成しました");
+}
+
+// 1フォーム分の「画面デザインYAMLドラフト → YAML」生成（DOM非依存版）
+async function _wizardGenerateFormYaml(docDraft) {
+    const tablesCtx = (getProjectData().tables || [])
+        .map((t) => t.name + ": " + (t.description || ""))
+        .join("\n");
+    const widgetsCtx = (getProjectData().widgets || [])
+        .map((w) => "  - " + w.name + " (" + w.tag + ")")
+        .join("\n");
+    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT({ tablesCtx, widgetsCtx });
+    const userPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT(docDraft || "");
+
+    let result = null;
+    await runAiGenerate({
+        systemPrompt: sysPrompt,
+        userPrompt: userPrompt,
+        loadingMsg: "画面YAMLドラフトを生成中…",
+        onSuccess: async (cleanYaml) => {
+            const stripped0 = cleanYaml.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+            result = convertFormDesignEngKeysToJp(stripped0);
+        },
+        onCancel: async () => { },
+        onError: async () => { },
+    });
+    return result;
+}
+
+// 1フォーム分の「YAML → 画面レイアウト（ウィジェット配置）」生成（DOM非依存版）
+async function _wizardGenerateFormLayout(yamlText) {
+    const { tables } = parseFormDesignYaml(yamlText);
+    const targetTables = getProjectData().tables.filter((t) => tables.includes(t.name));
+    const tablesCtx = buildTablesCtxText(targetTables);
+    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_SYS_PROMPT({
+        formW: getProjectData().formCfg.w,
+        formH: getProjectData().formCfg.h,
+        tablesCtx,
+    });
+    const userPrompt = _PROMPT_DEF.FORM_DESIGN_USER_PROMPT(yamlText, "");
+
+    let items = null;
+    await runAiGenerate({
+        systemPrompt: sysPrompt,
+        userPrompt: userPrompt,
+        loadingMsg: "画面レイアウトを生成中…",
+        onSuccess: async (generated) => { items = parseFormDesignJson(generated); },
+        onCancel: async () => { },
+        onError: async () => { },
+    });
+    if (!items) return false;
+    applyAiFormDesign(items);
+    return true;
 }
 
 Object.assign(window, {
     actWizard, wizardStartNewProject, wizardCheckAiConfig, wizardCheckProjectInfo, wizardStepBody,
     wizardQaBack, wizardQaNext, wizardQaComplete, wizardQaPickOption,
+    wizardDecomposeForms, wizardExtractTableCandidates, wizardToggleTableCandidate, wizardConfirmAndGenerate,
     WIZARD_STATE,
 });
