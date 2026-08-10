@@ -1021,167 +1021,6 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
         ].join('\n');
     };
 
-    // YAMLからjsに変換する場合のシステムプロンプトを生成.
-    // - isAppEvent: [必須]定義されている場合はアプリイベント(bunネイティブ実行)で、存在しない場合はイベント系(js)で実行.
-    // - formName: [任意]form名を設定します.
-    // - eventName: [任意]イベント名を設定します.
-    // - wname: [任意]ウィジット名を設定します.
-    // - wtag: [任意]ウィジットタグ名を設定します.
-    // - wdescription: [任意]ウィジット詳細を設定します.
-    // - inputParamsCtx: [任意]フォーム内の入力パラメータ情報を設定します.
-    // - allWidgetsCtx: [任意]フォーム内の全ウィジェット情報を設定します.
-    // - formsCtx: [任意]画面(Form)一覧を設定します.
-    // - globalConstCtx: [任意]グローバル定数を設定します.
-    // - formConstCtx: [任意]対処ウィジットを設置してるフォーム定数を設定します.
-    // - tablesCtx: [任意]テーブル定義内容を設定します.
-    // - extRuntimeDoc: [任意]拡張ランタイムのyaml定義を設定します.
-    const YAML_TO_JS_SYS_PROMPT = function (
-        isAppEvent,
-        {
-            formName,
-            eventName,
-            wname,
-            wtag,
-            wdescription,
-            inputParamsCtx,
-            allWidgetsCtx,
-            formsCtx,
-            globalConstCtx,
-            formConstCtx,
-            tablesCtx,
-            extRuntimeDoc,
-        },
-    ) {
-        const vjaUseJsInfo = isAppEvent
-            ? VJA_USE_BACK_JS_INFO
-            : VJA_USE_FRONT_JS_INFO;
-
-        const codeType = isAppEvent ? "TypeScript" : "JavaScript";
-
-        const rule = isAppEvent
-            ? // バックエンド (isAppEvent = true)
-            `
-## 構造
-- コードは必ずインラインで記述してください。
-- 変数は if/else、try/catch、その他あらゆるブロック（{ }）の外で宣言することを厳守してください。
-  - 悪い例: if (cond) { let params = [...]; } await vja.db.query(sql, params);
-  - 良い例: let params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
-- 原則として "const" の利用は禁止し、"let" のみを利用してください。
-- ソースコードの1インデントは4スペースとします。
-- ソースコードには見やすく改行を入れてください。
-
-## vja API
-- 全ての vja.* 呼び出しには await を付けてください。ただし、同期処理である次の呼び出しは除きます: vja.event.* / vja.trigger.* / vja.widget.get / vja.widget.set / vja.widget.show / vja.widget.hide / vja.widget.enable / vja.widget.disable
-- Promise、.then()、.catch() を直接使用しないでください。代わりに await を使用してください。
-- 画面遷移は vja.form.navigate('画面name') のみを使用してください。（window.location等は禁止）
-- navigate() は別画面への移動専用です。現在画面のリロードや更新目的での使用は絶対禁止です。
-
-## SQL
-- SQLインジェクション対策として、プレースホルダー（?）の利用は必須です。
-- sqlite3専用のSQLで実装してください。必ず実行可能なSQL文で定義する必要があります。
-- SQLの LIKE 検索では、SQL文の中に '?' を直接クォーテーションで囲んで配置してはなりません（悪い例: LIKE '%?%' はプレースホルダーが機能しなくなるため絶対禁止）。必ずJavaScript側の変数に '%' を結合してプレースホルダーに渡してください。
-  - 記述例: let pattern = '%' + searchText + '%'; let sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
-- SQL文の中に、テンプレートリテラル（\`\${...}\`）で「値」を直接埋め込むことは絶対禁止です。検索文字列・数値・ID・JSON.stringify()した結果など、値は必ず\`?\`プレースホルダーとparams配列経由で渡してください（悪い例: \`WHERE id = \${id}\`、\`WHERE data = \${JSON.stringify(obj)}\`）。
-  - 悪い例: \`SELECT * FROM users WHERE name = \${name}\`
-  - 良い例: let sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]);
-  - ただし、カラム名・テーブル名など「識別子」（値ではないもの）をテンプレートリテラルで組み立てるのは問題ありません（例: \`SELECT * FROM t WHERE \${columnName} = ?\`。この場合も、実際に検索する値自体は\`?\`経由で渡すこと）。
-
-## YAML定義の構造
-- YAML仕様には以下のキーがあります。それぞれの意味を正しく理解してください。
-  - イベント: 参考情報に過ぎません。実装の根拠にしてはいけません。
-  - 説明: 処理の概要です。実装の直接の指示ではありません。
-  - 利用テーブル: 参照するDBテーブル名です。
-  - アクション: 実際に実装すべき処理内容です。実装の唯一の根拠となります。
-  - 正常終了: 処理が正しく完了した際の状態です。
-- 「アクション:」の中に以下の見出し表現が使われている場合、それぞれ次のプログラム構造として実装してください。
-  - 「〇〇の場合:」「それ以外の場合:」という見出しは、if/elseの条件分岐として実装してください。
-  - 「〇〇に対して繰り返し:」という見出しは、for/forEachの繰り返し処理として実装してください。
-  - これらの見出しの配下にさらに同様の見出しがネストされている場合、対応するブロックをその通りに入れ子で実装してください。
-
-## YAMLへの忠実性
-- YAMLに記載のない処理（navigate、setVisible、show/hideなど）の追加は絶対禁止です。
-- 「YAML仕様」の指示内容に従い実装を厳守してください。
-- イベント名（KeyUp、SelectedIndexChangedなど）は「どの操作をきっかけに実行されるか」を示す参考情報に過ぎません。イベント名から連想される典型的な実装（例: SelectedIndexChangedだから選択値を取得して表示する、等）を勝手に補って実装することは絶対禁止です。実装内容は必ず「アクション:」に明記された指示のみに基づいてください。
-
-## その他
-- コメントはすべて日本語で記述してください。
-`.trim()
-            : // フロントエンド (isAppEvent = false)
-            `
-## 構造
-- 生成するコードは必ず "インライン"（手続き型）で記述してください。ヘルパー関数の記載は絶対禁止です（例: handleXxx, doXxx, addEventListener などの関数定義は絶対に禁止）。
-  - 悪い例: async function handleButtonClick() { ... }
-  - 良い例: var result = await vja.app.showConfirm("...");
-- 変数は if/else、try/catch、その他あらゆるブロック（{ }）の外で宣言することを厳守してください。
-  - 悪い例: if (cond) { var params = [...]; } await vja.db.query(sql, params);
-  - 良い例: var params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
-- 原則として "const" や "let" の利用は禁止し、"var" のみを利用してください。
-- ソースコードの1インデントは4スペースとします。
-- ソースコードには見やすく改行を入れてください。
-
-## vja API
-- 全ての vja.* 呼び出しには await を付けてください。ただし、同期処理である次の呼び出しは除きます: vja.event.* / vja.trigger.* / vja.widget.get / vja.widget.set / vja.widget.show / vja.widget.hide / vja.widget.enable / vja.widget.disable
-- Promise、.then()、.catch() を直接使用しないでください。代わりに await を使用してください。
-- 画面遷移は vja.form.navigate('画面name') のみを使用してください。（window.location等は禁止）
-- navigate() は別画面への移動専用です。現在画面のリロードや更新目的での使用は絶対禁止です。
-- window.confirm や window.alert の使用は禁止です。代わりに vja.app.showDialog または vja.app.showConfirm を使用してください。
-- ウィジェットの値は、DOM要素のプロパティのように直接アクセスすること（例: searchText.value、document.getElementById('x').value）はできません。全て不正です。vja.widget.get()の戻り値は既に展開済みの生の値（string/number/boolean/配列のいずれか）であり、valueのようなプロパティで包まれていません。v.valueのようなアクセスは実行時エラーにはならず、単にundefinedになって静かに意図と異なる挙動を引き起こします。ウィジェットの現在値を取得する唯一の方法は vja.widget.get('ウィジェット名') で、戻り値をそのまま使ってください。
-
-## SQL
-- SQLインジェクション対策として、プレースホルダー（?）の利用は必須です。
-- sqlite3専用のSQLで実装してください。必ず実行可能なSQL文で定義する必要があります。
-- SQLの LIKE 検索では、SQL文の中に '?' を直接クォーテーションで囲んで配置してはなりません（悪い例: LIKE '%?%' はプレースホルダーが機能しなくなるため絶対禁止）。必ずJavaScript側の変数に '%' を結合してプレースホルダーに渡してください。
-  - 記述例: var searchText = vja.widget.get('txtSearch'); var pattern = '%' + searchText + '%'; var sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
-- SQL文の中に、テンプレートリテラル（\`\${...}\`）で「値」を直接埋め込むことは絶対禁止です。検索文字列・数値・ID・JSON.stringify()した結果など、値は必ず\`?\`プレースホルダーとparams配列経由で渡してください（悪い例: \`WHERE id = \${id}\`、\`WHERE data = \${JSON.stringify(obj)}\`）。
-  - 悪い例: \`SELECT * FROM users WHERE name = \${name}\`
-  - 良い例: var sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]);
-  - ただし、カラム名・テーブル名など「識別子」（値ではないもの）をテンプレートリテラルで組み立てるのは問題ありません（例: \`SELECT * FROM t WHERE \${columnName} = ?\`。この場合も、実際に検索する値自体は\`?\`経由で渡すこと）。
-
-## YAML定義の構造
-- YAML仕様には以下のキーがあります。それぞれの意味を正しく理解してください。
-  - イベント: 参考情報に過ぎません。実装の根拠にしてはいけません。
-  - 説明: 処理の概要です。実装の直接の指示ではありません。
-  - 利用テーブル: 参照するDBテーブル名です。
-  - アクション: 実際に実装すべき処理内容です。実装の唯一の根拠となります。
-  - 正常終了: 処理が正しく完了した際の状態です。
-- 「アクション:」の中に以下の見出し表現が使われている場合、それぞれ次のプログラム構造として実装してください。
-  - 「〇〇の場合:」「それ以外の場合:」という見出しは、if/elseの条件分岐として実装してください。
-  - 「〇〇に対して繰り返し:」という見出しは、for/forEachの繰り返し処理として実装してください。
-  - これらの見出しの配下にさらに同様の見出しがネストされている場合、対応するブロックをその通りに入れ子で実装してください。
-
-## YAMLへの忠実性
-- YAMLに記載のない処理（navigate、setVisible、show/hideなど）の追加は絶対禁止です。
-- 「エラー終了」などでエラーログ出力を行う指示がある場合、try {} catch(e) のErrorオブジェクトのmessageを出力する実装を行いますが、この時必ず第2引数にErrorオブジェクトを設定し、「console.error(e.message, e);」としてください。
-- イベント名（KeyUp、SelectedIndexChangedなど）は「どの操作をきっかけに実行されるか」を示す参考情報に過ぎません。イベント名から連想される典型的な実装（例: SelectedIndexChangedだから選択値を取得して表示する、等）を勝手に補って実装することは絶対禁止です。実装内容は必ず「アクション:」に明記された指示のみに基づいてください。
-
-## その他
-- コメントはすべて日本語で記述してください。
-`.trim();
-
-        return (`
-あなたは日本語を専門とするVJAフォームデザイナーのイベント処理コード生成AIです。
-あなたは超高速かつ正確なシニアソフトウェアエンジニアです。
-ユーザーが書いたYAMLを元に、${codeType}の実装コードを生成します。
-
-[AI出力ルール]
----
-${_program_rule(true, isAppEvent)}
----
-
-[コード生成ルール]
----
-${rule}
----
-
-[vjaランタイム(yaml)]
----
-${_safeYamlFence(vjaUseJsInfo)}yaml
-${vjaUseJsInfo}
-${_safeYamlFence(vjaUseJsInfo)}
----
-`.trim() + "\n");
-    };
-
     // [英語]YAMLからjsに変換する場合のシステムプロンプトを生成.
     // - isAppEvent: [必須]定義されている場合はアプリイベント(bunネイティブ実行)で、存在しない場合はイベント系(js)で実行.
     // - formName: [任意]form名を設定します.
@@ -1196,6 +1035,26 @@ ${_safeYamlFence(vjaUseJsInfo)}
     // - formConstCtx: [任意]対処ウィジットを設置してるフォーム定数を設定します.
     // - tablesCtx: [任意]テーブル定義内容を設定します.
     // - extRuntimeDoc: [任意]拡張ランタイムのyaml定義を設定します.
+    //
+    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
+    // isAppEvent=true(バックエンド/アプリイベント)とfalse(フロントエンド/イベントJS)で
+    // ルール文言が分岐する。それぞれのルール内容（英語部分）の要約は以下の通り:
+    // ## Structure: インラインで書く／if・try等のブロック内で変数宣言しない／
+    //   バックエンドはconst禁止(letのみ)、フロントエンドはconst/let禁止(varのみ)／
+    //   フロントエンドはヘルパー関数(handleXxx等)の定義自体を禁止／インデント4スペース
+    // ## vja API: vja.*APIがあれば必ず使う→なければ拡張ランタイム→最後に標準JS、の優先順位。
+    //   crypto.subtle等の独自実装禁止。vja.*呼び出しはawait必須(例外あり)。
+    //   画面遷移はvja.form.navigate()のみ、window.location禁止。
+    //   (フロントエンドのみ)window.confirm/alert禁止、ウィジェット値は.valueで包まれない
+    // ## SQL: プレースホルダ(?)必須、LIKE検索は'%'をJS側で結合、値の直接埋め込み禁止
+    //   （識別子＝カラム名/テーブル名なら埋め込み可、値は必ず?経由）
+    // ## YAML Definition Structure: 「イベント」「説明」は参考情報で実装根拠にしない、
+    //   「アクション」だけが実装の根拠。「〇〇の場合/それ以外」→if/else、
+    //   「〇〇に対して繰り返し」→for/forEachに変換
+    // ## Fidelity to YAML: YAMLに書かれていない処理(navigate/show/hide等)を勝手に追加禁止、
+    //   イベント名から典型的な実装を推測して追加することも禁止。
+    //   (バックエンドのみ)エラーログはconsole.error(e.message, e)の形式で第2引数にErrorを渡す
+    // ## Other: コメントは日本語で書く
     const ENG_YAML_TO_JS_SYS_PROMPT = function (
         isAppEvent,
         {
@@ -1359,132 +1218,6 @@ ${_safeYamlFence(vjaUseJsInfo)}
             .trim();
     };
 
-    // YAMLからjsに変換する場合のユーザプロンプトを生成.
-    // - isAppEvent: [必須]定義されている場合はアプリイベント(bunネイティブ実行)で、存在しない場合はイベント系(js)で実行.
-    // - yamlDef: [必須]プログラム変換対象のyaml情報が設定されます.
-    // - addPrompt: [必須]ユーザ設定で追加プロンプトが存在する場合、設定します.
-    // - formName: [任意]form名を設定します.
-    // - eventName: [任意]イベント名を設定します.
-    // - wname: [任意]ウィジット名を設定します.
-    // - wtag: [任意]ウィジットタグ名を設定します.
-    // - wdescription: [任意]ウィジット詳細を設定します.
-    // - inputParamsCtx: [任意]フォーム内の入力パラメータ情報を設定します.
-    // - allWidgetsCtx: [任意]フォーム内の全ウィジェット情報を設定します.
-    // - formsCtx: [任意]画面(Form)一覧を設定します.
-    // - globalConstCtx: [任意]グローバル定数を設定します.
-    // - formConstCtx: [任意]対処ウィジットを設置してるフォーム定数を設定します.
-    // - tablesCtx: [任意]テーブル定義内容を設定します.
-    // - extRuntimeDoc: [任意]拡張ランタイムのyaml定義を設定します.
-    // 戻り値: ユーザプロンプトが返却されます.
-    const YAML_TO_JS_USER_PROMPT = function (
-        isAppEvent,
-        yamlDef,
-        addPrompt,
-        {
-            formName,
-            eventName,
-            wname,
-            wtag,
-            wdescription,
-            inputParamsCtx,
-            allWidgetsCtx,
-            formsCtx,
-            globalConstCtx,
-            formConstCtx,
-            tablesCtx,
-            extRuntimeDoc,
-            optionalApiDocCtx,
-            learnedFixesCtx,
-        },
-    ) {
-        const programType = isAppEvent ? "TypeScript" : "JavaScript";
-        const widgetLineJa = wname ? `- 対象ウィジェット: ${wname}\n` : "";
-
-        // フロントエンド/ウィジェットイベント用のコンテキスト情報
-        const frontInfo = isAppEvent
-            ? ""
-            : `
-### プロジェクト情報
----
-- 対象画面: ${formName}
-${widgetLineJa}- 対象イベント: ${eventName}
----
-
-### ウィジェット一覧 (${formName})
----
-${allWidgetsCtx}
----
-
-### 画面固有定数 (${formName})
----
-${formConstCtx}
----
-
-### 入力パラメータ (${formName})
----
-${inputParamsCtx}
----
-
-### 画面一覧
----
-${formsCtx}
----
-
-### グローバル定数
----
-${globalConstCtx}
----
-
-### テーブル定義
----
-${tablesCtx}
----
-${optionalApiDocCtx ? "\n### 追加で利用可能なAPI（このイベントで有効化されたもの）\n---\n" + optionalApiDocCtx + "\n---\n" : ""}
-${learnedFixesCtx ? "\n### プロジェクト固有の注意点\n---\n" + learnedFixesCtx + "\n---\n" : ""}
-### 拡張ランタイム(yaml)
----
-${_safeYamlFence(extRuntimeDoc)}yaml
-${extRuntimeDoc}
-${_safeYamlFence(extRuntimeDoc)}
----`.trim();
-
-        let instructions = "";
-        if (isAppEvent) {
-            instructions = `Bun.jsを使用してアプリイベントを実行するための、${programType}の実行コードを生成してください。\nvja.db.query() や vja.session.get() などのAPIが利用可能です。`;
-        } else {
-            instructions = `${frontInfo}\n\nイベント処理をインラインで実装するための、${programType}コードを生成してください。`;
-        }
-
-        // YAML定義が指定されている場合
-        if (yamlDef && yamlDef.trim()) {
-            instructions += `\n\nロジックの実装にあたっては、以下の[YAML仕様]に記載された内容に必ず従ってください。
-
-[YAML仕様]
----
-${_safeYamlFence(yamlDef)}yaml
-${_removeYamlShComments(yamlDef)}
-${_safeYamlFence(yamlDef)}
----`;
-        }
-
-        // 追加指示がある場合
-        if (addPrompt && addPrompt.trim()) {
-            instructions += `\n\n[追加指示]\n${addPrompt.trim()}\n※システム指示の基本ルールに加えて、上記の追加指示も必ず満たすコードにしてください。`;
-        }
-
-        // ローカルLLMのコードブロック出力を力技で防ぐための最終厳守ブロック
-        const finalEnforcement = `
-【最重要要件】
-- 出力結果は「${programType} の生コードのみ」としてください。
-- 前置き、コードの解説、結びの言葉などは一切出力しないでください。
-- マークダウンのコードブロック（\`\`\` や \`\`\`${programType.toLowerCase()}）で絶対に囲まないでください。コードの最初の1文字目から直接出力を開始してください。`;
-
-        // 末尾フレーズ（日本語環境用の定数名、無ければそのままENG用を利用）
-        const lastPhrase = typeof TO_LAST_PHRASE_JP !== 'undefined' ? TO_LAST_PHRASE_JP : ENG_TO_LAST_PHRASE_JP;
-
-        return `${instructions.trim()}\n${finalEnforcement.trim()}\n\n${lastPhrase}`;
-    };
-
     // [英語]YAMLからjsに変換する場合のユーザプロンプトを生成.
     // - isAppEvent: [必須]定義されている場合はアプリイベント(bunネイティブ実行)で、存在しない場合はイベント系(js)で実行.
     // - yamlDef: [必須]プログラム変換対象のyaml情報が設定されます.
@@ -1502,6 +1235,14 @@ ${_safeYamlFence(yamlDef)}
     // - tablesCtx: [任意]テーブル定義内容を設定します.
     // - extRuntimeDoc: [任意]拡張ランタイムのyaml定義を設定します.
     // 戻り値: ユーザプロンプトが返却されます.
+    //
+    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
+    // 「YAMLに従って実装せよ」という指示文＋各種コンテキスト（ウィジェット一覧・
+    // フォーム定数・入力パラメータ・画面一覧・グローバル定数・テーブル定義・
+    // 拡張ランタイム・任意API・学習履歴）を英語の見出しで列挙するだけの構成。
+    // 特殊なのはeventTypeHint（下記）で、RowClick/HeaderClick/KeyDown/KeyUp等の
+    // イベントでは「vja.event.get().type に入る正しい値」をAIが誤って別名を
+    // 創作しないよう、その場で具体的に念押しする一文を追加している。
     const ENG_YAML_TO_JS_USER_PROMPT = function (
         isAppEvent,
         yamlDef,
@@ -1634,39 +1375,14 @@ ${_safeYamlFence(yamlDef)}
         return `${instructions.trim()}\n${finalEnforcement.trim()}\n\n${ENG_TO_LAST_PHRASE_JP}`;
     };
 
-    // 拡張ランタイム用システムプロンプト.
-    const EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT = function () {
-        return `
-あなたはJavaScriptコードを解析し、開発者向けのドキュメントを生成する専門のAIアシスタントです。
-提示されるJavaScriptコードから外部から利用可能な関数（API）の一覧を抽出し、以下の[YAMLスキーマ]に厳密に準拠したYAML形式のドキュメントを生成してください。
-
-【言語に関する重要ルール】
-- YAMLのキー名（項目名）は、以下に定義された英語のキーを完全に維持してください。
-- ただし、各キーに対応する値（説明文、引数の詳細など）は、すべて日本語で記述してください。
-
-[YAMLスキーマ]
-以下の構造を完全に維持して出力してください。複数関数がある場合は、トップレベルの「- function:」から始まるリストを連続させてください。
-
-- function: await 関数名(args1, args2, ...) # 非同期関数の場合は必ず先頭に await を付与、同期関数の場合は不要
-  description: "関数の目的や利用用途の簡潔な日本語説明"
-  arguments:
-    - args1: "args1の型と日本語説明"
-    - args2: "args2の型と日本語説明"
-  returns: "戻り値の型と日本語説明"
-  exception: "発生する例外（エラー）に関する日本語説明（無ければ項目ごと省略してよい）"
-  example: |
-    // 実際の実装コードに即した簡単なJavaScriptでの使用例
-  example_description: "使用例に対する簡単な補足日本語説明"
-
-【出力フォーマット・厳守事項】
-- 出力は生のYAMLデータのみとしてください。
-- \`\`\`yaml や \`\`\` のようなマークダウンのコードブロックで絶対に囲まないでください。
-- 説明文、解説、前置き、結びの言葉などは一切出力禁止です。応答は、YAMLデータの最初の1文字目（具体的にはハイフン「-」）から直接開始してください。
-`.trim() + "\n";
-    };
-
 
     // 拡張ランタイム用システムプロンプト.
+    //
+    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
+    // JavaScriptコードを解析してAPIドキュメントをYAMLで生成させるプロンプト。
+    // キー名（function/description/arguments/returns/exception/example/
+    // example_description）は英語固定、値（説明文）は日本語で書かせる。
+    // 出力は生YAMLのみ、コードブロックや前置き・説明文は禁止。
     const ENG_EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT = function () {
         return `
 You are an expert AI assistant specializing in JavaScript code analysis and developer documentation generation.
@@ -1697,32 +1413,11 @@ Strictly follow this structure. If there are multiple functions, repeat the list
 `.trim() + "\n";
     };
 
-    // 拡張ランタイム用ユーザプロンプト.
-    const EXT_RUNTIME_JS_TO_YAML_USER_PROMPT = function (js) {
-        // ユーザプロンプト.
-        const instructions = `
-以下のJavaScriptコード（VJA拡張ランタイム）を構造解析し、システム指示で定義されたスキーマに従ってAPIドキュメントをYAML形式で生成してください。
-
-YAMLのキー名（項目名）は指定された英語（function, description, arguments, returns, exception, example, example_description）を厳守し、それに対応する各説明文（値）はすべて日本語で記述してください。
-
-[対象JavaScriptコード]
----
-\`\`\`javascript
-${js.trim()}
-\`\`\`
----`.trim();
-
-        // ターゲットコードの直後に最重要ルールを配置することで、出力フォーマットの破綻を防ぐ
-        const finalEnforcement = `
-【最重要要件】
-- 出力は生のYAMLデータのみとしてください。
-- マークダウンのコードブロック（\`\`\`yaml や \`\`\`）で絶対に囲まないでください。
-- 前置き文や解説、結びの言葉などは一切含めず、YAMLデータの最初の1文字目（ハイフン「-」）から直接出力を開始してください。`;
-
-        return `${instructions}\n${finalEnforcement.trim()}\n`;
-    };
-
     // [英語]拡張ランタイム用ユーザプロンプト.
+    //
+    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
+    // 「以下のJavaScriptコードを解析してシステム指示のYAML形式でドキュメント化せよ」
+    // という指示＋対象コード本文＋「生YAMLのみ出力、コードブロック禁止」の念押し。
     const ENG_EXT_RUNTIME_JS_TO_YAML_USER_PROMPT = function (js) {
         // ユーザプロンプト.
         const instructions = `
@@ -1763,90 +1458,23 @@ ${js.trim()}
         );
     };
 
-    // [プロンプト]画面デザイン自動生成（YAML風の依頼文からウィジェット構成JSONを生成）
-    // - formW/formH: [必須]対象フォームの幅・高さ（AIが座標をこの範囲内に収めるための基準値）
-    // - tablesCtx: [任意]参照テーブルのカラム定義（見出し・型・制約の推測材料）
-    // 戻り値: システムプロンプトが返却されます.
-    const FORM_DESIGN_SYS_PROMPT = function ({ formW, formH, tablesCtx }) {
-        return (`
-あなたは業務アプリケーション向けフォームデザイナー（VJA）の画面レイアウト設計を行う専門のAIです。
-ユーザーが日本語で記述したYAML形式の画面定義（画面の目的、フォームレイアウト方針、入力項目、アクション項目）を読み取り、配置するウィジェットを決定し、各ウィジェットの具体的な配置座標（x, y, w, h）を含んだレイアウトJSON配列を出力してください。
-
-[レイアウト配置の原則]
-- 「フォームレイアウト」指示の最優先: YAML内に「フォームレイアウト」（または formLayout）という項目がある場合、そこに書かれた画面レイアウトのコンセプトやデザイン補助指示（例：「2カラム構成」「ラベルと入力を上下に配置」「ボタンは右下に寄せる」など）を最優先の制約として解釈し、指示に完全に合致する座標計算を行ってください。
-- フォームサイズ: 幅 = ${formW}px、高さ = ${formH}px。すべてのウィジェットはこの範囲内に収めてください（x + w <= ${formW}、y + h <= ${formH}）。
-- 配置の流れ: 特に「フォームレイアウト」で並び順の指定がない場合は、ユーザーからの要求（YAML）に記載されている項目の順序に従って、原則として上から下へ順番に要素を配置してください。
-- 重なりの絶対禁止: 任意の2つのウィジェットにおいて、それぞれの矩形領域（x, y, w, hで定義される範囲）が互いに重なったり交差したりしてはなりません。
-
-[出力フォーマット・厳守事項]
-- 出力は生のJSON配列のみとしてください。
-- \`\`\`json のようなマークダウンのコードブロックで囲んではいけません。応答の最初の文字を [ 、最後の文字を ] としてください。
-- 説明文、導入文、コメント等は一切出力しないでください。
-
-[JSONスキーマ（要素ごとのキー定義）]
-各オブジェクトは以下のキーを必ず保持してください。
-- "tag": "inputtype" | "textarea" | "checkbox" | "radio" | "selectBox" | "listbox" | "button" | "label" | "datagrid" | "qrcode" | "markdown"
-- "name": 配列内で重複しないVB6風のハンガリアン記法（例: txtUserId, lblUserId, btnSubmit, chkAgree, radMale, cmbCategory, lstItems, txaMemo, tblResult）
-- "text": "label", "button", "checkbox", "radio" の場合は表示文言（必須）。"qrcode" の場合はエンコードする生テキスト/URL。"markdown" の場合は表示するMarkdown本文。"inputtype", "textarea", "datagrid" の場合は空文字 "" または省略
-- "inputType": "tag" が "inputtype" の場合のみ必須。"text" | "password" | "number" | "email" | "tel" | "date" | "time" | "url"
-- "placeholder": （任意）"inputtype" または "textarea" のときの入力例
-- "group": "tag" が "radio" の場合のみ必須。同一グループのラジオボタンには同じグループ名（例: "Gender", "MemberType"）を指定
-- "options": "tag" が "selectBox" または "listbox" の場合のみ必須。選択肢の配列。以下2種類の書き方が利用できます。
-  - 文字列のみ（表示名とValueが同じでよい場合）: 例 ["未処理", "処理中", "完了"]
-  - {"label": 表示名, "value": 内部値} オブジェクト（表示名とValueを分けたい場合。例えば依頼文に「馬名: name」のような「表示名: 内部値」の対応が明記されている場合は必ずこの形式を使うこと）: 例 [{"label": "馬名", "value": "name"}, {"label": "父馬", "value": "father"}]
-  - ユーザーの依頼文やフォームレイアウト、参照テーブルの内容から具体的な選択肢を推測して埋めてください（不明な場合も空配列にはせず、一般的な選択肢を作成すること）
-- "columns": "tag" が "datagrid" の場合のみ必須。表示するカラムの配列。各要素は {"name": 実データのカラム名（DBのカラム名。参照テーブルが指定されている場合はそのカラム名を使用）, "displayName": 画面に表示する見出し文言（省略時はnameがそのまま表示される。日本語の見出しにしたい場合は必ず指定すること）, "width": カラム幅の目安（整数、複数カラムの合計が概ね100になるよう配分）}。参照テーブルが指定されている場合は、そのカラム定義に基づいて作成してください
-- "x", "y", "w", "h": 配置座標とサイズ（整数、単位ピクセル）。「フォームレイアウト」のコンセプト指示を満たしつつ、実用的な大きさで決定してください。
-
-- 参照テーブルに記載のない列名を勝手に作成して含めないでください。
-- ボタンの数は、ユーザーが指定したアクション項目の数と一致させてください（勝手に追加・削減しないこと）。
-
-[出力例（Few-Shot）]
-入力YAMLの例:
----
-説明: horse_info 内容を検索して表示するための画面
-フォームレイアウト: 検索条件は画面上部、検索結果の一覧は画面下部に表示する。
-参照テーブル:
-  - horse_info
-入力項目:
-  - 検索ワード: inputtype で text
-  - 検索条件選択項目: selectBox で key=表示名, value=Value
-    - 馬名: name
-    - 父馬: father
-    - 母馬: mother
-    - 性別: sex
-  - 検索結果表示枠: datagrid
-    - horse_info: テーブル項目を表示して、カラム名、表示名を設定する
-アクション項目:
-  - 検索ボタン
----
-出力JSONの例:
-[
-  {"tag": "label", "name": "lblSearchWord", "text": "検索ワード", "x": 20, "y": 20, "w": 100, "h": 25},
-  {"tag": "inputtype", "name": "txtSearchWord", "text": "", "inputType": "text", "x": 130, "y": 20, "w": 150, "h": 25},
-  {"tag": "selectBox", "name": "cmbSearchCol", "options": [
-    {"label": "馬名", "value": "name"},
-    {"label": "父馬", "value": "father"},
-    {"label": "母馬", "value": "mother"},
-    {"label": "性別", "value": "sex"}
-  ], "x": 290, "y": 20, "w": 120, "h": 25},
-  {"tag": "button", "name": "btnSearch", "text": "検索", "x": 420, "y": 20, "w": 90, "h": 25},
-  {"tag": "datagrid", "name": "tblHorseInfo", "columns": [
-    {"name": "name", "displayName": "馬名", "width": 25},
-    {"name": "father", "displayName": "父馬", "width": 25},
-    {"name": "mother", "displayName": "母馬", "width": 25},
-    {"name": "sex", "displayName": "性別", "width": 25}
-  ], "x": 20, "y": 60, "w": 490, "h": 200}
-]
-
-[参照テーブル定義]
----
-${tablesCtx || "（参照テーブル未指定）"}
----
-`.trim() + "\n");
-    };
-
     // [英語:プロンプト]画面デザイン自動生成（YAML風の依頼文からウィジェット構成JSONを生成）
+    //
+    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
+    // ユーザーが日本語で書いた「画面デザインYAML」（説明/フォームレイアウト/参照テーブル/
+    // 入力項目/アクション項目）を読み取り、重ならない座標(x,y,w,h)付きのウィジェット
+    // 配置JSON配列を出力させるプロンプト（＝「🤖 画面反映」ボタンで使用）。
+    // 1. フォームレイアウト最優先: カラム数/ラベル位置/ボタン位置/密度の指示に従う。
+    //    ボタンが複数ある場合は右端起点で逆算しgap10pxで並べる計算式を明記（重なり防止）。
+    // 2. 画面パターン別の配置方針: 検索一覧画面（上部に検索条件＋下部にdatagrid）、
+    //    登録・詳細画面（1〜2列＋右下/中央にボタン）。
+    // 3. 座標・サイズの基準: フォーム幅高さ内に収める、各ウィジェットの標準高さ、
+    //    ウィジェット間は最低6pxの隙間を空け重なり禁止。
+    // [出力フォーマット]生JSON配列のみ、コードブロック・説明文禁止。
+    // [JSONスキーマ]tag/name/text/inputType/placeholder/group/options/columns/x/y/w/h。
+    // ボタンのcaptionは「〇〇ボタン」の「ボタン」を除去して短くする。
+    // 参照テーブルにないカラム名を勝手に作らない。ボタン数は依頼のアクション項目数と一致させる。
+    // 以降はFew-Shot例（検索一覧画面1個、複数ボタン1個）。
     const ENG_FORM_DESIGN_SYS_PROMPT = function ({ formW, formH, tablesCtx }) {
         return (`
 You are an expert business application UI designer specializing in screen layout design for VJA (a form designer for desktop/web business apps).
@@ -1907,10 +1535,10 @@ Input YAML Example:
 ---
 説明: horse_info 内容を検索して表示するための画面
 フォームレイアウト: 
-  パターン: 検索一覧画面
-  カラム数: 2
-  ラベル位置: 左
-  ボタン位置: 右下
+  - パターン: 検索一覧画面
+  - カラム数: 2
+  - ラベル位置: 左
+  - ボタン位置: 右下
 参照テーブル:
   - horse_info
 入力項目:
@@ -1969,22 +1597,11 @@ ${tablesCtx || "(No reference table specified)"}
 `.trim() + "\n");
     };
 
-    // [プロンプト]画面デザイン自動生成 ユーザープロンプト.
-    // - designText: [必須]「説明/入力項目/アクション項目/参照テーブル」を含む依頼テキスト.
-    // - addPrompt: [任意]ユーザー設定の追加指示.
-    // 戻り値: ユーザープロンプトが返却されます.
-    const FORM_DESIGN_USER_PROMPT = function (designText, addPrompt) {
-        return (
-            "以下のYAML形式の画面デザイン依頼に基づいて、配置するウィジェット構成のJSON配列を生成してください。\n\n" +
-            "[画面デザイン依頼 (YAML)]\n---\n" + designText.trim() + "\n---\n" +
-            (addPrompt ? "\n[追加指示]\n" + addPrompt.trim() + "\n※上記の依頼内容とシステム指示に加えて、この追加指示も満たすレイアウトを計算してください。\n" : "") +
-            "\n" +
-            "【重要】応答は、システム指示で定義されたスキーマに従う生のJSON配列（ [ から始まり ] で終わる形式）のみとしてください。\n" +
-            "\`\`\`json などのマークダウンのコードブロックや、解説、挨拶、コメントなどは一切含めずに、JSONデータだけを直接出力してください。"
-        );
-    };
-
     // [英語:プロンプト]画面デザイン自動生成 ユーザープロンプト.
+    //
+    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
+    // 「以下のYAML画面デザイン依頼に基づき配置JSON配列を生成せよ」という指示＋
+    // 依頼YAML本文＋（あれば）追加指示＋「生JSON配列のみ出力」の念押し。
     const ENG_FORM_DESIGN_USER_PROMPT = function (designText, addPrompt) {
         return (
             "Based on the following screen design request written in YAML, generate the layout JSON array for the widget configuration.\n\n" +
@@ -2002,10 +1619,10 @@ ${tablesCtx || "(No reference table specified)"}
 
 説明: ユーザー情報を検索・登録するための画面
 フォームレイアウト:
-  パターン: 検索一覧画面   # 検索一覧画面 / 登録フォーム画面 / ダイアログ
-  カラム数: 2               # 1 / 2 / 3
-  ラベル位置: 左            # 左 / 上
-  ボタン位置: 右下          # 右下 / 右 / 下部中央
+  - パターン: 検索一覧画面   # 検索一覧画面 / 登録フォーム画面 / ダイアログ
+  - カラム数: 2               # 1 / 2 / 3
+  - ラベル位置: 左            # 左 / 上
+  - ボタン位置: 右下          # 右下 / 右 / 下部中央
 
 #参照テーブル: 
 #  - users
@@ -2040,10 +1657,7 @@ ${tablesCtx || "(No reference table specified)"}
     o.VJA_FRONT_API_OPTIONAL_LABELS = VJA_FRONT_API_OPTIONAL_LABELS;
 
     // [プロンプト]yamlから js AI生成依頼.
-    // 日本語版.
-    //o.YAML_TO_JS_SYS_PROMPT = YAML_TO_JS_SYS_PROMPT;
-    //o.YAML_TO_JS_USER_PROMPT = YAML_TO_JS_USER_PROMPT;
-    // 英語版.
+    // (日本語版は使用実績がなく陳腐化していたため削除済み。英語版のみ使用)
     o.YAML_TO_JS_SYS_PROMPT = ENG_YAML_TO_JS_SYS_PROMPT;
     o.YAML_TO_JS_USER_PROMPT = ENG_YAML_TO_JS_USER_PROMPT;
 
@@ -2052,10 +1666,7 @@ ${tablesCtx || "(No reference table specified)"}
     o.FORM_DESIGN_USER_PROMPT = ENG_FORM_DESIGN_USER_PROMPT;
 
     // [プロンプト]拡張ランタイムyamlから js AI生成依頼.
-    // 日本語版
-    //o.EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT = EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT;
-    //o.EXT_RUNTIME_JS_TO_YAML_USER_PROMPT = EXT_RUNTIME_JS_TO_YAML_USER_PROMPT;
-    // 英語版.
+    // (日本語版は使用実績がなく陳腐化していたため削除済み。英語版のみ使用)
     o.EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT = ENG_EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT;
     o.EXT_RUNTIME_JS_TO_YAML_USER_PROMPT =
         ENG_EXT_RUNTIME_JS_TO_YAML_USER_PROMPT;
@@ -2067,6 +1678,14 @@ ${tablesCtx || "(No reference table specified)"}
     o.DEFAULT_FORM_DESIGN_YAML = DEFAULT_FORM_DESIGN_YAML;
 
     // [プロンプト]自然言語要求からVJAイベントYAMLを生成
+    //
+    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
+    // 「イベント処理でやりたいこと」の日本語一言依頼文を、イベントYAML定義
+    // （description/tables(該当時のみ)/validation/actions(手順の自然文列挙)/
+    // on_success/on_error）に変換させるプロンプト（＝イベントYAMLエディタの
+    // 「✨ YAMLドラフト」タブ）。actionsは「手順をそのまま列挙する」だけで、
+    // 画面デザイン側のfields/actionsのような分類判断が不要な単純な構造。
+    // 出力は生YAMLのみ、コードブロック・説明文禁止。
     const ENG_TEXT_TO_YAML_SYS_PROMPT = function ({ widgetsCtx, tablesCtx }) {
         return (`
 You are an expert AI assistant for VJA (Visual JavaScript for AI).
@@ -2099,6 +1718,7 @@ ${tablesCtx || "(No DB tables)"}
 `.trim() + "\n");
     };
 
+    // [日本語対訳メモ]（AIには送られない）「以下の依頼文からイベントYAMLを生成せよ」＋依頼文＋出力形式の念押し。
     const ENG_TEXT_TO_YAML_USER_PROMPT = function (userReq) {
         return (
             "Based on the following natural language request, generate a structured VJA Event Design YAML specification:\n\n" +
@@ -2111,7 +1731,37 @@ ${tablesCtx || "(No DB tables)"}
     o.TEXT_TO_YAML_USER_PROMPT = ENG_TEXT_TO_YAML_USER_PROMPT;
 
     // [プロンプト]自然言語要求からフォームデザインYAMLを生成
-    const ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT = function ({ tablesCtx, widgetsCtx }) {
+    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
+    // 「画面デザインYAMLドラフト生成」（✨ YAMLドラフト生成ボタン）用プロンプト。
+    // 依頼文をdescription/layout/fields/tables/actionsのYAMLに変換させる。
+    // ※このプロンプトは「fields/actionsのどちらに何を入れるか」という分類判断を
+    // AIに要求する点が、イベントYAML側（単純な手順列挙）と大きく異なり、
+    // OpenAI(gpt-5.6-luna)で fields:[]/actions:[] のように該当項目が丸ごと
+    // 空で返ってくる不具合の主因となった箇所（2026-08-10調査）。
+    // 当初は個別の失敗例に対する例外ルールを都度追記していたが、ルールが密に
+    // 絡み合い矛盾含みになったことで逆にAIの判断を混乱させていたと判断し、
+    // 2026-08-10に以下のようシンプルな構成へ整理し直した:
+    // [Strict Output Rules]基本ルール2点（生YAMLのみ/発明禁止）
+    // [Core Principle]大原則「不要だと決めつけるな。空にする前に依頼文を読み返せ。
+    //   迷ったらfields/actionsのどちらかに含める側に倒せ、削除ではなく」
+    // [What Goes In "fields"]画面上で見る/選ぶ/編集する対象は全部fields。
+    //   絞り込み条件が文中の一部として書かれているだけでも対象。項目名が
+    //   明示されなくても参照テーブルのカラムから推測してよい。
+    // [What Goes In "actions"]ボタンの短い名前だけ。挙動説明文が付いていても
+    //   ボタン名部分は残し、挙動の記述だけを削る（丸ごと削除しない）。
+    // 以降、上記に対応するFew-Shot例（ボタン+挙動説明文のケース）。
+    //
+    // 実測検証（2026-08-10、実際にOpenAI gpt-5.6-lunaへ複数回リクエストして確認）:
+    // 当初は「参照テーブルが複数あると混同して空になる」と推測したが、テーブル数を
+    // 絞ってもfieldsの空・不足は改善しなかった。一方で「[Existing Widgets On This
+    // Form]に既存ウィジェットを渡すと、AIは『既にfields相当のウィジェットが置かれて
+    // いるので重複させない』というルールに従って正しくfieldsを省略していた」ことが
+    // 判明した（何度もテストを繰り返し、既にウィジェットが配置済みの画面に対して
+    // 再度ドラフト生成をかけていたための現象）。「YAMLドラフト生成」はウィジェット
+    // 配置前の仕様書作成ステップであり、重複回避は後工程の「🤖 画面反映」側の
+    // 責務にすべきと判断し、既存ウィジェットのコンテキスト自体をこのプロンプトから
+    // 削除した（widgetsCtx削除、以前のwidgetsCtx=空文字での実測は0/18で完全に安定）。
+    const ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT = function ({ tablesCtx }) {
         return (`
 You are an expert AI assistant for VJA (Visual JavaScript for AI).
 Your task is to convert a user's natural language request (written in Japanese) describing a desired screen layout and form requirements into a clean, structured VJA Form Design YAML specification.
@@ -2122,9 +1772,9 @@ Output strictly formatted YAML with the following sections:
 description: "<Brief Japanese summary of the screen purpose>"
 
 layout:
-  columns: 1  # 1, 2, or 3
-  label_position: left  # left or top
-  button_position: bottom_right  # bottom_right, top_right (for search), or bottom_center
+  - columns: 1  # 1, 2, or 3
+  - label_position: left  # left or top
+  - button_position: bottom_right  # bottom_right, top_right (for search), or bottom_center
 
 fields:
   - <Field Name>: <Widget type (e.g. inputtype with text/number/date, selectBox, datagrid, text, image, checkbox, label, textarea, groupbox, tabs)>
@@ -2136,22 +1786,37 @@ actions:
   - <Button text or action name> (e.g. 検索ボタン, 保存ボタン, キャンセル)
 
 [Strict Output Rules]
-- Output ONLY the raw YAML text. Do NOT wrap response in markdown code blocks (\`\`\`yaml).
-- Do not include any intro, explanations, or conversational text.
-- Begin your response immediately with "description:".
-- If the form already has existing widgets (see [Existing Widgets On This Form] below), do NOT duplicate them in fields/actions unless the user's request clearly asks to change or add alongside them. Use their existing names as-is when referring to them.
-- "fields" must include EVERY input widget the screen needs, including filter/search/narrowing conditions (e.g. a "priority" filter, a "due date" filter, a "status" filter) — these are input widgets (typically selectBox/inputtype) just like any other field. NEVER describe a filter/narrowing requirement only as prose inside "actions" — it MUST appear as a concrete field here.
-- Each item in "actions" must be a SHORT, concrete label for ONE pressable action (a button caption or an equivalent single UI action), never a sentence. Do NOT put navigation logic, event-handling behavior, or multi-step descriptions (e.g. "選択すると詳細画面へ遷移する", "AでBを絞り込む") into "actions" — that belongs to a LATER, separate event-processing step, not this screen-layout step. If a described behavior is not a distinct pressable action, do not add it to "actions" at all; either represent it as a field (see the rule above) or omit it.
-- NEVER invent fields or actions that are not stated or clearly implied by the user's request (e.g. do not add generic "保存"/"キャンセル" buttons unless the request mentions saving/canceling or an equivalent standard form-submission flow).
+- Output ONLY the raw YAML text. Do NOT wrap response in markdown code blocks (\`\`\`yaml). No intro, explanations, or conversational text. Begin your response immediately with "description:".
+- Do not invent fields or actions that are not stated or implied by the request (e.g. no generic "保存"/"キャンセル" unless save/cancel is mentioned).
+
+[Core Principle: Never Assume Something Is Unnecessary]
+Leaving "fields" or "actions" empty is a strong claim — only do it when the request truly contains nothing for that section. Before outputting an empty array, re-read the request once more for anything you might have dismissed as "just part of a sentence" rather than a concrete item. When unsure whether something belongs in "fields" or "actions", put it in "fields" rather than dropping it.
+
+[What Goes In "fields"]
+Anything the user can view, select, or edit on this screen — including a filter/narrowing condition that's only mentioned as part of an action's description (e.g. "優先度で絞り込む" → add a "優先度" field). If the request names no concrete field but references a table whose columns are visible in [Available Database Tables Context] below, derive fields from those columns instead of leaving "fields" empty.
+
+[What Goes In "actions"]
+One short label per pressable button (e.g. "追加", "検索"), never a full sentence. If a sentence names a button and also describes its effect (e.g. "追加ボタンを押すとタスクを追加する"), keep the short button label in "actions" and drop only the trailing effect description — do not drop the whole item.
+
+[Few-Shot Example]
+Input request: "タスクの詳細情報を入力できるフォームを用意。追加ボタンを押すとタスクを追加。" (with a referenced table "tasks" whose columns are title, priority, due_date, status)
+Correct output:
+fields:
+  - タイトル: inputtype text
+  - 優先度: selectBox
+  - 期限: inputtype date
+  - ステータス: selectBox
+tables:
+  - tasks
+actions:
+  - 追加
 
 [Available Database Tables Context]
 ${tablesCtx || "(No DB tables)"}
-
-[Existing Widgets On This Form]
-${widgetsCtx || "(none — this form has no widgets yet)"}
 `.trim() + "\n");
     };
 
+    // [日本語対訳メモ]（AIには送られない）「以下の依頼文から画面デザインYAMLを生成せよ」＋依頼文＋出力形式の念押し。
     const ENG_FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT = function (userReq) {
         return (
             "Based on the following natural language request, generate a structured VJA Form Design YAML specification:\n\n" +
@@ -2164,6 +1829,16 @@ ${widgetsCtx || "(none — this form has no widgets yet)"}
     o.FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT = ENG_FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT;
 
     // [プロンプト]プロジェクト新規作成ウィザード: それまでのQ&A履歴から次の1問を動的に生成する
+    //
+    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
+    // 非技術者ユーザーに日本語で1問ずつ質問していく対話形式のウィザード。
+    // 出力はJSON（question/answerType/options/status）のみ、マークダウン禁止。
+    // - questionは1つの話題だけを聞く1問。過去の質問・回答で既に触れた話題は
+    //   表現が違っても再度聞くの禁止（迷ったら「既に聞いた」とみなす）
+    // - answerType: 自由記述はtext、単一選択はchoice、複数選択可はmulti_choice
+    // - optionsはchoice/multi_choiceの時のみ必須（2〜5個の短い日本語ラベル）
+    // - statusは「システム概要/主な機能/画面数の目安」の3項目固定、達成済みならdone:true
+    // - 3項目すべて達成済みでも、質問を空にせず追加の確認質問を出す（終了はユーザー操作）
     const ENG_WIZARD_NEXT_QUESTION_SYS_PROMPT = function () {
         return (`
 You are helping a non-technical user describe, in Japanese, the business application they want to build. This is an interactive interview: you ask ONE question at a time in Japanese, the user answers, and this repeats. The end goal is to gather enough information for a LATER step (not yours) to decompose the description into a list of screens (forms).
@@ -2192,6 +1867,7 @@ Based on the [Q&A History So Far] provided in the user message, decide the singl
 `.trim() + "\n");
     };
 
+    // [日本語対訳メモ]（AIには送られない）これまでのQ&A履歴＋「システム指示通りに次の質問とstatusを生成せよ」の指示。
     const ENG_WIZARD_NEXT_QUESTION_USER_PROMPT = function (historyCtx) {
         return (
             "[Q&A History So Far]\n" +
@@ -2204,6 +1880,15 @@ Based on the [Q&A History So Far] provided in the user message, decide the singl
     o.WIZARD_NEXT_QUESTION_USER_PROMPT = ENG_WIZARD_NEXT_QUESTION_USER_PROMPT;
 
     // [プロンプト]プロジェクト新規作成ウィザード: Q&A履歴から必要なフォーム一覧に分解する
+    //
+    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
+    // Q&A履歴から必要な画面（フォーム）一覧をJSON配列で分解生成させるプロンプト。
+    // 各要素: formName(英語PascalCase+Form接尾辞、ASCII限定、配列内で一意)/
+    // formTitle(日本語表示名)/description(1文の日本語説明)/
+    // docDraft(その画面に必要な入力欄・ボタン等を自然文で書いた日本語段落。
+    // 後段の画面デザインYAMLドラフト生成の入力として使われる)。
+    // 履歴で画面数の目安（少なめ/標準/多め）に言及があれば従う、なければ2〜5画面程度。
+    // 履歴にない機能を勝手に発明しない。ログイン機能が言及/暗示されていれば専用画面を作る。
     const ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT = function () {
         return (`
 You are an expert VJA (Visual JavaScript for AI) application architect. Based on the [Q&A History] provided in the user message (a Japanese interview describing a business application the user wants to build), decompose the application into a list of screens (forms).
@@ -2223,6 +1908,7 @@ You are an expert VJA (Visual JavaScript for AI) application architect. Based on
 `.trim() + "\n");
     };
 
+    // [日本語対訳メモ]（AIには送られない）Q&A履歴＋「システム指示通りにフォーム一覧のJSON配列を生成せよ」の指示。
     const ENG_WIZARD_DECOMPOSE_FORMS_USER_PROMPT = function (historyCtx) {
         return (
             "[Q&A History]\n" + historyCtx + "\n\n" +
@@ -2234,6 +1920,12 @@ You are an expert VJA (Visual JavaScript for AI) application architect. Based on
     o.WIZARD_DECOMPOSE_FORMS_USER_PROMPT = ENG_WIZARD_DECOMPOSE_FORMS_USER_PROMPT;
 
     // [プロンプト]プロジェクト新規作成ウィザード: フォーム構成から必要そうなDBテーブル候補を切り出す
+    //
+    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
+    // Q&A履歴＋画面一覧から、必要になりそうなSQLiteテーブル候補をJSON配列で提案させる。
+    // 各要素はname(英語snake_case、配列内で一意)/description(1文の日本語説明)のみ。
+    // カラム定義は含めない（後工程で設計）。履歴・画面から明確に必要と分かるものだけ提案し、
+    // 無関係なテーブルは発明しない。テーブルが不要なら空配列[]を返す。
     const ENG_WIZARD_TABLE_CANDIDATES_SYS_PROMPT = function () {
         return (`
 You are an expert VJA (Visual JavaScript for AI) application architect. Based on the [Q&A History] and [Planned Forms] provided in the user message, suggest candidate SQLite database tables that this application will likely need.
@@ -2251,6 +1943,7 @@ You are an expert VJA (Visual JavaScript for AI) application architect. Based on
 `.trim() + "\n");
     };
 
+    // [日本語対訳メモ]（AIには送られない）Q&A履歴＋計画中の画面一覧＋「システム指示通りに候補テーブルのJSON配列を生成せよ」の指示。
     const ENG_WIZARD_TABLE_CANDIDATES_USER_PROMPT = function (historyCtx, formsCtx) {
         return (
             "[Q&A History]\n" + historyCtx + "\n\n" +
@@ -2263,6 +1956,12 @@ You are an expert VJA (Visual JavaScript for AI) application architect. Based on
     o.WIZARD_TABLE_CANDIDATES_USER_PROMPT = ENG_WIZARD_TABLE_CANDIDATES_USER_PROMPT;
 
     // [プロンプト]テーブル管理: 自然言語の依頼文からSQLiteテーブルのカラム構成（雛形）を生成
+    //
+    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
+    // テーブル編集モーダルの「✨ AI生成」用。日本語の依頼文＋テーブル名/説明から
+    // カラム定義JSON配列（name/type(TEXT|INTEGER|REAL|BLOB|NULL)/notNull/pk/index/default）
+    // を生成させる。PK列（通常id, INTEGER, pk=true, notNull=true）を先頭に入れる、
+    // テーブル名・説明・依頼内容から妥当なカラムを推測、関係ないカラムを発明しない。
     const ENG_TABLE_SCHEMA_GEN_SYS_PROMPT = function ({ tableName, description }) {
         return (`
 You are an expert AI assistant for VJA (Visual JavaScript for AI), helping a user design a SQLite table schema.
@@ -2293,6 +1992,7 @@ ${description || "(not specified)"}
 `.trim() + "\n");
     };
 
+    // [日本語対訳メモ]（AIには送られない）依頼文（未入力なら「テーブル名/説明のみから推測せよ」）＋「生JSON配列のみ出力」の念押し。
     const ENG_TABLE_SCHEMA_GEN_USER_PROMPT = function (userReq) {
         return (
             "Based on the following natural language request, generate the JSON array of column definitions for this table:\n\n" +
@@ -2305,6 +2005,14 @@ ${description || "(not specified)"}
     o.TABLE_SCHEMA_GEN_USER_PROMPT = ENG_TABLE_SCHEMA_GEN_USER_PROMPT;
 
     // [プロンプト]バリデーション管理: 自然言語の依頼文からバリデーションルール一覧（雛形）を生成
+    //
+    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
+    // バリデーション編集モーダルの「✨ AI生成」用。日本語の依頼文＋定義名/説明＋
+    // フォーム内の入力系ウィジェット名一覧から、ルール定義JSON配列
+    // （name(対象ウィジェット名、一覧にある名前のみ・発明禁止)/type(required等の種別)/
+    // not/arg1-3(typeにより意味が変わる引数)/message(日本語エラー文)）を生成させる。
+    // 一覧に無いウィジェット名は使わない・該当ウィジェットが無ければ空配列。
+    // 依頼・定義と無関係なルールを発明しない。
     const ENG_VALIDATION_SCHEMA_GEN_SYS_PROMPT = function ({ name, description, widgetsCtx }) {
         return (`
 You are an expert AI assistant for VJA (Visual JavaScript for AI), helping a user design a set of input validation rules for a form.
@@ -2339,6 +2047,7 @@ ${widgetsCtx || "(none)"}
 `.trim() + "\n");
     };
 
+    // [日本語対訳メモ]（AIには送られない）依頼文（未入力なら「定義名/説明のみから推測せよ」）＋「生JSON配列のみ出力」の念押し。
     const ENG_VALIDATION_SCHEMA_GEN_USER_PROMPT = function (userReq) {
         return (
             "Based on the following natural language request, generate the JSON array of validation rule definitions:\n\n" +

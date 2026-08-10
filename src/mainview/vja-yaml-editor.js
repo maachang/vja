@@ -2403,6 +2403,27 @@ function _extractMentionedByName(text, items) {
     });
 }
 
+// テーブル一覧を、依頼文との関連度で絞り込む。
+// - 依頼文にテーブル名そのものが出現するものがあれば、それらを採用。
+// - 無ければ、各テーブル自身のカラム名が依頼文中に何件出現するかをスコアリングし、
+//   最多スコアのテーブルのみ採用する（意味の重複した別テーブルが紛れ込むのを防ぐ。
+//   例: 「id,task_name,priority,due_date,status」という依頼文に対し、
+//   tasksテーブル(5件一致)を選び、一部カラムが被るだけのdeadlines(4件一致)等は除外する）。
+// - どちらも0件なら絞り込まず全件を返す（絞り込みが原因で必要なテーブルが
+//   消えてしまうより、無関係テーブルが混ざる方を安全側とする）。
+function _narrowTablesByRequest(text, allTables) {
+    if (!text || allTables.length === 0) return allTables;
+    const byName = _extractMentionedByName(text, allTables);
+    if (byName.length > 0) return byName;
+    const scored = allTables.map((t) => ({
+        t,
+        score: _extractMentionedByName(text, t.columns || []).length,
+    })).filter((x) => x.score > 0);
+    if (scored.length === 0) return allTables;
+    const maxScore = Math.max(...scored.map((x) => x.score));
+    return scored.filter((x) => x.score === maxScore).map((x) => x.t);
+}
+
 // AI生成・修正依頼で使うシステムプロンプト・ユーザープロンプトを、現在の
 // プロジェクト状態（ウィジェット一覧・利用テーブル・利用API・検証定義の
 // 選択状態等）から都度組み立てる。
@@ -3031,7 +3052,8 @@ const _FORM_DESIGN_EN_TO_JP_VALUES = [
 function convertFormDesignEngKeysToJp(yamlText) {
     let result = yamlText;
     _FORM_DESIGN_EN_TO_JP_KEYS.forEach(([en, jp]) => {
-        result = result.replace(new RegExp("^([ \\t]*)" + en + "[ \\t]*:", "gm"), "$1" + jp + ":");
+        // 行頭の空白の後に「- 」（リスト形式のハイフン）が付く場合も、キー名として一致させる.
+        result = result.replace(new RegExp("^([ \\t]*(?:- )?)" + en + "[ \\t]*:", "gm"), "$1" + jp + ":");
     });
     _FORM_DESIGN_EN_TO_JP_VALUES.forEach(([en, jp]) => {
         result = result.replace(new RegExp(":([ \\t]*)" + en + "([ \\t]*(?:#.*)?)$", "gm"), ":$1" + jp + "$2");
@@ -3071,21 +3093,17 @@ async function formDesignTextToYamlGenerate() {
         if (!ok) return;
     }
 
-    // プロジェクトの全DBテーブル情報を抽出してコンテキスト生成
-    const tablesCtx = (getProjectData().tables || [])
-        .map((t) => {
-            const cols = (t.columns || []).map((c) => "  - " + c.name + " (" + c.type + ")").join("\n");
-            return t.name + ":\n" + cols;
-        })
-        .join("\n");
+    // プロジェクトのDBテーブル情報からコンテキスト生成
+    // （イベントJS生成時と同様、依頼文中に名前・カラム名が出現するテーブルのみに
+    //   絞り込む。意味の重複した無関係テーブルまで渡すのを避けるための予防措置。
+    //   ※2026-08-10の実測では、fields空/不足の主因はテーブル数ではなく別要因
+    //   （既存ウィジェットとの重複回避ルール、下記参照）と判明したが、
+    //   無関係テーブルを渡さない方が安全なので絞り込み自体は残す）
+    const allTablesFull = getProjectData().tables || [];
+    const targetTablesForCtx = _narrowTablesByRequest(inputText, allTablesFull);
+    const tablesCtx = buildTablesCtxText(targetTablesForCtx);
 
-    // 現在のフォームに既に配置済みのウィジェット一覧をコンテキスト生成
-    // （イベントJS生成時と同様、既存ウィジェットをAIに認識させ、重複作成や名前の不一致を防ぐ）
-    const widgetsCtx = (getProjectData().widgets || [])
-        .map((ww) => "  - " + ww.name + " (" + ww.tag + ")")
-        .join("\n");
-
-    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT({ tablesCtx: tablesCtx, widgetsCtx: widgetsCtx });
+    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT({ tablesCtx: tablesCtx });
     const userPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT(inputText);
 
     showLoadingModal("画面YAMLドラフト作成中…");
