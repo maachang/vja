@@ -27,6 +27,7 @@ const WIZARD_STATE = {
     resumeAfterAiConfig: null,
     resumeAfterProjectInfo: null,
     resumeAfterTableEdit: null, // ウィザード内「✏️ 編集」からテーブル編集モーダルを開いた際、保存/一覧に戻る操作で呼び戻すコールバック
+    _resumeDiscardCb: null, // wizardOfferResume()で「破棄する」を選んだ後に続けたい処理（省略可）
     qaHistory: [], // [{ question, answer, answerType, options }]
     qaIndex: 0,
     qaStatus: [], // [{ label, done }]
@@ -88,9 +89,14 @@ function _wizardSaveProgress() {
 
 // プロジェクトを開いた際、中断されたウィザードの進行状況が残っていれば
 // 「続きから再開」を提案する（vja-save.jsのloadProjectData()から呼ばれる）。
-function wizardOfferResume() {
+// onDiscard: 「破棄する」を選んだ後に続けたい処理（省略時は何もせず通常のエディタ画面のまま終える）。
+// 「ファイル→ウィザードでプロジェクト作成」から呼ばれた場合は、破棄後に新規作成フローへ
+// 続けたいのでコールバックを渡す（wizardCheckAiConfig参照）。ファイルを開いた際の自動提案
+// （loadProjectData経由）では省略し、破棄したら単に今の編集画面のままにする。
+function wizardOfferResume(onDiscard) {
     const wp = getProjectData().wizardProgress;
     if (!wp || wp.done) return;
+    WIZARD_STATE._resumeDiscardCb = onDiscard || null;
     showModal(
         mhdrHTML("🧙 ウィザードの再開") +
         "<div class='mbody' style='gap:10px'>" +
@@ -103,10 +109,13 @@ function wizardOfferResume() {
     );
 }
 
-// 「破棄する」: 保存済みの進行状況を削除し、通常のエディタ画面のまま終える
+// 「破棄する」: 保存済みの進行状況を削除する。onDiscardコールバックがあれば続けて実行する
 function wizardDiscardProgress() {
     getProjectData().wizardProgress = null;
     closeModal();
+    const cb = WIZARD_STATE._resumeDiscardCb;
+    WIZARD_STATE._resumeDiscardCb = null;
+    if (cb) cb();
 }
 
 // 「続きから再開」: 保存済みの進行状況をWIZARD_STATEへ復元し、該当ステップのモーダルを再表示する
@@ -148,6 +157,18 @@ const WIZARD_QA_SUGGEST_COMPLETE_AT = 6
 
 // ファイルメニュー「ウィザードでプロジェクト作成…」から呼ばれる起点。
 function actWizard() {
+    // 現在開いているプロジェクトに、完了前に中断されたウィザードの進行状況が
+    // 残っている場合は、新規作成ではなく「続きから再開」を提案する
+    const wp = getProjectData().wizardProgress;
+    if (wp && !wp.done) {
+        wizardOfferResume(_wizardConfirmStartNew);
+        return;
+    }
+    _wizardConfirmStartNew();
+}
+
+// isDirtyな場合は確認の上で、新規プロジェクト作成→ウィザード開始を行う
+function _wizardConfirmStartNew() {
     if (isDirty()) {
         showCloseConfirm(
             "未保存の変更があります。",
