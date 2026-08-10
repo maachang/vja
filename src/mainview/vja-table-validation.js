@@ -322,7 +322,8 @@ function openTableEdit(idx) {
 }
 
 function defaultColumn() {
-    return { name: "", type: "TEXT", notNull: false, pk: false, index: false, useDefault: false, default: "" };
+    // labelJa: カラム名（英語のDBカラム名）に併記する日本語名。DDLには影響しない表示用の項目。
+    return { name: "", labelJa: "", type: "TEXT", notNull: false, pk: false, index: false, useDefault: false, default: "" };
 }
 
 function renderTableEditModal() {
@@ -332,6 +333,7 @@ function renderTableEditModal() {
 
     let tbody = cols.map((c, i) => {
         const oi_name = "tblColUpdate(" + i + ",'name',this.value)";
+        const oi_labelJa = "tblColUpdate(" + i + ",'labelJa',this.value)";
         const oi_notNull = "tblColUpdate(" + i + ",'notNull',this.checked)";
         const oi_pk = "tblColUpdatePk(" + i + ",this.checked)";
         const oi_index = "tblColUpdate(" + i + ",'index',this.checked)";
@@ -345,6 +347,8 @@ function renderTableEditModal() {
             "<td>" + (i + 1) + "</td>" +
             "<td><input class='col-input' type='text' value='" + esc(c.name) + "' " +
             evtAttr("oninput", oi_name) + " placeholder='カラム名'></td>" +
+            "<td><input class='col-input' type='text' value='" + esc(c.labelJa || "") + "' " +
+            evtAttr("oninput", oi_labelJa) + " placeholder='例: ユーザー名'></td>" +
             "<td>" +
             "<button type='button' class='col-type-btn' data-colidx='" + i + "'>" +
             "<span class='col-type-lbl'>" + esc(c.type || "TEXT") + "</span>" +
@@ -389,6 +393,7 @@ function renderTableEditModal() {
         "<thead><tr>" +
         "<th style='width:32px'>No</th>" +
         "<th style='text-align:left;min-width:120px'>カラム名</th>" +
+        "<th style='text-align:left;min-width:100px'>日本語名</th>" +
         "<th style='width:100px'>型</th>" +
         "<th style='width:64px'>NOT NULL</th>" +
         "<th style='width:48px'>KEY</th>" +
@@ -707,10 +712,12 @@ function tblSyncFromDOM() {
         if (cbs[0]) tbl.columns[i].notNull = cbs[0].checked;
         if (cbs[1]) tbl.columns[i].pk = cbs[1].checked;
         if (cbs[2]) tbl.columns[i].index = cbs[2].checked;
-        // DEFAULT: 4番目のcheckboxがuseDefault、2番目のtextがdefault値
+        // DEFAULT: 4番目のcheckboxがuseDefault、3番目のtextがdefault値
         if (cbs[3] !== undefined) tbl.columns[i].useDefault = cbs[3].checked;
+        // テキスト入力の並び順: [0]=カラム名, [1]=日本語名, [2]=DEFAULT値
         const txts = tr.querySelectorAll("input[type=text]");
-        if (txts[1]) tbl.columns[i].default = txts[1].value;
+        if (txts[1]) tbl.columns[i].labelJa = txts[1].value;
+        if (txts[2]) tbl.columns[i].default = txts[2].value;
     });
 }
 
@@ -722,6 +729,7 @@ function sanitizeAiTableColumns(cols) {
     if (!Array.isArray(cols)) return [];
     const sanitized = cols.map(c => ({
         name: String(c.name || "").trim(),
+        labelJa: String(c.labelJa || "").trim(),
         type: SQLITE_TYPES.includes(c.type) ? c.type : "TEXT",
         notNull: !!c.notNull,
         pk: !!c.pk,

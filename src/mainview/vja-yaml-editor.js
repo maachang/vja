@@ -822,7 +822,7 @@ function buildTablesCtxText(targetTables) {
     return targetTables.length > 0
         ? targetTables.map(t => {
             const cols = (t.columns || []).map(c => {
-                let def = "    - " + c.name + " (" + c.type + ")";
+                let def = "    - " + c.name + (c.labelJa ? "（" + c.labelJa + "）" : "") + " (" + c.type + ")";
                 if (c.pk) def += " PK";
                 if (c.notNull) def += " NOT NULL";
                 if (c.useDefault) {

@@ -12,6 +12,7 @@ import { join } from "path";
 // ── 型定義 ────────────────────────────────────────────
 export interface TableColumn {
     name: string;
+    labelJa?: string; // カラム名（英語）に併記する日本語名。表示用のみでDDLには影響しない
     type: string;
     notNull: boolean;
     pk: boolean;
