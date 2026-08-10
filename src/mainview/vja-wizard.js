@@ -350,18 +350,41 @@ function wizardQaPickOption(optIndex) {
 
 // 回答欄の値が「番号（カンマ/読点区切り、複数可）」だけの場合、選択肢の
 // テキストに変換する（Claudeの選択肢回答のような、番号入力での回答を許容するため）。
-// 番号以外の文字が含まれる場合はそのまま自由記述として扱う。
+// 「番号＋追加の自由記述」（例: "３で、ここで補足説明"）の場合は、先頭の番号だけを
+// ラベルに変換し、残りの自由記述と組み合わせる（番号部分が持つ意味をAIに失わせないため）。
+// 番号がどこにも見つからない場合はそのまま自由記述として扱う。
 function _wizardResolveAnswerText(qa, rawValue) {
     const value = (rawValue || "").trim();
     if (!Array.isArray(qa.options) || qa.options.length === 0 || !value) return value;
-    const tokens = value.split(/[、,]/).map((s) => s.trim()).filter(Boolean);
-    if (tokens.length === 0) return value;
-    const isAllNumeric = tokens.every((t) => /^\d+$/.test(t));
-    if (!isAllNumeric) return value;
-    const labels = tokens
-        .map((t) => qa.options[parseInt(t, 10) - 1])
-        .filter((label) => label !== undefined);
-    return labels.length > 0 ? labels.join("、") : value;
+    // 日本語入力モードのまま数字で回答すると全角（０-９，，）になりやすいため、
+    // 判定前に半角へ正規化する（全角数字０-９ → 半角0-9、全角カンマ， → 半角,）
+    const normalized = value
+        .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+        .replace(/，/g, ",");
+    const resolveTokens = (tokenStr) => {
+        const tokens = tokenStr.split(/[、,]/).map((s) => s.trim()).filter(Boolean);
+        if (tokens.length === 0 || !tokens.every((t) => /^\d+$/.test(t))) return null;
+        const labels = tokens
+            .map((t) => qa.options[parseInt(t, 10) - 1])
+            .filter((label) => label !== undefined);
+        return labels.length > 0 ? labels.join("、") : null;
+    };
+
+    // ケース1: 回答全体が番号（区切り可）だけの場合
+    const wholeLabel = resolveTokens(normalized);
+    if (wholeLabel) return wholeLabel;
+
+    // ケース2: 先頭が番号（区切り可）で、その後に自由記述が続く場合
+    const m = normalized.match(/^([\d,、]+)([^\d,、].*)$/s);
+    if (m) {
+        const headLabel = resolveTokens(m[1]);
+        if (headLabel) {
+            const rest = m[2].replace(/^(で、|で)/, "").trim();
+            return rest ? headLabel + "。" + rest : headLabel;
+        }
+    }
+
+    return value;
 }
 
 // 現在の回答欄の値をqaHistoryへ保存する（選択肢問題は番号入力をテキストへ解釈する）
@@ -710,15 +733,37 @@ async function wizardConfirmAndGenerate() {
     for (let i = 0; i < total; i++) {
         switchForm(i);
         const f = getProjectData().forms[i];
+        // switchForm()は内部でcommitFormDesignDraft()を呼び、プロジェクト直下の一時変数
+        // (formDesignDraft/formDesignDocDraft、YAMLエディタと連動する値)を「切替前の
+        // フォーム」へ上書きする仕様。ウィザードではYAMLエディタを開いていないため
+        // 一時変数は空のままで、そのまま進めると次のswitchForm()呼び出し時に
+        // このフォームのYAML定義が空文字で消されてしまう。一時変数を現在のフォームの
+        // 値と同期させておくことで、この上書きを無害化する。
+        getProjectData().formDesignDraft = f.formDesignDraft || "";
+        getProjectData().formDesignDocDraft = f.formDesignDocDraft || "";
         showToast("フォーム" + (i + 1) + "/" + total + ": " + f.cfg.title + " を生成中…");
         const yaml = await _wizardGenerateFormYaml(f.formDesignDocDraft);
         if (!yaml) continue; // 失敗した場合はこのフォームは空のまま次へ進む
         f.formDesignDraft = yaml;
+        getProjectData().formDesignDraft = yaml; // 同期を保つ（次のswitchForm()呼び出しで消されないように）
         const ok = await _wizardGenerateFormLayout(yaml);
         if (ok) successCount++;
     }
 
     getProjectData().wizardProgress = null; // ウィザード完了。再開用の進行状況は不要になったため削除
+
+    // pushUndo()内のcommitFormDesignDraft()は、プロジェクト直下の一時変数
+    // getProjectData().formDesignDraft（YAMLエディタと連動する値）を現在の
+    // フォームへ上書きする処理。ウィザードではYAMLエディタを開いていないため
+    // 一時変数は空のままで、そのまま呼ぶと直前にセットした最後のフォームの
+    // formDesignDraftが空文字で消されてしまう。上書きが無害になるよう、
+    // 一時変数側を現在のフォームの値と同期させてから呼ぶ。
+    const curForm = getProjectData().forms[getProjectData().curFormIdx];
+    if (curForm) {
+        getProjectData().formDesignDraft = curForm.formDesignDraft || "";
+        getProjectData().formDesignDocDraft = curForm.formDesignDocDraft || "";
+    }
+
     refreshAll();
     pushUndo();
     showToast("ウィザード完了: " + successCount + "/" + total + "件のフォームを生成しました");
