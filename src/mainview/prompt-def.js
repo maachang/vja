@@ -1936,6 +1936,14 @@ You are an expert VJA (Visual JavaScript for AI) application architect. Based on
     // YAMLドラフト生成でfieldsが空になりやすいことが確認されたための対策。
     // 履歴で画面数の目安（少なめ/標準/多め）に言及があれば従う、なければ2〜5画面程度。
     // 履歴にない機能を勝手に発明しない。ログイン機能が言及/暗示されていれば専用画面を作る。
+    // ※2026-08-10追記: 「一覧→行クリックで詳細→編集・削除」という定型パターンに対し、
+    // 「詳細」「編集」を別々の画面として機械的に分割しないよう指示（同じ項目を表示する
+    // 詳細画面と編集画面はほぼ常に同一画面のはず→1つに統合させる）。「削除」も単純な
+    // 1件削除なら専用画面を作らず、確認ダイアログ＋一覧へ戻る（イベント処理側の責務）で
+    // 済ませるよう指示。同一エンティティの属性ごとに個別の設定画面を作る（優先度設定画面・
+    // 期限設定画面…）ことも避け、詳細・編集画面1つにまとめるよう指示。実際にウィザードで
+    // TaskDetailForm/TaskEditForm（内容が重複）やTaskDeleteForm（確認ダイアログで済む内容）
+    // が個別画面として生成されてしまった実例に基づく対応。
     const ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT = function ({ tablesCtx }) {
         return (`
 You are an expert VJA (Visual JavaScript for AI) application architect. Based on the [Q&A History] and [Confirmed Database Tables] provided in the user message (a Japanese interview describing a business application the user wants to build, plus the DB tables/columns already finalized for it), decompose the application into a list of screens (forms).
@@ -1953,6 +1961,12 @@ You are an expert VJA (Visual JavaScript for AI) application architect. Based on
 - Respect the requested screen-count scale if the history mentions one (少なめ/標準/多め). When not mentioned, default to a small, coherent set of screens that covers what was described (typically 2-5).
 - Do not invent major features that were never mentioned in the history.
 - If a login/authentication flow was mentioned or implied, include it as its own screen.
+
+[Avoid Over-Splitting: Consolidate the Common List → Detail/Edit → Delete Pattern]
+A common request shape is "show a list, click a row to see details, then edit or delete it." Do NOT mechanically create one screen per verb mentioned (詳細/編集/削除など). Instead:
+- "詳細表示"(view detail) and "編集"(edit) of the SAME entity are almost always the SAME screen — a single form that displays the record's fields in editable inputs with an "編集"/"保存" button. Do NOT create two separate near-identical screens (e.g. "TaskDetailForm" and "TaskEditForm" showing the same fields) — merge them into one (e.g. "TaskDetailForm" alone, its docDraft mentioning both viewing and editing).
+- "削除"(delete) of a single record normally does NOT need its own screen. It is a confirmation dialog (a Yes/No confirm shown from the list or detail screen) that, on confirmation, deletes the record and returns to the list — this belongs to a LATER event-processing step, not a separate screen in this list. Only give delete its own screen if the request describes something beyond a simple single-record confirm (e.g. a dedicated bulk-delete screen with checkboxes, or an audit/trash-bin screen).
+- Similarly, do not split what is really ONE entity's several attributes into multiple single-purpose screens (e.g. a separate "priority-setting screen", "deadline-setting screen", and "status-update screen" for the same "task" entity) — these belong together in the ONE detail/edit screen for that entity, edited as normal fields with a single save action.
 
 [Confirmed Database Tables]
 ${tablesCtx || "(No DB tables)"}
