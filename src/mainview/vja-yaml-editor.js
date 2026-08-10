@@ -2411,7 +2411,7 @@ function _extractMentionedByName(text, items) {
 //   tasksテーブル(5件一致)を選び、一部カラムが被るだけのdeadlines(4件一致)等は除外する）。
 // - どちらも0件なら絞り込まず全件を返す（絞り込みが原因で必要なテーブルが
 //   消えてしまうより、無関係テーブルが混ざる方を安全側とする）。
-function _narrowTablesByRequest(text, allTables) {
+function narrowTablesByRequest(text, allTables) {
     if (!text || allTables.length === 0) return allTables;
     const byName = _extractMentionedByName(text, allTables);
     if (byName.length > 0) return byName;
@@ -3100,7 +3100,7 @@ async function formDesignTextToYamlGenerate() {
     //   （既存ウィジェットとの重複回避ルール、下記参照）と判明したが、
     //   無関係テーブルを渡さない方が安全なので絞り込み自体は残す）
     const allTablesFull = getProjectData().tables || [];
-    const targetTablesForCtx = _narrowTablesByRequest(inputText, allTablesFull);
+    const targetTablesForCtx = narrowTablesByRequest(inputText, allTablesFull);
     const tablesCtx = buildTablesCtxText(targetTablesForCtx);
 
     const sysPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT({ tablesCtx: tablesCtx });
@@ -4599,6 +4599,7 @@ Object.assign(window, {
     aiCfgFetchModels, aiCfgConfirm, aiCfgCancel, aiCfgSelectPreset, aiCfgSaveAsPreset, aiCfgDoSaveAsPreset, aiCfgDeletePreset,
     editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, insertFormDesignTemplate, openFormDesignTemplateModal, confirmApplyFormDesignTemplate, textToYamlGenerate, formDesignTextToYamlGenerate, formDesignAiGenerate, saveFormDesignDraft,
     parseFormDesignJson, parseFormDesignYaml, convertFormDesignEngKeysToJp, openAiRawOutputModal,
+    narrowTablesByRequest,
     validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
     openAiValidationDetailModal,
     dismissAiValidationBanner, manualRetryAiFix, manualMockCheck,

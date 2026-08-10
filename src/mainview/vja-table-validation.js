@@ -257,6 +257,15 @@ function pvSelPick(id, val, dispOrEvent, e) {
 
 // テーブル管理モーダルを開く
 function openTableManager() {
+    // ウィザードの「✏️ 編集」からテーブル編集モーダルに入っている場合、
+    // 「← 一覧に戻る」操作はウィザードのカラム確認モーダルへ戻す
+    // （AI接続設定/プロジェクト設定と同じresumeAfterXxxフック方式、wizardEditTableColumns参照）
+    if (typeof WIZARD_STATE !== "undefined" && WIZARD_STATE.resumeAfterTableEdit) {
+        const resume = WIZARD_STATE.resumeAfterTableEdit;
+        WIZARD_STATE.resumeAfterTableEdit = null;
+        resume();
+        return;
+    }
     renderTableManagerModal();
 }
 
@@ -706,6 +715,31 @@ function tblSyncFromDOM() {
 }
 
 // AIに依頼して、テーブル名・説明・自由記述の依頼文からカラム構成の雛形を生成する
+// AIが生成したカラム定義（JSON配列）をサニタイズする共通処理。
+// tblAiGenerateSchema()（テーブル編集モーダルの✨AI生成）と、
+// ウィザードの一括カラム生成（vja-wizard.js）の両方で共有する。
+function sanitizeAiTableColumns(cols) {
+    if (!Array.isArray(cols)) return [];
+    const sanitized = cols.map(c => ({
+        name: String(c.name || "").trim(),
+        type: SQLITE_TYPES.includes(c.type) ? c.type : "TEXT",
+        notNull: !!c.notNull,
+        pk: !!c.pk,
+        index: !!c.index,
+        useDefault: !!(c.default && String(c.default).trim() !== ""),
+        default: c.default ? String(c.default) : "",
+    })).filter(c => c.name !== "");
+    // PKは1つのみ許可（複数trueが返ってきた場合は先頭のみ有効にする）
+    let pkFound = false;
+    sanitized.forEach(c => {
+        if (c.pk) {
+            if (pkFound) c.pk = false;
+            else pkFound = true;
+        }
+    });
+    return sanitized;
+}
+
 async function tblAiGenerateSchema() {
     if (!getProjectData().aiConfig.enabled) {
         if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
@@ -750,27 +784,11 @@ async function tblAiGenerateSchema() {
                 showToast("AI生成結果の解析に失敗しました");
                 return;
             }
-            const sanitized = cols.map(c => ({
-                name: String(c.name || "").trim(),
-                type: SQLITE_TYPES.includes(c.type) ? c.type : "TEXT",
-                notNull: !!c.notNull,
-                pk: !!c.pk,
-                index: !!c.index,
-                useDefault: !!(c.default && String(c.default).trim() !== ""),
-                default: c.default ? String(c.default) : "",
-            })).filter(c => c.name !== "");
+            const sanitized = sanitizeAiTableColumns(cols);
             if (sanitized.length === 0) {
                 showToast("AI生成結果にカラムがありませんでした");
                 return;
             }
-            // PKは1つのみ許可（複数trueが返ってきた場合は先頭のみ有効にする）
-            let pkFound = false;
-            sanitized.forEach(c => {
-                if (c.pk) {
-                    if (pkFound) c.pk = false;
-                    else pkFound = true;
-                }
-            });
             TABLE_MODAL.edit.columns = sanitized;
             renderTableEditModal();
             showToast("✨ AIがテーブル構成を生成しました");
@@ -904,6 +922,13 @@ function tblSave() {
     }
     pushUndo();
     showToast("テーブル「" + tbl.name + "」を保存しました");
+    // ウィザードの「✏️ 編集」から来ている場合は、保存後にウィザードのカラム確認モーダルへ戻す
+    if (typeof WIZARD_STATE !== "undefined" && WIZARD_STATE.resumeAfterTableEdit) {
+        const resume = WIZARD_STATE.resumeAfterTableEdit;
+        WIZARD_STATE.resumeAfterTableEdit = null;
+        resume();
+        return;
+    }
     renderTableManagerModal();
 }
 
@@ -1272,6 +1297,7 @@ Object.assign(window, {
     defaultValueForType, validateDefaultValue,
     tblColUpdate, tblColUpdatePk, tblColAdd, tblColInsert, tblColDelete,
     tblSyncFromDOM, tblShowDdl, generateDDL, tblTypeOpen, tblTypeSelect, tblSave, tblAiGenerateSchema,
+    sanitizeAiTableColumns,
     // バリデーション編集
     openValidationEditor, renderValidationListModal, openValidationEdit,
     renderValidationEditModal,

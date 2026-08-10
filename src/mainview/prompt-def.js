@@ -1879,19 +1879,66 @@ Based on the [Q&A History So Far] provided in the user message, decide the singl
     o.WIZARD_NEXT_QUESTION_SYS_PROMPT = ENG_WIZARD_NEXT_QUESTION_SYS_PROMPT;
     o.WIZARD_NEXT_QUESTION_USER_PROMPT = ENG_WIZARD_NEXT_QUESTION_USER_PROMPT;
 
-    // [プロンプト]プロジェクト新規作成ウィザード: Q&A履歴から必要なフォーム一覧に分解する
+    // [プロンプト]プロジェクト新規作成ウィザード: Q&A履歴から必要そうなDBテーブル候補を切り出す
+    // （2026-08-10: フォーム分解より前に実行する順序に変更。フォーム一覧はまだ存在しない
+    //   ため、Q&A履歴のみから候補を抽出する）
     //
     // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
-    // Q&A履歴から必要な画面（フォーム）一覧をJSON配列で分解生成させるプロンプト。
-    // 各要素: formName(英語PascalCase+Form接尾辞、ASCII限定、配列内で一意)/
-    // formTitle(日本語表示名)/description(1文の日本語説明)/
+    // Q&A履歴から、必要になりそうなSQLiteテーブル候補をJSON配列で提案させる。
+    // 各要素はname(英語snake_case、配列内で一意)/description(1文の日本語説明)のみ。
+    // カラム定義は含めない（次のステップでAIが生成し、ユーザーが確認する）。
+    // 履歴から明確に必要と分かるものだけ提案し、無関係なテーブルは発明しない。
+    // テーブルが不要なら空配列[]を返す。
+    const ENG_WIZARD_TABLE_CANDIDATES_SYS_PROMPT = function () {
+        return (`
+You are an expert VJA (Visual JavaScript for AI) application architect. Based on the [Q&A History] provided in the user message (a Japanese interview describing a business application the user wants to build), suggest candidate SQLite database tables that this application will likely need.
+
+[Output Rules]
+- Output STRICT JSON only (a JSON array). No markdown code fences, no intro, no explanations.
+- Array item shape:
+{
+  "name": "<English snake_case or lowercase table name, e.g. users, products — must be unique across the array>",
+  "description": "<one-sentence Japanese description of what this table stores>"
+}
+- Only suggest tables that are clearly implied by the history (e.g. a mention of user login implies a "users" table). Do not invent unrelated tables.
+- Avoid creating multiple tables for what is really a single entity's attributes (e.g. do NOT create separate "priorities"/"deadlines"/"statuses" tables when they are just columns of a single "tasks" table) — this causes confusion in later steps. Prefer one well-designed table per real-world entity.
+- Do NOT include column definitions — only table name and description. Columns will be designed in the next step.
+- If no database table appears to be needed at all, output an empty array [].
+`.trim() + "\n");
+    };
+
+    // [日本語対訳メモ]（AIには送られない）Q&A履歴＋「システム指示通りに候補テーブルのJSON配列を生成せよ」の指示。
+    const ENG_WIZARD_TABLE_CANDIDATES_USER_PROMPT = function (historyCtx) {
+        return (
+            "[Q&A History]\n" + historyCtx + "\n\n" +
+            "Generate the JSON array of candidate tables as specified in the system prompt."
+        );
+    };
+
+    o.WIZARD_TABLE_CANDIDATES_SYS_PROMPT = ENG_WIZARD_TABLE_CANDIDATES_SYS_PROMPT;
+    o.WIZARD_TABLE_CANDIDATES_USER_PROMPT = ENG_WIZARD_TABLE_CANDIDATES_USER_PROMPT;
+
+    // [プロンプト]プロジェクト新規作成ウィザード: Q&A履歴＋確定済みDBテーブル(カラム込み)から
+    // 必要なフォーム一覧に分解する
+    // （2026-08-10: テーブルのカラム確定より後に実行する順序に変更。確定済みのカラム情報を
+    //   docDraftに具体的に反映させることで、後段の画面デザインYAMLドラフト生成の精度を上げる）
+    //
+    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
+    // Q&A履歴＋確定済みテーブル（カラム込み）から、必要な画面（フォーム）一覧をJSON配列で
+    // 分解生成させるプロンプト。各要素: formName(英語PascalCase+Form接尾辞、ASCII限定、
+    // 配列内で一意)/formTitle(日本語表示名)/description(1文の日本語説明)/
     // docDraft(その画面に必要な入力欄・ボタン等を自然文で書いた日本語段落。
     // 後段の画面デザインYAMLドラフト生成の入力として使われる)。
+    // ※docDraftは、関連テーブルのカラムが分かっている場合、カラム名を日本語ラベルに
+    // 変換した上で具体的に書き込むよう指示する（曖昧な「詳細情報を表示」ではなく
+    // 「タイトル・優先度・期限・ステータスを表示」のように）。これは実際にAI
+    // (OpenAI gpt-5.6-luna)での実測検証で、項目名が明示されない依頼文だと画面デザイン
+    // YAMLドラフト生成でfieldsが空になりやすいことが確認されたための対策。
     // 履歴で画面数の目安（少なめ/標準/多め）に言及があれば従う、なければ2〜5画面程度。
     // 履歴にない機能を勝手に発明しない。ログイン機能が言及/暗示されていれば専用画面を作る。
-    const ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT = function () {
+    const ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT = function ({ tablesCtx }) {
         return (`
-You are an expert VJA (Visual JavaScript for AI) application architect. Based on the [Q&A History] provided in the user message (a Japanese interview describing a business application the user wants to build), decompose the application into a list of screens (forms).
+You are an expert VJA (Visual JavaScript for AI) application architect. Based on the [Q&A History] and [Confirmed Database Tables] provided in the user message (a Japanese interview describing a business application the user wants to build, plus the DB tables/columns already finalized for it), decompose the application into a list of screens (forms).
 
 [Output Rules]
 - Output STRICT JSON only (a JSON array). No markdown code fences, no intro, no explanations.
@@ -1900,11 +1947,15 @@ You are an expert VJA (Visual JavaScript for AI) application architect. Based on
   "formName": "<English PascalCase identifier ending in \"Form\", e.g. LoginForm, RegUserForm, CustomerListForm — must be unique across the array, ASCII letters/digits only>",
   "formTitle": "<short Japanese display title for this screen, e.g. ログイン>",
   "description": "<one-sentence Japanese description of this screen's purpose>",
-  "docDraft": "<a Japanese free-text paragraph describing what widgets/inputs/buttons this screen should have, written in the same natural style a user would type when requesting a screen design — this becomes the input to a LATER screen-layout-generation step, so be concrete about input fields and buttons>"
+  "docDraft": "<a Japanese free-text paragraph describing what widgets/inputs/buttons this screen should have, written in the same natural style a user would type when requesting a screen design — this becomes the input to a LATER screen-layout-generation step>"
 }
+- "docDraft" MUST be concrete, not vague. If this screen relates to a table in [Confirmed Database Tables], explicitly name the relevant columns (translated to natural Japanese labels, e.g. due_date → 期限) as the fields this screen shows/edits — do NOT write a vague summary like "タスクの詳細情報を表示する" alone; instead write "タスク名・優先度・期限・ステータスを表示する" naming the actual columns. This concreteness is required because a later AI step derives screen fields from this text and performs poorly on vague descriptions.
 - Respect the requested screen-count scale if the history mentions one (少なめ/標準/多め). When not mentioned, default to a small, coherent set of screens that covers what was described (typically 2-5).
 - Do not invent major features that were never mentioned in the history.
 - If a login/authentication flow was mentioned or implied, include it as its own screen.
+
+[Confirmed Database Tables]
+${tablesCtx || "(No DB tables)"}
 `.trim() + "\n");
     };
 
@@ -1918,42 +1969,6 @@ You are an expert VJA (Visual JavaScript for AI) application architect. Based on
 
     o.WIZARD_DECOMPOSE_FORMS_SYS_PROMPT = ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT;
     o.WIZARD_DECOMPOSE_FORMS_USER_PROMPT = ENG_WIZARD_DECOMPOSE_FORMS_USER_PROMPT;
-
-    // [プロンプト]プロジェクト新規作成ウィザード: フォーム構成から必要そうなDBテーブル候補を切り出す
-    //
-    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
-    // Q&A履歴＋画面一覧から、必要になりそうなSQLiteテーブル候補をJSON配列で提案させる。
-    // 各要素はname(英語snake_case、配列内で一意)/description(1文の日本語説明)のみ。
-    // カラム定義は含めない（後工程で設計）。履歴・画面から明確に必要と分かるものだけ提案し、
-    // 無関係なテーブルは発明しない。テーブルが不要なら空配列[]を返す。
-    const ENG_WIZARD_TABLE_CANDIDATES_SYS_PROMPT = function () {
-        return (`
-You are an expert VJA (Visual JavaScript for AI) application architect. Based on the [Q&A History] and [Planned Forms] provided in the user message, suggest candidate SQLite database tables that this application will likely need.
-
-[Output Rules]
-- Output STRICT JSON only (a JSON array). No markdown code fences, no intro, no explanations.
-- Array item shape:
-{
-  "name": "<English snake_case or lowercase table name, e.g. users, products — must be unique across the array>",
-  "description": "<one-sentence Japanese description of what this table stores>"
-}
-- Only suggest tables that are clearly implied by the history/forms (e.g. a login screen implies a "users" table). Do not invent unrelated tables.
-- Do NOT include column definitions — only table name and description. Columns will be designed later.
-- If no database table appears to be needed at all, output an empty array [].
-`.trim() + "\n");
-    };
-
-    // [日本語対訳メモ]（AIには送られない）Q&A履歴＋計画中の画面一覧＋「システム指示通りに候補テーブルのJSON配列を生成せよ」の指示。
-    const ENG_WIZARD_TABLE_CANDIDATES_USER_PROMPT = function (historyCtx, formsCtx) {
-        return (
-            "[Q&A History]\n" + historyCtx + "\n\n" +
-            "[Planned Forms]\n" + formsCtx + "\n\n" +
-            "Generate the JSON array of candidate tables as specified in the system prompt."
-        );
-    };
-
-    o.WIZARD_TABLE_CANDIDATES_SYS_PROMPT = ENG_WIZARD_TABLE_CANDIDATES_SYS_PROMPT;
-    o.WIZARD_TABLE_CANDIDATES_USER_PROMPT = ENG_WIZARD_TABLE_CANDIDATES_USER_PROMPT;
 
     // [プロンプト]テーブル管理: 自然言語の依頼文からSQLiteテーブルのカラム構成（雛形）を生成
     //

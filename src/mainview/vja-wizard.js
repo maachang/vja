@@ -26,12 +26,49 @@
 const WIZARD_STATE = {
     resumeAfterAiConfig: null,
     resumeAfterProjectInfo: null,
+    resumeAfterTableEdit: null, // ウィザード内「✏️ 編集」からテーブル編集モーダルを開いた際、保存/一覧に戻る操作で呼び戻すコールバック
     qaHistory: [], // [{ question, answer, answerType, options }]
     qaIndex: 0,
     qaStatus: [], // [{ label, done }]
     formPlan: [], // [{ formName, formTitle, description, docDraft }]
     tableCandidates: [], // [{ name, description, selected }]
+    step: 1, // 現在のステップ番号（ステップインジケーター表示用）
 };
+
+// ステップインジケーターに表示するステップ一覧。
+const WIZARD_STEPS = [
+    "Q&A",
+    "テーブル候補",
+    "カラム確認",
+    "画面構成",
+    "生成",
+];
+
+// 現在ステップ（WIZARD_STATE.step）を元に、ステップインジケーターのHTMLを生成する。
+// 完了済み=塗りつぶし、現在地=強調枠、未到達=薄色で表示する。
+function _wizardRenderStepIndicator() {
+    const cur = WIZARD_STATE.step;
+    return "<div style='display:flex;align-items:center;gap:4px;margin-bottom:10px;flex-wrap:wrap'>" +
+        WIZARD_STEPS.map((label, i) => {
+            const n = i + 1;
+            const done = n < cur;
+            const active = n === cur;
+            const circleStyle = "display:inline-flex;align-items:center;justify-content:center;" +
+                "width:20px;height:20px;border-radius:50%;font-size:11px;flex:none;" +
+                (done ? "background:var(--accent2, #2a6);color:#fff;"
+                    : active ? "background:var(--bg1);color:var(--text1);border:2px solid var(--accent2, #2a6);"
+                        : "background:var(--bg2);color:var(--text3);border:1px solid var(--border);");
+            const labelStyle = "font-size:11px;" + (active ? "color:var(--text1);font-weight:bold;" : "color:var(--text3);");
+            const sep = i < WIZARD_STEPS.length - 1
+                ? "<span style='flex:1;height:1px;min-width:10px;background:" + (done ? "var(--accent2, #2a6)" : "var(--border)") + "'></span>"
+                : "";
+            return "<span style='display:flex;align-items:center;gap:4px'>" +
+                "<span style='" + circleStyle + "'>" + (done ? "✓" : n) + "</span>" +
+                "<span style='" + labelStyle + "'>" + esc(label) + "</span>" +
+                "</span>" + sep;
+        }).join("") +
+        "</div>";
+}
 
 // この件数を超えたら「完了で進めることもできます」とトーストで軽く促す目安値
 // （ブロックはしない。質問数が本当に必要なプロジェクトもあるため上限としては強制しない）
@@ -84,6 +121,7 @@ function wizardStepBody() {
     WIZARD_STATE.qaHistory = [];
     WIZARD_STATE.qaIndex = 0;
     WIZARD_STATE.qaStatus = [];
+    WIZARD_STATE.step = 1;
     wizardQaFetchNext();
 }
 
@@ -183,6 +221,7 @@ function _wizardRenderQaModal() {
     showModal(
         mhdrHTML("🧙 ウィザード（" + (idx + 1) + "問目）") +
         "<div class='mbody' style='gap:10px'>" +
+        _wizardRenderStepIndicator() +
         statusHtml +
         "<div class='infobox'>" + esc(qa.question) + "</div>" +
         optionsHtml +
@@ -262,14 +301,17 @@ function wizardQaNext() {
     wizardQaFetchNext();
 }
 
-// 「完了」: 常時押せる。Q&Aを終了しフォーム分解ステップへ進む
+// 「完了」: 常時押せる。Q&Aを終了しテーブル候補抽出ステップへ進む
+// （2026-08-10: 以前はここからフォーム分解→テーブル候補の順だったが、画面の
+//   docDraftを具体的にする（＝テーブルのカラムを先に確定させる）ため、
+//   テーブル候補抽出→カラム確定→フォーム分解の順に変更した）
 function wizardQaComplete() {
     _wizardCommitCurrentAnswer();
-    wizardDecomposeForms();
+    wizardExtractTableCandidates();
 }
 
 /* ═══════════════════════════════════════════
-  フォーム分解・テーブル候補抽出（ウィザード⑥⑦）
+  テーブル候補抽出・カラム確定・フォーム分解（ウィザード②③④）
 ═══════════════════════════════════════════ */
 
 // AI出力テキストをJSON配列としてパースする（既存のparseFormDesignJsonと同方式）
@@ -293,39 +335,12 @@ function _wizardParseJsonArray(text) {
     return null;
 }
 
-// Q&A履歴からAIにフォーム一覧を分解させ、続けてテーブル候補抽出へ進む
-async function wizardDecomposeForms() {
-    const historyCtx = _wizardBuildQaHistoryCtx();
-    const sysPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_SYS_PROMPT();
-    const userPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_USER_PROMPT(historyCtx);
-
-    let forms = null;
-    await runAiGenerate({
-        systemPrompt: sysPrompt,
-        userPrompt: userPrompt,
-        loadingMsg: "画面構成を検討しています…",
-        onSuccess: async (raw) => { forms = _wizardParseJsonArray(raw); },
-        onCancel: async () => { },
-        onError: async () => { },
-    });
-
-    if (!forms || forms.length === 0) {
-        showToast("画面構成の生成に失敗しました。もう一度お試しください");
-        _wizardRenderQaModal();
-        return;
-    }
-    WIZARD_STATE.formPlan = forms;
-    wizardExtractTableCandidates();
-}
-
-// フォーム一覧を元にAIにテーブル候補を抽出させ、選択モーダルを表示する
+// Q&A履歴からAIにテーブル候補を抽出させ、選択モーダルを表示する
+// （フォーム一覧はまだ存在しないため、Q&A履歴のみを材料にする）
 async function wizardExtractTableCandidates() {
     const historyCtx = _wizardBuildQaHistoryCtx();
-    const formsCtx = WIZARD_STATE.formPlan
-        .map((f) => "- " + f.formName + " (" + f.formTitle + "): " + f.description)
-        .join("\n");
     const sysPrompt = _PROMPT_DEF.WIZARD_TABLE_CANDIDATES_SYS_PROMPT();
-    const userPrompt = _PROMPT_DEF.WIZARD_TABLE_CANDIDATES_USER_PROMPT(historyCtx, formsCtx);
+    const userPrompt = _PROMPT_DEF.WIZARD_TABLE_CANDIDATES_USER_PROMPT(historyCtx);
 
     let tables = null;
     await runAiGenerate({
@@ -339,18 +354,12 @@ async function wizardExtractTableCandidates() {
 
     // テーブル候補抽出に失敗しても、テーブルが無いケースと同様に扱い続行する
     WIZARD_STATE.tableCandidates = (tables || []).map((t) => ({ name: t.name, description: t.description, selected: true }));
-    _wizardRenderReviewModal();
+    WIZARD_STATE.step = 2;
+    _wizardRenderTableCandidatesModal();
 }
 
-// フォーム一覧＋テーブル候補の確認モーダルを表示する（ウィザード最後の確認画面）
-function _wizardRenderReviewModal() {
-    const formsHtml = WIZARD_STATE.formPlan
-        .map((f) => "<div class='rp-tbl-row'><div class='rp-tbl-header'>" +
-            "<span class='rp-tbl-name'>" + esc(f.formTitle) + "</span>" +
-            "<span class='rp-tbl-desc'>" + esc(f.description || "") + "</span>" +
-            "</div></div>")
-        .join("");
-
+// テーブル候補の選択モーダルを表示する
+function _wizardRenderTableCandidatesModal() {
     const tablesHtml = WIZARD_STATE.tableCandidates.length > 0
         ? WIZARD_STATE.tableCandidates.map((t, i) =>
             "<label style='display:flex;align-items:center;gap:8px;padding:4px 0'>" +
@@ -361,17 +370,15 @@ function _wizardRenderReviewModal() {
         : "<div class='infobox' style='font-size:11px'>DBテーブルは不要と判断されました</div>";
 
     showModal(
-        mhdrHTML("🧙 ウィザード（確認）") +
+        mhdrHTML("🧙 ウィザード（テーブル候補）") +
         "<div class='mbody' style='gap:10px'>" +
-        "<div class='infobox'>以下の構成でフォーム・テーブルを作成します。よければ「生成開始」を押してください。</div>" +
-        "<div><b>作成するフォーム</b></div>" +
-        formsHtml +
-        "<div><b>作成するテーブル（カラムは後で個別に作成します）</b></div>" +
+        _wizardRenderStepIndicator() +
+        "<div class='infobox'>このアプリで使いそうなテーブルの候補です。不要なものはチェックを外してください。</div>" +
         tablesHtml +
         "</div>" +
         "<div class='mfoot'>" +
         "<button" + evtAttr("onmousedown", "closeModal()") + ">キャンセル</button>" +
-        "<button class='pri'" + evtAttr("onmousedown", "wizardConfirmAndGenerate()") + ">生成開始</button>" +
+        "<button class='pri'" + evtAttr("onmousedown", "wizardProceedToColumnGen()") + ">次へ →</button>" +
         "</div>"
     );
 }
@@ -380,11 +387,7 @@ function wizardToggleTableCandidate(i) {
     WIZARD_STATE.tableCandidates[i].selected = !WIZARD_STATE.tableCandidates[i].selected;
 }
 
-/* ═══════════════════════════════════════════
-  一括生成（ウィザード⑧⑨）
-═══════════════════════════════════════════ */
-
-// 選択されたテーブルを仮登録（名前・説明のみ、カラムは後で個別作成）する
+// 選択されたテーブルを仮登録（名前・説明のみ、カラムはこの直後にAIで生成する）する
 function _wizardCommitSelectedTables() {
     const existingNames = new Set(getProjectData().tables.map((t) => t.name));
     WIZARD_STATE.tableCandidates
@@ -399,10 +402,163 @@ function _wizardCommitSelectedTables() {
         });
 }
 
-// 「生成開始」: テーブルを仮登録し、フォームを作成して一括生成を開始する
-async function wizardConfirmAndGenerate() {
+// 「次へ」: 選択されたテーブルを仮登録し、各テーブルのカラム構成をAIで一括生成する
+async function wizardProceedToColumnGen() {
     closeModal();
     _wizardCommitSelectedTables();
+    WIZARD_STATE.step = 3;
+
+    const targetNames = new Set(
+        WIZARD_STATE.tableCandidates.filter((t) => t.selected && t.name).map((t) => t.name)
+    );
+    const targetTables = getProjectData().tables.filter((t) => targetNames.has(t.name));
+    if (targetTables.length === 0) {
+        _wizardRenderColumnsReviewModal();
+        return;
+    }
+
+    const historyCtx = _wizardBuildQaHistoryCtx();
+    const total = targetTables.length;
+    for (let i = 0; i < total; i++) {
+        const t = targetTables[i];
+        showToast("テーブル" + (i + 1) + "/" + total + ": " + t.name + " のカラム構成を生成中…");
+        const sysPrompt = _PROMPT_DEF.TABLE_SCHEMA_GEN_SYS_PROMPT({ tableName: t.name, description: t.description });
+        const userPrompt = _PROMPT_DEF.TABLE_SCHEMA_GEN_USER_PROMPT(historyCtx);
+
+        let cols = null;
+        await runAiGenerate({
+            systemPrompt: sysPrompt,
+            userPrompt: userPrompt,
+            loadingMsg: "テーブル構成を生成中…（" + (i + 1) + "/" + total + "）",
+            onSuccess: async (raw) => { cols = _wizardParseJsonArray(raw); },
+            onCancel: async () => { },
+            onError: async () => { },
+        });
+        const sanitized = sanitizeAiTableColumns(cols);
+        if (sanitized.length > 0) {
+            t.columns = sanitized;
+            t.updatedAt = new Date().toISOString();
+        }
+    }
+
+    _wizardRenderColumnsReviewModal();
+}
+
+// 生成されたカラム構成の確認モーダルを表示する。
+// 詳細な編集は既存の「テーブル管理」モーダル（openTableEdit）を再利用する。
+function _wizardRenderColumnsReviewModal() {
+    const targetNames = new Set(
+        WIZARD_STATE.tableCandidates.filter((t) => t.selected && t.name).map((t) => t.name)
+    );
+    const targetTables = getProjectData().tables.filter((t) => targetNames.has(t.name));
+
+    const allTables = getProjectData().tables || [];
+    const tablesHtml = targetTables.length > 0
+        ? targetTables.map((t) => {
+            const idx = allTables.indexOf(t);
+            const colsPreview = (t.columns || []).length > 0
+                ? (t.columns || []).map((c) =>
+                    "<span style='display:inline-block;font-size:11px;padding:2px 6px;margin:2px;border-radius:8px;background:var(--bg2);border:1px solid var(--border)'>" +
+                    esc(c.name) + (c.pk ? " 🔑" : "") + ": " + esc(c.type) +
+                    "</span>"
+                ).join("")
+                : "<span style='font-size:11px;color:var(--text3)'>（カラム生成に失敗しました。編集ボタンから作成してください）</span>";
+            return "<div class='rp-tbl-row'><div class='rp-tbl-header'>" +
+                "<span class='rp-tbl-name'><b>" + esc(t.name) + "</b> — " + esc(t.description || "") + "</span>" +
+                "<button style='font-size:11px;padding:2px 8px'" + evtAttr("onmousedown", "wizardEditTableColumns(" + idx + ")") + ">✏️ 編集</button>" +
+                "</div><div style='padding:4px 0'>" + colsPreview + "</div></div>";
+        }).join("")
+        : "<div class='infobox' style='font-size:11px'>テーブルはありません</div>";
+
+    showModal(
+        mhdrHTML("🧙 ウィザード（カラム確認）") +
+        "<div class='mbody' style='gap:10px'>" +
+        _wizardRenderStepIndicator() +
+        "<div class='infobox'>AIが生成したテーブルのカラム構成です。「✏️ 編集」から修正できます。よければ「次へ」を押してください。</div>" +
+        tablesHtml +
+        "</div>" +
+        "<div class='mfoot'>" +
+        "<button" + evtAttr("onmousedown", "closeModal()") + ">キャンセル</button>" +
+        "<button class='pri'" + evtAttr("onmousedown", "wizardProceedToFormDecompose()") + ">次へ →</button>" +
+        "</div>"
+    );
+}
+
+// 「✏️ 編集」: 既存のテーブル編集モーダルを開く。保存/一覧に戻る操作の完了時、
+// AI接続設定等と同じ「resumeAfterXxx」フック方式でウィザードのカラム確認モーダルへ戻す
+// （フックの実体は vja-table-validation.js の tblSave()/openTableManager() 側に追加済み）。
+function wizardEditTableColumns(idx) {
+    if (idx < 0) return;
+    WIZARD_STATE.resumeAfterTableEdit = _wizardRenderColumnsReviewModal;
+    openTableEdit(idx);
+}
+
+// 「次へ」（カラム確認から）: フォーム分解ステップへ進む
+async function wizardProceedToFormDecompose() {
+    closeModal();
+    WIZARD_STATE.step = 4;
+    await wizardDecomposeForms();
+}
+
+// Q&A履歴＋確定済みテーブル（カラム込み）からAIにフォーム一覧を分解させ、確認モーダルを表示する
+async function wizardDecomposeForms() {
+    const historyCtx = _wizardBuildQaHistoryCtx();
+    const tablesCtx = buildTablesCtxText(getProjectData().tables || []);
+    const sysPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_SYS_PROMPT({ tablesCtx });
+    const userPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_USER_PROMPT(historyCtx);
+
+    let forms = null;
+    await runAiGenerate({
+        systemPrompt: sysPrompt,
+        userPrompt: userPrompt,
+        loadingMsg: "画面構成を検討しています…",
+        onSuccess: async (raw) => { forms = _wizardParseJsonArray(raw); },
+        onCancel: async () => { },
+        onError: async () => { },
+    });
+
+    if (!forms || forms.length === 0) {
+        showToast("画面構成の生成に失敗しました。もう一度お試しください");
+        _wizardRenderColumnsReviewModal();
+        return;
+    }
+    WIZARD_STATE.formPlan = forms;
+    _wizardRenderFormReviewModal();
+}
+
+// フォーム一覧の確認モーダルを表示する（ウィザード最後の確認画面）
+function _wizardRenderFormReviewModal() {
+    const formsHtml = WIZARD_STATE.formPlan
+        .map((f) => "<div class='rp-tbl-row'><div class='rp-tbl-header'>" +
+            "<span class='rp-tbl-name'>" + esc(f.formTitle) + "</span>" +
+            "<span class='rp-tbl-desc'>" + esc(f.description || "") + "</span>" +
+            "</div></div>")
+        .join("");
+
+    showModal(
+        mhdrHTML("🧙 ウィザード（画面構成）") +
+        "<div class='mbody' style='gap:10px'>" +
+        _wizardRenderStepIndicator() +
+        "<div class='infobox'>以下の画面を作成します。よければ「生成開始」を押してください。</div>" +
+        "<div><b>作成するフォーム</b></div>" +
+        formsHtml +
+        "</div>" +
+        "<div class='mfoot'>" +
+        "<button" + evtAttr("onmousedown", "closeModal()") + ">キャンセル</button>" +
+        "<button class='pri'" + evtAttr("onmousedown", "wizardConfirmAndGenerate()") + ">生成開始</button>" +
+        "</div>"
+    );
+}
+
+/* ═══════════════════════════════════════════
+  一括生成（ウィザード⑤）
+═══════════════════════════════════════════ */
+
+// 「生成開始」: フォームを作成して画面デザイン一括生成を開始する
+// （テーブルは②③で既に確定済みのため、ここでは何もしない）
+async function wizardConfirmAndGenerate() {
+    closeModal();
+    WIZARD_STATE.step = 5;
 
     getProjectData().forms = WIZARD_STATE.formPlan.map((f) => {
         const nf = makeFormData(f.formName || "Form1");
@@ -436,29 +592,15 @@ async function wizardConfirmAndGenerate() {
     refreshAll();
     pushUndo();
     showToast("ウィザード完了: " + successCount + "/" + total + "件のフォームを生成しました");
-
-    // テーブルは名前・説明のみの仮登録のため、カラム定義が必要なことを案内する
-    const tableNames = getProjectData().tables.map((t) => t.name);
-    if (tableNames.length > 0) {
-        showVjaAlert(
-            "画面生成が終わりました。\n\n" +
-            "テーブル（" + tableNames.join("、") + "）は名前と説明のみ作成されています。\n" +
-            "メニューの「テーブル管理」からテーブルを開き、「✨ AI生成」ボタンでカラム構成の生成を行ってください。"
-        );
-    } else {
-        showVjaAlert("画面生成が終わりました。");
-    }
+    showVjaAlert("画面生成が終わりました。テーブル・画面の内容は、メニューの「テーブル管理」やデザイナー上でいつでも調整できます。");
 }
 
 // 1フォーム分の「画面デザインYAMLドラフト → YAML」生成（DOM非依存版）
 async function _wizardGenerateFormYaml(docDraft) {
-    const tablesCtx = (getProjectData().tables || [])
-        .map((t) => t.name + ": " + (t.description || ""))
-        .join("\n");
-    const widgetsCtx = (getProjectData().widgets || [])
-        .map((w) => "  - " + w.name + " (" + w.tag + ")")
-        .join("\n");
-    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT({ tablesCtx, widgetsCtx });
+    const allTablesFull = getProjectData().tables || [];
+    const targetTablesForCtx = narrowTablesByRequest(docDraft || "", allTablesFull);
+    const tablesCtx = buildTablesCtxText(targetTablesForCtx);
+    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT({ tablesCtx });
     const userPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT(docDraft || "");
 
     let result = null;
@@ -505,6 +647,7 @@ async function _wizardGenerateFormLayout(yamlText) {
 Object.assign(window, {
     actWizard, wizardStartNewProject, wizardCheckAiConfig, wizardCheckProjectInfo, wizardStepBody,
     wizardQaBack, wizardQaNext, wizardQaComplete, wizardQaPickOption,
-    wizardDecomposeForms, wizardExtractTableCandidates, wizardToggleTableCandidate, wizardConfirmAndGenerate,
+    wizardExtractTableCandidates, wizardToggleTableCandidate, wizardProceedToColumnGen,
+    wizardEditTableColumns, wizardProceedToFormDecompose, wizardDecomposeForms, wizardConfirmAndGenerate,
     WIZARD_STATE,
 });
