@@ -1858,7 +1858,14 @@ Your task is to read a Japanese YAML screen definition (including screen purpose
    - Recognize layout parameters:
      - Columns ("カラム数" / "columns"): 1 | 2 | 3. Divide inputs into clean columns (e.g., 2 columns: Col 1 x=20, Col 2 x=${Math.floor(formW / 2) + 10}).
      - Label Position ("ラベル位置" / "labelPosition"): "左" (left / label on the left of input, e.g., lbl x=20 w=100, input x=125 w=180, same y) OR "上" (top / label above input, e.g., lbl x=20 y=Y w=180 h=20, input x=20 y=Y+22 w=180 h=26). Default is "left".
-     - Button Alignment ("ボタン位置" / "buttonPosition"): "右下" (bottom-right / x=${formW - 220}, y=${formH - 45}) | "右" (top-right for search buttons) | "下部中央" (bottom-center).
+     - Button Alignment ("ボタン位置" / "buttonPosition"): "右下" (bottom-right) | "右" (top-right for search buttons) | "下部中央" (bottom-center).
+       - **When there are multiple action buttons, you MUST compute each button's x from the form's RIGHT EDGE, not from a single fixed x.** Use this exact formula for N buttons (button width w=85, gap=10px between buttons, right margin=20px):
+         - rightmost button: x = ${formW} - 20 - w
+         - each button to its left: x = (x of the button to its right) - gap - w
+         - i.e. for buttons ordered left-to-right [btn_1 .. btn_N], x(btn_i) = ${formW} - 20 - (N - i + 1) * w - (N - i) * gap
+         - All buttons share the same y = ${formH - 45} (bottom-right) and h=28~32.
+       - Example for N=3 buttons (w=85, gap=10) in a form of width ${formW}: x(btn_3)=${formW}-20-85, x(btn_2)=x(btn_3)-10-85, x(btn_1)=x(btn_2)-10-85.
+       - Verify after computing: the leftmost button's x MUST be >= 20 (left margin). If it is not, reduce button width or wrap to a second row instead of overlapping.
      - Density ("密度" / "density"): "コンパクト" (compact: item height 24px, gapY 28px) | "標準" (normal: item height 28px, gapY 36px).
 
 2. Recognized Screen Layout Patterns:
@@ -1867,7 +1874,7 @@ Your task is to read a Japanese YAML screen definition (including screen purpose
      - Data Grid Area (Bottom): Place a "datagrid" filling the remaining width and height (x: 20, y: searchAreaBottom + 15, w: ${formW - 40}, h: ${formH} - y - 30).
    - Form & Registration Screen (登録・詳細画面):
      - Place labels and inputs structured in 1 or 2 clean columns with uniform row gaps (yDelta: 36~40px).
-     - Action buttons (Save, Cancel, Close, etc.) MUST be aligned at the bottom right (x: ${formW - 220}, y: ${formH - 45}, h: 30) or bottom center.
+     - Action buttons (Save, Cancel, Close, etc.) MUST be aligned at the bottom right (y: ${formH - 45}, h: 30) or bottom center. When there are 2 or more buttons, apply the multi-button x formula defined above (rightmost button flush against the right margin, each additional button placed 10px further left) so that buttons never overlap and never exceed the form width.
 
 3. Coordinates & Sizing Guidelines:
    - Form Bounds: Width = ${formW}px, Height = ${formH}px. All widgets MUST fit within x+w <= ${formW} and y+h <= ${formH}.
@@ -1937,6 +1944,23 @@ Output JSON Example:
     {"name": "sex", "displayName": "性別", "width": 25}
   ], "x": 20, "y": 60, "w": ${formW - 40}, "h": ${Math.max(180, formH - 90)}}
 ]
+
+[Few-Shot Example: Multiple Action Buttons]
+Input YAML Example (form width ${formW}):
+---
+説明: タスクの追加・マスキング・編集を行うための画面
+アクション項目:
+  - 追加ボタン
+  - マスキングボタン
+  - 編集ボタン
+---
+Output JSON Example (3 buttons, w=85, gap=10, right margin=20, computed right-to-left from ${formW}):
+[
+  {"tag": "button", "name": "btnAdd", "text": "追加", "x": ${formW - 20 - 85 - 10 - 85 - 10 - 85}, "y": ${formH - 45}, "w": 85, "h": 28},
+  {"tag": "button", "name": "btnMasking", "text": "マスキング", "x": ${formW - 20 - 85 - 10 - 85}, "y": ${formH - 45}, "w": 85, "h": 28},
+  {"tag": "button", "name": "btnEdit", "text": "編集", "x": ${formW - 20 - 85}, "y": ${formH - 45}, "w": 85, "h": 28}
+]
+Note: each button's x is derived from the RIGHT EDGE of the form, not from a fixed left-side offset. Never place multiple buttons at increasing x values without first anchoring the rightmost one to (${formW} - 20 - w).
 
 [Reference Table Definition]
 ---
@@ -2116,6 +2140,9 @@ actions:
 - Do not include any intro, explanations, or conversational text.
 - Begin your response immediately with "description:".
 - If the form already has existing widgets (see [Existing Widgets On This Form] below), do NOT duplicate them in fields/actions unless the user's request clearly asks to change or add alongside them. Use their existing names as-is when referring to them.
+- "fields" must include EVERY input widget the screen needs, including filter/search/narrowing conditions (e.g. a "priority" filter, a "due date" filter, a "status" filter) — these are input widgets (typically selectBox/inputtype) just like any other field. NEVER describe a filter/narrowing requirement only as prose inside "actions" — it MUST appear as a concrete field here.
+- Each item in "actions" must be a SHORT, concrete label for ONE pressable action (a button caption or an equivalent single UI action), never a sentence. Do NOT put navigation logic, event-handling behavior, or multi-step descriptions (e.g. "選択すると詳細画面へ遷移する", "AでBを絞り込む") into "actions" — that belongs to a LATER, separate event-processing step, not this screen-layout step. If a described behavior is not a distinct pressable action, do not add it to "actions" at all; either represent it as a field (see the rule above) or omit it.
+- NEVER invent fields or actions that are not stated or clearly implied by the user's request (e.g. do not add generic "保存"/"キャンセル" buttons unless the request mentions saving/canceling or an equivalent standard form-submission flow).
 
 [Available Database Tables Context]
 ${tablesCtx || "(No DB tables)"}
