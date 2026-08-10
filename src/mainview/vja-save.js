@@ -70,6 +70,8 @@ function loadProjectData(jsonStr) {
         refreshAll();
         getEditHistory().savedSnapshot = JSON.stringify(snapshot());
         applyViewSettings();
+        // ウィザードが完了前に中断された進行状況が残っていれば「続きから再開」を提案する
+        if (typeof wizardOfferResume === "function") wizardOfferResume();
     } catch (err) {
         showVjaAlert("読み込み失敗: " + err.message);
     }

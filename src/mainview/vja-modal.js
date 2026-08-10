@@ -270,6 +270,7 @@ function snapshot() {
         learnedFixes: p.learnedFixes || {},
         aiPresets: p.aiPresets || [],
         currentAiPresetId: p.currentAiPresetId || "",
+        wizardProgress: p.wizardProgress || null,
     };
 }
 // 現在の状態を undoStack に積む。redoStack はクリアする。
@@ -315,6 +316,8 @@ function applyProjectData(d) {
     getProjectData().learnedFixes = d.learnedFixes || {};
     getProjectData().aiPresets = d.aiPresets || [];
     getProjectData().currentAiPresetId = d.currentAiPresetId || "";
+    // ウィザードが完了前に中断された場合の進行状況（あれば「続きから再開」を提案する）
+    getProjectData().wizardProgress = d.wizardProgress || null;
     getDesignerState().snapOn = d.snapOn !== undefined ? d.snapOn : true;
     getDesignerState().showGrid = d.showGrid !== undefined ? d.showGrid : false;
     // editorConfigはvja設定ファイルで管理するためプロジェクトからは読み込まない

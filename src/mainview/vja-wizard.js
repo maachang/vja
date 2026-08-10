@@ -70,6 +70,78 @@ function _wizardRenderStepIndicator() {
         "</div>";
 }
 
+// WIZARD_STATEの主要な内容をgetProjectData().wizardProgressへ保存する。
+// これによりウィザードの進行状況が.vjaprojファイルに永続化され、
+// アプリ再起動後や別セッションでも「続きから再開」できるようになる。
+// 各ステップのモーダルを表示する直前に呼び出す。
+function _wizardSaveProgress() {
+    getProjectData().wizardProgress = {
+        done: false,
+        step: WIZARD_STATE.step,
+        qaHistory: WIZARD_STATE.qaHistory,
+        qaIndex: WIZARD_STATE.qaIndex,
+        qaStatus: WIZARD_STATE.qaStatus,
+        tableCandidates: WIZARD_STATE.tableCandidates,
+        formPlan: WIZARD_STATE.formPlan,
+    };
+}
+
+// プロジェクトを開いた際、中断されたウィザードの進行状況が残っていれば
+// 「続きから再開」を提案する（vja-save.jsのloadProjectData()から呼ばれる）。
+function wizardOfferResume() {
+    const wp = getProjectData().wizardProgress;
+    if (!wp || wp.done) return;
+    showModal(
+        mhdrHTML("🧙 ウィザードの再開") +
+        "<div class='mbody' style='gap:10px'>" +
+        "<div class='infobox'>前回、プロジェクト作成ウィザードが完了する前に中断されたようです。続きから再開しますか？</div>" +
+        "</div>" +
+        "<div class='mfoot'>" +
+        "<button" + evtAttr("onmousedown", "wizardDiscardProgress()") + ">破棄する</button>" +
+        "<button class='pri'" + evtAttr("onmousedown", "wizardResumeFromProgress()") + ">続きから再開</button>" +
+        "</div>"
+    );
+}
+
+// 「破棄する」: 保存済みの進行状況を削除し、通常のエディタ画面のまま終える
+function wizardDiscardProgress() {
+    getProjectData().wizardProgress = null;
+    closeModal();
+}
+
+// 「続きから再開」: 保存済みの進行状況をWIZARD_STATEへ復元し、該当ステップのモーダルを再表示する
+function wizardResumeFromProgress() {
+    const wp = getProjectData().wizardProgress;
+    closeModal();
+    if (!wp) return;
+    WIZARD_STATE.qaHistory = wp.qaHistory || [];
+    WIZARD_STATE.qaIndex = wp.qaIndex || 0;
+    WIZARD_STATE.qaStatus = wp.qaStatus || [];
+    WIZARD_STATE.tableCandidates = wp.tableCandidates || [];
+    WIZARD_STATE.formPlan = wp.formPlan || [];
+    WIZARD_STATE.step = wp.step || 1;
+    switch (WIZARD_STATE.step) {
+        case 2: _wizardRenderTableCandidatesModal(); break;
+        case 3: _wizardRenderColumnsReviewModal(); break;
+        case 4: _wizardRenderFormReviewModal(); break;
+        default: _wizardRenderQaModal(); break;
+    }
+}
+
+// 「← 戻る」（テーブル候補ステップへ）: カラム確認/画面構成から戻る際に使う
+function wizardGoBackToTableCandidates() {
+    closeModal();
+    WIZARD_STATE.step = 2;
+    _wizardRenderTableCandidatesModal();
+}
+
+// 「← 戻る」（カラム確認ステップへ）: 画面構成から戻る際に使う
+function wizardGoBackToColumnsReview() {
+    closeModal();
+    WIZARD_STATE.step = 3;
+    _wizardRenderColumnsReviewModal();
+}
+
 // この件数を超えたら「完了で進めることもできます」とトーストで軽く促す目安値
 // （ブロックはしない。質問数が本当に必要なプロジェクトもあるため上限としては強制しない）
 const WIZARD_QA_SUGGEST_COMPLETE_AT = 6
@@ -192,6 +264,7 @@ async function wizardQaFetchNext() {
 // （runAiGenerateのローディングモーダルがそのまま表示され続ける）。
 function _wizardRenderQaModal() {
     if (WIZARD_STATE.qaHistory.length === 0) return;
+    _wizardSaveProgress();
     const idx = WIZARD_STATE.qaIndex;
     const qa = WIZARD_STATE.qaHistory[idx];
     const isFirst = idx === 0;
@@ -360,6 +433,7 @@ async function wizardExtractTableCandidates() {
 
 // テーブル候補の選択モーダルを表示する
 function _wizardRenderTableCandidatesModal() {
+    _wizardSaveProgress();
     const tablesHtml = WIZARD_STATE.tableCandidates.length > 0
         ? WIZARD_STATE.tableCandidates.map((t, i) =>
             "<label style='display:flex;align-items:center;gap:8px;padding:4px 0'>" +
@@ -378,9 +452,17 @@ function _wizardRenderTableCandidatesModal() {
         "</div>" +
         "<div class='mfoot'>" +
         "<button" + evtAttr("onmousedown", "closeModal()") + ">キャンセル</button>" +
+        "<button" + evtAttr("onmousedown", "wizardGoBackToQa()") + ">← 戻る</button>" +
         "<button class='pri'" + evtAttr("onmousedown", "wizardProceedToColumnGen()") + ">次へ →</button>" +
         "</div>"
     );
+}
+
+// 「← 戻る」（Q&Aステップへ）: テーブル候補から戻る際に使う
+function wizardGoBackToQa() {
+    closeModal();
+    WIZARD_STATE.step = 1;
+    _wizardRenderQaModal();
 }
 
 function wizardToggleTableCandidate(i) {
@@ -403,8 +485,27 @@ function _wizardCommitSelectedTables() {
 }
 
 // 「次へ」: 選択されたテーブルを仮登録し、各テーブルのカラム構成をAIで一括生成する
+// （戻ってやり直した場合、既にテーブルが確定済みのことがあるため、その場合は
+//   「削除して作り直す」か「そのまま次へ進む」かを確認する）
 async function wizardProceedToColumnGen() {
     closeModal();
+
+    const existingTables = getProjectData().tables || [];
+    if (existingTables.length > 0) {
+        const ok = await vja.app.showConfirm(
+            "既にテーブル（" + existingTables.map((t) => t.name).join("、") + "）が存在します。\n" +
+            "削除してテーブル候補から作り直しますか？\n\n" +
+            "「OK」で全て削除して作り直します。「キャンセル」で今のテーブルをそのまま使って次へ進みます。"
+        );
+        if (ok) {
+            getProjectData().tables = [];
+        } else {
+            WIZARD_STATE.step = 3;
+            _wizardRenderColumnsReviewModal();
+            return;
+        }
+    }
+
     _wizardCommitSelectedTables();
     WIZARD_STATE.step = 3;
 
@@ -447,12 +548,16 @@ async function wizardProceedToColumnGen() {
 // 生成されたカラム構成の確認モーダルを表示する。
 // 詳細な編集は既存の「テーブル管理」モーダル（openTableEdit）を再利用する。
 function _wizardRenderColumnsReviewModal() {
+    _wizardSaveProgress();
+    const allTables = getProjectData().tables || [];
     const targetNames = new Set(
         WIZARD_STATE.tableCandidates.filter((t) => t.selected && t.name).map((t) => t.name)
     );
-    const targetTables = getProjectData().tables.filter((t) => targetNames.has(t.name));
+    // 選択済みテーブル候補に一致するものが無い場合（既存テーブルをそのまま使う選択をした場合等）は、
+    // プロジェクトの全テーブルを表示対象にする
+    const matched = allTables.filter((t) => targetNames.has(t.name));
+    const targetTables = matched.length > 0 ? matched : allTables;
 
-    const allTables = getProjectData().tables || [];
     const tablesHtml = targetTables.length > 0
         ? targetTables.map((t) => {
             const idx = allTables.indexOf(t);
@@ -479,6 +584,7 @@ function _wizardRenderColumnsReviewModal() {
         "</div>" +
         "<div class='mfoot'>" +
         "<button" + evtAttr("onmousedown", "closeModal()") + ">キャンセル</button>" +
+        "<button" + evtAttr("onmousedown", "wizardGoBackToTableCandidates()") + ">← 戻る</button>" +
         "<button class='pri'" + evtAttr("onmousedown", "wizardProceedToFormDecompose()") + ">次へ →</button>" +
         "</div>"
     );
@@ -528,6 +634,7 @@ async function wizardDecomposeForms() {
 
 // フォーム一覧の確認モーダルを表示する（ウィザード最後の確認画面）
 function _wizardRenderFormReviewModal() {
+    _wizardSaveProgress();
     const formsHtml = WIZARD_STATE.formPlan
         .map((f) => "<div class='rp-tbl-row'><div class='rp-tbl-header'>" +
             "<span class='rp-tbl-name'>" + esc(f.formTitle) + "</span>" +
@@ -545,6 +652,7 @@ function _wizardRenderFormReviewModal() {
         "</div>" +
         "<div class='mfoot'>" +
         "<button" + evtAttr("onmousedown", "closeModal()") + ">キャンセル</button>" +
+        "<button" + evtAttr("onmousedown", "wizardGoBackToColumnsReview()") + ">← 戻る</button>" +
         "<button class='pri'" + evtAttr("onmousedown", "wizardConfirmAndGenerate()") + ">生成開始</button>" +
         "</div>"
     );
@@ -589,6 +697,7 @@ async function wizardConfirmAndGenerate() {
         if (ok) successCount++;
     }
 
+    getProjectData().wizardProgress = null; // ウィザード完了。再開用の進行状況は不要になったため削除
     refreshAll();
     pushUndo();
     showToast("ウィザード完了: " + successCount + "/" + total + "件のフォームを生成しました");
@@ -649,5 +758,7 @@ Object.assign(window, {
     wizardQaBack, wizardQaNext, wizardQaComplete, wizardQaPickOption,
     wizardExtractTableCandidates, wizardToggleTableCandidate, wizardProceedToColumnGen,
     wizardEditTableColumns, wizardProceedToFormDecompose, wizardDecomposeForms, wizardConfirmAndGenerate,
+    wizardOfferResume, wizardDiscardProgress, wizardResumeFromProgress,
+    wizardGoBackToQa, wizardGoBackToTableCandidates, wizardGoBackToColumnsReview,
     WIZARD_STATE,
 });
