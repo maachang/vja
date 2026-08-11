@@ -780,6 +780,8 @@ function pinput(d, val, wid) {
             return `<button${evtAttr("onmousedown", "openItemsDefEditor(" + w2 + ")")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ 項目編集…</button>`;
         case "themeReset":
             return `<button id="theme-reset-btn-${w2}"${evtAttr("onmousedown", "resetWidgetTheme(" + w2 + ")")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">↺ テーマに戻す${val == null ? "" : "（連動中）"}</button>`;
+        case "formThemeAction":
+            return _formThemeActionHtml();
         case "formAiDesign":
             return `<button${evtAttr("onmousedown", "openFormDesignAi()")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">🤖 AIでフォーム設計…</button>`;
         case "area":
@@ -889,6 +891,92 @@ function applyThemeToWidgets() {
         if (!_applyThemeSync(w.props, w.tag, theme)) return;
         renderWidget(w, false);
     });
+}
+
+/* ═══════════════════════════════════════════
+  フォーム間のテーマ連動（トップForm ⇔ 他フォーム）
+  【AIメモ】「トップForm」= ★スタートフォーム（getProjectData().startFormId）。
+  各フォームcfg.themeCustomizedが true の間は、トップFormからの「全体に反映」の
+  対象外になる（このフォームで手動編集した場合にsetFormCfg()側でtrueにする）。
+═══════════════════════════════════════════ */
+
+// 指定フォームの「連動中」（baseColor非null）ウィジェットへテーマを適用する
+// （現在表示中フォーム以外にも使えるよう、getProjectData().widgetsに依存しない版）
+function _applyThemeToFormWidgets(form, theme) {
+    (form.widgets || []).forEach((w) => {
+        if (w.props.baseColor == null) return;
+        _applyThemeSync(w.props, w.tag, theme);
+    });
+}
+
+// トップFormのテーマ設定を取得する（未設定項目はgetFormTheme()と同じ規定値で補完）
+function _getTopFormTheme() {
+    const top = getProjectData().forms.find((f) => f.id === getProjectData().startFormId);
+    const cfg = top?.cfg || {};
+    return {
+        fontFamily: cfg.themeFontFamily || "",
+        fontSize: cfg.themeFontSize ?? 12,
+        fg: cfg.themeFg || "#000",
+        baseColor: cfg.themeBaseColor || "#e0e0e0",
+    };
+}
+
+// 「🎨 全体に反映」（トップFormのプロパティパネルから）: トップFormのテーマを、
+// 個別カスタマイズ済み（themeCustomized===true）を除く全フォームへコピーする
+function applyThemeToAllForms() {
+    const top = getProjectData().forms.find((f) => f.id === getProjectData().startFormId);
+    if (!top) return;
+    const theme = _getTopFormTheme();
+    getProjectData().forms.forEach((f) => {
+        // トップForm自身（現在表示中のフォーム）は反映元なのでスキップする
+        if (f.id === top.id || f.cfg.themeCustomized) return;
+        f.cfg.themeFontFamily = top.cfg.themeFontFamily;
+        f.cfg.themeFontSize = top.cfg.themeFontSize;
+        f.cfg.themeFg = top.cfg.themeFg;
+        f.cfg.themeBaseColor = top.cfg.themeBaseColor;
+        _applyThemeToFormWidgets(f, theme);
+    });
+    renderProps();
+    pushUndo();
+    showToast("トップFormのテーマを他フォームへ反映しました（個別設定済みのフォームを除く）");
+}
+
+// 「↺ トップに合わせる」（トップForm以外のプロパティパネルから）: このフォームの
+// テーマをトップFormの値に戻し、個別カスタマイズ状態を解除する
+function resetFormThemeToTop() {
+    const top = getProjectData().forms.find((f) => f.id === getProjectData().startFormId);
+    const cur = getProjectData().forms[getProjectData().curFormIdx];
+    if (!top || !cur || cur.id === top.id) return;
+    cur.cfg.themeFontFamily = top.cfg.themeFontFamily;
+    cur.cfg.themeFontSize = top.cfg.themeFontSize;
+    cur.cfg.themeFg = top.cfg.themeFg;
+    cur.cfg.themeBaseColor = top.cfg.themeBaseColor;
+    cur.cfg.themeCustomized = false;
+    applyThemeToWidgets();
+    renderProps();
+    pushUndo();
+}
+
+// 現在のフォームがトップForm（★スタートフォーム）かどうかに応じて、
+// 「全体に反映」または「トップに合わせる」ボタンのHTMLを生成する
+function _formThemeActionHtml() {
+    const cur = getProjectData().forms[getProjectData().curFormIdx];
+    const isTop = cur && cur.id === getProjectData().startFormId;
+    if (isTop) {
+        return `<button id="form-theme-action-btn"${evtAttr("onmousedown", "applyThemeToAllForms()")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">🎨 全体に反映</button>`;
+    }
+    const customized = !!cur?.cfg.themeCustomized;
+    return `<button id="form-theme-action-btn"${evtAttr("onmousedown", "resetFormThemeToTop()")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">↺ トップに合わせる${customized ? "（個別設定中）" : ""}</button>`;
+}
+
+// setFormCfg()でthemeCustomizedが変わった際、パネル全体を再描画せず
+// 「トップに合わせる」ボタンの表示だけを直接更新する（テーマ色編集中に
+// パネルを再描画すると<input type="color">が壊れる問題への対策は
+// _updateThemeResetIndicator()と同じ理由）
+function _updateFormThemeActionIndicator() {
+    const btn = document.getElementById("form-theme-action-btn");
+    if (!btn) return;
+    btn.outerHTML = _formThemeActionHtml();
 }
 
 // ── 画像アップロード ─────────────────────────────
@@ -1019,9 +1107,19 @@ function setFormCfg(k, v) {
     getProjectData().formCfg[k] = v;
     getProjectData().forms[getProjectData().curFormIdx].cfg[k] = v;
     if (k === "themeFontFamily" || k === "themeFontSize" || k === "themeFg" || k === "themeBaseColor") {
+        // トップForm（★スタートフォーム）以外でテーマ項目を手動変更した場合は
+        // 「個別カスタマイズ済み」扱いにし、以後トップFormからの「全体に反映」の対象外にする
+        const curForm = getProjectData().forms[getProjectData().curFormIdx];
+        if (curForm && curForm.id !== getProjectData().startFormId) {
+            curForm.cfg.themeCustomized = true;
+            getProjectData().formCfg.themeCustomized = true;
+        }
         applyThemeToWidgets();
         // 【検証済み】フォーム自身のプロパティパネルには、この変更によって
         // 表示が変わる項目が他に無いため、bgと同じくパネル再描画は行わない。
+        // ただし↑のthemeCustomized変更で「トップに合わせる」ボタンの表示は
+        // 変わるため、そちらだけ更新する
+        _updateFormThemeActionIndicator();
     }
     buildFormSelect();
     applyForm();
@@ -1090,6 +1188,7 @@ Object.assign(window, {
     updateStatusSel, initFormBodyEvents, addWidget, bindWidget, applyAiFormDesign,
     startMove, startResize, renderProps, makeSec, makeProw,
     pinput, setProp, openImgUpload, clearImg, resetWidgetTheme,
+    applyThemeToAllForms, resetFormThemeToTop,
     commitWidget, getWidget, pvNumStep, setFontFamilyProp,
     syncPropXY, syncPropWH, setFormCfg, deleteYaml, renderEvents,
     switchTab, setFontFamilyChoice,

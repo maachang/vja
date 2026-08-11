@@ -748,6 +748,9 @@ const WIDGET_DEFS = {
             { k: "themeFontSize", lb: "文字サイズ", t: "num", sp: "formThemeFontSize" },
             { k: "themeFg", lb: "文字色", t: "color", sp: "formThemeFg" },
             { k: "themeBaseColor", lb: "ベースカラー", t: "color", sp: "formThemeBaseColor" },
+            // トップForm（★スタートフォーム）では「全体に反映」、それ以外では「トップに合わせる」
+            // ボタンを表示する（表示切り替え・押下時の処理はpinput()/setProp()側で行う）
+            { k: "_themeAction", lb: "他フォームとの連動", t: "formThemeAction" },
         ],
     },
 };
@@ -776,6 +779,10 @@ function makeFormData(title = "Form1") {
             // フォーム共通テーマ（新規ウィジェット作成時の初期値として使用。
             // 既存プロジェクトはこの値が無いため getFormTheme() 側で規定値を補完する）
             themeFontFamily: "", themeFontSize: 12, themeFg: "#000", themeBaseColor: "#e0e0e0",
+            // トップForm（★スタートフォーム）以外で、このフォームのテーマ項目を
+            // 手動変更したかどうか。true の間は「トップFormから全体に反映」の対象外になる
+            // （resetFormThemeToTop()で false に戻すと再び対象になる）
+            themeCustomized: false,
         },
         widgets: [],
         idCnt: 1,
