@@ -198,6 +198,20 @@ const _defaultValueForType = (type: string): string => {
     }
 };
 
+// TEXT/BLOB型のDEFAULT値を、DDLに出力できるSQLリテラルへ変換する。
+// vja-table-validation.jsのsqlLiteralForDefault()と同じ規則（webview側とbun側で
+// モジュール共有できないため同一ロジックを重複実装している）。
+// - "NULL"（大小文字問わず）→ クォート無しのNULL
+// - 既にシングルクォートで囲まれている値 → そのまま使用
+// - それ以外の生テキスト → 内部のシングルクォートを''にエスケープした上でクォートを付与
+//   （ユーザーがテーブル編集モーダルでクォートを手入力する必要を無くすための対応）
+const _sqlLiteralForDefault = (value: string): string => {
+    const v = (value || "").trim();
+    if (v.toUpperCase() === "NULL") return "NULL";
+    if (v.charAt(0) === "'" && v.charAt(v.length - 1) === "'" && v.length >= 2) return v;
+    return "'" + v.replace(/'/g, "''") + "'";
+};
+
 const _generateDDL = (tbl: TableDef, overrideName?: string): string => {
     const name = overrideName || tbl.name;
     const cols = tbl.columns.filter(c => c.name.trim());
@@ -208,9 +222,11 @@ const _generateDDL = (tbl: TableDef, overrideName?: string): string => {
         if (c.pk && pkCols.length === 1) def += " PRIMARY KEY";
         if (c.notNull && !c.pk)          def += " NOT NULL";
         if (c.useDefault) {
-            const dv = (c.default !== undefined && c.default !== "")
+            const raw = (c.default !== undefined && c.default !== "")
                 ? c.default
                 : _defaultValueForType(c.type);
+            const t = (c.type || "TEXT").toUpperCase();
+            const dv = (t === "TEXT" || t === "BLOB") ? _sqlLiteralForDefault(raw) : raw;
             def += ` DEFAULT ${dv}`;
         }
         return def;

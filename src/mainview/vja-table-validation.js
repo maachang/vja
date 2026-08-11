@@ -633,7 +633,9 @@ function defaultValueForType(type) {
     }
 }
 
-// デフォルト値が型に合っているか検証（空＝デフォルト値を使用、入力あり＝バリデート）
+// デフォルト値が型に合っているか検証（空＝デフォルト値を使用、入力あり＝バリデート）。
+// TEXT/BLOBはDDL生成時（sqlLiteralForDefault()）に自動でシングルクォートを
+// 付与するため、ユーザーに手動でクォートさせる必要が無く、常にtrueを返す。
 function validateDefaultValue(type, value) {
     if (!value || value === "") return true;
     var v = value.trim();
@@ -641,12 +643,20 @@ function validateDefaultValue(type, value) {
     if (v.toUpperCase() === "NULL") return true;
     if (t === "INTEGER") return /^-?[0-9]+$/.test(v);
     if (t === "REAL" || t === "NUMERIC") return /^-?[0-9]+([.][0-9]+)?$/.test(v);
-    if (t === "TEXT" || t === "BLOB") {
-        return (v.charAt(0) === "'" && v.charAt(v.length - 1) === "'")
-            || /^-?[0-9]+$/.test(v)
-            || v === "''";
-    }
     return true;
+}
+
+// TEXT/BLOB型のDEFAULT値を、DDLに出力できるSQLリテラルへ変換する。
+// - "NULL"（大小文字問わず）→ クォート無しの NULL
+// - 既にシングルクォートで囲まれている値 → そのまま使用（手入力での明示指定を尊重）
+// - それ以外の生テキスト → 内部のシングルクォートを''にエスケープした上でクォートを付与
+//   （これにより、ユーザーはクォートを手入力する必要が無い＝'hoge'ではなくhogeと
+//   入力するだけでDEFAULT 'hoge'になる）
+function sqlLiteralForDefault(value) {
+    const v = (value || "").trim();
+    if (v.toUpperCase() === "NULL") return "NULL";
+    if (v.charAt(0) === "'" && v.charAt(v.length - 1) === "'" && v.length >= 2) return v;
+    return "'" + v.replace(/'/g, "''") + "'";
 }
 
 function tblColUpdate(idx, key, val) {
@@ -827,7 +837,9 @@ function generateDDL(tbl) {
         if (c.pk && pkCols.length === 1) def += " PRIMARY KEY";
         if (c.notNull && !c.pk) def += " NOT NULL";
         if (c.useDefault) {
-            const dv = (c.default && c.default.trim() !== "") ? c.default.trim() : defaultValueForType(c.type);
+            const raw = (c.default && c.default.trim() !== "") ? c.default.trim() : defaultValueForType(c.type);
+            const t = (c.type || "TEXT").toUpperCase();
+            const dv = (t === "TEXT" || t === "BLOB") ? sqlLiteralForDefault(raw) : raw;
             def += " DEFAULT " + dv;
         }
         return def;
@@ -908,12 +920,12 @@ function tblSave() {
         if (!c.default || c.default.trim() === "") {
             c.default = defaultValueForType(c.type);
         } else if (!validateDefaultValue(c.type, c.default.trim())) {
+            // TEXT/BLOBはsqlLiteralForDefault()が自動でクォートするため、この
+            // バリデーションには到達しない（対象はINTEGER/REAL/NUMERICのみ）
             const hints = {
                 "INTEGER": "整数値（例: 0, -1）またはNULL",
                 "REAL": "実数値（例: 0.0, 3.14）またはNULL",
                 "NUMERIC": "数値（例: 0, 1.5）またはNULL",
-                "TEXT": "シングルクォート囲み（例: '' 、'default'）または数値、NULL",
-                "BLOB": "シングルクォート囲み（例: ''）またはNULL",
             };
             const hint = hints[(c.type || "TEXT").toUpperCase()] || "型に合った値";
             showVjaAlert("カラム「" + c.name + "」のDEFAULT値が不正です。\n型: " + c.type + "\n期待する形式: " + hint);
