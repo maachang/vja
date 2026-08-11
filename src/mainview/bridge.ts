@@ -283,6 +283,9 @@ w.vja = {
     },
     app: {
         getInfo: () => r.appInfoRequest({}),
+        // VJA本体（ディスプレイ作業領域）サイズ取得。ウィザードの画面サイズ
+        // （大中小）選択で基準値として使う
+        getDisplayWorkArea: () => r.getDisplayWorkAreaRequest({}),
         ...makeDialogHelpers(w),
     },
     // ── プロジェクト実行 ──────────────────────────────

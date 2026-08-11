@@ -1944,9 +1944,19 @@ You are an expert VJA (Visual JavaScript for AI) application architect. Based on
     // 期限設定画面…）ことも避け、詳細・編集画面1つにまとめるよう指示。実際にウィザードで
     // TaskDetailForm/TaskEditForm（内容が重複）やTaskDeleteForm（確認ダイアログで済む内容）
     // が個別画面として生成されてしまった実例に基づく対応。
-    const ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT = function ({ tablesCtx }) {
+    // ※2026-08-11追記: ウィザードで選択した画面サイズ（大中小）をformW/formH/
+    // formSizeLabelとして渡し、「小さい画面サイズなら項目を詰め込みすぎず画面を
+    // 分割する」ことを意識させる（ただし上記の「過剰分割を避ける」指示を上書きしない
+    // ことを明記し、単なる詰め込み防止のみに限定）。
+    const ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT = function ({ tablesCtx, formW, formH, formSizeLabel }) {
         return (`
 You are an expert VJA (Visual JavaScript for AI) application architect. Based on the [Q&A History] and [Confirmed Database Tables] provided in the user message (a Japanese interview describing a business application the user wants to build, plus the DB tables/columns already finalized for it), decompose the application into a list of screens (forms).
+
+[Target Screen Size]
+The user has chosen a "${formSizeLabel || "小"}" (${formW || 640}x${formH || 420}px) screen size for every generated form. Keep this in mind when deciding how much a single screen should try to show:
+- A smaller screen size holds noticeably fewer fields/widgets comfortably. When an entity has many attributes (many DB columns) or a screen's docDraft would otherwise list a long, dense set of fields, prefer splitting that entity's fields across multiple purpose-specific screens (e.g. separate "basic info" and "detailed info" tabs/screens) rather than cramming everything into one screen.
+- A larger screen size can comfortably hold more fields on a single screen, so there is less need to split for that reason alone.
+- This size-based splitting guidance is about avoiding an overcrowded single screen — it does NOT override the "Avoid Over-Splitting" rule below (do not split a screen into multiple screens for reasons unrelated to available space, such as one screen per verb).
 
 [Output Rules]
 - Output STRICT JSON only (a JSON array). No markdown code fences, no intro, no explanations.

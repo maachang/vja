@@ -159,6 +159,10 @@ export type VjaRPCType = {
             // ── アプリ情報取得 ────────────────────────────
             appInfoRequest: { params: { _?: never }; response: { ok: boolean; info: AppInfo } };
 
+            // ── VJA本体（ディスプレイ作業領域）サイズ取得 ──────
+            // ウィザードの画面サイズ（大中小）選択で基準値として使う
+            getDisplayWorkAreaRequest: { params: { _?: never }; response: { width: number; height: number } };
+
             // ── プロジェクト実行 ──────────────────────────
             runProjectRequest: { params: { projectData: string }; response: { ok: boolean; error?: string } };
 

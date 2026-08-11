@@ -34,15 +34,26 @@ const WIZARD_STATE = {
     formPlan: [], // [{ formName, formTitle, description, docDraft }]
     tableCandidates: [], // [{ name, description, selected }]
     step: 1, // 現在のステップ番号（ステップインジケーター表示用）
+    formSize: null, // { key: 'small'|'medium'|'large', label, w, h } 画面サイズ選択ステップの結果
 };
 
 // ステップインジケーターに表示するステップ一覧。
 const WIZARD_STEPS = [
+    "画面サイズ",
     "Q&A",
     "テーブル候補",
     "カラム確認",
     "画面構成",
     "生成",
+];
+
+// 画面サイズ（大中小）の選択肢を、VJA本体のディスプレイ作業領域サイズに対する
+// 比率で定義する（小=40%, 中=60%, 大=85%）。現状のフォーム既定サイズ（640x420）は
+// おおむね「小」に相当するため、選択モーダル側でその旨を案内する。
+const WIZARD_FORM_SIZE_RATIOS = [
+    { key: "small", label: "小", ratio: 0.4 },
+    { key: "medium", label: "中", ratio: 0.6 },
+    { key: "large", label: "大", ratio: 0.85 },
 ];
 
 // 現在ステップ（WIZARD_STATE.step）を元に、ステップインジケーターのHTMLを生成する。
@@ -84,6 +95,7 @@ function _wizardSaveProgress() {
         qaStatus: WIZARD_STATE.qaStatus,
         tableCandidates: WIZARD_STATE.tableCandidates,
         formPlan: WIZARD_STATE.formPlan,
+        formSize: WIZARD_STATE.formSize,
     };
 }
 
@@ -128,26 +140,28 @@ function wizardResumeFromProgress() {
     WIZARD_STATE.qaStatus = wp.qaStatus || [];
     WIZARD_STATE.tableCandidates = wp.tableCandidates || [];
     WIZARD_STATE.formPlan = wp.formPlan || [];
+    WIZARD_STATE.formSize = wp.formSize || null;
     WIZARD_STATE.step = wp.step || 1;
     switch (WIZARD_STATE.step) {
-        case 2: _wizardRenderTableCandidatesModal(); break;
-        case 3: _wizardRenderColumnsReviewModal(); break;
-        case 4: _wizardRenderFormReviewModal(); break;
-        default: _wizardRenderQaModal(); break;
+        case 2: _wizardRenderQaModal(); break;
+        case 3: _wizardRenderTableCandidatesModal(); break;
+        case 4: _wizardRenderColumnsReviewModal(); break;
+        case 5: _wizardRenderFormReviewModal(); break;
+        default: _wizardRenderFormSizeModal(); break;
     }
 }
 
 // 「← 戻る」（テーブル候補ステップへ）: カラム確認/画面構成から戻る際に使う
 function wizardGoBackToTableCandidates() {
     closeModal();
-    WIZARD_STATE.step = 2;
+    WIZARD_STATE.step = 3;
     _wizardRenderTableCandidatesModal();
 }
 
 // 「← 戻る」（カラム確認ステップへ）: 画面構成から戻る際に使う
 function wizardGoBackToColumnsReview() {
     closeModal();
-    WIZARD_STATE.step = 3;
+    WIZARD_STATE.step = 4;
     _wizardRenderColumnsReviewModal();
 }
 
@@ -198,23 +212,97 @@ function wizardCheckAiConfig() {
     wizardCheckProjectInfo();
 }
 
-// ③ プロジェクト情報（名前）が未入力なら入力を促し、保存完了後に④へ進む
+// ③ プロジェクト情報（名前）が未入力なら入力を促し、保存完了後に④（画面サイズ選択）へ進む
 function wizardCheckProjectInfo() {
     if (!getProjectData().projectInfo.name?.trim()) {
         showToast("続いて、プロジェクト情報（プロジェクト名）を入力してください");
-        WIZARD_STATE.resumeAfterProjectInfo = wizardStepBody;
+        WIZARD_STATE.resumeAfterProjectInfo = wizardCheckFormSize;
         openProjectInfo();
         return;
+    }
+    wizardCheckFormSize();
+}
+
+/* ═══════════════════════════════════════════
+  画面サイズ（大中小）選択（ウィザード④）
+═══════════════════════════════════════════ */
+
+// ④ 画面サイズ（大中小）選択ステップ開始。VJA本体（ディスプレイ作業領域）の
+// サイズを取得し、大中小それぞれの実際のpx値を算出してモーダルを表示する。
+async function wizardCheckFormSize() {
+    WIZARD_STATE.step = 1;
+    let base = { width: 1280, height: 800 };
+    try {
+        base = await vja.app.getDisplayWorkArea();
+    } catch (e) { console.debug("[wizard] getDisplayWorkArea failed:", e); }
+    WIZARD_STATE._formSizeBase = base;
+    _wizardRenderFormSizeModal();
+}
+
+// 画面サイズ（大中小）の選択肢を、基準サイズ（VJA本体の作業領域サイズ）に
+// 比率を掛けて算出する。現状のフォーム既定サイズ（640x420）を下回らないよう
+// 下限でクランプする（極端に小さい画面になるのを防ぐための安全策）。
+function _wizardCalcFormSizeOptions() {
+    const base = WIZARD_STATE._formSizeBase || { width: 1280, height: 800 };
+    return WIZARD_FORM_SIZE_RATIOS.map((r) => ({
+        key: r.key,
+        label: r.label,
+        w: Math.max(640, Math.round(base.width * r.ratio)),
+        h: Math.max(420, Math.round(base.height * r.ratio)),
+    }));
+}
+
+// 画面サイズ選択モーダルを表示する
+function _wizardRenderFormSizeModal() {
+    _wizardSaveProgress();
+    const options = _wizardCalcFormSizeOptions();
+    const curKey = WIZARD_STATE.formSize?.key || "small";
+    const optionsHtml = options.map((o) =>
+        "<label style='display:flex;align-items:center;gap:8px;padding:6px 0'>" +
+        "<input type='radio' name='wiz-form-size'" + (o.key === curKey ? " checked" : "") +
+        evtAttr("onchange", "wizardPickFormSize('" + o.key + "')") + ">" +
+        "<span><b>" + esc(o.label) + "</b> — " + o.w + " × " + o.h + "px" +
+        (o.key === "small" ? "（現状の初期フォームサイズ相当）" : "") + "</span>" +
+        "</label>"
+    ).join("");
+
+    showModal(
+        mhdrHTML("🧙 ウィザード（画面サイズ）") +
+        "<div class='mbody' style='gap:10px'>" +
+        _wizardRenderStepIndicator() +
+        "<div class='infobox'>作成する画面のサイズを選んでください。現状のVJAのフォーム初期サイズ（640×420px）は「小」に相当します。項目数が多いアプリでは「中」「大」を選ぶと、1つの画面に項目を詰め込みすぎずに済みます。</div>" +
+        optionsHtml +
+        "</div>" +
+        "<div class='mfoot'>" +
+        "<button" + evtAttr("onmousedown", "closeModal()") + ">キャンセル</button>" +
+        "<button class='pri'" + evtAttr("onmousedown", "wizardConfirmFormSize()") + ">次へ →</button>" +
+        "</div>"
+    );
+}
+
+// 選択中のサイズを一時保持する（確定は「次へ」押下時）
+function wizardPickFormSize(key) {
+    const options = _wizardCalcFormSizeOptions();
+    const found = options.find((o) => o.key === key);
+    if (found) WIZARD_STATE.formSize = found;
+}
+
+// 「次へ」: 画面サイズを確定し、Q&Aステップへ進む
+function wizardConfirmFormSize() {
+    if (!WIZARD_STATE.formSize) {
+        // 未選択のまま「次へ」を押した場合は既定（小）を採用する
+        const options = _wizardCalcFormSizeOptions();
+        WIZARD_STATE.formSize = options.find((o) => o.key === "small") || options[0];
     }
     wizardStepBody();
 }
 
-// ④ ウィザード本体開始。Q&Aの状態を初期化し、AIに最初の質問を生成させる。
+// ⑤ ウィザード本体開始。Q&Aの状態を初期化し、AIに最初の質問を生成させる。
 function wizardStepBody() {
     WIZARD_STATE.qaHistory = [];
     WIZARD_STATE.qaIndex = 0;
     WIZARD_STATE.qaStatus = [];
-    WIZARD_STATE.step = 1;
+    WIZARD_STATE.step = 2;
     wizardQaFetchNext();
 }
 
@@ -471,7 +559,7 @@ async function wizardExtractTableCandidates() {
 
     // テーブル候補抽出に失敗しても、テーブルが無いケースと同様に扱い続行する
     WIZARD_STATE.tableCandidates = (tables || []).map((t) => ({ name: t.name, description: t.description, selected: true }));
-    WIZARD_STATE.step = 2;
+    WIZARD_STATE.step = 3;
     _wizardRenderTableCandidatesModal();
 }
 
@@ -505,7 +593,7 @@ function _wizardRenderTableCandidatesModal() {
 // 「← 戻る」（Q&Aステップへ）: テーブル候補から戻る際に使う
 function wizardGoBackToQa() {
     closeModal();
-    WIZARD_STATE.step = 1;
+    WIZARD_STATE.step = 2;
     _wizardRenderQaModal();
 }
 
@@ -544,14 +632,14 @@ async function wizardProceedToColumnGen() {
         if (ok) {
             getProjectData().tables = [];
         } else {
-            WIZARD_STATE.step = 3;
+            WIZARD_STATE.step = 4;
             _wizardRenderColumnsReviewModal();
             return;
         }
     }
 
     _wizardCommitSelectedTables();
-    WIZARD_STATE.step = 3;
+    WIZARD_STATE.step = 4;
 
     const targetNames = new Set(
         WIZARD_STATE.tableCandidates.filter((t) => t.selected && t.name).map((t) => t.name)
@@ -646,15 +734,18 @@ function wizardEditTableColumns(idx) {
 // 「次へ」（カラム確認から）: フォーム分解ステップへ進む
 async function wizardProceedToFormDecompose() {
     closeModal();
-    WIZARD_STATE.step = 4;
+    WIZARD_STATE.step = 5;
     await wizardDecomposeForms();
 }
 
-// Q&A履歴＋確定済みテーブル（カラム込み）からAIにフォーム一覧を分解させ、確認モーダルを表示する
+// Q&A履歴＋確定済みテーブル（カラム込み）からAIにフォーム一覧を分解させ、確認モーダルを表示する。
+// 選択済みの画面サイズ（formSize）も渡し、サイズが小さいほど1画面に項目を
+// 詰め込みすぎないよう画面数の分割を意識させる。
 async function wizardDecomposeForms() {
     const historyCtx = _wizardBuildQaHistoryCtx();
     const tablesCtx = buildTablesCtxText(getProjectData().tables || []);
-    const sysPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_SYS_PROMPT({ tablesCtx });
+    const size = WIZARD_STATE.formSize || { label: "小", w: 640, h: 420 };
+    const sysPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_SYS_PROMPT({ tablesCtx, formW: size.w, formH: size.h, formSizeLabel: size.label });
     const userPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_USER_PROMPT(historyCtx);
 
     let forms = null;
@@ -710,13 +801,15 @@ function _wizardRenderFormReviewModal() {
 // （テーブルは②③で既に確定済みのため、ここでは何もしない）
 async function wizardConfirmAndGenerate() {
     closeModal();
-    WIZARD_STATE.step = 5;
+    WIZARD_STATE.step = 6;
 
+    const size = WIZARD_STATE.formSize;
     getProjectData().forms = WIZARD_STATE.formPlan.map((f) => {
         const nf = makeFormData(f.formName || "Form1");
         nf.cfg.title = f.formTitle || nf.cfg.title;
         nf.cfg.description = f.description || "";
         nf.formDesignDocDraft = f.docDraft || "";
+        if (size) { nf.cfg.w = size.w; nf.cfg.h = size.h; } // 選択済みの画面サイズ（大中小）を反映
         return nf;
     });
     getProjectData().curFormIdx = 0;
@@ -821,6 +914,7 @@ async function _wizardGenerateFormLayout(yamlText) {
 
 Object.assign(window, {
     actWizard, wizardStartNewProject, wizardCheckAiConfig, wizardCheckProjectInfo, wizardStepBody,
+    wizardCheckFormSize, wizardPickFormSize, wizardConfirmFormSize,
     wizardQaBack, wizardQaNext, wizardQaComplete, wizardQaPickOption,
     wizardExtractTableCandidates, wizardToggleTableCandidate, wizardProceedToColumnGen,
     wizardEditTableColumns, wizardProceedToFormDecompose, wizardDecomposeForms, wizardConfirmAndGenerate,

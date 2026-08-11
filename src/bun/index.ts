@@ -427,6 +427,11 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 };
             },
 
+            // ── VJA本体（ディスプレイ作業領域）サイズ取得 ──────
+            getDisplayWorkAreaRequest: () => {
+                return { width: _displayWorkArea.width, height: _displayWorkArea.height };
+            },
+
             // ══ プロジェクト実行 ══════════════════════
 
             runProjectRequest: async ({ projectData }) => {
@@ -1487,6 +1492,14 @@ if (process.platform === "darwin") {
 // ── BrowserWindow 生成 ────────────────────────────────
 const isWin = process.platform === "win32";
 let initW = 1280, initH = 800;
+// ディスプレイの有効領域（タスクバーを除いたサイズ）を取得。
+// Windowsの擬似フルスクリーン初期化に使うほか、ウィザードの
+// 画面サイズ（大中小）選択の基準値としてもmainviewへRPC経由で渡す。
+let _displayWorkArea = { width: 1280, height: 800 };
+try {
+    const primaryDisplay = Screen.getPrimaryDisplay();
+    _displayWorkArea = { width: primaryDisplay.workArea.width, height: primaryDisplay.workArea.height };
+} catch (e) { console.debug("[vja] screen size detection failed:", e); }
 if (isWin) {
     // ─────────────────────────────────────────────────────
     // Windows フルスクリーン問題
@@ -1495,13 +1508,8 @@ if (isWin) {
     // して、browserWindow.maximize()を呼ばない事で、擬似的な
     // フルスクリーンが実現できるようになる.
     // ─────────────────────────────────────────────────────
-    try {
-        // ディスプレイの有効領域（タスクバーを除いたサイズ）を取得
-        const primaryDisplay = Screen.getPrimaryDisplay();
-        const { width, height } = primaryDisplay.workArea;
-        initW = width;
-        initH = height;
-    } catch (e) { console.debug("[vja] screen size detection failed:", e); }
+    initW = _displayWorkArea.width;
+    initH = _displayWorkArea.height;
 }
 
 const browserWindow = new BrowserWindow({
