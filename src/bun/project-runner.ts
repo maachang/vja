@@ -15,6 +15,12 @@ import {
     dirCreateHandler, dirDeleteHandler, dirListHandler, dirExistsHandler,
 } from "./fs-rpc-handlers";
 
+// 実行フォームのHTML内に自前描画しているカスタムタイトルバーの高さ(px)。
+// index.ts の buildFormHtml() 内 #vja-custom-titlebar の height:28px と必ず一致させること。
+// BrowserWindowのframe.width/heightにはこの分を上乗せしないと、
+// OSに関係なく#vja-form（cfg.w/h）がタイトルバー分だけ欠けて表示される。
+const CUSTOM_TITLEBAR_HEIGHT = 28;
+
 // ── 暗号化基盤 ────────────────────────────────────────
 export const _VJA_PASSPHRASE = "vja-form-designer-2024-xK9mPqR7nL2wT5vY";
 
@@ -216,7 +222,7 @@ export const _loadProjectURL = async (htmlPath: string): Promise<void> => {
 
 export const navigateProjectWindow = async (htmlPath: string, w: number, h: number): Promise<void> => {
     if (!_projectWindow) return;
-    _projectWindow.setSize(w, h);
+    _projectWindow.setSize(w, h + CUSTOM_TITLEBAR_HEIGHT);
     await _loadProjectURL(htmlPath);
 };
 
@@ -459,7 +465,7 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
 
     _projectWindow = new BrowserWindow({
         title: _currentProjectName || "VJA Project",
-        frame: { x: 100, y: 100, width: w, height: h },
+        frame: { x: 100, y: 100, width: w, height: h + CUSTOM_TITLEBAR_HEIGHT },
         titleBarStyle: "hidden",
         rpc: _projectRPC,
     });
