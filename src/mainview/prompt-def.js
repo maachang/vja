@@ -639,6 +639,12 @@ getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ
     - text: string - ハッシュ化する文字列
   - 戻り値: string - 16進数文字列のハッシュ値（sha1は40文字、sha256は64文字、sha512は128文字）
   - 【重要】パスワードそのものの保存目的でこれらの単純ハッシュを使うのは非推奨（ソルト・ストレッチングが無いため）。改ざん検知・重複チェック・簡易フィンガープリント等の用途に使用すること
+  - 【重要】引数は必ず文字列(string)をそのまま渡すこと。TextEncoder().encode(...)等で事前にUint8Array/ArrayBufferへ変換して渡してはならない（このAPIは文字列を直接受け取り、内部でエンコードまで行う設計であり、変換した値を渡すと正しく動作しない）
+  - 【重要】戻り値は最初から16進数文字列（string）であり、ArrayBufferやUint8Arrayではない。Array.from(new Uint8Array(...)).map(b=>b.toString(16))のような変換処理を戻り値に対して行ってはならない
+  - 誤った使用例（絶対にしないこと）: |
+      const encoder = new TextEncoder();
+      const data = encoder.encode('入力テキスト');
+      const digest = await vja.crypto.sha256(data); // NG: 文字列でなくUint8Arrayを渡している
   - 使用例: "const digest = await vja.crypto.sha256('入力テキスト');"
   - 使用例説明: テキストのSHA-256ハッシュ値（改ざん検知用など）を取得する
 
@@ -744,6 +750,9 @@ vja.ui.loading: { args: [show:boolean, message?:string], return: "void", desc: "
 await vja.app.showDialog: { args: [message:string], return: "void", desc: "Shows a message dialog. MUST use await, including inside catch blocks (e.g., catch (e) { console.error(e.message, e); await vja.app.showDialog('...'); }). Forgetting await is a common mistake — do not omit it, even in error handling." }
 await vja.app.showConfirm: { args: [message:string], return: "boolean", desc: "Confirm dialog. OK=true, Cancel=false." }
 vja.app.closeWindow: { args: [], return: "void", desc: "Closes the running app window. Same effect as clicking the titlebar's close (✕) button." }
+
+await vja.crypto.encrypt: { args: [text:string, key:string], return: "string", desc: "Encrypts text, returns a Base64 string. Counterpart: await vja.crypto.decrypt(b64:string, key:string) -> string (throws if key is wrong)." }
+await vja.crypto.sha1: { args: [text:string], return: "string", desc: "One-way hash, NOT reversible. Same argument/return pattern for vja.crypto.sha256(text) and vja.crypto.sha512(text). ARG MUST BE A PLAIN STRING — do NOT pass a TextEncoder-encoded Uint8Array/ArrayBuffer, this API takes and encodes the string internally. RETURN IS ALREADY a lowercase hex string (sha1=40 chars, sha256=64 chars, sha512=128 chars) — do NOT convert the return value with Array.from(new Uint8Array(...)) or similar, that produces wrong output. Not recommended alone for password storage (no salt/stretching); use for tamper detection, dedup keys, simple fingerprints." }
 
 vja.notify.toast: { args: [message:string, duration?:number], return: "void", desc: "Displays a bottom toast notification. Use this for lightweight success/status messages (NOT vja.app.showDialog) when the YAML explicitly says \"トースト\" (toast)." }
 
