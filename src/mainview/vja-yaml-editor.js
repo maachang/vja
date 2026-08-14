@@ -1576,6 +1576,7 @@ function _buildFrontMock(evName, wtag, overrides, widgets) {
         app: {
             showDialog: async () => {},
             showConfirm: async () => true,
+            closeWindow: () => {},
         },
         crypto: {
             encrypt: async () => "",

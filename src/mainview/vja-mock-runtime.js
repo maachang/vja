@@ -236,6 +236,7 @@
             app: {
                 showDialog: async () => {},
                 showConfirm: async () => true,
+                closeWindow: () => {},
             },
             crypto: {
                 encrypt: async () => "",

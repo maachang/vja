@@ -693,6 +693,13 @@ getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ
       if (!ok) return;
   - 使用例説明: 削除確認ダイアログを表示し、キャンセル時は処理を中断する
 
+- 関数名: vja.app.closeWindow():
+  - 説明: 実行中のアプリ（フォームウィンドウ）を終了する。タイトルバーの✕ボタンと同じ終了処理
+  - 引数: なし
+  - 戻り値: なし
+  - 使用例: "vja.app.closeWindow();"
+  - 使用例説明: 「終了」ボタン等が押された時にアプリを閉じる
+
 ## ログ出力 (console.*)
 
 - 関数名: console.info(message):
@@ -736,6 +743,7 @@ vja.ui.loading: { args: [show:boolean, message?:string], return: "void", desc: "
 
 await vja.app.showDialog: { args: [message:string], return: "void", desc: "Shows a message dialog. MUST use await, including inside catch blocks (e.g., catch (e) { console.error(e.message, e); await vja.app.showDialog('...'); }). Forgetting await is a common mistake — do not omit it, even in error handling." }
 await vja.app.showConfirm: { args: [message:string], return: "boolean", desc: "Confirm dialog. OK=true, Cancel=false." }
+vja.app.closeWindow: { args: [], return: "void", desc: "Closes the running app window. Same effect as clicking the titlebar's close (✕) button." }
 
 vja.notify.toast: { args: [message:string, duration?:number], return: "void", desc: "Displays a bottom toast notification. Use this for lightweight success/status messages (NOT vja.app.showDialog) when the YAML explicitly says \"トースト\" (toast)." }
 
