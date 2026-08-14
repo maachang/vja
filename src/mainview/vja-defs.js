@@ -234,9 +234,10 @@ const WIDGET_DEFS = {
             fontSize: 12, fontFamily: "", fontBold: false,
             borderSize: 1, borderColor: "#cccccc",
             maxLength: 0, required: false, readonly: false, disabled: false,
+            suggestEnabled: false, suggestMaxCount: 3,
             visible: true, description: "",
         },
-        events: ["TextChanged", "KeyDown", "KeyUp", "GotFocus", "LostFocus", "Click"],
+        events: ["TextChanged", "KeyDown", "KeyUp", "GotFocus", "LostFocus", "Click", "Suggest"],
         pdefs: [
             ...PP_POS,
             { sep: "入力タイプ" },
@@ -256,6 +257,9 @@ const WIDGET_DEFS = {
             { k: "disabled", lb: "Disabled", t: "bool" },
             { k: "readonly", lb: "ReadOnly", t: "bool" },
             { k: "required", lb: "Required", t: "bool" },
+            { sep: "サジェスト" },
+            { k: "suggestEnabled", lb: "SuggestEnabled", t: "bool" },
+            { k: "suggestMaxCount", lb: "SuggestMaxCount", t: "num" },
             ...PP_TAIL,
         ],
         preview: (p, base, vis) => {

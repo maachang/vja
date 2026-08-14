@@ -1103,7 +1103,7 @@ function _findMissingAwaits(code, isAppEvent) {
 // 実在するかを検証する。変数で渡されている場合（文字列リテラルでない場合）は
 // 判定不能なため対象外とする。
 const _WIDGET_NAME_ARG_APIS = [
-    "vja.widget.get", "vja.widget.set",
+    "vja.widget.get", "vja.widget.set", "vja.widget.setSuggestions",
     "vja.form.setParam", "vja.form.getParam",
 ];
 // コード内で、上記API群に対して「現在のフォームに存在しないウィジェット名」が
@@ -1479,6 +1479,7 @@ function _buildFrontMock(evName, wtag, overrides, widgets) {
             getValue: (name) => _widgetGetValue(name),
             setValue: () => {},
             setItems: () => {},
+            setSuggestions: () => {},
             setTableData: () => {},
             getAllInputs: () => ({}),
             setVisible: () => {},

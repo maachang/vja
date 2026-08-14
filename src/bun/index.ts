@@ -1078,7 +1078,13 @@ const buildWidgetHtml = (w: any): string => {
             const req = p.required ? " required" : "";
             const ro = p.readonly ? " readonly" : "";
             const dis = p.disabled ? " disabled" : "";
-            return `<input type="${itype}" ${id} value="${esc2(p.text)}" placeholder="${esc2(p.placeholder || "")}"${maxl}${req}${ro}${dis} style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
+            const sugMax = p.suggestMaxCount || 3;
+            const input = `<input type="${itype}" ${id} value="${esc2(p.text)}" placeholder="${esc2(p.placeholder || "")}"${maxl}${req}${ro}${dis} data-suggest-max="${sugMax}" style="${base}background:${p.bg};color:${p.fg};${font};${border};padding:0 4px">`;
+            if (!p.suggestEnabled) return input;
+            // サジェスト候補ドロップダウン: 入力欄の直下に絶対配置する専用コンテナ。
+            // 中身の描画・開閉・選択操作は vja-runtime.js の vja.widget.setSuggestions() が担う。
+            const suggestBox = `<div id="${w.name}__suggestList" data-vja-suggest-for="${w.name}" style="position:absolute;left:${w.x}px;top:${w.y + w.h}px;width:${w.w}px;max-height:160px;overflow-y:auto;background:#fff;border:1px solid #999;box-shadow:0 2px 8px rgba(0,0,0,.25);z-index:6000;display:none;box-sizing:border-box;${font}"></div>`;
+            return input + suggestBox;
         }
         case "checkbox":
             return `<label ${id} style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};${font};cursor:pointer"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc2(p.text)}</label>`;
@@ -1455,7 +1461,7 @@ const evNameToDom = (evName: string): string => {
     const map: Record<string, string> = {
         Click: "click", MouseDown: "mousedown", MouseUp: "mouseup",
         MouseEnter: "mouseenter", MouseLeave: "mouseleave",
-        TextChanged: "input", KeyDown: "keydown", KeyUp: "keyup",
+        TextChanged: "input", Suggest: "input", KeyDown: "keydown", KeyUp: "keyup",
         GotFocus: "focus", LostFocus: "blur",
         CheckedChanged: "change",
         SelectedIndexChanged: "change", DropDown: "focus",

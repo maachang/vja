@@ -132,6 +132,7 @@
                 getValue: (name) => _widgetGetValue(name), // 旧エイリアス（ランタイムには残存）
                 setValue: () => {},
                 setItems: () => {},
+                setSuggestions: () => {},
                 setTableData: () => {},
                 getAllInputs: () => ({}),
                 setVisible: () => {},

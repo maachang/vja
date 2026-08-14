@@ -264,6 +264,88 @@ import { parseCsvLine } from "../shared/csv-utils";
         // progressBar 操作
         setProgress(name, value) { this.setValue(name, value); },
         getProgress(name) { return this.getValue(name); },
+
+        //////////////////////////////////////
+        // テキストボックスのサジェスト機能
+        //////////////////////////////////////
+        // name のSuggestイベント処理内から呼び出し、候補一覧をドロップダウン表示する。
+        // list: string[] または {label, value}[]。サジェスト未有効（HTML側に
+        // suggestList用コンテナが存在しない）ウィジェットに対して呼ばれた場合は何もしない。
+        setSuggestions(name, list) {
+            const input = _getEl(name);
+            const box = document.getElementById(`${name}__suggestList`);
+            if (!input || !box) return;
+            _wireSuggestOnce(input, box);
+            const max = Number(input.dataset.suggestMax) || 3;
+            const items = (Array.isArray(list) ? list : []).slice(0, max).map(item => {
+                if (item && typeof item === "object") {
+                    return { label: item.label ?? item.value ?? "", value: item.value ?? item.label ?? "" };
+                }
+                return { label: String(item), value: String(item) };
+            });
+            if (items.length === 0) { _hideSuggestBox(box); return; }
+            box.innerHTML = "";
+            items.forEach(it => {
+                const row = document.createElement("div");
+                row.className = "vja-suggest-item";
+                row.dataset.value = it.value;
+                row.textContent = it.label;
+                row.style.cssText = "padding:3px 6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis";
+                row.addEventListener("mouseenter", () => _highlightSuggestItem(box, row));
+                // click だとinputのblurが先に発火してリストが閉じてしまうため、
+                // blurより先に発火するmousedownで確定させる（preventDefaultでフォーカス維持）。
+                row.addEventListener("mousedown", (e) => {
+                    e.preventDefault();
+                    this.setValue(name, it.value);
+                    _hideSuggestBox(box);
+                });
+                box.appendChild(row);
+            });
+            box.style.display = "block";
+        },
+    };
+
+    // サジェスト候補内のハイライト行を切り替える
+    const _highlightSuggestItem = (box, row) => {
+        box.querySelectorAll(".vja-suggest-item").forEach(el => { el.style.background = ""; });
+        if (row) row.style.background = "#dbe6ff";
+    };
+
+    const _hideSuggestBox = (box) => {
+        box.style.display = "none";
+        box.innerHTML = "";
+    };
+
+    // input要素とサジェストコンテナに対するキーボード操作・クローズ処理を一度だけ配線する
+    const _wireSuggestOnce = (input, box) => {
+        if (input.dataset.vjaSuggestWired) return;
+        input.dataset.vjaSuggestWired = "1";
+        input.addEventListener("keydown", (e) => {
+            if (box.style.display === "none") return;
+            const items = Array.from(box.querySelectorAll(".vja-suggest-item"));
+            if (items.length === 0) return;
+            let idx = items.findIndex(el => el.style.background);
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                idx = (idx + 1) % items.length;
+                _highlightSuggestItem(box, items[idx]);
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                idx = idx <= 0 ? items.length - 1 : idx - 1;
+                _highlightSuggestItem(box, items[idx]);
+            } else if (e.key === "Enter") {
+                if (idx >= 0) {
+                    e.preventDefault();
+                    vja.widget.setValue(input.dataset.vjaName || input.id, items[idx].dataset.value);
+                    _hideSuggestBox(box);
+                }
+            } else if (e.key === "Escape") {
+                _hideSuggestBox(box);
+            }
+        });
+        // フォーカスが外れたらリストを閉じる（サジェスト項目のmousedownはpreventDefaultで
+        // フォーカスを維持しているため、通常のクリック選択より先にこのblurは発火しない）。
+        input.addEventListener("blur", () => _hideSuggestBox(box));
     };
 
     // ════════════════════════════════════════════════

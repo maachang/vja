@@ -162,6 +162,16 @@
   - 関数名: vja.widget.disable(name):
     - 説明: 指定名のウィジェットを無効にする
 
+  - 関数名: vja.widget.setSuggestions(name, list):
+    - 説明: テキストボックス(inputtype)のサジェスト候補を表示する。対象ウィジェットのプロパティ「SuggestEnabled」がtrueの場合のみ有効（falseの場合は何も起きない）。呼び出し元は必ず対象ウィジェットのSuggestイベント内であること（Suggestイベントは入力の度に自動発火する）
+    - 引数:
+      - name: string - ウィジェット名（Suggestイベントが発火した対象と同じ名前を指定する）
+      - list: (string|{label:string, value:string})[] - サジェスト候補のリスト。プロパティ「SuggestMaxCount」（デフォルト3）を超える件数を渡した場合は先頭からその件数だけが表示される
+    - 戻り値: なし
+    - 使用例: "vja.widget.setSuggestions('txtName', ['山田太郎', '山田花子', '山田次郎']);"
+    - 使用例説明: txtNameのSuggestイベント内で、入力中の文字列に応じたDB検索結果などをサジェスト候補として表示する
+    - 注意: SuggestイベントとTextChangedイベントはどちらも入力の度に発火する。サジェスト候補の生成にはSuggestイベントのみを使うこと（TextChangedと重複定義した場合、両方が独立に実行される）
+
 ## 定数 (vja.const.*)
 
 - 関数名: vja.const.get(key, default?):
@@ -718,6 +728,7 @@ vja.widget.set: { args: [name:string, value:any, options?:object], return: "void
 vja.widget.getAllInputs: { args: [], return: "Record<string,any>", desc: "Gets all active UI inputs in a form as {name: value}." }
 vja.widget.setVisible: { args: [name:string, visible:boolean], return: "void", desc: "Toggles UI display (true=show, false=hide)." }
 vja.widget.show: { args: [name:string], return: "void", desc: "Shows the widget. Same argument pattern for vja.widget.hide(name), vja.widget.enable(name), vja.widget.disable(name)." }
+vja.widget.setSuggestions: { args: [name:string, list:(string|{label:string,value:string})[]], return: "void", desc: "Shows suggestion dropdown candidates below an inputtype widget whose SuggestEnabled property is true. MUST be called only from that widget's own Suggest event (fires on every keystroke, same timing as TextChanged). List is capped to the widget's SuggestMaxCount property (default 3)." }
 
 vja.trigger.click: { args: [name:string], return: "void", desc: "Triggers click on widget. name is the widget's NAME STRING (e.g. 'btnSearch'). For other events use same pattern: vja.trigger.focus(name), vja.trigger.blur(name), vja.trigger.change(name), vja.trigger.mouseDown(name), vja.trigger.mouseUp(name), vja.trigger.mouseEnter(name), vja.trigger.mouseLeave(name), vja.trigger.scroll(name)" }
 
