@@ -1641,10 +1641,19 @@ function _getMockWorkerUrl() {
         "self.onmessage = async (ev) => {",
         "  const { code, isAppEvent, evName, wtag, overrides, widgets, extNames } = ev.data;",
         "  let capturedError = null;",
+        // 生成コードが「業務上想定内のエラー」として自ら throw new Error(...) した
+        // ものを、TypeError等の「本当のバグに起因する例外」と区別するため、
+        // 生成コードの実行スコープ内だけ Error を専用サブクラスにすり替える。
+        // これにより catch(e){ console.error(e.message, e); ... } のような
+        // VJA推奨の書き方（prompt-def.js記載）が、Mockのダミーデータにより
+        // 必ず異常系分岐を通ってしまう場合でも、誤って失敗判定されなくなる。
+        // 一方、catchされずに外へ漏れた例外は（意図的なErrorであっても）
+        // 「投げっぱなしで拾っていない」バグとして引き続き失敗扱いにする。
+        "  class _VjaMockThrownError extends Error {};",
         "  const mockConsole = {",
         "    log: () => {}, info: () => {}, warn: () => {},",
         "    error: (...a) => {",
-        "      const errArg = a.find((x) => x instanceof Error);",
+        "      const errArg = a.find((x) => x instanceof Error && !(x instanceof _VjaMockThrownError));",
         "      if (errArg) capturedError = errArg;",
         "    },",
         "  };",
@@ -1654,8 +1663,8 @@ function _getMockWorkerUrl() {
         // 単純なものなので、関数そのもの(構造化複製不可)ではなく名前のみ受け取り
         // Worker内で組み立て直す。
         "    const extValues = extNames.map(() => (async () => ({})));",
-        "    const fn = new Function('vja', ...extNames, 'console', 'return (async()=>{\\n' + code + '\\n})()');",
-        "    await fn(vjaMock, ...extValues, mockConsole);",
+        "    const fn = new Function('vja', ...extNames, 'console', 'Error', 'return (async()=>{\\n' + code + '\\n})()');",
+        "    await fn(vjaMock, ...extValues, mockConsole, _VjaMockThrownError);",
         "    if (capturedError) {",
         "      postMessage({ ok: false, caught: true, message: capturedError.message || String(capturedError), line: capturedError.line, stack: capturedError.stack });",
         "    } else {",
