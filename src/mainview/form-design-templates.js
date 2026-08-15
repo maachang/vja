@@ -1,19 +1,21 @@
 // ═══════════════════════════════════════════
 // FORM DESIGN TEMPLATES
 // 画面デザイン依頼（YAML）のテンプレート定義ファイル
+// ─────────────────────────────────────────────
+// 【重要】各テンプレートのyamlには「フォームレイアウト:」（カラム数/ラベル位置/
+// ボタン位置）を含めない。この配置構造の指定は form-layout-patterns.js の
+// レイアウトイメージ選択機能（"🖼 レイアウト"タブ）に一本化されており、
+// テンプレートは代わりに layoutPatternId で対応するレイアウトパターンを指定する
+// （insertFormDesignTemplate()がgetProjectData().formLayoutPatternへ反映する）。
 // ═══════════════════════════════════════════
 (function () {
     const FORM_DESIGN_TEMPLATES = [
         {
             id: "search",
             label: "🔍 検索一覧画面",
+            layoutPatternId: "topInputBottomDisplay",
             yaml: `# 検索一覧画面定義
 説明: 一覧データを検索・閲覧する画面
-フォームレイアウト:
-  パターン: 検索一覧画面
-  カラム数: 2
-  ラベル位置: 左
-  ボタン位置: 右
 
 入力項目:
   - 検索キーワード: inputtype で text
@@ -31,13 +33,9 @@
         {
             id: "form",
             label: "📝 登録・詳細フォーム画面",
+            layoutPatternId: "stackedInputBottomButtons",
             yaml: `# 登録フォーム画面定義
 説明: 情報を登録・編集する入力画面
-フォームレイアウト:
-  パターン: 登録フォーム画面
-  カラム数: 2
-  ラベル位置: 左
-  ボタン位置: 右下
 
 入力項目:
   - 氏名: inputtype で text
@@ -53,13 +51,9 @@
         {
             id: "dialog",
             label: "💬 ダイアログ画面",
+            layoutPatternId: "centerInputBottomButtons",
             yaml: `# ダイアログ画面定義
 説明: 確認・設定用のコンパクトダイアログ
-フォームレイアウト:
-  パターン: ダイアログ
-  カラム数: 1
-  ラベル位置: 左
-  ボタン位置: 下部中央
 
 入力項目:
   - 対象名: inputtype で text
@@ -73,13 +67,9 @@
         {
             id: "master",
             label: "🗂️ マスタ保守画面",
+            layoutPatternId: "topInputBottomDisplay",
             yaml: `# マスタ保守画面定義
 説明: 一覧の選択と下部フォームでのデータ登録・変更・削除を行う管理画面
-フォームレイアウト:
-  パターン: 登録フォーム画面
-  カラム数: 2
-  ラベル位置: 左
-  ボタン位置: 右下
 
 入力項目:
   - コード: inputtype で text
@@ -100,13 +90,9 @@
         {
             id: "masterDetail",
             label: "📄 伝票・明細入力画面",
+            layoutPatternId: "topInputBottomDisplay",
             yaml: `# 伝票明細入力画面定義
 説明: ヘッダー（伝票情報）と明細行（商品一覧）を同時入力する画面
-フォームレイアウト:
-  パターン: 登録フォーム画面
-  カラム数: 2
-  ラベル位置: 左
-  ボタン位置: 右下
 
 入力項目:
   - 伝票番号: inputtype で text
@@ -126,13 +112,9 @@
         {
             id: "dashboard",
             label: "📊 ダッシュボード・集計画面",
+            layoutPatternId: "topInputMidMultiDisplayBottomDisplay",
             yaml: `# ダッシュボード集計画面定義
 説明: 期間を指定して各種集計指標や最新履歴を確認する画面
-フォームレイアウト:
-  パターン: 検索一覧画面
-  カラム数: 2
-  ラベル位置: 左
-  ボタン位置: 右
 
 入力項目:
   - 集計開始日: inputtype で date
@@ -163,10 +145,18 @@
         return found ? found.yaml.trim() + "\n\n" : "";
     }
 
+    // ID指定で、テンプレートに対応するレイアウトパターンIDを取得
+    // （form-layout-patterns.js の getFormLayoutPatternById() と組み合わせて使う）
+    function getFormDesignTemplateLayoutPatternId(id) {
+        const found = FORM_DESIGN_TEMPLATES.find(t => t.id === id);
+        return found ? (found.layoutPatternId || "") : "";
+    }
+
     // グローバル展開
     Object.assign(window, {
         FORM_DESIGN_TEMPLATES,
         getFormDesignTemplateOptions,
         getFormDesignTemplateYaml,
+        getFormDesignTemplateLayoutPatternId,
     });
 })();

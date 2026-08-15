@@ -2780,6 +2780,14 @@ function insertFormDesignTemplate(id) {
         ta.value = template;
         hlUpdate("ta-fd", "hl-fd", yamlTokenize);
         editorUpdateGutter("ta-fd", "gutter-fd");
+
+        // テンプレートの配置構造は、YAML本文（フォームレイアウト:）ではなく
+        // "🖼 レイアウト"タブの選択状態（getProjectData().formLayoutPattern）に反映する。
+        const layoutId = typeof getFormDesignTemplateLayoutPatternId === "function" ? getFormDesignTemplateLayoutPatternId(id) : "";
+        getProjectData().formLayoutPattern = getFormLayoutPatternById(layoutId) ? layoutId : "";
+        const layoutPane = $("pane-fd-layout");
+        if (layoutPane) layoutPane.innerHTML = buildFormLayoutPickerHtml();
+
         showToast("テンプレートを反映しました");
     }
 }
