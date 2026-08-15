@@ -1790,6 +1790,20 @@ ${tablesCtx || "(No DB tables)"}
     // 責務にすべきと判断し、既存ウィジェットのコンテキスト自体をこのプロンプトから
     // 削除した（widgetsCtx削除、以前のwidgetsCtx=空文字での実測は0/18で完全に安定）。
     const ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT = function ({ tablesCtx }) {
+        // 画面レイアウトイメージ（入力/表示/ボタンエリアの配置構造）の選択肢一覧。
+        // ここでAIに選ばせた結果はYAML本文には出力させず、専用の
+        // "layout_pattern:" 1行だけに出させる。呼び出し元
+        // (formDesignTextToYamlGenerate)がその行を抽出・除去した上で、
+        // getProjectData().formLayoutPattern（"🖼 レイアウト"タブの選択状態）
+        // に反映し、YAML本文（description/fields/tables/actions）には
+        // 一切混在させない。
+        // ID文字列（camelCase）をそのままAIに選ばせると、ローカルLLMが複数のIDを
+        // 混ぜ合わせた実在しない文字列を生成することがあるため、番号選択方式にする
+        // （数字は単語のように混ぜ合わせようがなく、ローカルLLMでも取り違えにくい）。
+        const layoutPatternList = typeof getFormLayoutPatterns === "function" ? getFormLayoutPatterns() : [];
+        const layoutPatternOptions = layoutPatternList
+            .map((p, i) => `  ${i + 1}. ${p.desc}`)
+            .join("\n");
         return (`
 You are an expert AI assistant for VJA (Visual JavaScript for AI).
 Your task is to convert a user's natural language request (written in Japanese) describing a desired screen layout and form requirements into a clean, structured VJA Form Design YAML specification.
@@ -1798,6 +1812,12 @@ Your task is to convert a user's natural language request (written in Japanese) 
 Output strictly formatted YAML with the following sections:
 
 description: "<Brief Japanese summary of the screen purpose>"
+
+layout_pattern: <number>
+[STRICT RULE for layout_pattern] The value MUST be a single digit number, chosen from the numbered list below, that best matches the request's overall input/display/button placement. If none of them clearly fits (or the request gives no layout hint), output 0. Output ONLY the number itself (e.g. "3"), never the description text.
+[Selection Guide] First decide: does this screen need ANY list/table/read-only display area (e.g. search results, a data grid, summary figures, a record list)? If NO — e.g. a login screen, a simple settings/registration form with only input fields and buttons and nothing to browse or view — you MUST pick a pattern whose description says it has no display area (currently only one such pattern below). Only if the screen DOES need a display/list area should you pick one of the patterns that includes one, based on where that area should sit (bottom-full-width, side, multiple small tiles, etc).
+Available layout patterns (number: structural description — these describe ONLY the rough placement of input/display/button areas, NOT which widget types to use):
+${layoutPatternOptions}
 
 fields:
   - <Field Name>: <Widget type (e.g. inputtype with text/number/date, selectBox, datagrid, text, image, checkbox, label, textarea, groupbox, tabs)>
@@ -1824,6 +1844,7 @@ One short label per pressable button (e.g. "追加", "検索"), never a full sen
 [Few-Shot Example]
 Input request: "タスクの詳細情報を入力できるフォームを用意。追加ボタンを押すとタスクを追加。" (with a referenced table "tasks" whose columns are title, priority, due_date, status)
 Correct output:
+layout_pattern: 3
 fields:
   - タイトル: inputtype text
   - 優先度: selectBox

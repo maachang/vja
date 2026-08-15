@@ -3166,7 +3166,21 @@ async function formDesignTextToYamlGenerate() {
         loadingMsg: "画面YAMLドラフト作成中…",
         onSuccess: async (cleanYaml) => {
             const stripped0 = cleanYaml.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
-            const stripped = convertFormDesignEngKeysToJp(stripped0);
+            const stripped1 = convertFormDesignEngKeysToJp(stripped0);
+
+            // "layout_pattern: <番号>" 行は、YAML本文には残さず抽出のみ行い、
+            // "🖼 レイアウト"タブの選択状態（getProjectData().formLayoutPattern）に反映する。
+            // ID文字列(camelCase)をそのまま選ばせるとローカルLLMが複数のIDを
+            // 混ぜ合わせた実在しない文字列を生成することがあったため、番号(1始まり、
+            // 該当なしは0)で選ばせ、ここでgetFormLayoutPatterns()の並び順に対応させる。
+            // ここで初めて出現するキーであり、convertFormDesignEngKeysToJp()の対象キー
+            // （description/layout/columns等）には含まれないため、別途正規表現で処理する。
+            const layoutNumMatch = stripped1.match(/^\s*layout_pattern\s*:\s*"?(\d+)"?\s*$/m);
+            const layoutNum = layoutNumMatch ? parseInt(layoutNumMatch[1], 10) : 0;
+            const layoutPatternList = getFormLayoutPatterns();
+            const matchedPattern = layoutNum >= 1 && layoutNum <= layoutPatternList.length ? layoutPatternList[layoutNum - 1] : null;
+            getProjectData().formLayoutPattern = matchedPattern ? matchedPattern.id : "";
+            const stripped = stripped1.replace(/^\s*layout_pattern\s*:.*\n?/m, "").trim();
 
             getProjectData().formDesignDraft = stripped;
             getProjectData().formDesignDocDraft = inputText;
