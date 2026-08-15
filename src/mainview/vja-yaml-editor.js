@@ -2976,20 +2976,20 @@ function buildFormLayoutPickerHtml() {
     const cur = getProjectData().formLayoutPattern || "";
     // 「指定なし」カード（一番左）: idは空文字。選択するとAIへの補足指示は付与しない。
     const noneActive = cur === "" ? " active" : "";
-    const noneCard = `<div class='form-layout-card${noneActive}' data-pattern-id='' style='border:2px solid ${cur === "" ? "var(--accent)" : "var(--border)"};border-radius:6px;padding:6px;cursor:pointer;width:180px'` +
+    const noneCard = `<div class='form-layout-card${noneActive}' data-pattern-id='' style='border:2px solid ${cur === "" ? "var(--accent)" : "var(--border)"};border-radius:6px;padding:8px;cursor:pointer;width:220px'` +
         evtAttr("onmousedown", `selectFormLayoutPattern('')`) + `>` +
-        `<div style='width:100%;height:76px;display:flex;align-items:center;justify-content:center;background:#22222e;border-radius:4px;color:var(--text3);font-size:12px'>指定なし</div>` +
-        `<div style='margin-top:4px;font-size:12px;text-align:center'>指定なし</div>` +
+        `<div style='width:100%;height:143px;display:flex;align-items:center;justify-content:center;background:#22222e;border-radius:4px;color:var(--text3);font-size:14px'>指定なし</div>` +
+        `<div style='margin-top:6px;font-size:13px;text-align:center'>指定なし</div>` +
         `</div>`;
     const cards = noneCard + getFormLayoutPatterns().map((p) => {
         const active = p.id === cur ? " active" : "";
-        return `<div class='form-layout-card${active}' data-pattern-id='${esc(p.id)}' style='border:2px solid ${p.id === cur ? "var(--accent)" : "var(--border)"};border-radius:6px;padding:6px;cursor:pointer;width:180px'` +
+        return `<div class='form-layout-card${active}' data-pattern-id='${esc(p.id)}' style='border:2px solid ${p.id === cur ? "var(--accent)" : "var(--border)"};border-radius:6px;padding:8px;cursor:pointer;width:220px'` +
             evtAttr("onmousedown", `selectFormLayoutPattern('${p.id}')`) + `>` +
             buildLayoutPatternDiagramSvg(p) +
-            `<div style='margin-top:4px;font-size:12px;text-align:center'>${esc(p.label)}</div>` +
+            `<div style='margin-top:6px;font-size:13px;text-align:center'>${esc(p.label)}</div>` +
             `</div>`;
     }).join("");
-    return `<div style='display:flex;flex-wrap:wrap;gap:10px'>${cards}</div>` +
+    return `<div style='display:flex;flex-wrap:wrap;gap:14px'>${cards}</div>` +
         `<div style='margin-top:10px;font-size:11px;color:var(--text3)'>` +
         `選択したレイアウトイメージは、YAMLには書き込まれず、「🤖 画面反映」実行時にAIへの補足指示として渡されます（もう一度クリックすると選択解除できます）。` +
         `</div>`;
@@ -3954,7 +3954,8 @@ async function formDesignAiGenerate() {
     // AIへの補足指示としてのみ追加する（"🖼 レイアウト"タブでの選択）。
     const layoutPattern = getFormLayoutPatternById(getProjectData().formLayoutPattern);
     const layoutHint = layoutPattern
-        ? "\n\n【画面レイアウトイメージ】ユーザーが選択した以下のレイアウト構成イメージに近い形でウィジェットを配置すること: " + layoutPattern.desc
+        ? "\n\n【画面レイアウトイメージ】ユーザーが選択した以下の配置構造（入力/表示/ボタンエリアの位置関係）に近い形でウィジェットを配置すること: " + layoutPattern.desc +
+          "\n※これは大まかな配置構造の指定であり、ウィジェットの種類・有無を指定するものではない。実際にどんなウィジェット（datagrid等を含む）を配置するかは、あくまで上記の入力項目・参照テーブルの記載内容のみに従うこと。YAMLに記載の無いウィジェットを、このレイアウトイメージのために新たに追加してはならない。"
         : "";
     const addPrompt = ($("fd-prompt-in")?.value || "") + layoutHint;
     const btn = $("fd-gen-btn");

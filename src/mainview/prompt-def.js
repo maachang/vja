@@ -1799,11 +1799,6 @@ Output strictly formatted YAML with the following sections:
 
 description: "<Brief Japanese summary of the screen purpose>"
 
-layout:
-  - columns: 1  # 1, 2, or 3
-  - label_position: left  # left or top
-  - button_position: bottom_right  # bottom_right, top_right (for search), or bottom_center
-
 fields:
   - <Field Name>: <Widget type (e.g. inputtype with text/number/date, selectBox, datagrid, text, image, checkbox, label, textarea, groupbox, tabs)>
 
