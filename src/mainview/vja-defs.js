@@ -991,6 +991,7 @@ getProjectData().formCfg = getProjectData().forms[0].cfg;
 getProjectData().idCnt = getProjectData().forms[0].idCnt;
 getProjectData().formDesignDraft = getProjectData().forms[0].formDesignDraft || "";
 getProjectData().formDesignDocDraft = getProjectData().forms[0].formDesignDocDraft || "";
+getProjectData().formLayoutPattern = getProjectData().forms[0].formLayoutPattern || "";
 
 const SNAP = 8;
 
@@ -1012,6 +1013,7 @@ function syncCurForm() {
     getProjectData().idCnt = f.idCnt;
     getProjectData().formDesignDraft = f.formDesignDraft || "";
     getProjectData().formDesignDocDraft = f.formDesignDocDraft || "";
+    getProjectData().formLayoutPattern = f.formLayoutPattern || "";
 }
 // idCnt の書き戻し（追加・削除時）
 function commitIdCnt() {
@@ -1023,6 +1025,7 @@ function commitFormDesignDraft() {
     if (!f) return;
     f.formDesignDraft = getProjectData().formDesignDraft || "";
     f.formDesignDocDraft = getProjectData().formDesignDocDraft || "";
+    f.formLayoutPattern = getProjectData().formLayoutPattern || "";
 }
 
 /* ═══════════════════════════════════════════

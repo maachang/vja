@@ -2968,6 +2968,45 @@ async function textToYamlGenerate(wid, evName) {
     });
 }
 
+// 画面レイアウトイメージ選択タブの中身（箱型ダイアグラムのカード一覧）を生成する。
+// 選択結果はYAMLテキストには一切書き込まず、getProjectData().formLayoutPattern
+// （フォームごとにsyncCurForm()/commitFormDesignDraft()と同じ考え方で同期）にのみ保持し、
+// formDesignAiGenerate()がAIへ渡す補足プロンプトに追加するためだけに使う。
+function buildFormLayoutPickerHtml() {
+    const cur = getProjectData().formLayoutPattern || "";
+    // 「指定なし」カード（一番左）: idは空文字。選択するとAIへの補足指示は付与しない。
+    const noneActive = cur === "" ? " active" : "";
+    const noneCard = `<div class='form-layout-card${noneActive}' data-pattern-id='' style='border:2px solid ${cur === "" ? "var(--accent)" : "var(--border)"};border-radius:6px;padding:6px;cursor:pointer;width:180px'` +
+        evtAttr("onmousedown", `selectFormLayoutPattern('')`) + `>` +
+        `<div style='width:100%;height:76px;display:flex;align-items:center;justify-content:center;background:#22222e;border-radius:4px;color:var(--text3);font-size:12px'>指定なし</div>` +
+        `<div style='margin-top:4px;font-size:12px;text-align:center'>指定なし</div>` +
+        `</div>`;
+    const cards = noneCard + getFormLayoutPatterns().map((p) => {
+        const active = p.id === cur ? " active" : "";
+        return `<div class='form-layout-card${active}' data-pattern-id='${esc(p.id)}' style='border:2px solid ${p.id === cur ? "var(--accent)" : "var(--border)"};border-radius:6px;padding:6px;cursor:pointer;width:180px'` +
+            evtAttr("onmousedown", `selectFormLayoutPattern('${p.id}')`) + `>` +
+            buildLayoutPatternDiagramSvg(p) +
+            `<div style='margin-top:4px;font-size:12px;text-align:center'>${esc(p.label)}</div>` +
+            `</div>`;
+    }).join("");
+    return `<div style='display:flex;flex-wrap:wrap;gap:10px'>${cards}</div>` +
+        `<div style='margin-top:10px;font-size:11px;color:var(--text3)'>` +
+        `選択したレイアウトイメージは、YAMLには書き込まれず、「🤖 画面反映」実行時にAIへの補足指示として渡されます（もう一度クリックすると選択解除できます）。` +
+        `</div>`;
+}
+
+// レイアウトイメージカードのクリック処理（トグル選択）。
+// フルHTML再生成はせず、カードのハイライトのみ差し替える軽量処理にしている。
+function selectFormLayoutPattern(id) {
+    const cur = getProjectData().formLayoutPattern || "";
+    getProjectData().formLayoutPattern = cur === id ? "" : id;
+    document.querySelectorAll(".form-layout-card").forEach((el) => {
+        const isActive = el.dataset.patternId === getProjectData().formLayoutPattern;
+        el.classList.toggle("active", isActive);
+        el.style.borderColor = isActive ? "var(--accent)" : "var(--border)";
+    });
+}
+
 function openFormDesignAi() {
     // 複数選択中にAI設計ボタンを操作した場合は選択を解除する
     if (getDesignerState().selIds.length > 1) deselect();
@@ -2984,6 +3023,7 @@ function openFormDesignAi() {
         tabs: [
             { id: "fd", label: "📋 YAML", type: "yaml", val: template, ph: _PROMPT_DEF.DEFAULT_FORM_DESIGN_YAML },
             { id: "fd-doc", label: "✨ YAMLドラフト", type: "doc", val: docTemplate, ph: "✨ 作成したい画面デザインの要望を日本語で自由に記述できます（複数行可）\n\n例:\n1. ユーザー情報登録フォーム\n2. 氏名、メールアドレス、部署（セレクトボックス）の入力項目\n3. 保存ボタンとクリアボタンを配置する" },
+            { id: "fd-layout", label: "🖼 レイアウト", type: "layout" },
         ],
         aiBar:
             "<div style='display:flex;gap:6px;align-items:center;width:100%'>" +
@@ -3025,6 +3065,7 @@ function openFormDesignAi() {
 
         rAfBind("#tab-fd", "click", () => yamlTabSwitch("fd"));
         rAfBind("#tab-fd-doc", "click", () => yamlTabSwitch("fd-doc"));
+        rAfBind("#tab-fd-layout", "click", () => yamlTabSwitch("fd-layout"));
         yamlInitResize();
         yamlInitRpanelEvents();
         // 開いた直後から入力できるよう、最初にアクティブな📋YAMLタブへフォーカスする。
@@ -3602,6 +3643,14 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         const panes = tabs.map((t, idx) => {
             const isDoc = t.type === "doc";
             const isJs = t.type === "js";
+            const isLayout = t.type === "layout";
+            if (isLayout) {
+                // レイアウトイメージ選択タブ: エディタ(ガター/テキストエリア)ではなく、
+                // 箱型ダイアグラムのカード一覧を表示する専用ペイン。
+                return `<div class='yaml-pane ${idx === 0 ? "active" : ""}' id='pane-${t.id}' style='overflow-y:auto;padding:10px'>` +
+                    buildFormLayoutPickerHtml() +
+                    `</div>`;
+            }
             const hlWrap = isJs ? "js-hl-wrap" : "yaml-hl-wrap";
             const hlBg = isJs ? "js-hl-bg" : "yaml-hl-bg";
             const styleAttr = isDoc
@@ -3901,7 +3950,13 @@ async function formDesignAiGenerate() {
         }
     }
 
-    const addPrompt = $("fd-prompt-in")?.value || "";
+    // 選択中のレイアウトイメージがあれば、YAMLテキストには含めず、
+    // AIへの補足指示としてのみ追加する（"🖼 レイアウト"タブでの選択）。
+    const layoutPattern = getFormLayoutPatternById(getProjectData().formLayoutPattern);
+    const layoutHint = layoutPattern
+        ? "\n\n【画面レイアウトイメージ】ユーザーが選択した以下のレイアウト構成イメージに近い形でウィジェットを配置すること: " + layoutPattern.desc
+        : "";
+    const addPrompt = ($("fd-prompt-in")?.value || "") + layoutHint;
     const btn = $("fd-gen-btn");
     if (btn) btn.disabled = true;
 
@@ -4609,6 +4664,7 @@ Object.assign(window, {
     openAiConfig, aiCfgModelListHtml, aiCfgToggleRouter, aiCfgToggleEnabled,
     aiCfgFetchModels, aiCfgConfirm, aiCfgCancel, aiCfgSelectPreset, aiCfgSaveAsPreset, aiCfgDoSaveAsPreset, aiCfgDeletePreset,
     editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, insertFormDesignTemplate, openFormDesignTemplateModal, confirmApplyFormDesignTemplate, textToYamlGenerate, formDesignTextToYamlGenerate, formDesignAiGenerate, saveFormDesignDraft,
+    buildFormLayoutPickerHtml, selectFormLayoutPattern,
     parseFormDesignJson, parseFormDesignYaml, convertFormDesignEngKeysToJp, openAiRawOutputModal,
     narrowTablesByRequest, buildTablesCtxText,
     validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
