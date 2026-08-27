@@ -6,6 +6,7 @@ build
 bun.lock
 node_modules
 artifacts
+.hutch
 
 docs/memo
 
