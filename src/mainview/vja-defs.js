@@ -440,7 +440,7 @@ const WIDGET_DEFS = {
             rowHeight: 24, headerHeight: 28,
             visible: true, description: "",
         },
-        events: ["Click", "RowClick", "HeaderClick"],
+        events: ["Load", "Click", "RowClick", "HeaderClick"],
         pdefs: [
             ...PP_POS,
             { sep: "外観" },
@@ -576,7 +576,7 @@ const WIDGET_DEFS = {
             text: "", bg: "#ffffff",
             visible: true, description: "",
         },
-        events: ["Click"],
+        events: ["Load", "Click"],
         pdefs: [
             ...PP_POS,
             { sep: "内容" },
@@ -617,7 +617,7 @@ const WIDGET_DEFS = {
             borderSize: 1, borderColor: "#cccccc",
             visible: true, description: "",
         },
-        events: ["Click"],
+        events: ["Load", "Click"],
         pdefs: [
             ...PP_POS,
             { sep: "内容" },
