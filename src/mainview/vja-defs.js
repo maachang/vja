@@ -210,7 +210,7 @@ const WIDGET_DEFS = {
             align: "left",
             visible: true, description: "",
         },
-        events: ["Click", "MouseEnter", "MouseLeave"],
+        events: ["Load", "Click", "MouseEnter", "MouseLeave"],
         pdefs: [
             ...PP_POS,
             { sep: "外観" },
@@ -237,7 +237,7 @@ const WIDGET_DEFS = {
             suggestEnabled: false, suggestMaxCount: 3,
             visible: true, description: "",
         },
-        events: ["TextChanged", "KeyDown", "KeyUp", "GotFocus", "LostFocus", "Click", "Suggest"],
+        events: ["Load", "TextChanged", "KeyDown", "KeyUp", "GotFocus", "LostFocus", "Click", "Suggest"],
         pdefs: [
             ...PP_POS,
             { sep: "入力タイプ" },
@@ -302,7 +302,7 @@ const WIDGET_DEFS = {
             disabled: false, readonly: false,
             visible: true, description: "",
         },
-        events: ["TextChanged", "KeyDown", "KeyUp", "GotFocus", "LostFocus", "Click"],
+        events: ["Load", "TextChanged", "KeyDown", "KeyUp", "GotFocus", "LostFocus", "Click"],
         pdefs: [
             ...PP_POS,
             { sep: "外観" },
@@ -379,7 +379,7 @@ const WIDGET_DEFS = {
             borderSize: 1, borderColor: "#cccccc",
             visible: true, description: "",
         },
-        events: ["SelectedIndexChanged", "TextChanged", "DropDown"],
+        events: ["Load", "SelectedIndexChanged", "TextChanged", "DropDown"],
         pdefs: [
             ...PP_POS,
             { sep: "外観" },
@@ -408,7 +408,7 @@ const WIDGET_DEFS = {
             borderSize: 1, borderColor: "#cccccc",
             visible: true, description: "",
         },
-        events: ["SelectedIndexChanged", "Click", "MouseDown"],
+        events: ["Load", "SelectedIndexChanged", "Click", "MouseDown"],
         pdefs: [
             ...PP_POS,
             { sep: "外観" },

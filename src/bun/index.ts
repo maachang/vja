@@ -1419,7 +1419,6 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
             if (evName.startsWith("_js_")) continue;
             const js = (jsCode[evName] || "").trim();
             if (!js) continue;
-            const domEv = evNameToDom(evName);
             const b64 = Buffer.from(js, "utf-8").toString("base64");
             const key = `${w.name}_${evName}`;
             lines.push(`  // ${w.name}.${evName}`);
@@ -1427,7 +1426,16 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
             lines.push(`    var el = document.getElementById(${JSON.stringify(w.name)});`);
             lines.push(`    if (!el) return;`);
             lines.push(`    _vjaB64[${JSON.stringify(key)}] = ${JSON.stringify(b64)};`);
-            lines.push(`    el.addEventListener(${JSON.stringify(domEv)}, function(event) { _vjaRun(${JSON.stringify(w.name)}, ${JSON.stringify(evName)}, event); });`);
+            if (evName === "Load") {
+                // ウィジェット単位のLoadは、この処理自体が既にDOMContentLoaded後に
+                // 実行されるため、addEventListenerではなくその場で直接実行する
+                // （フォームのLoadと同じ扱い。ウィジェットループはフォームイベント
+                // ループより先に生成されるため、フォームのLoadより必ず先に実行される）。
+                lines.push(`    _vjaRun(${JSON.stringify(w.name)}, ${JSON.stringify(evName)}, null);`);
+            } else {
+                const domEv = evNameToDom(evName);
+                lines.push(`    el.addEventListener(${JSON.stringify(domEv)}, function(event) { _vjaRun(${JSON.stringify(w.name)}, ${JSON.stringify(evName)}, event); });`);
+            }
             lines.push(`  })();`);
         }
     }
