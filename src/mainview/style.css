@@ -1651,7 +1651,11 @@ textarea.yaml:focus {
     background: #ff6b6b22
 }
 
-#coldef-modal .coldef-scroll {
+/* renderRowListModal() を使う全モーダル（カラム定義エディタ・項目定義エディタ等）共通。
+   #coldef-modal限定にしていたため、項目定義エディタ（SelectBox/ListBoxの選択肢）で
+   選択肢が多いとモーダルが画面高を超えて伸び、フッターの閉じる/保存ボタンが
+   画面外に押し出されて操作不能になる不具合があったため、クラス全体に適用する */
+.coldef-scroll {
     max-height: 360px;
     overflow-y: auto;
     border: 1px solid var(--border);
