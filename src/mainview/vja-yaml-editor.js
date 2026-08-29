@@ -1886,6 +1886,35 @@ function _findStyleWarnings(code, isAppEvent) {
     return found;
 }
 
+// let/const を var に機械的に変換する（_findStyleWarnings と対象を揃える）。
+// フロントエンドはlet/const両方、バックエンドはconstのみを変換対象とする。
+function _convertStyleWarningsToVar(code, isAppEvent) {
+    return isAppEvent
+        ? code.replace(/\bconst(\s+\w)/g, "var$1")
+        : code.replace(/\b(?:let|const)(\s+\w)/g, "var$1");
+}
+
+// vja.widget.get()/getValue() で取得した変数への誤った ".value" アクセスを
+// 機械的に除去する。vja.widget.get系は常に展開済みの生の値
+// （string/number/boolean/配列）を直接返す設計であり、DOM要素のように
+// .value プロパティで包まれることは無い（小型ローカルLLMがWebフロントエンド
+// 一般の element.value パターンを誤って踏襲してしまうケースの救済策）。
+// 対象は「vja.widget.get(Value)()の戻り値を代入した変数」への直接の
+// ".value"アクセスのみ（例: 変数[0].value のような添字経由のアクセスは、
+// datagridの列名が偶然"value"であるケース等と区別できないため対象外）。
+function _stripWidgetValueAccess(code) {
+    const declRe = /\b(?:var|let|const)\s+(\w+)\s*=\s*vja\.widget\.get(?:Value)?\s*\(/g;
+    const names = new Set();
+    let m;
+    while ((m = declRe.exec(code)) !== null) names.add(m[1]);
+    let result = code;
+    names.forEach((name) => {
+        const valueRe = new RegExp("\\b" + _escapeRegExp(name) + "\\.value\\b", "g");
+        result = result.replace(valueRe, name);
+    });
+    return result;
+}
+
 // このイベント(evName/wtag)で vja.event.get().type に入り得る「正しい値」を
 // 機械的に算出する。不明な場合はnullを返す（チェック対象外）。
 function _expectedEventTypes(evName, wtag) {
@@ -2300,11 +2329,23 @@ function _stripValidationWrapper(code, validationName) {
 // 検証（構文・API・await漏れ・ウィジェット名・ev.type・モック実行）だけを行う。
 async function manualMockCheck(isAppEvent, evName, wtag, wid) {
     const jsTa = $("js-ta");
-    const code = jsTa?.value || "";
+    let code = jsTa?.value || "";
     if (!code.trim()) { showToast("JavaScriptが入力されていません"); return; }
     if (!(await vja.app.showConfirm("モックの実行を行います。よろしいですか？"))) return;
+    const strippedCode = _stripWidgetValueAccess(code);
+    if (strippedCode !== code && jsTa) {
+        code = strippedCode;
+        jsTa.value = code;
+        jsHlUpdate();
+        editorUpdateGutter("js-ta", "js-gutter");
+    }
     let validation = validateGeneratedJs(code, isAppEvent, evName, wtag, wid);
     validation = await _augmentWithMockCheck(validation, code, isAppEvent, evName, wtag, wid);
+    if (validation.code && validation.code !== code && jsTa) {
+        jsTa.value = validation.code;
+        jsHlUpdate();
+        editorUpdateGutter("js-ta", "js-gutter");
+    }
     window.vja?.log?.debug?.("[AI検証] 手動モック実行: " + _formatValidationIssuesForLog(validation));
     if (validation.ok) {
         dismissAiValidationBanner();
@@ -2324,9 +2365,23 @@ async function manualMockCheck(isAppEvent, evName, wtag, wid) {
 async function manualRetryAiFix(wid, evName, isAppEvent, isFormEvent) {
     const { sysPrompt, userPrompt, validationName, wtag } = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent);
     const jsTa = $("js-ta");
-    const currentCode = _stripValidationWrapper(jsTa?.value || "", validationName);
+    let currentCode = _stripValidationWrapper(jsTa?.value || "", validationName);
+    const strippedCurrentCode = _stripWidgetValueAccess(currentCode);
+    if (strippedCurrentCode !== currentCode) {
+        currentCode = strippedCurrentCode;
+        if (jsTa) {
+            jsTa.value = currentCode;
+            jsHlUpdate();
+            editorUpdateGutter("js-ta", "js-gutter");
+        }
+    }
     let validation = validateGeneratedJs(currentCode, isAppEvent, evName, wtag, wid);
     validation = await _augmentWithMockCheck(validation, currentCode, isAppEvent, evName, wtag, wid);
+    if (validation.code && validation.code !== currentCode && jsTa) {
+        jsTa.value = validation.code;
+        jsHlUpdate();
+        editorUpdateGutter("js-ta", "js-gutter");
+    }
     if (validation.ok) { dismissAiValidationBanner(); return; }
     window.vja?.log?.debug?.("[AI検証] 手動での修正依頼を実行します。検出内容: " + _formatValidationIssuesForLog(validation));
     // 自動修正リトライ時と同様、ウィジェット一覧の絞り込みを解除して再構築する。
@@ -2337,8 +2392,10 @@ async function manualRetryAiFix(wid, evName, isAppEvent, isFormEvent) {
         userPrompt: fixUserPrompt,
         loadingMsg: "検出した問題を自動修正中…",
         onSuccess: async (fixed) => {
+            fixed = _stripWidgetValueAccess(fixed);
             let revalidated = validateGeneratedJs(fixed, isAppEvent, evName, wtag, wid);
             revalidated = await _augmentWithMockCheck(revalidated, fixed, isAppEvent, evName, wtag, wid);
+            const fixedCode = revalidated.code || fixed;
             window.vja?.log?.debug?.(revalidated.ok
                 ? "[AI検証] 手動修正で解消しました。"
                 : "[AI検証] 手動修正後も未解消: " + _formatValidationIssuesForLog(revalidated));
@@ -2347,7 +2404,7 @@ async function manualRetryAiFix(wid, evName, isAppEvent, isFormEvent) {
                 _recordLearnedFix(wid, evName, _formatValidationIssuesForLog(validation));
             }
             let codeForEditor = annotateUnknownApis(
-                fixed, revalidated.unknownApis, revalidated.forbiddenPatterns,
+                fixedCode, revalidated.unknownApis, revalidated.forbiddenPatterns,
                 revalidated.missingAwaits, revalidated.unknownWidgets, revalidated.styleWarnings,
                 revalidated.eventTypeMismatches
             );
@@ -2387,9 +2444,25 @@ async function manualRetryAiFix(wid, evName, isAppEvent, isFormEvent) {
 // mockErrorは { message: string, line: number|null, caught?: boolean } の形。
 // caught=trueは、try/catchで握りつぶされconsole.error()に渡されたエラーを
 // 検出したケース（例外としては外に投げられていない）であることを示す。
+// 【var変換フォールバック】モックが成功した場合、let/constのスタイル警告
+// （styleWarnings）は実害なしと確認できたことになるため、クリアして
+// annotateUnknownApisでのコメント挿入対象から外す。
+// モックが失敗し、かつlet/const使用が検出されている場合は、機械的にvarへ
+// 変換した上で再度モック実行する。それで通れば「let/constが原因で発生していた
+// 問題」とみなし、変換後コードをvalidation.codeとして返す（呼び出し元は
+// 以後この値を採用コードとして使う）。3B以下の小型モデルはAIに指摘しても
+// varへ直しきれないことが多いため、この機械的な変換で救済する。
 async function _augmentWithMockCheck(validation, code, isAppEvent, evName, wtag, wid) {
     const mockError = await _runMockSmokeTest(code, isAppEvent, evName, wtag, wid);
-    if (!mockError) return validation;
+    if (!mockError) return { ...validation, styleWarnings: [] };
+    if ((validation.styleWarnings || []).length > 0) {
+        const varCode = _convertStyleWarningsToVar(code, isAppEvent);
+        const varMockError = await _runMockSmokeTest(varCode, isAppEvent, evName, wtag, wid);
+        if (!varMockError) {
+            const revalidated = validateGeneratedJs(varCode, isAppEvent, evName, wtag, wid);
+            return { ...revalidated, styleWarnings: [], code: varCode };
+        }
+    }
     return { ...validation, ok: false, mockError };
 }
 
@@ -2661,7 +2734,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                     (_, inner) => inner.trim()
                 );
             };
-            let unwrapped = _unwrap(clean);
+            let unwrapped = _stripWidgetValueAccess(_unwrap(clean));
 
             // ── 生成結果の自動検証（構文チェック・APIホワイトリスト） ──
             // 問題があれば1回だけAIに自動修正を依頼し、それでも解消しない場合は
@@ -2672,6 +2745,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
             let validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag, wid);
             if (_isAutoMockCheckEnabled(wid, evName)) {
                 validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid);
+                if (validation.code) unwrapped = validation.code;
             }
             if (!validation.ok) {
                 const issueLog = _formatValidationIssuesForLog(validation);
@@ -2688,7 +2762,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                     userPrompt: fixUserPrompt,
                     loadingMsg: "検出した問題を自動修正中…",
                     temperatureOverride: temperatureOverride,
-                    onSuccess: async (fixed) => { retryCode = _unwrap(fixed); },
+                    onSuccess: async (fixed) => { retryCode = _stripWidgetValueAccess(_unwrap(fixed)); },
                     onCancel: async () => { },
                     onError: async () => { },
                 });
@@ -2697,6 +2771,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                     validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag, wid);
                     if (_isAutoMockCheckEnabled(wid, evName)) {
                         validation = await _augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid);
+                        if (validation.code) unwrapped = validation.code;
                     }
                     window.vja?.log?.debug?.(validation.ok
                         ? "[AI検証] 自動修正リトライで解消しました。"
