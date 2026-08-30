@@ -35,6 +35,9 @@ const WIZARD_STATE = {
     tableCandidates: [], // [{ name, description, selected }]
     step: 1, // 現在のステップ番号（ステップインジケーター表示用）
     formSize: null, // { key: 'small'|'medium'|'large', label, w, h } 画面サイズ選択ステップの結果
+    systemModelHint: null, // AIがQ&A履歴から選んだシステムモデル（src/wizard-system-models/の<id>.md本文）。
+                           // 見えない処理として決定するのみで専用ステップ・画面は持たない。
+                           // 選択できなかった場合はnullのままとし、以降のプロンプトへの差し込みも省略する。
 };
 
 // ステップインジケーターに表示するステップ一覧。
@@ -96,6 +99,7 @@ function _wizardSaveProgress() {
         tableCandidates: WIZARD_STATE.tableCandidates,
         formPlan: WIZARD_STATE.formPlan,
         formSize: WIZARD_STATE.formSize,
+        systemModelHint: WIZARD_STATE.systemModelHint,
     };
 }
 
@@ -141,6 +145,7 @@ function wizardResumeFromProgress() {
     WIZARD_STATE.tableCandidates = wp.tableCandidates || [];
     WIZARD_STATE.formPlan = wp.formPlan || [];
     WIZARD_STATE.formSize = wp.formSize || null;
+    WIZARD_STATE.systemModelHint = wp.systemModelHint || null;
     WIZARD_STATE.step = wp.step || 1;
     switch (WIZARD_STATE.step) {
         case 2: _wizardRenderQaModal(); break;
@@ -512,6 +517,49 @@ function wizardQaNext() {
 //   テーブル候補抽出→カラム確定→フォーム分解の順に変更した）
 function wizardQaComplete() {
     _wizardCommitCurrentAnswer();
+    wizardSelectSystemModel();
+}
+
+// Q&A履歴から、最も近い「システムモデル」骨格（src/wizard-system-models/）をAIに
+// 番号で選ばせ、WIZARD_STATE.systemModelHintへ詳細md本文を保持する（見えない処理。
+// 専用ステップ・画面は持たず、ステップインジケーターの番号も増やさない）。
+// 一覧取得・AI呼び出しのいずれかに失敗した場合や、番号のパース失敗・範囲外の場合は、
+// 他のウィザードAIステップと同様「フォールバックなし」でsystemModelHintをnullのまま
+// 次のテーブル候補抽出へ進む。
+async function wizardSelectSystemModel() {
+    WIZARD_STATE.systemModelHint = null;
+
+    const listRes = await window.vja.wizard.getSystemModelSummaries();
+    const items = (listRes && listRes.ok) ? (listRes.items || []) : [];
+    if (items.length === 0) {
+        wizardExtractTableCandidates();
+        return;
+    }
+
+    const modelListCtx = items.map((it, i) => (i + 1) + ". " + it.summary.trim()).join("\n\n");
+    const historyCtx = _wizardBuildQaHistoryCtx();
+    const sysPrompt = _PROMPT_DEF.WIZARD_SYSTEM_MODEL_SYS_PROMPT();
+    const userPrompt = _PROMPT_DEF.WIZARD_SYSTEM_MODEL_USER_PROMPT(historyCtx, modelListCtx);
+
+    let picked = null;
+    await runAiGenerate({
+        systemPrompt: sysPrompt,
+        userPrompt: userPrompt,
+        loadingMsg: "システム系統を検討しています…",
+        onSuccess: async (raw) => {
+            const m = String(raw || "").match(/\d+/);
+            const num = m ? parseInt(m[0], 10) : NaN;
+            if (num >= 1 && num <= items.length) picked = items[num - 1];
+        },
+        onCancel: async () => { },
+        onError: async () => { },
+    });
+
+    if (picked) {
+        const detailRes = await window.vja.wizard.getSystemModelDetail(picked.id);
+        if (detailRes && detailRes.ok) WIZARD_STATE.systemModelHint = detailRes.detail;
+    }
+
     wizardExtractTableCandidates();
 }
 
@@ -545,7 +593,7 @@ function _wizardParseJsonArray(text) {
 async function wizardExtractTableCandidates() {
     const historyCtx = _wizardBuildQaHistoryCtx();
     const sysPrompt = _PROMPT_DEF.WIZARD_TABLE_CANDIDATES_SYS_PROMPT();
-    const userPrompt = _PROMPT_DEF.WIZARD_TABLE_CANDIDATES_USER_PROMPT(historyCtx);
+    const userPrompt = _PROMPT_DEF.WIZARD_TABLE_CANDIDATES_USER_PROMPT(historyCtx, WIZARD_STATE.systemModelHint);
 
     let tables = null;
     await runAiGenerate({
@@ -745,7 +793,7 @@ async function wizardDecomposeForms() {
     const historyCtx = _wizardBuildQaHistoryCtx();
     const tablesCtx = buildTablesCtxText(getProjectData().tables || []);
     const size = WIZARD_STATE.formSize || { label: "小", w: 640, h: 420 };
-    const sysPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_SYS_PROMPT({ tablesCtx, formW: size.w, formH: size.h, formSizeLabel: size.label });
+    const sysPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_SYS_PROMPT({ tablesCtx, formW: size.w, formH: size.h, formSizeLabel: size.label, systemModelHint: WIZARD_STATE.systemModelHint });
     const userPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_USER_PROMPT(historyCtx);
 
     let forms = null;

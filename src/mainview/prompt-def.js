@@ -1923,6 +1923,38 @@ Based on the [Q&A History So Far] provided in the user message, decide the singl
     o.WIZARD_NEXT_QUESTION_SYS_PROMPT = ENG_WIZARD_NEXT_QUESTION_SYS_PROMPT;
     o.WIZARD_NEXT_QUESTION_USER_PROMPT = ENG_WIZARD_NEXT_QUESTION_USER_PROMPT;
 
+    // [プロンプト]プロジェクト新規作成ウィザード: Q&A履歴から、最も近い「システムモデル」
+    // （src/wizard-system-models/の骨格パターン）を番号で1つ選ばせる。
+    // ローカルLLMはID文字列を自由記述させると架空の名前を混ぜて出力する傾向があるため、
+    // 既存の番号選択方式（レイアウトイメージ選択等）を踏襲し、回答は番号のみに限定する。
+    //
+    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
+    // Q&A履歴と、番号付きのシステムモデル要約一覧（名称/想定システムタイプ例/
+    // 向いているケース/向いていないケース）を渡し、最も適合する番号を1つだけ
+    // 数字で答えさせる。番号以外の文字（説明・記号等）は一切出力させない。
+    const ENG_WIZARD_SYSTEM_MODEL_SYS_PROMPT = function () {
+        return (`
+You are an expert VJA (Visual JavaScript for AI) application architect. Based on the [Q&A History] describing a business application the user wants to build, and the [System Model Candidates] list (numbered structural skeletons this tool can use as a scaffold), choose the ONE candidate that best matches the described application.
+
+[Output Rules]
+- Output ONLY the number of the chosen candidate (e.g. "3"). No other characters, words, punctuation, markdown, or explanation of any kind.
+- Choose exactly one number that appears in [System Model Candidates].
+- Use the "向いているケース" (good fit) and "向いていないケース" (bad fit) notes under each candidate to decide. Prefer the candidate whose "向いているケース" most closely matches the history, and avoid one whose "向いていないケース" matches instead.
+- If multiple candidates seem plausible, choose the single closest match rather than refusing to answer.
+`.trim() + "\n");
+    };
+
+    const ENG_WIZARD_SYSTEM_MODEL_USER_PROMPT = function (historyCtx, modelListCtx) {
+        return (
+            "[Q&A History]\n" + historyCtx + "\n\n" +
+            "[System Model Candidates]\n" + modelListCtx + "\n\n" +
+            "Output only the number of the best-matching candidate, as specified in the system prompt."
+        );
+    };
+
+    o.WIZARD_SYSTEM_MODEL_SYS_PROMPT = ENG_WIZARD_SYSTEM_MODEL_SYS_PROMPT;
+    o.WIZARD_SYSTEM_MODEL_USER_PROMPT = ENG_WIZARD_SYSTEM_MODEL_USER_PROMPT;
+
     // [プロンプト]プロジェクト新規作成ウィザード: Q&A履歴から必要そうなDBテーブル候補を切り出す
     // （2026-08-10: フォーム分解より前に実行する順序に変更。フォーム一覧はまだ存在しない
     //   ため、Q&A履歴のみから候補を抽出する）
@@ -1948,13 +1980,16 @@ You are an expert VJA (Visual JavaScript for AI) application architect. Based on
 - Avoid creating multiple tables for what is really a single entity's attributes (e.g. do NOT create separate "priorities"/"deadlines"/"statuses" tables when they are just columns of a single "tasks" table) — this causes confusion in later steps. Prefer one well-designed table per real-world entity.
 - Do NOT include column definitions — only table name and description. Columns will be designed in the next step.
 - If no database table appears to be needed at all, output an empty array [].
+- If [Recommended System Model Skeleton] is provided, treat its "テーブル構成の型" as a structural reference for what kind of tables (and how many) this type of application typically needs — but still base the actual table names/descriptions on what the [Q&A History] specifically describes. Do NOT invent tables that only appear in the skeleton example but are not implied by the history.
 `.trim() + "\n");
     };
 
-    // [日本語対訳メモ]（AIには送られない）Q&A履歴＋「システム指示通りに候補テーブルのJSON配列を生成せよ」の指示。
-    const ENG_WIZARD_TABLE_CANDIDATES_USER_PROMPT = function (historyCtx) {
+    // [日本語対訳メモ]（AIには送られない）Q&A履歴＋（あれば）システムモデル骨格＋
+    // 「システム指示通りに候補テーブルのJSON配列を生成せよ」の指示。
+    const ENG_WIZARD_TABLE_CANDIDATES_USER_PROMPT = function (historyCtx, systemModelHint) {
         return (
             "[Q&A History]\n" + historyCtx + "\n\n" +
+            (systemModelHint ? "[Recommended System Model Skeleton]\n" + systemModelHint + "\n\n" : "") +
             "Generate the JSON array of candidate tables as specified in the system prompt."
         );
     };
@@ -1992,9 +2027,15 @@ You are an expert VJA (Visual JavaScript for AI) application architect. Based on
     // formSizeLabelとして渡し、「小さい画面サイズなら項目を詰め込みすぎず画面を
     // 分割する」ことを意識させる（ただし上記の「過剰分割を避ける」指示を上書きしない
     // ことを明記し、単なる詰め込み防止のみに限定）。
-    const ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT = function ({ tablesCtx, formW, formH, formSizeLabel }) {
+    const ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT = function ({ tablesCtx, formW, formH, formSizeLabel, systemModelHint }) {
         return (`
 You are an expert VJA (Visual JavaScript for AI) application architect. Based on the [Q&A History] and [Confirmed Database Tables] provided in the user message (a Japanese interview describing a business application the user wants to build, plus the DB tables/columns already finalized for it), decompose the application into a list of screens (forms).
+${systemModelHint ? `
+[Recommended System Model Skeleton]
+This application was judged to be closest to the following structural pattern. Use its "画面構成の骨格" (screen structure) as your primary guide for how to group fields into screens and how many screens to create — it is written specifically to prevent over-splitting screens that a human developer would normally keep together. Still base concrete field names/screen titles on the actual [Q&A History] and [Confirmed Database Tables], not on the example table/column names shown in the skeleton.
+
+${systemModelHint}
+` : ""}
 
 [Target Screen Size]
 The user has chosen a "${formSizeLabel || "小"}" (${formW || 640}x${formH || 420}px) screen size for every generated form. Keep this in mind when deciding how much a single screen should try to show:

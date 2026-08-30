@@ -9,6 +9,7 @@ import { dirname, join } from "path";
 import {
     existsSync,
     readFileSync,
+    readdirSync,
     mkdirSync,
     rmSync,
     copyFileSync,
@@ -41,6 +42,15 @@ const _VJA_RUN_MODE = _VJA_VERION.runMode;
 
 // 一旦コンソール出力.
 process.stdout.write("### run index.ts: " + _TITLE + "(" + _VERSION + "): " + _VJA_RUN_MODE + "\n");
+
+// ウィザードが参照する「システムモデル定義」(src/wizard-system-models/)の実体パスを解決する。
+// compileProject()/buildProjectFiles()内のvjaRoot解決と同じ考え方
+// （dev実行時はprocess.cwd()、パッケージ実行時はBUILD_VJA_SRC_PATH配下）。
+const _wizardSystemModelsDir = (): string => {
+    let root = process.cwd() || "";
+    if (existsSync(BUILD_VJA_SRC_PATH)) root = BUILD_VJA_SRC_PATH;
+    return join(root, "src", "wizard-system-models");
+};
 
 // 非同ファイル実行用.
 const execFileAsync = promisify(execFile);
@@ -430,6 +440,39 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
             // ── VJA本体（ディスプレイ作業領域）サイズ取得 ──────
             getDisplayWorkAreaRequest: () => {
                 return { width: _displayWorkArea.width, height: _displayWorkArea.height };
+            },
+
+            // ── ウィザード: システムモデル定義一覧取得（要約） ──
+            // src/wizard-system-models/ 配下の *.summary.md をID(ファイル名)昇順で返す。
+            // ID一覧を別途管理せずディレクトリを都度走査するため、ペア(<id>.md/<id>.summary.md)
+            // を追加・削除するだけで反映される（CLAUDE.md方針参照）。
+            wizardSystemModelSummariesRequest: async () => {
+                try {
+                    const dir = _wizardSystemModelsDir();
+                    const suffix = ".summary.md";
+                    const ids = readdirSync(dir)
+                        .filter((f) => f.endsWith(suffix))
+                        .map((f) => f.slice(0, -suffix.length))
+                        .sort();
+                    const items = ids.map((id) => ({
+                        id,
+                        summary: readFileSync(join(dir, id + suffix), "utf-8"),
+                    }));
+                    return { ok: true, items };
+                } catch (e: any) {
+                    return { ok: false, items: [], error: e.message };
+                }
+            },
+
+            // ── ウィザード: システムモデル定義（詳細）取得 ──
+            wizardSystemModelDetailRequest: async ({ id }) => {
+                try {
+                    const dir = _wizardSystemModelsDir();
+                    const detail = readFileSync(join(dir, id + ".md"), "utf-8");
+                    return { ok: true, detail };
+                } catch (e: any) {
+                    return { ok: false, detail: null, error: e.message };
+                }
             },
 
             // ══ プロジェクト実行 ══════════════════════

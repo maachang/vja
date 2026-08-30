@@ -58,6 +58,11 @@ if (process.argv.includes("build") || process.argv.includes("dev")) {
         const dest = join("src", destRel);
         target[src] = dest;
     }
+    // 新規プロジェクト作成ウィザードが参照する「システムモデル」定義（マークダウン）。
+    // ディレクトリ単位でコピーされるため、中身のmd/summary.mdファイルを追加・削除
+    // するだけでよく、このファイルの変更は不要（copyCompileAssetsとは別枠。
+    // コンパイル済みユーザーアプリには同梱しない、VJA自身の実行時専用データのため）。
+    target[join("src", "wizard-system-models")] = join("src", "wizard-system-models");
 }
 
 // バージョンを取得して差し替える.

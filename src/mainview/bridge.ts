@@ -288,6 +288,11 @@ w.vja = {
         getDisplayWorkArea: () => r.getDisplayWorkAreaRequest({}),
         ...makeDialogHelpers(w),
     },
+    // ── ウィザード: システムモデル定義（src/wizard-system-models/） ──
+    wizard: {
+        getSystemModelSummaries: () => r.wizardSystemModelSummariesRequest({}),
+        getSystemModelDetail: (id: string) => r.wizardSystemModelDetailRequest({ id }),
+    },
     // ── プロジェクト実行 ──────────────────────────────
     project: {
         run: () =>

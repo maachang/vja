@@ -34,6 +34,15 @@ export type FileWriteResult = { ok: boolean; error?: string };
 export type DirListResult = { ok: boolean; entries: string[]; error?: string };
 export type BoolResult = { ok: boolean; value: boolean; error?: string };
 
+// ── ウィザード: システムモデル定義（src/wizard-system-models/）関連型 ──
+export type WizardSystemModelSummaryItem = { id: string; summary: string };
+export type WizardSystemModelSummariesResult = {
+    ok: boolean;
+    items: WizardSystemModelSummaryItem[];
+    error?: string;
+};
+export type WizardSystemModelDetailResult = { ok: boolean; detail: string | null; error?: string };
+
 // ── アプリ関連型 ──────────────────────────────────────
 export type AppInfo = {
     dataDir: string;
@@ -162,6 +171,20 @@ export type VjaRPCType = {
             // ── VJA本体（ディスプレイ作業領域）サイズ取得 ──────
             // ウィザードの画面サイズ（大中小）選択で基準値として使う
             getDisplayWorkAreaRequest: { params: { _?: never }; response: { width: number; height: number } };
+
+            // ── ウィザード: システムモデル定義一覧取得（要約） ──
+            // src/wizard-system-models/ 配下の *.summary.md をID(ファイル名)昇順で列挙する
+            wizardSystemModelSummariesRequest: {
+                params: { _?: never };
+                response: WizardSystemModelSummariesResult;
+            };
+
+            // ── ウィザード: システムモデル定義（詳細）取得 ──
+            // 選択されたIDに対応する <id>.md の内容を返す
+            wizardSystemModelDetailRequest: {
+                params: { id: string };
+                response: WizardSystemModelDetailResult;
+            };
 
             // ── プロジェクト実行 ──────────────────────────
             runProjectRequest: { params: { projectData: string }; response: { ok: boolean; error?: string } };
