@@ -83,6 +83,7 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 | src/mainview/prompt-def.js | AI プロンプト定義 |
 | src/shared/types.ts | types.tsファイル |
 | src/shared/csv-utils.ts | CSVパース共通処理（Bun側・webview側・project-bridge.tsで共有） |
+| src/wizard-system-models/ | ウィザードのシステムモデル定義（AIヒント用マークダウン）。詳細は下記「ウィザードのシステムモデル定義」節参照 |
 | *.test.ts | 各対象ファイルと同じディレクトリに置くユニットテスト（bun test）。対象はユニットテスト（bun test）節を参照 |
 | docs/ | ドキュメント関連(mdファイルなど) |
 | mcp/vja-mcp-server.ts | VJAデザイナーのテスト自動化用MCPサーバー（stdio）。詳細は下記「MCPによるテスト自動化」節参照 |
@@ -181,6 +182,23 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 - **実装**: `vja-table-validation.js` の `validAiGenerateRules()`。AIが返したウィジェット名は**現在フォームに実在するものだけ**採用し（存在しない名前は破棄）、typeも`VALIDATION_TYPES`に無ければ`required`へ補正
 - **プロンプト定義**: `prompt-def.js` の `ENG_VALIDATION_SCHEMA_GEN_SYS_PROMPT` / `ENG_VALIDATION_SCHEMA_GEN_USER_PROMPT`
 
+# ウィザードのシステムモデル定義（AIヒント）（2026-08-30時点）
+
+- **概要**: 新規プロジェクト作成ウィザード（Q&A完了後）で、AIがヒアリング内容から最も近い「業務システムの骨格パターン」を1つ選び、その骨格をテーブル候補抽出・画面構成分解のAIプロンプトに文脈として差し込む機能。ユーザーには見えない「裏側の処理」として実装しており、専用のステップ画面・ステップインジケーターの番号増加は無い
+- **狙い**: ローカルLLMが「一覧・登録・編集・削除・詳細」を安易に別画面へ分割してしまう既知の悪癖を、骨格パターン側で明示的に矯正すること。個別業種にズバリ合わせた精密テンプレートではなく、「マスタ管理系」「伝票・トランザクション登録系」等の構造レベルの骨格を主軸にしている
+- **データ配置**: `src/wizard-system-models/<id>.md`（詳細: 概要・テーブル構成の型・画面構成の骨格・AIが陥りやすい失敗）＋`src/wizard-system-models/<id>.summary.md`（要約: 「名称/想定システムタイプ例/向いているケース/向いていないケース」の4見出し固定）のペアで管理する
+  - `id`は英語kebab-case（例: `master-management`, `transaction-entry`）で、**ファイル名がそのままID**。一覧の集約は動的なディレクトリスキャンで組み立てるため、パターンの追加・削除はこのペアのファイルを置く/消すだけで完結し、別途「一覧管理ファイル」は存在しない
+  - 2026-08-30時点で8パターン用意済み: マスタ管理系/伝票・トランザクション登録系/在庫・数量推移管理系/予約・スケジュール管理系/申請・承認ワークフロー系/会員・対応履歴管理系/検索・照会・レポート系/設定・パラメータ管理系
+- **実行時の配置**: このディレクトリは`docs/`（人間向けドキュメント）とは別物で、VJA自身が実行時に読み込む必要があるデータのため`src/`配下に置いている。Electrobunは`electrobun.config.ts`の`build.copy`に明示登録したものしかdev/build時に`Resources/app/...`へコピーしないため（`WEBVIEW_RUNTIME_LIBS`と同じ制約）、`electrobun.config.ts`側で`src/wizard-system-models`をディレクトリ単位（`cpSync`の`recursive:true`）で登録済み。ディレクトリ単位登録のため、ペアファイルの追加・削除時に`electrobun.config.ts`の変更は不要
+  - コンパイル済みユーザーアプリには同梱しない（VJA自身のウィザード専用データのため、`copy-compile-assets.ts`の`COPY_BUILD_FILES`には含めていない）
+- **実装**:
+  - bun側: `src/bun/index.ts`の`_wizardSystemModelsDir()`（dev時は`process.cwd()`、パッケージ時は`BUILD_VJA_SRC_PATH`から解決）、RPC `wizardSystemModelSummariesRequest`（`*.summary.md`をファイル名昇順で列挙・読込）/`wizardSystemModelDetailRequest`（指定idの詳細md読込）
+  - webview側: `src/mainview/bridge.ts`の`window.vja.wizard.getSystemModelSummaries()`/`getSystemModelDetail(id)`
+  - ウィザード側: `src/mainview/vja-wizard.js`の`wizardSelectSystemModel()`（`wizardQaComplete()`から呼ばれる）。要約一覧を番号付きテキストに組み立て、AIに**番号のみ**で回答させ（ローカルLLMはID文字列を自由記述させると架空の名前を混ぜて出力する傾向があるため、既存の番号選択方式を踏襲）、選ばれたIDの詳細mdを`WIZARD_STATE.systemModelHint`に保持する。一覧取得失敗・AI応答のパース失敗/範囲外の場合は、他のウィザードAIステップと同様「フォールバック無し」でヒント無しのまま後続へ進む
+  - `WIZARD_STATE.systemModelHint`は`_wizardSaveProgress()`/`wizardResumeFromProgress()`にも組み込み済み（中断・再開時も保持される）
+- **プロンプト定義**: `prompt-def.js`の`ENG_WIZARD_SYSTEM_MODEL_SYS_PROMPT`/`ENG_WIZARD_SYSTEM_MODEL_USER_PROMPT`（選択用）。`ENG_WIZARD_TABLE_CANDIDATES_USER_PROMPT`と`ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`に`systemModelHint`引数を追加し、選ばれた骨格を「構造面の参考」として渡す（テーブル名等の具体値はあくまでQ&A履歴優先、と明記済み）
+- **未対応（スコープ外）**: カラム構成生成（`ENG_TABLE_SCHEMA_GEN_SYS_PROMPT`）には`systemModelHint`を渡していない。このプロンプトはウィザード専用ではなく「テーブル管理」の「✨ AI生成」機能と共有されているため、今回はスコープ外とした（テーブル構成の型もヒントに含めたい場合は共有プロンプトの改修が別途必要）
+
 # AI雛形生成機能 総覧（2026-08-08時点でカバーする主要対象）
 
 vjaの中核コンセプトである「AIに雛形を作ってもらい、それを土台に人間が仕上げる」という導線が、アプリ開発に必要な主要な構成要素すべてに行き渡った状態（2026-08-08時点）。各詳細は本ファイル内の対応する節を参照。
@@ -211,6 +229,7 @@ vjaの中核コンセプトである「AIに雛形を作ってもらい、それ
 # 未対応・残課題(随時更新)
 
 - 学習履歴機能のブラッシュアップ対応済み（イベント/タグ/グローバルマルチスコープ、タグ自動昇格、ノウハウ管理ダイアログUI追加済み。`src/mainview/learned-fixes.test.ts` でテスト済み）
+- 【将来対応検討】ウィザードのシステムモデル定義（`src/wizard-system-models/`）を、カラム構成生成プロンプト（`ENG_TABLE_SCHEMA_GEN_SYS_PROMPT`、テーブル管理「✨ AI生成」と共有）にも反映したい場合、共有プロンプトの関数シグネチャ改修が必要。現状は未着手（詳細は「ウィザードのシステムモデル定義（AIヒント）」節参照）
 - 【AI生成の既知の混同要因・未対応】prompt-def.js内で「テーブル」という言葉が、DBのテーブル（vja.db.*）とdatagridタグのウィジェット（テーブル型ウィジェット、vja.widget.set/setTableData等）の両方を指して使われている。ローカルLLMがYAML定義中の「テーブル」という語からどちらの操作か混同し、意図しない実装（ウィジェット側を触るべき所でDB操作をしようとする等）をするケースが確認されている。対応案は用語の書き分け（datagridウィジェット側を「テーブル」ではなく「データグリッド」等に統一）だが、まだ未着手。
 - 既存プロジェクトの後方互換性（旧検証:記法のマイグレーション）は「今は自分しか使っていない」との理由で対応見送り
 - 【将来対応検討】YAML/JSのロールバック機能: イベントごとに「正常に実行できた」YAML定義＋生成JSの組を履歴として残し、AI再生成で悪化した場合に以前の正常動作バージョンへ戻せるようにする。学習履歴機能（上記）と合わせて設計する必要がある。まだ未着手・仕様未確定
