@@ -536,23 +536,25 @@ const WIDGET_DEFS = {
             const ff = p.fontFamily || "";
             const fw = p.fontBold ? "bold" : "normal";
             const fontStyle = (ff ? `font-family:${ff};` : "") + `font-weight:${fw};`;
-            let html = `<div style="width:100%;height:100%;overflow:auto;border:1px solid ${bc};box-sizing:border-box;font-size:${fs}px;${fontStyle}${vis2}">`;
-            html += `<table style="width:100%;border-collapse:collapse;table-layout:fixed">`;
-            html += `<thead><tr style="background:${hbg};color:${hfg}">`;
-            cols.forEach(c => {
-                html += `<th style="width:${c.width}%;padding:3px 6px;border:1px solid ${bc};text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${fontStyle}">${esc(c.displayName || c.label)}</th>`;
-            });
-            html += `</tr></thead><tbody>`;
+
+            const headerCells = cols.map(c => render("wp-tpl-datagrid-th", {
+                width: c.width, bc, fontStyle, label: c.displayName || c.label,
+            })).join("");
+
+            const rows = [];
             for (let r = 0; r < Math.min(maxR, 5); r++) {
                 const bg2 = r % 2 === 0 ? rbg : rabg;
-                html += `<tr style="background:${bg2};color:${rfg}">`;
-                cols.forEach(c => {
-                    html += `<td style="padding:2px 6px;border:1px solid ${bc};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${fontStyle}">${r === 0 ? "(データ)" : ""}</td>`;
-                });
-                html += `</tr>`;
+                const cells = cols.map(c => render("wp-tpl-datagrid-td", {
+                    bc, fontStyle, text: r === 0 ? "(データ)" : "",
+                })).join("");
+                rows.push(render("wp-tpl-datagrid-tr", { bg: bg2, fg: rfg, cells }));
             }
-            html += `</tbody></table></div>`;
-            return html;
+
+            return render("wp-tpl-datagrid", {
+                bc, fontSize: fs, fontStyle, vis: vis2,
+                headerBg: hbg, headerFg: hfg,
+                headerCells, rows: rows.join(""),
+            });
         },
     },
     progressbar: {
@@ -580,7 +582,11 @@ const WIDGET_DEFS = {
         ],
         preview: (p, base, vis) => {
             const pval = Math.min(100, Math.max(0, ((p.value || 0) - (p.min || 0)) / ((p.max || 100) - (p.min || 0)) * 100));
-            return `<div style="${base}background:${p.bg || "#e0e0e0"};border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};border-radius:3px;overflow:hidden;${vis}"><div style="width:${pval}%;height:100%;background:${p.fg || "#5b7bfa"};transition:width 0.2s;border-radius:3px"></div></div>`;
+            return render("wp-tpl-progressbar", {
+                base, vis, bg: p.bg || "#e0e0e0",
+                border: (p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc"),
+                pval, fg: p.fg || "#5b7bfa",
+            });
         },
     },
     groupbox: {
@@ -605,7 +611,13 @@ const WIDGET_DEFS = {
             ...PP_BORDER,
             ...PP_TAIL,
         ],
-        preview: (p, base, vis) => `<fieldset style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};${vis}"><legend style="padding:0 4px;font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"}">${esc(p.text)}</legend></fieldset>`,
+        preview: (p, base, vis) => render("wp-tpl-groupbox", {
+            base, vis, bg: p.bg, fg: p.fg, fontSize: p.fontSize,
+            fontFamily: p.fontFamily || "",
+            fontWeight: p.fontBold ? "bold" : "normal",
+            border: (p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc"),
+            text: p.text,
+        }),
     },
     picture: {
         label: "image", icon: "🖼️",
