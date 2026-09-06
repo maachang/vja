@@ -79,6 +79,15 @@ server.registerTool(
 );
 
 server.registerTool(
+    "vja_switch_tab",
+    {
+        description: "プロパティパネルの表示タブを切り替える（p=プロパティ, e=イベント）。イベントタブの描画結果を確認する前の下準備用",
+        inputSchema: { tab: z.enum(["p", "e"]).describe("切り替え先タブ") },
+    },
+    async (args) => toToolResult(await callVja("testSwitchTab", args)),
+);
+
+server.registerTool(
     "vja_get_props_html",
     {
         description: "現在描画されているプロパティパネル(plist)・イベントタブ(elist)のHTMLをそのまま取得する（画面を目視しなくても描画結果の構造を検証できる）",

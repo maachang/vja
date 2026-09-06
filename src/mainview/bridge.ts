@@ -102,6 +102,16 @@ const _testSelectWidget = (p: { id: number }) => {
         return { ok: false, error: e.message };
     }
 };
+// プロパティパネルの表示タブを切り替える（"p"=プロパティ, "e"=イベント）
+const _testSwitchTab = (p: { tab: "p" | "e" }) => {
+    const g = window as any;
+    try {
+        g.switchTab(p.tab);
+        return { ok: true };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
 // 現在描画されているプロパティパネル/イベントタブのHTMLをそのまま返す
 // （画面を目視しなくても、render()等の描画結果が壊れていないか検証できるようにするため）
 const _testGetPropsHtml = () => {
@@ -239,6 +249,7 @@ const rpc = Electroview.defineRPC({
             testDeleteWidget: _testDeleteWidget,
             testGetWidgets: _testGetWidgets,
             testSelectWidget: _testSelectWidget,
+            testSwitchTab: _testSwitchTab,
             testGetPropsHtml: _testGetPropsHtml,
             testSaveYaml: _testSaveYaml,
             testDeleteYaml: _testDeleteYaml,

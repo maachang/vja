@@ -1170,11 +1170,11 @@ function renderEvents() {
             const hasY = fev[ev]?.trim().length > 0;
             const row = document.createElement("div");
             row.className = "erow";
-            row.innerHTML = html`<div class="ek ${hasY ? "has-yaml" : ""}">${ev}${hasY ? " ✓" : ""}</div>
-      <button class="ebtn"${raw(evtAttr("onmousedown", "openFormYaml('" + ev + "')"))}>
-        <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      </button>
-      <button class="edelbtn ${hasY ? "has-yaml" : ""}"${raw(evtAttr("onmousedown", "deleteFormYaml('" + ev + "')"))} title="イベントを削除">✕</button>`;
+            row.innerHTML = render("ev-tpl-row", {
+                ev, hasY,
+                attrOpen: evtAttr("onmousedown", "openFormYaml('" + ev + "')"),
+                attrDelete: evtAttr("onmousedown", "deleteFormYaml('" + ev + "')"),
+            });
             el.appendChild(row);
         });
         return;
@@ -1185,11 +1185,11 @@ function renderEvents() {
         const hasY = w.events?.[ev]?.trim().length > 0;
         const row = document.createElement("div");
         row.className = "erow";
-        row.innerHTML = html`<div class="ek ${hasY ? "has-yaml" : ""}">${ev}${hasY ? " ✓" : ""}</div>
-      <button class="ebtn"${raw(evtAttr("onmousedown", "openYaml(" + w.id + ",'" + ev + "')"))}>
-        <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      </button>
-      <button class="edelbtn ${hasY ? "has-yaml" : ""}"${raw(evtAttr("onmousedown", "deleteYaml(" + w.id + ",'" + ev + "')"))} title="イベントを削除">✕</button>`;
+        row.innerHTML = render("ev-tpl-row", {
+            ev, hasY,
+            attrOpen: evtAttr("onmousedown", "openYaml(" + w.id + ",'" + ev + "')"),
+            attrDelete: evtAttr("onmousedown", "deleteYaml(" + w.id + ",'" + ev + "')"),
+        });
         el.appendChild(row);
     });
 }

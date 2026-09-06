@@ -20,6 +20,7 @@
     const TEMPLATE_FILES = [
         "templates/pinput.html",
         "templates/status.html",
+        "templates/events.html",
     ];
 
     function loadTemplateFileSync(path) {
