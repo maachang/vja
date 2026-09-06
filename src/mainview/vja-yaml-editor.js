@@ -1273,7 +1273,7 @@ function _mockEditorTargetCellHtml(type, selectedTarget, idx) {
         return makePvSel(targetSelId, names, selectedTarget || (names[0] || ""), "");
     }
     // event/session/util: 対象名という概念を持たないため "*" 固定（非活性表示）
-    return "<div class='pv-sel-btn' id='" + targetSelId + "' style='opacity:0.5;cursor:default' onmousedown='event.stopPropagation()'><span>*</span></div>";
+    return render("ye-tpl-mock-target-fixed", { id: targetSelId });
 }
 // 1行分の編集行HTMLを生成する。idxは行を一意に識別するための連番
 // （makePvSel等のDOM要素IDの衝突を避けるため、追加・削除しても使い回さない）。
@@ -1282,16 +1282,13 @@ function _mockEditorRowHtml(row, idx) {
     const target = (row && row.target) || "";
     const json = (row && row.json) || "";
     const typeOpts = Object.keys(_MOCK_TYPE_LABELS).map((t) => ({ value: t, label: _MOCK_TYPE_LABELS[t] }));
-    return "<div class='mock-editor-row' data-idx='" + idx + "' data-type='" + type + "' style='display:flex;gap:6px;margin-bottom:6px;align-items:flex-start'>" +
-        "<div style='width:120px;flex-shrink:0'>" +
-        makePvSel("mock-type-" + idx, typeOpts, type, "mockEditorOnTypeChange(" + idx + ",{value})") +
-        "</div>" +
-        "<div class='mock-target-wrap' id='mock-target-wrap-" + idx + "' style='width:140px;flex-shrink:0'>" +
-        _mockEditorTargetCellHtml(type, target, idx) +
-        "</div>" +
-        "<textarea class='mock-json-ta pv-input' style='flex:1;height:50px;font-family:monospace;font-size:12px;resize:vertical' placeholder='JSON（例: \"検索したい文字\" / {\"type\":\"rowClick\",\"row\":2}）'>" + esc(json) + "</textarea>" +
-        "<button class='yaml-ai-btn' style='padding:4px 8px;flex-shrink:0'" + evtAttr("onmousedown", "this.closest('.mock-editor-row').remove()") + ">🗑</button>" +
-        "</div>";
+    return render("ye-tpl-mock-row", {
+        idx, type,
+        typeSel: makePvSel("mock-type-" + idx, typeOpts, type, "mockEditorOnTypeChange(" + idx + ",{value})"),
+        targetCell: _mockEditorTargetCellHtml(type, target, idx),
+        json,
+        attrRemove: evtAttr("onmousedown", "this.closest('.mock-editor-row').remove()"),
+    });
 }
 // モックタイプが変更された時、対象名欄をそのタイプに応じたものに差し替え、
 // 選択中の値（英語キー）をdata-type属性に保存する（makePvSelの制約への対応）。

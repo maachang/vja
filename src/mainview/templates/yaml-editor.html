@@ -27,3 +27,16 @@ style="height:30px;background:var(--bg3);border:1px solid var(--border);border-r
 <script type="text/vja-tpl" id="ye-tpl-api-ref-line">
 <span style="<%= style %>"><%- highlighted %></span>
 </script>
+
+<script type="text/vja-tpl" id="ye-tpl-mock-target-fixed">
+<div class="pv-sel-btn" id="<%= id %>" style="opacity:0.5;cursor:default" onmousedown="event.stopPropagation()"><span>*</span></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-mock-row">
+<div class="mock-editor-row" data-idx="<%= idx %>" data-type="<%= type %>" style="display:flex;gap:6px;margin-bottom:6px;align-items:flex-start">
+<div style="width:120px;flex-shrink:0"><%- typeSel %></div>
+<div class="mock-target-wrap" id="mock-target-wrap-<%= idx %>" style="width:140px;flex-shrink:0"><%- targetCell %></div>
+<textarea class="mock-json-ta pv-input" style="flex:1;height:50px;font-family:monospace;font-size:12px;resize:vertical" placeholder='JSON（例: "検索したい文字" / {"type":"rowClick","row":2}）'><%= json %></textarea>
+<button class="yaml-ai-btn" style="padding:4px 8px;flex-shrink:0" <%- attrRemove %>>🗑</button>
+</div>
+</script>
