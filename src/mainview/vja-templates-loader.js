@@ -23,6 +23,7 @@
         "templates/events.html",
         "templates/modal.html",
         "templates/cloud-modal.html",
+        "templates/app-config.html",
     ];
 
     function loadTemplateFileSync(path) {

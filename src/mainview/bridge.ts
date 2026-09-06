@@ -142,6 +142,24 @@ const _testRenderCloudModal = () => {
         return { ok: false, error: e.message };
     }
 };
+// 引数無しでモーダルを開く関数を安全に呼び出し、描画結果のHTMLを返す
+// （jhtmlテンプレート移行の検証用。任意コード実行を避けるためホワイトリスト方式）
+const _TEST_OPEN_MODAL_FNS = [
+    "openProjectInfo", "openAppEvents", "openExtRuntime",
+    "openFormConstEditor", "openCloudInfraConfig", "openFontConfig",
+    "openDebugTools",
+];
+const _testOpenModal = (p: { fn: string }) => {
+    const g = window as any;
+    try {
+        if (!_TEST_OPEN_MODAL_FNS.includes(p.fn)) return { ok: false, error: `許可されていない関数: ${p.fn}` };
+        if (typeof g[p.fn] !== "function") return { ok: false, error: `関数が見つかりません: ${p.fn}` };
+        g[p.fn]();
+        return { ok: true, modalRoot: document.getElementById("modal-root")?.innerHTML ?? "" };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
 const _testGetOverrides = (p: { wid: number; evName: string }) => {
     const g = window as any;
     try {
@@ -265,6 +283,7 @@ const rpc = Electroview.defineRPC({
             testSwitchTab: _testSwitchTab,
             testGetPropsHtml: _testGetPropsHtml,
             testRenderCloudModal: _testRenderCloudModal,
+            testOpenModal: _testOpenModal,
             testSaveYaml: _testSaveYaml,
             testDeleteYaml: _testDeleteYaml,
             testGetOverrides: _testGetOverrides,

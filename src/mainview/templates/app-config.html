@@ -1,0 +1,47 @@
+<!--
+    templates/app-config.html
+    vja-app-config.js のモーダル群（アプリイベント/プロジェクト情報/拡張ランタイム/
+    カラム編集/項目編集/フォント設定等）用テンプレート定義。
+    詳細は templates/pinput.html のAIメモを参照。
+-->
+<script type="text/vja-tpl" id="ac-tpl-appev-tab">
+<div class="yaml-tab <%= active %>" id="appev-tab-<%= key %>"><%= label %></div>
+</script>
+
+<script type="text/vja-tpl" id="ac-tpl-appev-hdr">
+<div class="mhdr" style="flex-shrink:0">
+<div style="display:flex;align-items:center;gap:0;flex:1">
+<h4 style="margin:0 12px 0 0">⚡ アプリイベント</h4>
+<div class="yaml-tab-bar" style="border-bottom:none;flex:1"><%- evTabs %></div>
+</div>
+<button class="mclose" <%- attrClose %>>✕</button>
+</div>
+</script>
+
+<script type="text/vja-tpl" id="ac-tpl-project-info">
+<div class="mbody" style="gap:10px">
+<div class="ai-cfg-row"><label>プロジェクト名</label>
+<input id="pi-name" class="pv-input" style="height:28px;font-size:13px" value="<%= name %>" placeholder="マイプロジェクト">
+</div>
+<div class="ai-cfg-row"><label>説明</label>
+<textarea id="pi-desc" class="pv-textarea" style="height:60px;font-size:13px"><%= description %></textarea>
+</div>
+<div class="ai-cfg-row"><label>バージョン</label>
+<div style="display:flex;align-items:center;gap:4px;flex:1">
+<input id="pi-ver" class="pv-input" style="height:28px;font-size:13px;flex:1" value="<%= version %>" placeholder="1.0.0">
+<button <%- attrVerUp %> style="width:24px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);cursor:pointer;font-size:11px;flex-shrink:0">▲</button>
+<button <%- attrVerDown %> style="width:24px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);cursor:pointer;font-size:11px;flex-shrink:0">▼</button>
+</div>
+</div>
+<div class="ai-cfg-row"><label>作成者</label>
+<input id="pi-author" class="pv-input" style="height:28px;font-size:13px" value="<%= author %>" placeholder="作成者名">
+</div>
+<div class="ai-cfg-row"><label>会社名</label>
+<input id="pi-company" class="pv-input" style="height:28px;font-size:13px" value="<%= company %>" placeholder="会社・組織名">
+</div>
+</div>
+<div class="mfoot">
+<button <%- attrCancel %>>キャンセル</button>
+<button class="pri" id="pi-save-btn">保存</button>
+</div>
+</script>

@@ -88,6 +88,15 @@ server.registerTool(
 );
 
 server.registerTool(
+    "vja_open_modal",
+    {
+        description: "引数無しでモーダルを開く関数（openProjectInfo等、ホワイトリスト方式）を呼び出し、描画結果のHTML（modal-root）を返す（jhtmlテンプレート移行の検証用）",
+        inputSchema: { fn: z.string().describe("呼び出す関数名（例: openProjectInfo, openAppEvents, openExtRuntime, openFormConstEditor, openCloudInfraConfig, openFontConfig, openDebugTools）") },
+    },
+    async (args) => toToolResult(await callVja("testOpenModal", args)),
+);
+
+server.registerTool(
     "vja_switch_tab",
     {
         description: "プロパティパネルの表示タブを切り替える（p=プロパティ, e=イベント）。イベントタブの描画結果を確認する前の下準備用",

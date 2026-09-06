@@ -67,24 +67,21 @@ function openAppEvents(evKey) {
         : "// ⚠️ このコードはBun側でTypeScriptとして実行されます（アプリ終了時）\n// vja.db / vja.session 等が使用できます\n\n";
     const curJs = ae[evKey] || _tsHint;
     const curDoc = ae[evKey + "_doc"] || "";
-    const evTabs = APP_EV_TYPES.map(t =>
-        "<div class='yaml-tab " + (t.key === evKey ? "active" : "") + "' " +
-        "id='appev-tab-" + t.key + "'>" + t.label + "</div>"
-    ).join("");
+    const evTabs = APP_EV_TYPES.map(t => render("ac-tpl-appev-tab", {
+        active: t.key === evKey ? "active" : "",
+        key: t.key,
+        label: t.label,
+    })).join("");
     pvRegister("yamlSave", saveAppEvent);
     pvRegister("yamlTextToYaml", () => textToYamlGenerate("appev", evKey));
     pvRegister("yamlAiGen", () => yamlAiGenerate("appev", evKey));
     pvRegister("yamlAiGenRandom", () => yamlAiGenerate("appev", evKey, _getBoostedTemperature()));
     pvRegister("yamlMockCheck", () => manualMockCheck(true, evKey, undefined, "appev"));
     pvRegister("yamlMockEdit", () => openMockOverrideEditor("appev", evKey));
-    const appEvHeader =
-        "<div class='mhdr' style='flex-shrink:0'>" +
-        "<div style='display:flex;align-items:center;gap:0;flex:1'>" +
-        "<h4 style='margin:0 12px 0 0'>⚡ アプリイベント</h4>" +
-        "<div class='yaml-tab-bar' style='border-bottom:none;flex:1'>" + evTabs + "</div>" +
-        "</div>" +
-        "<button class='mclose'" + evtAttr("onmousedown", "closeModal()") + ">✕</button>" +
-        "</div>";
+    const appEvHeader = render("ac-tpl-appev-hdr", {
+        evTabs,
+        attrClose: evtAttr("onmousedown", "closeModal()"),
+    });
     showModal(buildYamlEditorHTML(cur, curJs, false, appEvHeader, "", null, true, "appev", evKey, curDoc));
     initYamlEditorModal(cur, curJs, () => {
         APP_EV_TYPES.forEach(t => {
@@ -107,31 +104,16 @@ function saveAppEvent() {
 function openProjectInfo() {
     showModal(
         mhdrHTML("📁 プロジェクト情報") +
-        "<div class='mbody' style='gap:10px'>" +
-        "<div class='ai-cfg-row'><label>プロジェクト名</label>" +
-        "<input id='pi-name' class='pv-input' style='height:28px;font-size:13px' value='" + esc(getProjectData().projectInfo.name) + "' placeholder='マイプロジェクト'>" +
-        "</div>" +
-        "<div class='ai-cfg-row'><label>説明</label>" +
-        "<textarea id='pi-desc' class='pv-textarea' style='height:60px;font-size:13px'>" + esc(getProjectData().projectInfo.description) + "</textarea>" +
-        "</div>" +
-        "<div class='ai-cfg-row'><label>バージョン</label>" +
-        "<div style='display:flex;align-items:center;gap:4px;flex:1'>" +
-        "<input id='pi-ver' class='pv-input' style='height:28px;font-size:13px;flex:1' value='" + esc(getProjectData().projectInfo.version) + "' placeholder='1.0.0'>" +
-        "<button" + evtAttr("onmousedown", "piVerStep(1)") + " style='width:24px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);cursor:pointer;font-size:11px;flex-shrink:0'>▲</button>" +
-        "<button" + evtAttr("onmousedown", "piVerStep(-1)") + " style='width:24px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);cursor:pointer;font-size:11px;flex-shrink:0'>▼</button>" +
-        "</div>" +
-        "</div>" +
-        "<div class='ai-cfg-row'><label>作成者</label>" +
-        "<input id='pi-author' class='pv-input' style='height:28px;font-size:13px' value='" + esc(getProjectData().projectInfo.author) + "' placeholder='作成者名'>" +
-        "</div>" +
-        "<div class='ai-cfg-row'><label>会社名</label>" +
-        "<input id='pi-company' class='pv-input' style='height:28px;font-size:13px' value='" + esc(getProjectData().projectInfo.company) + "' placeholder='会社・組織名'>" +
-        "</div>" +
-        "</div>" +
-        "<div class='mfoot'>" +
-        "<button" + evtAttr("onmousedown", "piCancel()") + ">キャンセル</button>" +
-        "<button class='pri' id='pi-save-btn'>保存</button>" +
-        "</div>"
+        render("ac-tpl-project-info", {
+            name: getProjectData().projectInfo.name,
+            description: getProjectData().projectInfo.description,
+            version: getProjectData().projectInfo.version,
+            attrVerUp: evtAttr("onmousedown", "piVerStep(1)"),
+            attrVerDown: evtAttr("onmousedown", "piVerStep(-1)"),
+            author: getProjectData().projectInfo.author,
+            company: getProjectData().projectInfo.company,
+            attrCancel: evtAttr("onmousedown", "piCancel()"),
+        })
     );
     rAfBind("#pi-save-btn", "click", saveProjectInfo);
 }
