@@ -82,6 +82,14 @@ style="height:30px;background:var(--bg3);border:1px solid var(--border);border-r
 </div>
 </script>
 
+<script type="text/vja-tpl" id="ye-tpl-model-empty">
+<div class="pv-sel-opt">（ルーターモードONで更新）</div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-model-opt">
+<div class="pv-sel-opt <%= active %>" <%- attr %>><%= label %></div>
+</script>
+
 <script type="text/vja-tpl" id="ye-tpl-mock-row">
 <div class="mock-editor-row" data-idx="<%= idx %>" data-type="<%= type %>" style="display:flex;gap:6px;margin-bottom:6px;align-items:flex-start">
 <div style="width:120px;flex-shrink:0"><%- typeSel %></div>

@@ -4416,12 +4416,13 @@ function aiCfgDeletePreset() {
 // モデルリストのHTML生成
 function aiCfgModelListHtml(models, current, isRouter) {
     if (!isRouter || !models || models.length === 0) {
-        return "<div class='pv-sel-opt'>（ルーターモードONで更新）</div>";
+        return render("ye-tpl-model-empty", {});
     }
-    return models.map(m =>
-        "<div class='pv-sel-opt " + (m === current ? "active" : "") + "'" +
-        evtAttr("onmousedown", "pvSelPick('ai-model-sel','" + String(m).replace(/'/g, "\\'") + "',event);$('ai-model-label').textContent='" + String(m).replace(/'/g, "\\'") + "'") + ">" + esc(m) + "</div>"
-    ).join("");
+    return models.map(m => render("ye-tpl-model-opt", {
+        active: m === current ? "active" : "",
+        attr: evtAttr("onmousedown", "pvSelPick('ai-model-sel','" + String(m).replace(/'/g, "\\'") + "',event);$('ai-model-label').textContent='" + String(m).replace(/'/g, "\\'") + "'"),
+        label: m,
+    })).join("");
 }
 
 // ルーターモード切り替え

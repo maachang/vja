@@ -148,6 +148,7 @@ const _TEST_OPEN_MODAL_FNS = [
     "openProjectInfo", "openAppEvents", "openExtRuntime",
     "openFormConstEditor", "openCloudInfraConfig", "openFontConfig",
     "openDebugTools", "openApiRef", "openAiValidationDetailModal", "openFormDesignAi",
+    "openAiConfig",
 ];
 const _testOpenModal = (p: { fn: string }) => {
     const g = window as any;
