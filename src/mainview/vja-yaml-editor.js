@@ -1260,18 +1260,14 @@ function openMockOverrideEditor(wid, evName) {
     const rowsHtml = rows.map((row) => _mockEditorRowHtml(row, _mockEditorRowSeq++)).join("");
     showModal(
         mhdrHTML("⚙ モック値を編集（" + esc(String(evName)) + "）", "modal-layer-1") +
-        "<div class='mbody' style='display:flex;flex-direction:column;gap:8px'>" +
-        "<div style='font-size:12px;color:var(--text2)'>" +
-        "「🧪 モック実行」やAI生成後の自動検証で使うダミー値を、明示的に指定できます。" +
-        "対応するのはウィジェット・イベント・定数・セッション・ユーティリティの5種類のみです（DB操作は対象外）。" +
-        "</div>" +
-        "<div id='mock-editor-rows' style='max-height:min(50vh,420px);overflow-y:auto;padding-right:4px'>" + rowsHtml + "</div>" +
-        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "mockEditorAddRow()") + ">＋ 行を追加</button>" +
-        "</div>" +
-        "<div class='mfoot'>" +
-        mfootHTML([{ label: "キャンセル", action: 'closeModal("modal-layer-1")' }]) +
-        "<button class='pri'" + evtAttr("onmousedown", "saveMockOverrides(" + JSON.stringify(wid) + "," + JSON.stringify(evName) + ")") + ">保存</button>" +
-        "</div>",
+        render("ye-tpl-mock-editor-body", {
+            rowsHtml,
+            attrAdd: evtAttr("onmousedown", "mockEditorAddRow()"),
+        }) +
+        render("ye-tpl-mock-editor-footer", {
+            footBtns: mfootHTML([{ label: "キャンセル", action: 'closeModal("modal-layer-1")' }]),
+            attrSave: evtAttr("onmousedown", "saveMockOverrides(" + JSON.stringify(wid) + "," + JSON.stringify(evName) + ")"),
+        }),
         "modal-mock-editor", "modal-layer-1"
     );
 }
