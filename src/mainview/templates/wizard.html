@@ -37,6 +37,38 @@
 </div>
 </script>
 
+<script type="text/vja-tpl" id="wz-tpl-qa-status-badge">
+<span style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid var(--border);<%= style %>"><%= checkmark %><%= label %></span>
+</script>
+
+<script type="text/vja-tpl" id="wz-tpl-qa-status-wrap">
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><%- badges %></div>
+</script>
+
+<script type="text/vja-tpl" id="wz-tpl-qa-option-btn">
+<button class="tb-btn" style="text-align:left;padding:6px 10px" <%- attr %>><%= no %>. <%= label %></button>
+</script>
+
+<script type="text/vja-tpl" id="wz-tpl-qa-options-wrap">
+<div style="display:flex;flex-direction:column;gap:6px"><%- buttons %></div>
+<div class="infobox" style="font-size:11px"><%= hint %></div>
+</script>
+
+<script type="text/vja-tpl" id="wz-tpl-qa-body">
+<div class="mbody" style="gap:10px">
+<%- stepIndicator %>
+<%- statusHtml %>
+<div class="infobox"><%= question %></div>
+<%- optionsHtml %>
+<textarea id="wiz-qa-answer" class="pv-textarea" style="height:80px;font-size:13px" placeholder="<%= placeholder %>"><%= answer %></textarea>
+</div>
+<div class="mfoot">
+<button <%- attrBack %> <%= backDisabled %>>← 戻る</button>
+<button <%- attrComplete %>>完了</button>
+<button class="pri" <%- attrNext %>>次へ →</button>
+</div>
+</script>
+
 <script type="text/vja-tpl" id="wz-tpl-resume-body">
 <div class="mbody" style="gap:10px">
 <div class="infobox">前回、プロジェクト作成ウィザードが完了する前に中断されたようです。続きから再開しますか？</div>

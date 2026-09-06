@@ -374,41 +374,41 @@ function _wizardRenderQaModal() {
     const isFirst = idx === 0;
 
     const statusHtml = WIZARD_STATE.qaStatus.length > 0
-        ? "<div style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px'>" +
-        WIZARD_STATE.qaStatus.map((s) =>
-            "<span style='font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid var(--border);" +
-            (s.done ? "background:var(--accent2, #2a6);color:#fff" : "background:var(--bg2);color:var(--text3)") + "'>" +
-            (s.done ? "✓ " : "") + esc(s.label) + "</span>"
-        ).join("") + "</div>"
+        ? render("wz-tpl-qa-status-wrap", {
+            badges: WIZARD_STATE.qaStatus.map((s) => render("wz-tpl-qa-status-badge", {
+                style: s.done ? "background:var(--accent2, #2a6);color:#fff" : "background:var(--bg2);color:var(--text3)",
+                checkmark: s.done ? "✓ " : "",
+                label: s.label,
+            })).join(""),
+        })
         : "";
 
     const hasOptions = Array.isArray(qa.options) && qa.options.length > 0;
     const isMulti = qa.answerType === "multi_choice";
     const optionsHtml = hasOptions
-        ? "<div style='display:flex;flex-direction:column;gap:6px'>" +
-        qa.options.map((opt, i) =>
-            "<button class='tb-btn' style='text-align:left;padding:6px 10px'" +
-            evtAttr("onmousedown", "wizardQaPickOption(" + i + ")") + ">" + (i + 1) + ". " + esc(opt) + "</button>"
-        ).join("") + "</div>" +
-        "<div class='infobox' style='font-size:11px'>" +
-        (isMulti ? "複数選択可。ボタンで選ぶか、番号をカンマ区切りで入力してください（例: 1,3）" : "ボタンで選ぶか、番号を入力してください（例: 2）") +
-        "</div>"
+        ? render("wz-tpl-qa-options-wrap", {
+            buttons: qa.options.map((opt, i) => render("wz-tpl-qa-option-btn", {
+                attr: evtAttr("onmousedown", "wizardQaPickOption(" + i + ")"),
+                no: i + 1, label: opt,
+            })).join(""),
+            hint: isMulti ? "複数選択可。ボタンで選ぶか、番号をカンマ区切りで入力してください（例: 1,3）" : "ボタンで選ぶか、番号を入力してください（例: 2）",
+        })
         : "";
 
     showModal(
         mhdrHTML("🧙 ウィザード（" + (idx + 1) + "問目）") +
-        "<div class='mbody' style='gap:10px'>" +
-        _wizardRenderStepIndicator() +
-        statusHtml +
-        "<div class='infobox'>" + esc(qa.question) + "</div>" +
-        optionsHtml +
-        "<textarea id='wiz-qa-answer' class='pv-textarea' style='height:80px;font-size:13px' placeholder='" + (hasOptions ? "番号または自由入力" : "自由に入力してください") + "'>" + esc(qa.answer || "") + "</textarea>" +
-        "</div>" +
-        "<div class='mfoot'>" +
-        "<button" + evtAttr("onmousedown", "wizardQaBack()") + (isFirst ? " disabled" : "") + ">← 戻る</button>" +
-        "<button" + evtAttr("onmousedown", "wizardQaComplete()") + ">完了</button>" +
-        "<button class='pri'" + evtAttr("onmousedown", "wizardQaNext()") + ">次へ →</button>" +
-        "</div>"
+        render("wz-tpl-qa-body", {
+            stepIndicator: _wizardRenderStepIndicator(),
+            statusHtml,
+            question: qa.question,
+            optionsHtml,
+            placeholder: hasOptions ? "番号または自由入力" : "自由に入力してください",
+            answer: qa.answer || "",
+            attrBack: evtAttr("onmousedown", "wizardQaBack()"),
+            backDisabled: isFirst ? "disabled" : "",
+            attrComplete: evtAttr("onmousedown", "wizardQaComplete()"),
+            attrNext: evtAttr("onmousedown", "wizardQaNext()"),
+        })
     );
     setTimeout(() => $("wiz-qa-answer")?.focus(), 0);
 }
