@@ -649,11 +649,12 @@ function yamlBuildFormDesignRightPanel() {
 
 // アコーディオンセクションHTML
 function yamlRpSection(title, body, open = true) {
-    return "<div class='yaml-rpanel-section'>"
-        + "<div class='yaml-rpanel-hdr " + (open ? "open" : "") + "'>"
-        + title + "<span class='rp-arrow'>" + (open ? "▼" : "▶") + "</span></div>"
-        + "<div class='yaml-rpanel-body " + (open ? "open" : "") + "'>" + body + "</div>"
-        + "</div>";
+    return render("ye-tpl-rpanel-section", {
+        open: open ? "open" : "",
+        title,
+        arrow: open ? "▼" : "▶",
+        body,
+    });
 }
 
 // アコーディオン開閉
@@ -3884,14 +3885,7 @@ function parseFormDesignJson(text) {
 function openAiRawOutputModal(rawText) {
     showModal(
         mhdrHTML("⚠ AI出力の解析に失敗しました") +
-        "<div class='mbody' style='display:flex;flex-direction:column;gap:8px'>" +
-        "<div style='color:var(--text2);font-size:13px'>" +
-        "AIの生データ（JSON形式として解釈できませんでした）。内容を確認・コピーできます。" +
-        "</div>" +
-        "<textarea readonly style='width:100%;height:320px;font-family:monospace;font-size:12px'>" +
-        esc(rawText) +
-        "</textarea>" +
-        "</div>" +
+        render("ye-tpl-ai-raw-output", { rawText }) +
         mfootHTML([{ label: "閉じる", action: "closeModal()" }])
     );
 }

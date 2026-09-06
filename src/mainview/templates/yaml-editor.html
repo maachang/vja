@@ -387,6 +387,20 @@ style="height:30px;background:var(--bg3);border:1px solid var(--border);border-r
 <div class="mfoot"><%- footBtns %><button class="pri" <%- attrConfirm %>>確定</button></div>
 </script>
 
+<script type="text/vja-tpl" id="ye-tpl-rpanel-section">
+<div class="yaml-rpanel-section">
+<div class="yaml-rpanel-hdr <%= open %>"><%- title %><span class="rp-arrow"><%= arrow %></span></div>
+<div class="yaml-rpanel-body <%= open %>"><%- body %></div>
+</div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-ai-raw-output">
+<div class="mbody" style="display:flex;flex-direction:column;gap:8px">
+<div style="color:var(--text2);font-size:13px">AIの生データ（JSON形式として解釈できませんでした）。内容を確認・コピーできます。</div>
+<textarea readonly style="width:100%;height:320px;font-family:monospace;font-size:12px"><%= rawText %></textarea>
+</div>
+</script>
+
 <script type="text/vja-tpl" id="ye-tpl-mock-row">
 <div class="mock-editor-row" data-idx="<%= idx %>" data-type="<%= type %>" style="display:flex;gap:6px;margin-bottom:6px;align-items:flex-start">
 <div style="width:120px;flex-shrink:0"><%- typeSel %></div>
