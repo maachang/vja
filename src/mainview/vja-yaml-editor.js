@@ -3670,9 +3670,12 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
     // カスタムタブ構成
     if (tabConfig) {
         const tabs = tabConfig.tabs || [];
-        const tabBar = tabs.map((t, idx) =>
-            `<div class='yaml-tab ${idx === 0 ? "active" : ""}' id='tab-${t.id}' ${evtAttr("onmousedown", `yamlTabSwitch("${t.id}")`)}>${t.label}</div>`
-        ).join("");
+        const tabBar = tabs.map((t, idx) => render("ye-tpl-custom-tab-item", {
+            active: idx === 0 ? "active" : "",
+            id: t.id,
+            attr: evtAttr("onmousedown", `yamlTabSwitch("${t.id}")`),
+            label: t.label,
+        })).join("");
         const panes = tabs.map((t, idx) => {
             const isDoc = t.type === "doc";
             const isJs = t.type === "js";
@@ -3680,155 +3683,101 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
             if (isLayout) {
                 // レイアウトイメージ選択タブ: エディタ(ガター/テキストエリア)ではなく、
                 // 箱型ダイアグラムのカード一覧を表示する専用ペイン。
-                return `<div class='yaml-pane ${idx === 0 ? "active" : ""}' id='pane-${t.id}' style='overflow-y:auto;padding:10px'>` +
-                    buildFormLayoutPickerHtml() +
-                    `</div>`;
+                return render("ye-tpl-custom-pane-layout", {
+                    active: idx === 0 ? "active" : "",
+                    id: t.id,
+                    picker: buildFormLayoutPickerHtml(),
+                });
             }
             const hlWrap = isJs ? "js-hl-wrap" : "yaml-hl-wrap";
             const hlBg = isJs ? "js-hl-bg" : "yaml-hl-bg";
             const styleAttr = isDoc
                 ? `style='color:var(--text) !important;background:transparent;caret-color:var(--text);width:100%;height:100%;display:block;box-sizing:border-box;resize:none'`
                 : `style='height:100%;min-height:300px'`;
+            const attrPh = t.ph ? ` placeholder='${esc(t.ph)}'` : "";
 
             const mainInner = isDoc
-                ? `<textarea class='yaml' id='ta-${t.id}' autocorrect='off' autocapitalize='off' spellcheck='false' ${styleAttr}` +
-                  evtAttr("oninput", `editorUpdateGutter("ta-${t.id}","gutter-${t.id}")`) +
-                  evtAttr("onscroll", `editorSyncGutter("ta-${t.id}","gutter-${t.id}")`) +
-                  (t.ph ? ` placeholder='${esc(t.ph)}'` : "") + `>` + esc(t.val || "") + `</textarea>`
-                : `<div class='${hlWrap}'>` +
-                  `<div class='${hlBg}' id='hl-${t.id}'></div>` +
-                  `<textarea class='yaml' id='ta-${t.id}' autocorrect='off' autocapitalize='off' spellcheck='false' ${styleAttr}` +
-                  evtAttr("oninput", `editorHlUpdate("ta-${t.id}")`) +
-                  evtAttr("onscroll", `hlSync("ta-${t.id}","hl-${t.id}");editorSyncGutter("ta-${t.id}","gutter-${t.id}")`) +
-                  (t.ph ? ` placeholder='${esc(t.ph)}'` : "") + `>` + esc(t.val || "") + `</textarea>` +
-                  `</div>`;
+                ? render("ye-tpl-custom-main-doc", {
+                    id: t.id, styleAttr,
+                    attrInput: evtAttr("oninput", `editorUpdateGutter("ta-${t.id}","gutter-${t.id}")`),
+                    attrScroll: evtAttr("onscroll", `editorSyncGutter("ta-${t.id}","gutter-${t.id}")`),
+                    attrPh, val: t.val || "",
+                })
+                : render("ye-tpl-custom-main-code", {
+                    id: t.id, styleAttr, hlWrap, hlBg,
+                    attrInput: evtAttr("oninput", `editorHlUpdate("ta-${t.id}")`),
+                    attrScroll: evtAttr("onscroll", `hlSync("ta-${t.id}","hl-${t.id}");editorSyncGutter("ta-${t.id}","gutter-${t.id}")`),
+                    attrPh, val: t.val || "",
+                });
 
-            return `<div class='yaml-pane ${idx === 0 ? "active" : ""}' id='pane-${t.id}'>` +
-                `<div class='editor-wrap'>` +
-                `<div class='editor-gutter' id='gutter-${t.id}'></div>` +
-                `<div class='editor-main'>` +
-                mainInner +
-                `</div></div></div>`;
+            return render("ye-tpl-custom-pane-editor", {
+                active: idx === 0 ? "active" : "",
+                id: t.id,
+                mainInner,
+            });
         }).join("");
-        const aiBar = tabConfig.aiBar
-            ? `<div class='yaml-ai-bar'>${tabConfig.aiBar}</div>`
-            : "";
+        const aiBar = render("ye-tpl-ai-bar-wrap", { inner: tabConfig.aiBar || "" });
         const saveBtn = tabConfig.saveAction
-            ? `<button class='pri'${evtAttr("onmousedown", tabConfig.saveAction)}>保存</button>`
+            ? render("ye-tpl-save-btn", { attr: evtAttr("onmousedown", tabConfig.saveAction) })
             : "";
         const rightPanelHtml = tabConfig.rightPanel === "formDesign"
-            ? "<div class='yaml-resize-handle' id='yaml-rhandle'></div>" +
-              "<div class='yaml-editor-right' id='yaml-rpanel'>" + yamlBuildFormDesignRightPanel() + "</div>"
-            : "<div class='yaml-editor-right' style='display:none'></div>";
-        return (
-            "<div class='modal-yaml'>" +
-            headerHTML +
-            "<div class='mbody' style='padding:0;gap:0;overflow:hidden;display:flex;flex-direction:column'>" +
-            "<div class='yaml-editor-layout' id='yaml-layout'>" +
-            "<div class='yaml-editor-left'>" +
-            "<div class='yaml-tab-bar'>" + tabBar + "</div>" +
-            panes +
-            (aiBar ? aiBar : "<div class='yaml-ai-bar'></div>") +
-            "</div>" +
-            rightPanelHtml +
-            "</div>" +
-            "</div>" +
-            "<div class='mfoot'>" +
-            mfootHTML([{ label: "キャンセル", action: "closeModal()" }]) +
-            saveBtn +
-            "</div>" +
-            "</div>"
-        );
+            ? render("ye-tpl-formdesign-right", { panel: yamlBuildFormDesignRightPanel() })
+            : render("ye-tpl-no-right", {});
+        return render("ye-tpl-custom-body", {
+            headerHTML,
+            tabBar,
+            panes,
+            aiBar,
+            rightPanelHtml,
+            footBtns: mfootHTML([{ label: "キャンセル", action: "closeModal()" }]),
+            saveBtn,
+        });
     }
 
-    return (
-        "<div class='modal-yaml'>" +
-        headerHTML +
-        "<div class='mbody' style='padding:0;gap:0;overflow:hidden;display:flex;flex-direction:column'>" +
-        (extraTabsHTML ? "<div class='yaml-ev-tabs'>" + extraTabsHTML + "</div>" : "") +
-        "<div class='yaml-editor-layout' id='yaml-layout'>" +
-        "<div class='yaml-editor-left'>" +
-        "<div class='yaml-tab-bar'>" +
-        "<div class='yaml-tab active' id='tab-yaml'" + evtAttr("onmousedown", "yamlTabSwitch(\"yaml\")") + ">📋 YAML</div>" +
-        "<div class='yaml-tab' id='tab-prompt'" + evtAttr("onmousedown", "yamlTabSwitch(\"prompt\")") + ">✨ YAMLドラフト</div>" +
-        "<div class='yaml-tab' id='tab-js'" + evtAttr("onmousedown", "yamlTabSwitch(\"js\");jsHlUpdate();") + ">📜 JavaScript</div>" +
-        "<button class='yaml-api-ref-btn' style='margin-left:auto'" + evtAttr("onmousedown", "openApiRef(" + isAppEvent + ")") + ">📖 API</button>" +
-        "<button class='yaml-api-ref-btn' id='ai-mock-btn' style='margin-left:0' title='現在JavaScriptタブに表示されている内容を、モックVJAランタイムで試験実行します'" +
-        evtAttr("onmousedown", "pvCall(\"yamlMockCheck\")") + ">🧪 モック</button>" +
-        "<button class='yaml-api-ref-btn' id='ai-mock-edit-btn' style='margin-left:0' title='モック実行で使うダミー値を上書き設定します'" +
-        evtAttr("onmousedown", "pvCall(\"yamlMockEdit\")") + ">⚙ モック編集</button>" +
-        "</div>" +
-        "<div class='yaml-pane active' id='pane-yaml'>" +
-        "<div class='editor-wrap'>" +
-        "<div class='editor-gutter' id='yaml-gutter'></div>" +
-        "<div class='editor-main'>" +
-        "<div class='yaml-hl-wrap'>" +
-        "<div class='yaml-hl-bg' id='yaml-hl'></div>" +
-        "<textarea class='yaml' id='yaml-ta' autocorrect='off' autocapitalize='off' spellcheck='false' " +
-        evtAttr("oninput", "yamlHlUpdate();editorUpdateGutter(\"yaml-ta\",\"yaml-gutter\")") + " " +
-        evtAttr("onscroll", "yamlHlSync();editorSyncGutter(\"yaml-ta\",\"yaml-gutter\")") + " " +
-        ">" + esc(cur) + "</textarea>" +
-        "</div></div></div></div>" +
-        "<div class='yaml-pane' id='pane-prompt'>" +
-        "<div class='editor-wrap'>" +
-        "<div class='editor-gutter' id='prompt-gutter'></div>" +
-        "<div class='editor-main'>" +
-        "<textarea class='yaml' id='prompt-ta' autocorrect='off' autocapitalize='off' spellcheck='false' style='color:var(--text) !important;background:transparent;caret-color:var(--text);width:100%;height:100%;display:block;box-sizing:border-box;resize:none' " +
-        evtAttr("oninput", "editorUpdateGutter(\"prompt-ta\",\"prompt-gutter\")") + " " +
-        evtAttr("onscroll", "editorSyncGutter(\"prompt-ta\",\"prompt-gutter\")") + " " +
-        "placeholder='✨ やりたい処理の概要を日本語で自由に記述できます（複数行可）&#10;&#10;例:&#10;1. 入力されたユーザー名で users テーブルをSQL部分一致検索する&#10;2. 検索結果を datagrid (tblResult) に表示する&#10;3. 検索件数をトーストで表示する'>" + esc(curDoc) + "</textarea>" +
-        "</div></div></div>" +
-        "<div class='yaml-pane' id='pane-js'>" +
-        "<div class='editor-wrap'>" +
-        "<div class='editor-gutter' id='js-gutter'></div>" +
-        "<div class='editor-main'>" +
-        "<div class='js-hl-wrap'>" +
-        "<div class='js-hl-bg' id='js-hl'></div>" +
-        "<textarea class='yaml' id='js-ta' autocorrect='off' autocapitalize='off' spellcheck='false' " +
-        evtAttr("oninput", "jsHlUpdate();editorUpdateGutter(\"js-ta\",\"js-gutter\")") + " " +
-        evtAttr("onscroll", "jsHlSync();editorSyncGutter(\"js-ta\",\"js-gutter\")") + " " +
-        "placeholder='// AIでJavaScriptを生成、または直接編集できます'>" + esc(curJs) + "</textarea>" +
-        "</div></div></div></div>" +
-        "<div class='yaml-ai-bar' style='padding-bottom:8px;flex-direction:column;align-items:stretch;gap:4px'>" +
-        "<div style='display:flex;align-items:center;gap:4px'>" +
-        "<input id='ai-prompt-in' placeholder='AIへの補足指示（任意）' style='flex:1'>" +
-        "<button class='yaml-ai-btn' id='ai-gen-yaml-btn' title='依頼内容からイベントYAMLドラフトを作成します'" +
-        evtAttr("onmousedown", "pvCall(\"yamlTextToYaml\")") + ">✨ YAMLドラフト生成</button>" +
-        "<button class='yaml-ai-btn' id='ai-gen-random-btn' title='temperatureを一時的に上げて再生成します（同じ間違いを繰り返す場合に）'" +
-        evtAttr("onmousedown", "pvCall(\"yamlAiGenRandom\")") + ">🎲 再生成</button>" +
-        "<button class='yaml-ai-btn' id='ai-gen-btn'" + evtAttr("onmousedown", "pvCall(\"yamlAiGen\")") + ">" +
-        (aiEnabled ? "🤖 JSコード生成" : "🤖 JSコード生成（設定要）") + "</button>" +
-        "<span class='yaml-ai-right-spacer' id='ai-status'></span>" +
-        "</div>" +
-        "<div style='display:flex;align-items:center;gap:4px'>" +
-        "<input id='editor-search-in' placeholder='検索ワード（Ctrl+F）' style='flex:1' " +
-        evtAttr("onkeydown", "if(event.key===\"Enter\"){event.preventDefault();editorSearch();}") + " " +
-        evtAttr("oninput", "getEditorContext().searchLast={taId:null,word:\"\",pos:0}") + ">" +
-        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "event.preventDefault();$(\"editor-search-in\").value=\"\";$(\"editor-replace-in\").value=\"\";getEditorContext().searchLast={taId:null,word:\"\",pos:0}") + ">✕</button>" +
-        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "event.preventDefault();editorSearch()") + ">🔍 検索</button>" +
-        "<span class='yaml-ai-right-spacer'></span>" +
-        "</div>" +
-        "<div style='display:flex;align-items:center;gap:4px'>" +
-        "<input id='editor-replace-in' placeholder='置換後の文字列' style='flex:1' " +
-        evtAttr("onkeydown", "if(event.key===\"Enter\"){event.preventDefault();editorReplace();}") + ">" +
-        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "event.preventDefault();editorReplace()") + ">置換</button>" +
-        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "event.preventDefault();editorReplaceAll()") + ">すべて置換</button>" +
-        "<span class='yaml-ai-right-spacer'></span>" +
-        "</div>" +
-        "</div>" +
-        "</div>" +
-        "<div class='yaml-resize-handle' id='yaml-rhandle'></div>" +
-        "<div class='yaml-editor-right' id='yaml-rpanel'>" +
-        yamlBuildRightPanel(showWidgets, wid, evName, isAppEvent, cur) +
-        "</div>" +
-        "</div>" +
-        "</div>" +
-        "<div class='mfoot'>" +
-        mfootHTML([{ label: "キャンセル", action: "closeModal()" }]) +
-        "<button class='pri'" + evtAttr("onmousedown", "pvCall(\"yamlSave\")") + ">保存</button>" +
-        "</div>" +
-        "</div>"
-    );
+    const tabBar = render("ye-tpl-default-tabbar", {
+        attrYaml: evtAttr("onmousedown", "yamlTabSwitch(\"yaml\")"),
+        attrPrompt: evtAttr("onmousedown", "yamlTabSwitch(\"prompt\")"),
+        attrJs: evtAttr("onmousedown", "yamlTabSwitch(\"js\");jsHlUpdate();"),
+        attrApiRef: evtAttr("onmousedown", "openApiRef(" + isAppEvent + ")"),
+        attrMockCheck: evtAttr("onmousedown", "pvCall(\"yamlMockCheck\")"),
+        attrMockEdit: evtAttr("onmousedown", "pvCall(\"yamlMockEdit\")"),
+    });
+    const paneYaml = render("ye-tpl-default-pane-yaml", {
+        cur,
+        attrInput: evtAttr("oninput", "yamlHlUpdate();editorUpdateGutter(\"yaml-ta\",\"yaml-gutter\")"),
+        attrScroll: evtAttr("onscroll", "yamlHlSync();editorSyncGutter(\"yaml-ta\",\"yaml-gutter\")"),
+    });
+    const panePrompt = render("ye-tpl-default-pane-prompt", {
+        curDoc,
+        attrInput: evtAttr("oninput", "editorUpdateGutter(\"prompt-ta\",\"prompt-gutter\")"),
+        attrScroll: evtAttr("onscroll", "editorSyncGutter(\"prompt-ta\",\"prompt-gutter\")"),
+    });
+    const paneJs = render("ye-tpl-default-pane-js", {
+        curJs,
+        attrInput: evtAttr("oninput", "jsHlUpdate();editorUpdateGutter(\"js-ta\",\"js-gutter\")"),
+        attrScroll: evtAttr("onscroll", "jsHlSync();editorSyncGutter(\"js-ta\",\"js-gutter\")"),
+    });
+    const aiBar = render("ye-tpl-default-ai-bar", {
+        attrGenYaml: evtAttr("onmousedown", "pvCall(\"yamlTextToYaml\")"),
+        attrGenRandom: evtAttr("onmousedown", "pvCall(\"yamlAiGenRandom\")"),
+        attrGen: evtAttr("onmousedown", "pvCall(\"yamlAiGen\")"),
+        genLabel: aiEnabled ? "🤖 JSコード生成" : "🤖 JSコード生成（設定要）",
+        attrSearchEnter: evtAttr("onkeydown", "if(event.key===\"Enter\"){event.preventDefault();editorSearch();}"),
+        attrSearchInput: evtAttr("oninput", "getEditorContext().searchLast={taId:null,word:\"\",pos:0}"),
+        attrSearchClear: evtAttr("onmousedown", "event.preventDefault();$(\"editor-search-in\").value=\"\";$(\"editor-replace-in\").value=\"\";getEditorContext().searchLast={taId:null,word:\"\",pos:0}"),
+        attrSearchGo: evtAttr("onmousedown", "event.preventDefault();editorSearch()"),
+        attrReplaceEnter: evtAttr("onkeydown", "if(event.key===\"Enter\"){event.preventDefault();editorReplace();}"),
+        attrReplace: evtAttr("onmousedown", "event.preventDefault();editorReplace()"),
+        attrReplaceAll: evtAttr("onmousedown", "event.preventDefault();editorReplaceAll()"),
+    });
+    return render("ye-tpl-default-body", {
+        headerHTML,
+        extraTabs: extraTabsHTML ? render("ye-tpl-ev-tabs-wrap", { inner: extraTabsHTML }) : "",
+        tabBar, paneYaml, panePrompt, paneJs, aiBar,
+        rightPanel: yamlBuildRightPanel(showWidgets, wid, evName, isAppEvent, cur),
+        footBtns: mfootHTML([{ label: "キャンセル", action: "closeModal()" }]),
+        attrSave: evtAttr("onmousedown", "pvCall(\"yamlSave\")"),
+    });
 }
 
 /* ── YAMLエディタ初期化（requestAnimationFrame内の共通処理） ── */

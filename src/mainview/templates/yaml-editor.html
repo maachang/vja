@@ -182,6 +182,158 @@ style="height:30px;background:var(--bg3);border:1px solid var(--border);border-r
 <div style="padding:6px 10px;font-size:11px;color:var(--text3)">🗄 vja.db.*: YAMLの「利用テーブル:」に記載があれば自動的に利用可能になります（チェック不要）</div>
 </script>
 
+<script type="text/vja-tpl" id="ye-tpl-custom-tab-item">
+<div class="yaml-tab <%= active %>" id="tab-<%= id %>" <%- attr %>><%= label %></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-custom-main-doc">
+<textarea class="yaml" id="ta-<%= id %>" autocorrect="off" autocapitalize="off" spellcheck="false" <%- styleAttr %> <%- attrInput %> <%- attrScroll %> <%- attrPh %>><%= val %></textarea>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-custom-main-code">
+<div class="<%= hlWrap %>">
+<div class="<%= hlBg %>" id="hl-<%= id %>"></div>
+<textarea class="yaml" id="ta-<%= id %>" autocorrect="off" autocapitalize="off" spellcheck="false" <%- styleAttr %> <%- attrInput %> <%- attrScroll %> <%- attrPh %>><%= val %></textarea>
+</div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-custom-pane-editor">
+<div class="yaml-pane <%= active %>" id="pane-<%= id %>">
+<div class="editor-wrap">
+<div class="editor-gutter" id="gutter-<%= id %>"></div>
+<div class="editor-main"><%- mainInner %></div>
+</div></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-custom-pane-layout">
+<div class="yaml-pane <%= active %>" id="pane-<%= id %>" style="overflow-y:auto;padding:10px"><%- picker %></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-ai-bar-wrap">
+<div class="yaml-ai-bar"><%- inner %></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-save-btn">
+<button class="pri" <%- attr %>>保存</button>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-formdesign-right">
+<div class="yaml-resize-handle" id="yaml-rhandle"></div>
+<div class="yaml-editor-right" id="yaml-rpanel"><%- panel %></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-no-right">
+<div class="yaml-editor-right" style="display:none"></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-custom-body">
+<div class="modal-yaml">
+<%- headerHTML %>
+<div class="mbody" style="padding:0;gap:0;overflow:hidden;display:flex;flex-direction:column">
+<div class="yaml-editor-layout" id="yaml-layout">
+<div class="yaml-editor-left">
+<div class="yaml-tab-bar"><%- tabBar %></div>
+<%- panes %>
+<%- aiBar %>
+</div>
+<%- rightPanelHtml %>
+</div>
+</div>
+<div class="mfoot"><%- footBtns %><%- saveBtn %></div>
+</div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-ev-tabs-wrap">
+<div class="yaml-ev-tabs"><%- inner %></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-default-tabbar">
+<div class="yaml-tab-bar">
+<div class="yaml-tab active" id="tab-yaml" <%- attrYaml %>>📋 YAML</div>
+<div class="yaml-tab" id="tab-prompt" <%- attrPrompt %>>✨ YAMLドラフト</div>
+<div class="yaml-tab" id="tab-js" <%- attrJs %>>📜 JavaScript</div>
+<button class="yaml-api-ref-btn" style="margin-left:auto" <%- attrApiRef %>>📖 API</button>
+<button class="yaml-api-ref-btn" id="ai-mock-btn" style="margin-left:0" title="現在JavaScriptタブに表示されている内容を、モックVJAランタイムで試験実行します" <%- attrMockCheck %>>🧪 モック</button>
+<button class="yaml-api-ref-btn" id="ai-mock-edit-btn" style="margin-left:0" title="モック実行で使うダミー値を上書き設定します" <%- attrMockEdit %>>⚙ モック編集</button>
+</div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-default-pane-yaml">
+<div class="yaml-pane active" id="pane-yaml">
+<div class="editor-wrap">
+<div class="editor-gutter" id="yaml-gutter"></div>
+<div class="editor-main">
+<div class="yaml-hl-wrap">
+<div class="yaml-hl-bg" id="yaml-hl"></div>
+<textarea class="yaml" id="yaml-ta" autocorrect="off" autocapitalize="off" spellcheck="false" <%- attrInput %> <%- attrScroll %>><%= cur %></textarea>
+</div></div></div></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-default-pane-prompt">
+<div class="yaml-pane" id="pane-prompt">
+<div class="editor-wrap">
+<div class="editor-gutter" id="prompt-gutter"></div>
+<div class="editor-main">
+<textarea class="yaml" id="prompt-ta" autocorrect="off" autocapitalize="off" spellcheck="false" style="color:var(--text) !important;background:transparent;caret-color:var(--text);width:100%;height:100%;display:block;box-sizing:border-box;resize:none" <%- attrInput %> <%- attrScroll %> placeholder="✨ やりたい処理の概要を日本語で自由に記述できます（複数行可）&#10;&#10;例:&#10;1. 入力されたユーザー名で users テーブルをSQL部分一致検索する&#10;2. 検索結果を datagrid (tblResult) に表示する&#10;3. 検索件数をトーストで表示する"><%= curDoc %></textarea>
+</div></div></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-default-pane-js">
+<div class="yaml-pane" id="pane-js">
+<div class="editor-wrap">
+<div class="editor-gutter" id="js-gutter"></div>
+<div class="editor-main">
+<div class="js-hl-wrap">
+<div class="js-hl-bg" id="js-hl"></div>
+<textarea class="yaml" id="js-ta" autocorrect="off" autocapitalize="off" spellcheck="false" <%- attrInput %> <%- attrScroll %> placeholder="// AIでJavaScriptを生成、または直接編集できます"><%= curJs %></textarea>
+</div></div></div></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-default-ai-bar">
+<div class="yaml-ai-bar" style="padding-bottom:8px;flex-direction:column;align-items:stretch;gap:4px">
+<div style="display:flex;align-items:center;gap:4px">
+<input id="ai-prompt-in" placeholder="AIへの補足指示（任意）" style="flex:1">
+<button class="yaml-ai-btn" id="ai-gen-yaml-btn" title="依頼内容からイベントYAMLドラフトを作成します" <%- attrGenYaml %>>✨ YAMLドラフト生成</button>
+<button class="yaml-ai-btn" id="ai-gen-random-btn" title="temperatureを一時的に上げて再生成します（同じ間違いを繰り返す場合に）" <%- attrGenRandom %>>🎲 再生成</button>
+<button class="yaml-ai-btn" id="ai-gen-btn" <%- attrGen %>><%= genLabel %></button>
+<span class="yaml-ai-right-spacer" id="ai-status"></span>
+</div>
+<div style="display:flex;align-items:center;gap:4px">
+<input id="editor-search-in" placeholder="検索ワード（Ctrl+F）" style="flex:1" <%- attrSearchEnter %> <%- attrSearchInput %>>
+<button class="yaml-ai-btn" <%- attrSearchClear %>>✕</button>
+<button class="yaml-ai-btn" <%- attrSearchGo %>>🔍 検索</button>
+<span class="yaml-ai-right-spacer"></span>
+</div>
+<div style="display:flex;align-items:center;gap:4px">
+<input id="editor-replace-in" placeholder="置換後の文字列" style="flex:1" <%- attrReplaceEnter %>>
+<button class="yaml-ai-btn" <%- attrReplace %>>置換</button>
+<button class="yaml-ai-btn" <%- attrReplaceAll %>>すべて置換</button>
+<span class="yaml-ai-right-spacer"></span>
+</div>
+</div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-default-body">
+<div class="modal-yaml">
+<%- headerHTML %>
+<div class="mbody" style="padding:0;gap:0;overflow:hidden;display:flex;flex-direction:column">
+<%- extraTabs %>
+<div class="yaml-editor-layout" id="yaml-layout">
+<div class="yaml-editor-left">
+<%- tabBar %>
+<%- paneYaml %>
+<%- panePrompt %>
+<%- paneJs %>
+<%- aiBar %>
+</div>
+<div class="yaml-resize-handle" id="yaml-rhandle"></div>
+<div class="yaml-editor-right" id="yaml-rpanel"><%- rightPanel %></div>
+</div>
+</div>
+<div class="mfoot"><%- footBtns %><button class="pri" <%- attrSave %>>保存</button></div>
+</div>
+</script>
+
 <script type="text/vja-tpl" id="ye-tpl-mock-row">
 <div class="mock-editor-row" data-idx="<%= idx %>" data-type="<%= type %>" style="display:flex;gap:6px;margin-bottom:6px;align-items:flex-start">
 <div style="width:120px;flex-shrink:0"><%- typeSel %></div>
