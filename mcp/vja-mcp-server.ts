@@ -100,6 +100,15 @@ server.registerTool(
 );
 
 server.registerTool(
+    "vja_open_validation_edit",
+    {
+        description: "バリデーション編集モーダル（idx=-1で新規作成、それ以外は既存編集）を開き、描画結果のHTML（modal-root）を返す（jhtmlテンプレート移行の検証用）",
+        inputSchema: { idx: z.number().describe("編集対象バリデーション定義のindex（-1で新規作成）") },
+    },
+    async (args) => toToolResult(await callVja("testOpenValidationEdit", args)),
+);
+
+server.registerTool(
     "vja_render_cloud_modal",
     {
         description: "クラウドインフラ設定モーダルを開き、描画結果のHTML（modal-root）を返す（jhtmlテンプレート移行の検証用）",

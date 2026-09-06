@@ -804,10 +804,10 @@ function tblTypeOpen(idx, btn) {
         return;
     }
     // ドロップダウン内容を構築
-    float.innerHTML = SQLITE_TYPES.map(t =>
-        "<div class='col-type-opt " + (t === curType ? "active" : "") + "' " +
-        "data-type='" + t + "'>" + t + "</div>"
-    ).join("");
+    float.innerHTML = SQLITE_TYPES.map(t => render("tv-tpl-col-type-opt", {
+        active: t === curType ? "active" : "",
+        type: t,
+    })).join("");
     // クリックハンドラを追加
     float.querySelectorAll(".col-type-opt").forEach(opt => {
         opt.addEventListener("click", function (e) {
@@ -949,8 +949,7 @@ function openValidationEdit(idx) {
 function renderValidationEditModal() {
     const v = VALID_MODAL.edit;
     const rules = v.rules || [];
-    let tbody = "";
-    rules.forEach((r, i) => {
+    const tbody = rules.map((r, i) => {
         const sid = "valid-type-" + i;
         const nid = "valid-name-" + i;
         const notid = "valid-not-" + i;
@@ -960,63 +959,34 @@ function renderValidationEditModal() {
             .map(w => w.name)
             .filter(Boolean)];
         const nameOpts = widgetNames.map(n => ({ value: n, label: n === "" ? "（未選択）" : n }));
-        tbody += "<tr>" +
-            "<td>" + (i + 1) + "</td>" +
-            "<td>" + makePvSel(nid, nameOpts, r.name || "", "VALID_MODAL.edit.rules[" + i + "].name={value}") + "</td>" +
-            "<td>" + makePvSel(sid, VALIDATION_TYPES, r.type || "required", "VALID_MODAL.edit.rules[" + i + "].type={value}") + "</td>" +
-            "<td>" + makePvSel(notid, [{ value: "false", label: "OFF" }, { value: "true", label: "ON" }], r.not ? "true" : "false", "VALID_MODAL.edit.rules[" + i + "].not=({value}==='true')") + "</td>" +
-            "<td><input type='text' class='pv-input' value='" + esc(r.arg1 || "") + "'" + evtAttr("oninput", "VALID_MODAL.edit.rules[" + i + "].arg1=this.value") + " placeholder='arg1'></td>" +
-            "<td><input type='text' class='pv-input' value='" + esc(r.arg2 || "") + "'" + evtAttr("oninput", "VALID_MODAL.edit.rules[" + i + "].arg2=this.value") + " placeholder='arg2'></td>" +
-            "<td><input type='text' class='pv-input' value='" + esc(r.arg3 || "") + "'" + evtAttr("oninput", "VALID_MODAL.edit.rules[" + i + "].arg3=this.value") + " placeholder='arg3'></td>" +
-            "<td><input type='text' class='pv-input' value='" + esc(r.message || "") + "'" + evtAttr("oninput", "VALID_MODAL.edit.rules[" + i + "].message=this.value") + " placeholder='エラーメッセージ'></td>" +
-            "<td style='white-space:nowrap'>" +
-            "<button class='del-btn'" + evtAttr("onmousedown", "validInsertRow(" + i + ")") + " title='この行の前に挿入' style='margin-right:2px'>＋</button>" +
-            "<button class='del-btn'" + evtAttr("onmousedown", "validDelRow(" + i + ")") + " title='削除'>✕</button>" +
-            "</td>" +
-            "</tr>";
-    });
-    showModal("<div id='valid-edit-modal'>" +
-        mhdrHTML("✅ バリデーション編集") +
-        "<div class='mbody tbl-edit-wrap' style='gap:6px'>" +
-        "<div class='tbl-name-row'><label>定義名</label>" +
-        "<input id='valid-name' class='pv-input' value='" + esc(v.name || "") + "'" + evtAttr("oninput", "VALID_MODAL.edit.name=this.value") + " placeholder='定義名'></div>" +
-        "<div class='tbl-name-row'><label>説明（任意）</label>" +
-        "<input id='valid-desc' class='pv-input' value='" + esc(v.description || "") + "'" + evtAttr("oninput", "VALID_MODAL.edit.description=this.value") + " placeholder='バリデーションの説明（任意）'></div>" +
-        "<div class='tbl-name-row'><label>✨ AI生成</label>" +
-        "<div style='display:flex;gap:6px;align-items:center;flex:1'>" +
-        "<input id='valid-ai-req-in' placeholder='どんな検証にしたいか自由に記述（任意。定義名・説明があれば自動で考慮します）' style='flex:1'>" +
-        "<button class='yaml-ai-btn' style='white-space:nowrap'" + evtAttr("onmousedown", "validAiGenerateRules()") + ">🤖 AI生成</button>" +
-        "</div></div>" +
-        "<div style='display:flex;align-items:center;gap:8px;padding:4px 0'>" +
-        "<label style='font-size:12px;color:var(--text2);white-space:nowrap'>トースト表示時間（ms）:</label>" +
-        "<input type='number' id='valid-toast-dur' class='pv-input' value='" + (v.toastDuration || 5000) + "'" + evtAttr("oninput", "VALID_MODAL.edit.toastDuration=parseInt(this.value)||5000") + " min='1000' max='30000' style='width:100px'>" +
-        "</div>" +
-        "<div style='display:flex;justify-content:space-between;align-items:center'>" +
-        "<span style='font-size:12px;color:var(--text2)'>ルール定義（" + rules.length + "件）</span>" +
-        "<button class='col-add-btn'" + evtAttr("onmousedown", "validAddRow()") + ">＋ ルール追加</button>" +
-        "</div>" +
-        "<div class='coldef-scroll'>" +
-        "<table class='coldef-table'>" +
-        "<thead><tr>" +
-        "<th style='width:36px'>No</th>" +
-        "<th>ウィジェット名</th>" +
-        "<th style='width:130px'>タイプ</th>" +
-        "<th style='width:60px'>NOT</th>" +
-        "<th style='width:65px'>arg1</th>" +
-        "<th style='width:65px'>arg2</th>" +
-        "<th style='width:65px'>arg3</th>" +
-        "<th>メッセージ</th>" +
-        "<th style='width:56px'></th>" +
-        "</tr></thead>" +
-        "<tbody>" + tbody + "</tbody>" +
-        "</table>" +
-        "</div>" +
-        "</div>" +
-        "<div class='mfoot'>" +
-        mfootHTML([{ label: "← 一覧に戻る", action: "renderValidationListModal()" }]) +
-        "<button class='pri'" + evtAttr("onmousedown", "validSave()") + ">保存</button>" +
-        "</div>" +
-        "</div>", "", "modal-root");
+        return render("tv-tpl-valid-row", {
+            no: i + 1,
+            nameSel: makePvSel(nid, nameOpts, r.name || "", "VALID_MODAL.edit.rules[" + i + "].name={value}"),
+            typeSel: makePvSel(sid, VALIDATION_TYPES, r.type || "required", "VALID_MODAL.edit.rules[" + i + "].type={value}"),
+            notSel: makePvSel(notid, [{ value: "false", label: "OFF" }, { value: "true", label: "ON" }], r.not ? "true" : "false", "VALID_MODAL.edit.rules[" + i + "].not=({value}==='true')"),
+            arg1: r.arg1 || "", attrArg1: evtAttr("oninput", "VALID_MODAL.edit.rules[" + i + "].arg1=this.value"),
+            arg2: r.arg2 || "", attrArg2: evtAttr("oninput", "VALID_MODAL.edit.rules[" + i + "].arg2=this.value"),
+            arg3: r.arg3 || "", attrArg3: evtAttr("oninput", "VALID_MODAL.edit.rules[" + i + "].arg3=this.value"),
+            message: r.message || "", attrMessage: evtAttr("oninput", "VALID_MODAL.edit.rules[" + i + "].message=this.value"),
+            attrInsert: evtAttr("onmousedown", "validInsertRow(" + i + ")"),
+            attrDel: evtAttr("onmousedown", "validDelRow(" + i + ")"),
+        });
+    }).join("");
+    showModal(render("tv-tpl-valid-edit-modal", {
+        header: mhdrHTML("✅ バリデーション編集"),
+        name: v.name || "",
+        attrName: evtAttr("oninput", "VALID_MODAL.edit.name=this.value"),
+        description: v.description || "",
+        attrDesc: evtAttr("oninput", "VALID_MODAL.edit.description=this.value"),
+        attrAiGen: evtAttr("onmousedown", "validAiGenerateRules()"),
+        toastDuration: v.toastDuration || 5000,
+        attrToast: evtAttr("oninput", "VALID_MODAL.edit.toastDuration=parseInt(this.value)||5000"),
+        ruleCount: rules.length,
+        attrAddRow: evtAttr("onmousedown", "validAddRow()"),
+        tbody,
+        footBtns: mfootHTML([{ label: "← 一覧に戻る", action: "renderValidationListModal()" }]),
+        attrSave: evtAttr("onmousedown", "validSave()"),
+    }), "", "modal-root");
 }
 
 // ── 行操作共通ヘルパー ────────────────────────────────────
