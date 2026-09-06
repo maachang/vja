@@ -63,26 +63,24 @@ const WIZARD_FORM_SIZE_RATIOS = [
 // 完了済み=塗りつぶし、現在地=強調枠、未到達=薄色で表示する。
 function _wizardRenderStepIndicator() {
     const cur = WIZARD_STATE.step;
-    return "<div style='display:flex;align-items:center;gap:4px;margin-bottom:10px;flex-wrap:wrap'>" +
-        WIZARD_STEPS.map((label, i) => {
-            const n = i + 1;
-            const done = n < cur;
-            const active = n === cur;
-            const circleStyle = "display:inline-flex;align-items:center;justify-content:center;" +
-                "width:20px;height:20px;border-radius:50%;font-size:11px;flex:none;" +
-                (done ? "background:var(--accent2, #2a6);color:#fff;"
-                    : active ? "background:var(--bg1);color:var(--text1);border:2px solid var(--accent2, #2a6);"
-                        : "background:var(--bg2);color:var(--text3);border:1px solid var(--border);");
-            const labelStyle = "font-size:11px;" + (active ? "color:var(--text1);font-weight:bold;" : "color:var(--text3);");
-            const sep = i < WIZARD_STEPS.length - 1
-                ? "<span style='flex:1;height:1px;min-width:10px;background:" + (done ? "var(--accent2, #2a6)" : "var(--border)") + "'></span>"
-                : "";
-            return "<span style='display:flex;align-items:center;gap:4px'>" +
-                "<span style='" + circleStyle + "'>" + (done ? "✓" : n) + "</span>" +
-                "<span style='" + labelStyle + "'>" + esc(label) + "</span>" +
-                "</span>" + sep;
-        }).join("") +
-        "</div>";
+    const items = WIZARD_STEPS.map((label, i) => {
+        const n = i + 1;
+        const done = n < cur;
+        const active = n === cur;
+        const circleStyle = "display:inline-flex;align-items:center;justify-content:center;" +
+            "width:20px;height:20px;border-radius:50%;font-size:11px;flex:none;" +
+            (done ? "background:var(--accent2, #2a6);color:#fff;"
+                : active ? "background:var(--bg1);color:var(--text1);border:2px solid var(--accent2, #2a6);"
+                    : "background:var(--bg2);color:var(--text3);border:1px solid var(--border);");
+        const labelStyle = "font-size:11px;" + (active ? "color:var(--text1);font-weight:bold;" : "color:var(--text3);");
+        const sep = i < WIZARD_STEPS.length - 1
+            ? render("wz-tpl-step-sep", { color: done ? "var(--accent2, #2a6)" : "var(--border)" })
+            : "";
+        return render("wz-tpl-step-item", {
+            circleStyle, circleText: done ? "✓" : n, labelStyle, label, sep,
+        });
+    }).join("");
+    return render("wz-tpl-step-indicator", { items });
 }
 
 // WIZARD_STATEの主要な内容をgetProjectData().wizardProgressへ保存する。
@@ -115,13 +113,10 @@ function wizardOfferResume(onDiscard) {
     WIZARD_STATE._resumeDiscardCb = onDiscard || null;
     showModal(
         mhdrHTML("🧙 ウィザードの再開") +
-        "<div class='mbody' style='gap:10px'>" +
-        "<div class='infobox'>前回、プロジェクト作成ウィザードが完了する前に中断されたようです。続きから再開しますか？</div>" +
-        "</div>" +
-        "<div class='mfoot'>" +
-        "<button" + evtAttr("onmousedown", "wizardDiscardProgress()") + ">破棄する</button>" +
-        "<button class='pri'" + evtAttr("onmousedown", "wizardResumeFromProgress()") + ">続きから再開</button>" +
-        "</div>"
+        render("wz-tpl-resume-body", {
+            attrDiscard: evtAttr("onmousedown", "wizardDiscardProgress()"),
+            attrResume: evtAttr("onmousedown", "wizardResumeFromProgress()"),
+        })
     );
 }
 

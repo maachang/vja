@@ -1,0 +1,29 @@
+<!--
+    templates/wizard.html
+    vja-wizard.js（新規プロジェクト作成ウィザード）用テンプレート定義。
+    詳細は templates/pinput.html のAIメモを参照。
+-->
+<script type="text/vja-tpl" id="wz-tpl-step-sep">
+<span style="flex:1;height:1px;min-width:10px;background:<%= color %>"></span>
+</script>
+
+<script type="text/vja-tpl" id="wz-tpl-step-item">
+<span style="display:flex;align-items:center;gap:4px">
+<span style="<%= circleStyle %>"><%= circleText %></span>
+<span style="<%= labelStyle %>"><%= label %></span>
+</span><%- sep %>
+</script>
+
+<script type="text/vja-tpl" id="wz-tpl-step-indicator">
+<div style="display:flex;align-items:center;gap:4px;margin-bottom:10px;flex-wrap:wrap"><%- items %></div>
+</script>
+
+<script type="text/vja-tpl" id="wz-tpl-resume-body">
+<div class="mbody" style="gap:10px">
+<div class="infobox">前回、プロジェクト作成ウィザードが完了する前に中断されたようです。続きから再開しますか？</div>
+</div>
+<div class="mfoot">
+<button <%- attrDiscard %>>破棄する</button>
+<button class="pri" <%- attrResume %>>続きから再開</button>
+</div>
+</script>
