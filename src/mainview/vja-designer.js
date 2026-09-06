@@ -790,7 +790,9 @@ function pinput(d, val, wid) {
         case "formThemeAction":
             return _formThemeActionHtml();
         case "formAiDesign":
-            return html`<button${raw(evtAttr("onmousedown", "openFormDesignAi()"))} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">🤖 AIでフォーム設計…</button>`;
+            return render("pv-tpl-form-ai-design", {
+                attr: evtAttr("onmousedown", "openFormDesignAi()"),
+            });
         case "area":
             return html`<textarea class="pv-textarea" style="height:56px"${raw(evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")"))}>${val || ""}</textarea>`;
         case "img": {
