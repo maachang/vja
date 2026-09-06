@@ -19,6 +19,7 @@
 
     const TEMPLATE_FILES = [
         "templates/pinput.html",
+        "templates/status.html",
     ];
 
     function loadTemplateFileSync(path) {

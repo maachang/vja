@@ -52,7 +52,7 @@ function buildTools() {
             "tool-item" +
             (t.id === "pointer" ? " active-tool" : "");
         d.dataset.tid = t.id;
-        d.innerHTML = html`<span class="ti">${t.icon}</span><span>${t.label}</span>`;
+        d.innerHTML = render("st-tpl-tool-item", { icon: t.icon, label: t.label });
         d.addEventListener("click", () => setTool(t.id));
         g.appendChild(d);
     });
@@ -69,7 +69,7 @@ function setTool(id) {
             ),
         );
     const tool = getToolById(id);
-    $("st-tool").innerHTML = html`<b>${tool?.label ?? id}</b>`;
+    $("st-tool").innerHTML = render("st-tpl-tool-label", { label: tool?.label ?? id });
     // フォームボディのカーソル
     fb().style.cursor = id === "pointer" ? "default" : "crosshair";
 }
@@ -173,8 +173,8 @@ function selectMultiple(ids) {
     getDesignerState().selIds = ids;
     updateSelVisual();
     $("prop-obj").textContent = ids.length + "個選択中";
-    $("st-pos").innerHTML = html`X:<b>-</b> Y:<b>-</b>`;
-    $("st-size").innerHTML = html`W:<b>-</b> H:<b>-</b>`;
+    $("st-pos").innerHTML = render("st-tpl-xy", { x: "-", y: "-" });
+    $("st-size").innerHTML = render("st-tpl-wh", { w: "-", h: "-" });
     renderProps();
 }
 
@@ -183,14 +183,14 @@ function deselect() {
     getDesignerState().selIds = [];
     updateSelVisual();
     $("prop-obj").textContent = getProjectData().formCfg.title;
-    $("st-size").innerHTML = html`W:<b>-</b> H:<b>-</b>`;
+    $("st-size").innerHTML = render("st-tpl-wh", { w: "-", h: "-" });
     renderProps();
 }
 
 function updateStatusSel(w) {
     if (!w) return;
-    $("st-pos").innerHTML = html`X:<b>${w.x}</b> Y:<b>${w.y}</b>`;
-    $("st-size").innerHTML = html`W:<b>${w.w}</b> H:<b>${w.h}</b>`;
+    $("st-pos").innerHTML = render("st-tpl-xy", { x: w.x, y: w.y });
+    $("st-size").innerHTML = render("st-tpl-wh", { w: w.w, h: w.h });
 }
 
 /* ═══════════════════════════════════════════
@@ -273,8 +273,8 @@ function initFormBodyEvents() {
             rb.style.top = cy + "px";
             rb.style.width = cw + "px";
             rb.style.height = ch + "px";
-            $("st-pos").innerHTML = html`X:<b>${cx}</b> Y:<b>${cy}</b>`;
-            $("st-size").innerHTML = html`W:<b>${cw}</b> H:<b>${ch}</b>`;
+            $("st-pos").innerHTML = render("st-tpl-xy", { x: cx, y: cy });
+            $("st-size").innerHTML = render("st-tpl-wh", { w: cw, h: ch });
         }
 
         function onUp() {
@@ -306,7 +306,7 @@ function initFormBodyEvents() {
         const r = body.getBoundingClientRect();
         const x = sn(e.clientX - r.left),
             y = sn(e.clientY - r.top);
-        $("st-pos").innerHTML = html`X:<b>${x}</b> Y:<b>${y}</b>`;
+        $("st-pos").innerHTML = render("st-tpl-xy", { x, y });
     });
 }
 

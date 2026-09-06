@@ -110,6 +110,10 @@ const _testGetPropsHtml = () => {
             ok: true,
             plist: document.getElementById("plist")?.innerHTML ?? "",
             elist: document.getElementById("elist")?.innerHTML ?? "",
+            toolGrid: document.getElementById("tool-grid")?.innerHTML ?? "",
+            stTool: document.getElementById("st-tool")?.innerHTML ?? "",
+            stPos: document.getElementById("st-pos")?.innerHTML ?? "",
+            stSize: document.getElementById("st-size")?.innerHTML ?? "",
         };
     } catch (e: any) {
         return { ok: false, error: e.message };
