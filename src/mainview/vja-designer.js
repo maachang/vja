@@ -794,7 +794,10 @@ function pinput(d, val, wid) {
                 attr: evtAttr("onmousedown", "openFormDesignAi()"),
             });
         case "area":
-            return html`<textarea class="pv-textarea" style="height:56px"${raw(evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")"))}>${val || ""}</textarea>`;
+            return render("pv-tpl-area", {
+                val: val || "",
+                attr: evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")"),
+            });
         case "img": {
             const hasImg = val && val.startsWith("data:");
             const iid = "pvimg_" + w2;
