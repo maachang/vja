@@ -2102,14 +2102,16 @@ function showAiValidationWarningBanner(validation, wid, evName, isAppEvent, isFo
     const banner = document.createElement("div");
     banner.id = "ai-validation-banner";
     const retryArgs = "'" + wid + "','" + evName + "'," + !!isAppEvent + "," + !!isFormEvent;
-    const retryBtnHtml = "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "manualRetryAiFix(" + retryArgs + ")") + ">🤖 もう一度AIに修正を依頼</button> ";
+    const retryBtnHtml = render("ye-tpl-validation-retry-btn", {
+        attr: evtAttr("onmousedown", "manualRetryAiFix(" + retryArgs + ")"),
+    });
     if (validation.ok) {
         // 検証OK：バナーは自動で消さず、再修正を依頼できる状態のまま維持する
         banner.style.cssText = "background:#2a4a2e;color:#d8ffe0;padding:10px 14px;font-size:12px;border-bottom:1px solid #3a7a4a;flex-shrink:0";
-        banner.innerHTML =
-            "<div style='font-weight:bold;margin-bottom:8px'>✅ 検証OKになりました（未知のAPI・構文エラーは検出されていません）</div>" +
-            retryBtnHtml +
-            "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "dismissAiValidationBanner()") + ">閉じる</button>";
+        banner.innerHTML = render("ye-tpl-validation-ok-banner", {
+            retryBtnHtml,
+            attrDismiss: evtAttr("onmousedown", "dismissAiValidationBanner()"),
+        });
         left.insertBefore(banner, left.firstChild);
         return;
     }
@@ -2145,16 +2147,19 @@ function showAiValidationWarningBanner(validation, wid, evName, isAppEvent, isFo
     _lastAiValidationItems = items;
     const MAX_INLINE_ITEMS = 6;
     const showDetailBtn = items.length > MAX_INLINE_ITEMS
-        ? " <button class='yaml-ai-btn'" + evtAttr("onmousedown", "openAiValidationDetailModal()") + ">🔍 全" + items.length + "件を別ウィンドウで見る</button>"
+        ? render("ye-tpl-validation-detail-btn", {
+            attr: evtAttr("onmousedown", "openAiValidationDetailModal()"),
+            count: items.length,
+        })
         : "";
     banner.style.cssText = "background:#4a2a2a;color:#ffd8d8;padding:10px 14px;font-size:12px;border-bottom:1px solid #7a3a3a;flex-shrink:0;max-height:220px;display:flex;flex-direction:column";
-    banner.innerHTML =
-        "<div style='font-weight:bold;margin-bottom:4px;flex-shrink:0'>⚠ 生成コードに問題の可能性があります（自動修正後も検出、" + items.length + "件）" + showDetailBtn + "</div>" +
-        "<div style='white-space:pre-line;margin-bottom:8px;overflow-y:auto;flex:1;min-height:0'>" + items.join("\n") + "</div>" +
-        "<div style='flex-shrink:0'>" +
-        retryBtnHtml +
-        "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "dismissAiValidationBanner()") + ">このまま閉じる</button>" +
-        "</div>";
+    banner.innerHTML = render("ye-tpl-validation-ng-banner", {
+        count: items.length,
+        showDetailBtn,
+        itemsHtml: items.join("\n"),
+        retryBtnHtml,
+        attrDismiss: evtAttr("onmousedown", "dismissAiValidationBanner()"),
+    });
     left.insertBefore(banner, left.firstChild);
 }
 // 警告バナーの一覧が多い場合の、全件確認用モーダル。

@@ -32,6 +32,29 @@ style="height:30px;background:var(--bg3);border:1px solid var(--border);border-r
 <div class="pv-sel-btn" id="<%= id %>" style="opacity:0.5;cursor:default" onmousedown="event.stopPropagation()"><span>*</span></div>
 </script>
 
+<script type="text/vja-tpl" id="ye-tpl-validation-retry-btn">
+<button class="yaml-ai-btn" <%- attr %>>🤖 もう一度AIに修正を依頼</button>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-validation-ok-banner">
+<div style="font-weight:bold;margin-bottom:8px">✅ 検証OKになりました（未知のAPI・構文エラーは検出されていません）</div>
+<%- retryBtnHtml %>
+<button class="yaml-ai-btn" <%- attrDismiss %>>閉じる</button>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-validation-detail-btn">
+<button class="yaml-ai-btn" <%- attr %>>🔍 全<%= count %>件を別ウィンドウで見る</button>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-validation-ng-banner">
+<div style="font-weight:bold;margin-bottom:4px;flex-shrink:0">⚠ 生成コードに問題の可能性があります（自動修正後も検出、<%= count %>件）<%- showDetailBtn %></div>
+<div style="white-space:pre-line;margin-bottom:8px;overflow-y:auto;flex:1;min-height:0"><%- itemsHtml %></div>
+<div style="flex-shrink:0">
+<%- retryBtnHtml %>
+<button class="yaml-ai-btn" <%- attrDismiss %>>このまま閉じる</button>
+</div>
+</script>
+
 <script type="text/vja-tpl" id="ye-tpl-mock-row">
 <div class="mock-editor-row" data-idx="<%= idx %>" data-type="<%= type %>" style="display:flex;gap:6px;margin-bottom:6px;align-items:flex-start">
 <div style="width:120px;flex-shrink:0"><%- typeSel %></div>
