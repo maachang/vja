@@ -220,6 +220,17 @@
 </div>
 </script>
 
+<script type="text/vja-tpl" id="tv-tpl-validation-row">
+<tr>
+<td style="text-align:center"><%= no %></td>
+<td><%= name %></td>
+<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><%= description %></td>
+<td style="text-align:center"><%= ruleCount %></td>
+<td style="text-align:center"><button class="tbl-action-btn" <%- attrEdit %>>編集</button></td>
+<td style="text-align:center"><button class="tbl-action-btn del" <%- attrDel %>>削除</button></td>
+</tr>
+</script>
+
 <script type="text/vja-tpl" id="tv-tpl-const-modal">
 <div id="const-modal">
 <%- header %>

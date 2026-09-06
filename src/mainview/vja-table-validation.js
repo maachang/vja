@@ -916,18 +916,14 @@ function renderValidationListModal() {
         addAction: "openValidationEdit(-1)",
         addLabel: "＋ バリデーション追加",
         headerHtml: "<th style='width:40px'>No</th><th style='text-align:left'>定義名</th><th style='text-align:left'>説明</th><th style='width:80px'>ルール数</th><th style='width:80px'>編集</th><th style='width:80px'>削除</th>",
-        rowHtmlFn: (v, i) => "<tr>" +
-            "<td style='text-align:center'>" + (i + 1) + "</td>" +
-            "<td>" + esc(v.name || "") + "</td>" +
-            "<td style='max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>" + esc(v.description || "") + "</td>" +
-            "<td style='text-align:center'>" + (v.rules?.length || 0) + "</td>" +
-            "<td style='text-align:center'>" +
-            "<button class='tbl-action-btn'" + evtAttr("onmousedown", "openValidationEdit(" + i + ")") + ">編集</button>" +
-            "</td>" +
-            "<td style='text-align:center'>" +
-            "<button class='tbl-action-btn del'" + evtAttr("onmousedown", "deleteValidation(" + i + ")") + ">削除</button>" +
-            "</td>" +
-            "</tr>",
+        rowHtmlFn: (v, i) => render("tv-tpl-validation-row", {
+            no: i + 1,
+            name: v.name || "",
+            description: v.description || "",
+            ruleCount: v.rules?.length || 0,
+            attrEdit: evtAttr("onmousedown", "openValidationEdit(" + i + ")"),
+            attrDel: evtAttr("onmousedown", "deleteValidation(" + i + ")"),
+        }),
     });
 }
 
