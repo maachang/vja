@@ -69,3 +69,14 @@
 <script type="text/vja-tpl" id="pv-tpl-coldef">
 <button <%- attr %> class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ カラム編集…</button>
 </script>
+
+<script type="text/vja-tpl" id="pv-tpl-fontsel-opt">
+<div class="pv-sel-opt <%= active %>" <%- attr %>><%= label %></div>
+</script>
+
+<script type="text/vja-tpl" id="pv-tpl-fontsel">
+<div class="pv-sel" id="<%= fid %>">
+    <div class="pv-sel-btn" <%- attrOpen %>>
+    <span><%= curFFL %></span><span class="arr">▼</span></div>
+    <div class="pv-sel-list"><%- fopts %></div></div>
+</script>

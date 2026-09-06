@@ -815,13 +815,15 @@ function pinput(d, val, wid) {
             const curFF = val || "";
             const curFFL = WIDGET_FONTS.find(f => f.value === curFF)?.label || "（デフォルト）";
             const fid = "pv-ff-" + w2;
-            const fopts = WIDGET_FONTS.map((f, i) =>
-                html`<div class="pv-sel-opt ${f.value === curFF ? "active" : ""}"${raw(evtAttr("onmousedown", "pvSelPick('" + fid + "','" + esc(f.label) + "',event);setFontFamilyChoice(" + i + ",'" + d.k + "','" + (d.sp || "") + "'," + w2 + ")"))}>${f.label}</div>`
-            );
-            return html`<div class="pv-sel" id="${fid}">
-                <div class="pv-sel-btn"${raw(evtAttr("onmousedown", "pvSelOpen('" + fid + "',event)"))}>
-                <span>${curFFL}</span><span class="arr">▼</span></div>
-                <div class="pv-sel-list">${fopts}</div></div>`;
+            const fopts = WIDGET_FONTS.map((f, i) => render("pv-tpl-fontsel-opt", {
+                active: f.value === curFF ? "active" : "",
+                label: f.label,
+                attr: evtAttr("onmousedown", "pvSelPick('" + fid + "','" + esc(f.label) + "',event);setFontFamilyChoice(" + i + ",'" + d.k + "','" + (d.sp || "") + "'," + w2 + ")"),
+            })).join("");
+            return render("pv-tpl-fontsel", {
+                fid, curFFL, fopts,
+                attrOpen: evtAttr("onmousedown", "pvSelOpen('" + fid + "',event)"),
+            });
         }
     }
     return "";
