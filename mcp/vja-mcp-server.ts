@@ -69,6 +69,24 @@ server.registerTool(
     async () => toToolResult(await callVja("testGetWidgets", {})),
 );
 
+server.registerTool(
+    "vja_select_widget",
+    {
+        description: "指定idのウィジェットを選択状態にする（プロパティパネル描画結果を確認する前の下準備用）",
+        inputSchema: { id: z.number().describe("選択対象ウィジェットのid") },
+    },
+    async (args) => toToolResult(await callVja("testSelectWidget", args)),
+);
+
+server.registerTool(
+    "vja_get_props_html",
+    {
+        description: "現在描画されているプロパティパネル(plist)・イベントタブ(elist)のHTMLをそのまま取得する（画面を目視しなくても描画結果の構造を検証できる）",
+        inputSchema: {},
+    },
+    async () => toToolResult(await callVja("testGetPropsHtml", {})),
+);
+
 // ── YAML関連 ──────────────────────────────────────────
 server.registerTool(
     "vja_save_yaml",

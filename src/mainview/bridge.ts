@@ -91,6 +91,30 @@ const _testDeleteYaml = (p: { wid: number; evName: string }) => {
         return { ok: false, error: e.message };
     }
 };
+// ウィジェットを選択状態にする（プロパティパネル描画結果の検証用）
+const _testSelectWidget = (p: { id: number }) => {
+    const g = window as any;
+    try {
+        if (!g.getWidget(p.id)) return { ok: false, error: `ウィジェットが見つかりません: id=${p.id}` };
+        g.select(p.id);
+        return { ok: true };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+// 現在描画されているプロパティパネル/イベントタブのHTMLをそのまま返す
+// （画面を目視しなくても、render()等の描画結果が壊れていないか検証できるようにするため）
+const _testGetPropsHtml = () => {
+    try {
+        return {
+            ok: true,
+            plist: document.getElementById("plist")?.innerHTML ?? "",
+            elist: document.getElementById("elist")?.innerHTML ?? "",
+        };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
 const _testGetOverrides = (p: { wid: number; evName: string }) => {
     const g = window as any;
     try {
@@ -210,6 +234,8 @@ const rpc = Electroview.defineRPC({
             testAddWidget: _testAddWidget,
             testDeleteWidget: _testDeleteWidget,
             testGetWidgets: _testGetWidgets,
+            testSelectWidget: _testSelectWidget,
+            testGetPropsHtml: _testGetPropsHtml,
             testSaveYaml: _testSaveYaml,
             testDeleteYaml: _testDeleteYaml,
             testGetOverrides: _testGetOverrides,
