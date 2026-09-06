@@ -749,10 +749,15 @@ const WIDGET_DEFS = {
             { k: "readonly", lb: "ReadOnly", t: "bool" },
             ...PP_TAIL,
         ],
-        preview: (p, base, vis) => {
-            const _itype = p.inputType || "date";
-            return `<input type="${_itype}" value="${esc(p.value || "")}" ${p.min ? `min="${esc(p.min)}"` : ""}  ${p.max ? `max="${esc(p.max)}"` : ""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px;pointer-events:none;${vis}">`;
-        },
+        preview: (p, base, vis) => render("wp-tpl-datepicker", {
+            itype: p.inputType || "date", value: p.value || "",
+            attrMin: p.min ? `min="${esc(p.min)}"` : "",
+            attrMax: p.max ? `max="${esc(p.max)}"` : "",
+            base, vis, bg: p.bg, fg: p.fg, fontSize: p.fontSize,
+            fontFamily: p.fontFamily || "",
+            fontWeight: p.fontBold ? "bold" : "normal",
+            border: (p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc"),
+        }),
     },
     slider: {
         label: "スライダー", icon: "🎚️",
@@ -777,7 +782,9 @@ const WIDGET_DEFS = {
             { k: "disabled", lb: "Disabled", t: "bool" },
             ...PP_TAIL,
         ],
-        preview: (p, base, vis) => `<div style="${base}display:flex;align-items:center;${vis}"><input type="range" min="${p.min || 0}" max="${p.max || 100}" value="${p.value || 0}" step="${p.step || 1}" style="width:100%;pointer-events:none;accent-color:#5b7bfa"></div>`,
+        preview: (p, base, vis) => render("wp-tpl-slider", {
+            base, vis, min: p.min || 0, max: p.max || 100, value: p.value || 0, step: p.step || 1,
+        }),
     },
     hscroll: {
         label: "水平scroll", icon: "↔️",
@@ -795,7 +802,7 @@ const WIDGET_DEFS = {
             { k: "val", lb: "Value", t: "num" },
             ...PP_TAIL,
         ],
-        preview: (p, base, vis) => `<div style="${base}background:${p.bg || "#ddd"};border:1px solid #999;border-radius:2px;display:flex;align-items:center;justify-content:space-between;padding:0 2px;${vis}"><span style="font-size:9px">◀</span><div style="flex:1;height:50%;background:#999;margin:0 3px;border-radius:1px"></div><span style="font-size:9px">▶</span></div>`,
+        preview: (p, base, vis) => render("wp-tpl-hscroll", { base, vis, bg: p.bg || "#ddd" }),
     },
     vscroll: {
         label: "垂直scroll", icon: "↕️",
@@ -813,7 +820,7 @@ const WIDGET_DEFS = {
             { k: "val", lb: "Value", t: "num" },
             ...PP_TAIL,
         ],
-        preview: (p, base, vis) => `<div style="${base}background:${p.bg || "#ddd"};border:1px solid #999;border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;${vis}"><span style="font-size:9px">▲</span><div style="width:50%;flex:1;background:#999;margin:3px 0;border-radius:1px"></div><span style="font-size:9px">▼</span></div>`,
+        preview: (p, base, vis) => render("wp-tpl-vscroll", { base, vis, bg: p.bg || "#ddd" }),
     },
     // フォーム自体（ツールボックスには表示されないため label/icon/def は持たない）
     form: {
