@@ -808,7 +808,9 @@ function pinput(d, val, wid) {
             });
         }
         case "coldef":
-            return html`<button${raw(evtAttr("onmousedown", "openColDefEditor(" + w2 + ")"))} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ カラム編集…</button>`;
+            return render("pv-tpl-coldef", {
+                attr: evtAttr("onmousedown", "openColDefEditor(" + w2 + ")"),
+            });
         case "fontsel": {
             const curFF = val || "";
             const curFFL = WIDGET_FONTS.find(f => f.value === curFF)?.label || "（デフォルト）";
