@@ -638,7 +638,13 @@ const WIDGET_DEFS = {
             ...PP_BORDER,
             ...PP_TAIL,
         ],
-        preview: (p, base, vis) => `<div style="${base}background:${p.bg};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};display:flex;align-items:center;justify-content:center;color:#888;font-size:11px;${vis}">${p.src ? `<img src="${esc(p.src)}" style="max-width:100%;max-height:100%;object-fit:${p.objectFit || "contain"}">` : "📷"}</div>`,
+        preview: (p, base, vis) => render("wp-tpl-picture", {
+            base, vis, bg: p.bg,
+            border: (p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc"),
+            inner: p.src
+                ? render("wp-tpl-picture-img", { src: p.src, objectFit: p.objectFit || "contain" })
+                : "📷",
+        }),
     },
     qrcode: {
         label: "QRコード", icon: "🔲",
@@ -660,7 +666,7 @@ const WIDGET_DEFS = {
         // （renderWidget()から描画直後に呼ばれる）でQRCodeコンストラクタを使って行う。
         // 文字数超過でQRコードが生成できなくなる問題を避けるため、
         // correctLevelは常にL固定とする（CLAUDE.md記載の既知の制約）。
-        preview: (p, base, vis) => `<div class="qr-box" style="${base}background:${p.bg || "#ffffff"};display:flex;align-items:center;justify-content:center;color:#888;font-size:24px;${vis}"></div>`,
+        preview: (p, base, vis) => render("wp-tpl-qrcode", { base, vis, bg: p.bg || "#ffffff" }),
         afterRender: (el, p) => {
             const box = el.querySelector(".qr-box");
             if (!box) return;
@@ -703,7 +709,10 @@ const WIDGET_DEFS = {
         // 実際のレンダリングはafterRenderで行う（QRコードと処理経路を揃える）。
         // marked()の出力はそのままinnerHTMLへ入れる想定（ローカルアプリのため
         // XSS対策は行わない。CLAUDE.md「あえてやってないこと」節参照）。
-        preview: (p, base, vis) => `<div class="md-box" style="${base}background:${p.bg || "#ffffff"};color:${p.fg || "#000000"};font-size:${p.fontSize || 12}px;border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};overflow:auto;padding:4px;box-sizing:border-box;${vis}"></div>`,
+        preview: (p, base, vis) => render("wp-tpl-markdown", {
+            base, vis, bg: p.bg || "#ffffff", fg: p.fg || "#000000", fontSize: p.fontSize || 12,
+            border: (p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc"),
+        }),
         afterRender: (el, p) => {
             const box = el.querySelector(".md-box");
             if (!box) return;

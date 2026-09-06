@@ -74,6 +74,22 @@
 <fieldset style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;<%- vis %>"><legend style="padding:0 4px;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>"><%= text %></legend></fieldset>
 </script>
 
+<script type="text/vja-tpl" id="wp-tpl-picture">
+<div style="<%- base %>background:<%- bg %>;border:<%- border %>;display:flex;align-items:center;justify-content:center;color:#888;font-size:11px;<%- vis %>"><%- inner %></div>
+</script>
+
+<script type="text/vja-tpl" id="wp-tpl-picture-img">
+<img src="<%= src %>" style="max-width:100%;max-height:100%;object-fit:<%- objectFit %>">
+</script>
+
+<script type="text/vja-tpl" id="wp-tpl-qrcode">
+<div class="qr-box" style="<%- base %>background:<%- bg %>;display:flex;align-items:center;justify-content:center;color:#888;font-size:24px;<%- vis %>"></div>
+</script>
+
+<script type="text/vja-tpl" id="wp-tpl-markdown">
+<div class="md-box" style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;border:<%- border %>;overflow:auto;padding:4px;box-sizing:border-box;<%- vis %>"></div>
+</script>
+
 <script type="text/vja-tpl" id="wp-tpl-textarea">
 <textarea style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;resize:none;padding:4px;box-sizing:border-box;pointer-events:none;<%- vis %>" placeholder="<%= placeholder %>"><%= text %></textarea>
 </script>
