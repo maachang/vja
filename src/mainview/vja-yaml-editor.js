@@ -4061,73 +4061,26 @@ function openAiConfig() {
 
     showModal(
         mhdrHTML("🤖 AI接続設定") +
-        "<div class='mbody' style='gap:12px'>" +
-        "<div class='infobox'>llama-server（またはOpenAI互換API）の接続設定を行います。</div>" +
-
-        // プリセット切替ヘッダー
-        "<div style='display:flex;gap:8px;align-items:center;background:var(--bg2);padding:10px;border-radius:6px;border:1px solid var(--border)'>" +
-        "<label style='font-size:12px;font-weight:bold;min-width:70px'>プリセット</label>" +
-        "<div style='flex:1'>" +
-        makePvSel("ai-preset-sel", presetOpts, curPresetId, "aiCfgSelectPreset({value})") +
-        "</div>" +
-        "<button class='tb-btn' style='padding:4px 8px;font-size:12px;white-space:nowrap' onclick='aiCfgSaveAsPreset()'>💾 プリセット保存</button>" +
-        "<button class='tb-btn' style='padding:4px 8px;font-size:12px;color:#ff5f56;white-space:nowrap' onclick='aiCfgDeletePreset()'>🗑 削除</button>" +
-        "</div>" +
-
-        // AI生成を有効
-        "<div class='ai-cfg-row'><label>AI生成を有効</label>" +
-        makePvSel("ai-ena-sel", ["ON", "OFF"], isEnabled ? "ON" : "OFF", "aiCfgToggleEnabled({value})") +
-        "</div>" +
-
-        // エンドポイント
-        "<div class='ai-cfg-row'><label>エンドポイント</label>" +
-        "<input id='ai-ep' value='" + esc(getProjectData().aiConfig.endpoint) + "' placeholder='http://localhost:8080'></div>" +
-
-        // API Key
-        "<div class='ai-cfg-row'><label>API Key</label>" +
-        "<input id='ai-apikey' type='password' value='" + esc(getProjectData().aiConfig.apiKey) + "' placeholder='OpenAI等のAPIキー（任意）'></div>" +
-
-        // ルーターモード
-        "<div class='ai-cfg-row'><label>ルーターモード</label>" +
-        makePvSel("ai-router-sel", ["ON", "OFF"], isRouter ? "ON" : "OFF", "aiCfgToggleRouter({value})") +
-        "</div>" +
-
-        // モデル名（ルーターモードONのみ）
-        "<div class='ai-cfg-row' id='ai-model-row' style='" + (!isRouter ? "opacity:.4;pointer-events:none" : "") + "'>" +
-        "<label>モデル名</label>" +
-        "<div style='display:flex;gap:6px;align-items:center'>" +
-        "<div class='pv-sel' id='ai-model-sel' style='flex:1'>" +
-        "<div class='pv-sel-btn'" + evtAttr("onmousedown", "pvSelOpen('ai-model-sel',event)") + ">" +
-        "<span id='ai-model-label'>" + (isRouter ? (getProjectData().aiConfig.model || "（モデルを選択）") : "") + "</span>" +
-        "<span class='arr'>▼</span></div>" +
-        "<div class='pv-sel-list' id='ai-model-list'>" + modelListHtml + "</div>" +
-        "</div>" +
-        "<button" + evtAttr("onmousedown", "aiCfgFetchModels()") + " style='height:28px;padding:0 10px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap;flex-shrink:0'>🔄 更新</button>" +
-        "</div></div>" +
-
-        // max tokens
-        "<div class='ai-cfg-row'><label>Max Tokens</label>" +
-        "<input id='ai-max-tokens' value='" + esc(String(getProjectData().aiConfig.maxTokens || "")) + "' placeholder='空の場合はサーバー側に依存' style='width:100%'></div>" +
-        "<div class='ai-cfg-row'><label>temperature</label>" +
-        "<input id='ai-temperature' class='pv-input' value='" + esc(getProjectData().aiConfig.temperature !== "" && getProjectData().aiConfig.temperature != null ? String(getProjectData().aiConfig.temperature) : "") + "' placeholder='空の場合はサーバー側に依存' style='width:100%'></div>" +
-
-        // 推論モード
-        "<div class='ai-cfg-row'><label>推論モード</label>" +
-        makePvSel("ai-thinking-sel", ["ON", "OFF"], isThinking ? "ON" : "OFF", "") +
-        "</div>" +
-        "<div class='infobox' style='font-size:11px'>推論モードOFFは llama.cpp / mlx-lm / Ollama / vLLM に対応。Foundry Local は非対応。</div>" +
-
-        // モック実行検証（生成JSをモックランタイムで試験実行し、明らかな実行時例外を検出する）
-        "<div class='ai-cfg-row'><label>モック実行検証</label>" +
-        makePvSel("ai-mockcheck-sel", ["ON", "OFF"], isMockCheckEnabled ? "ON" : "OFF", "") +
-        "</div>" +
-        "<div class='infobox' style='font-size:11px'>AI生成コードを、ダミー値を返すモックVJAランタイムで試験実行し、構文・APIチェックでは拾えない実行時例外を検出します（分岐網羅までは保証しません）。</div>" +
-
-        "</div>" +
-        "<div class='mfoot'>" +
-        mfootHTML([{ label: "キャンセル", action: "aiCfgCancel()" }]) + "" +
-        "<button class='pri'" + evtAttr("onmousedown", "aiCfgConfirm()") + ">確定</button>" +
-        "</div>"
+        render("ye-tpl-ai-config-body", {
+            presetSel: makePvSel("ai-preset-sel", presetOpts, curPresetId, "aiCfgSelectPreset({value})"),
+            enaSel: makePvSel("ai-ena-sel", ["ON", "OFF"], isEnabled ? "ON" : "OFF", "aiCfgToggleEnabled({value})"),
+            endpoint: getProjectData().aiConfig.endpoint,
+            apiKey: getProjectData().aiConfig.apiKey,
+            routerSel: makePvSel("ai-router-sel", ["ON", "OFF"], isRouter ? "ON" : "OFF", "aiCfgToggleRouter({value})"),
+            modelRowStyle: !isRouter ? "opacity:.4;pointer-events:none" : "",
+            attrModelOpen: evtAttr("onmousedown", "pvSelOpen('ai-model-sel',event)"),
+            modelLabel: isRouter ? (getProjectData().aiConfig.model || "（モデルを選択）") : "",
+            modelListHtml,
+            attrFetch: evtAttr("onmousedown", "aiCfgFetchModels()"),
+            maxTokens: String(getProjectData().aiConfig.maxTokens || ""),
+            temperature: getProjectData().aiConfig.temperature !== "" && getProjectData().aiConfig.temperature != null ? String(getProjectData().aiConfig.temperature) : "",
+            thinkingSel: makePvSel("ai-thinking-sel", ["ON", "OFF"], isThinking ? "ON" : "OFF", ""),
+            mockCheckSel: makePvSel("ai-mockcheck-sel", ["ON", "OFF"], isMockCheckEnabled ? "ON" : "OFF", ""),
+        }) +
+        render("ye-tpl-ai-config-footer", {
+            footBtns: mfootHTML([{ label: "キャンセル", action: "aiCfgCancel()" }]),
+            attrConfirm: evtAttr("onmousedown", "aiCfgConfirm()"),
+        })
     );
 }
 // AI接続設定モーダルのキャンセル。ウィザードから遷移中だった場合は、
