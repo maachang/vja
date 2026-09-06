@@ -91,24 +91,18 @@ function openApiRef(isAppEvent) {
     const nav = parseApiRefNav(info);
 
     // 左パネルのナビゲーションHTML生成（カテゴリのみ）
-    const navHtml = nav.filter(item => item.type === "category").map(item => {
-        return "<div class='api-ref-cat' data-label='" + esc(item.label) + "'" + evtAttr("onmousedown", "_apiRefJump(this.dataset.label)") + ">" + esc(item.label) + "</div>";
-    }).join("");
+    const navHtml = nav.filter(item => item.type === "category").map(item => render("ye-tpl-api-ref-cat", {
+        label: item.label,
+        attr: evtAttr("onmousedown", "_apiRefJump(this.dataset.label)"),
+    })).join("");
 
     showModal(
         mhdrHTML(title, "modal-layer-1") +
-        "<div class='mbody' style='flex:1;min-height:0;overflow:hidden;padding:0;flex-direction:row;gap:0'>" +
-        "<div id='api-ref-nav' style='width:260px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border);padding:6px 0;background:var(--bg2);display:flex;flex-direction:column;gap:1px'>" +
-        navHtml +
-        "</div>" +
-        "<div style='flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;padding:8px;overflow:hidden'>" +
-        "<input id='api-ref-search' placeholder='🔍 検索...'" + evtAttr("oninput", "_apiRefFilter()") + " " +
-        "style='height:30px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:13px;padding:0 10px;outline:none;flex-shrink:0;width:100%;box-sizing:border-box'>" +
-        "<div id='api-ref-body' style='flex:1;overflow:auto;font-size:18px;line-height:1.7;font-family:monospace;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:10px;white-space:pre-wrap;word-break:break-word;width:100%;box-sizing:border-box;user-select:text;-webkit-user-select:text'>" +
-        yamlTokenize(info) +
-        "</div>" +
-        "</div>" +
-        "</div>" +
+        render("ye-tpl-api-ref-body", {
+            navHtml,
+            attrSearch: evtAttr("oninput", "_apiRefFilter()"),
+            bodyHtml: yamlTokenize(info),
+        }) +
         mfootHTML([{ label: "閉じる", action: 'closeModal("modal-layer-1")' }]),
         "modal-api-ref", "modal-layer-1"
     );
@@ -141,10 +135,10 @@ function openApiRef(isAppEvent) {
         const lines = window._apiRefRaw.split("\n");
         body.innerHTML = lines.map(line => {
             const matched = line.toLowerCase().includes(q);
-            const highlighted = yamlTokenize(line);
-            return matched
-                ? "<span style='background:var(--accent-dim,#2a3a6a);display:block'>" + highlighted + "</span>"
-                : "<span style='opacity:0.3;display:block'>" + highlighted + "</span>";
+            return render("ye-tpl-api-ref-line", {
+                style: matched ? "background:var(--accent-dim,#2a3a6a);display:block" : "opacity:0.3;display:block",
+                highlighted: yamlTokenize(line),
+            });
         }).join("");
     };
 }
@@ -1005,10 +999,11 @@ function _getCharScreenRect(ta, idx) {
 function _renderCompletionPopup(ta) {
     const comp = getEditorContext().completion;
     const el = _completionPopupEl();
-    el.innerHTML = comp.list.map((name, i) =>
-        "<div class='editor-completion-item" + (i === comp.sel ? " sel" : "") + "'" +
-        evtAttr("onmousedown", "event.preventDefault();acceptCompletionAt(" + i + ")") + ">" + esc(name) + "</div>"
-    ).join("");
+    el.innerHTML = comp.list.map((name, i) => render("ye-tpl-completion-item", {
+        sel: i === comp.sel ? "sel" : "",
+        attr: evtAttr("onmousedown", "event.preventDefault();acceptCompletionAt(" + i + ")"),
+        name,
+    })).join("");
     const pos = _getCaretScreenPos(ta);
     // ポップアップがテキストエリアの外（タブバー側等）にはみ出してクリックを
     // 奪わないよう、表示位置をテキストエリアの表示範囲内にクランプする

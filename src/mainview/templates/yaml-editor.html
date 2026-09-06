@@ -1,0 +1,29 @@
+<!--
+    templates/yaml-editor.html
+    vja-yaml-editor.js のYAML/JSエディタ関連モーダル・UI部品用テンプレート定義。
+    詳細は templates/pinput.html のAIメモを参照。
+-->
+<script type="text/vja-tpl" id="ye-tpl-completion-item">
+<div class="editor-completion-item <%= sel %>" <%- attr %>><%= name %></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-api-ref-cat">
+<div class="api-ref-cat" data-label="<%= label %>" <%- attr %>><%= label %></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-api-ref-body">
+<div class="mbody" style="flex:1;min-height:0;overflow:hidden;padding:0;flex-direction:row;gap:0">
+<div id="api-ref-nav" style="width:260px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border);padding:6px 0;background:var(--bg2);display:flex;flex-direction:column;gap:1px">
+<%- navHtml %>
+</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;padding:8px;overflow:hidden">
+<input id="api-ref-search" placeholder="🔍 検索..." <%- attrSearch %>
+style="height:30px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:13px;padding:0 10px;outline:none;flex-shrink:0;width:100%;box-sizing:border-box">
+<div id="api-ref-body" style="flex:1;overflow:auto;font-size:18px;line-height:1.7;font-family:monospace;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:10px;white-space:pre-wrap;word-break:break-word;width:100%;box-sizing:border-box;user-select:text;-webkit-user-select:text"><%- bodyHtml %></div>
+</div>
+</div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-api-ref-line">
+<span style="<%= style %>"><%- highlighted %></span>
+</script>

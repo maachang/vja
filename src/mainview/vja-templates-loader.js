@@ -24,6 +24,7 @@
         "templates/modal.html",
         "templates/cloud-modal.html",
         "templates/app-config.html",
+        "templates/yaml-editor.html",
     ];
 
     function loadTemplateFileSync(path) {

@@ -147,7 +147,7 @@ const _testRenderCloudModal = () => {
 const _TEST_OPEN_MODAL_FNS = [
     "openProjectInfo", "openAppEvents", "openExtRuntime",
     "openFormConstEditor", "openCloudInfraConfig", "openFontConfig",
-    "openDebugTools",
+    "openDebugTools", "openApiRef",
 ];
 const _testOpenModal = (p: { fn: string }) => {
     const g = window as any;
@@ -155,7 +155,11 @@ const _testOpenModal = (p: { fn: string }) => {
         if (!_TEST_OPEN_MODAL_FNS.includes(p.fn)) return { ok: false, error: `許可されていない関数: ${p.fn}` };
         if (typeof g[p.fn] !== "function") return { ok: false, error: `関数が見つかりません: ${p.fn}` };
         g[p.fn]();
-        return { ok: true, modalRoot: document.getElementById("modal-root")?.innerHTML ?? "" };
+        return {
+            ok: true,
+            modalRoot: document.getElementById("modal-root")?.innerHTML ?? "",
+            modalLayer1: document.getElementById("modal-layer-1")?.innerHTML ?? "",
+        };
     } catch (e: any) {
         return { ok: false, error: e.message };
     }
