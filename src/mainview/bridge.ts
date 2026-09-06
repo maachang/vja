@@ -112,6 +112,16 @@ const _testSwitchTab = (p: { tab: "p" | "e" }) => {
         return { ok: false, error: e.message };
     }
 };
+// 指定ウィジェットidのDOM要素（#w{id}）のinnerHTMLをそのまま返す
+// （jhtmlテンプレート移行の検証用。WIDGET_DEFS[tag].previewの描画結果を確認する）
+const _testGetWidgetHtml = (p: { id: number }) => {
+    try {
+        const el = document.getElementById("w" + p.id);
+        return { ok: true, html: el?.innerHTML ?? "" };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
 // 現在描画されているプロパティパネル/イベントタブのHTMLをそのまま返す
 // （画面を目視しなくても、render()等の描画結果が壊れていないか検証できるようにするため）
 const _testGetPropsHtml = () => {
@@ -320,6 +330,7 @@ const rpc = Electroview.defineRPC({
             testGetWidgets: _testGetWidgets,
             testSelectWidget: _testSelectWidget,
             testSwitchTab: _testSwitchTab,
+            testGetWidgetHtml: _testGetWidgetHtml,
             testGetPropsHtml: _testGetPropsHtml,
             testOpenYamlEditor: _testOpenYamlEditor,
             testOpenTableEdit: _testOpenTableEdit,

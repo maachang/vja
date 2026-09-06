@@ -27,6 +27,7 @@
         "templates/yaml-editor.html",
         "templates/table-validation.html",
         "templates/wizard.html",
+        "templates/widget-preview.html",
     ];
 
     function loadTemplateFileSync(path) {

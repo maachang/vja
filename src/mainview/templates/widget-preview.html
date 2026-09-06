@@ -1,0 +1,31 @@
+<!--
+    templates/widget-preview.html
+    vja-defs.js の WIDGET_DEFS[tag].preview（デザイナー画面上のウィジェットプレビュー描画）用テンプレート定義。
+    詳細は templates/pinput.html のAIメモを参照。
+
+    AIメモ（重要）:
+    - style属性の中に埋め込む値（色コード・フォント名・border文字列・base/vis等のCSS断片）は
+      必ず <%- %>（生出力）を使うこと。escapeHtml()は ' も &#39; にエスケープするため、
+      fontFamilyの値（例: 'Yu Gothic UI','Meiryo UI',sans-serif のような複数フォント指定）を
+      自動エスケープすると ' が壊れてCSSとして機能しなくなる。
+    - 要素のテキストコンテンツ・value/placeholder等のユーザー入力由来の値は <%= %>（自動エスケープ）を使うこと。
+-->
+<script type="text/vja-tpl" id="wp-tpl-button">
+<button style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;border-radius:<%- borderRadius %>px;cursor:default;pointer-events:none;<%- vis %>"><%= text %></button>
+</script>
+
+<script type="text/vja-tpl" id="wp-tpl-label">
+<div style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;text-align:<%- align %>;display:flex;align-items:center;overflow:hidden;padding:0 2px;<%- vis %>"><%= text %></div>
+</script>
+
+<script type="text/vja-tpl" id="wp-tpl-input-preview-only">
+<div style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;display:flex;align-items:center;padding:0 6px;gap:6px;pointer-events:none;<%- vis %>"><span style="font-size:11px;opacity:.7"><%= icon %></span></div>
+</script>
+
+<script type="text/vja-tpl" id="wp-tpl-input">
+<input type="<%= itype %>" value="<%= text %>" placeholder="<%= placeholder %>" <%- maxlen %> style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;padding:0 4px;pointer-events:none;<%- vis %>">
+</script>
+
+<script type="text/vja-tpl" id="wp-tpl-textarea">
+<textarea style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;resize:none;padding:4px;box-sizing:border-box;pointer-events:none;<%- vis %>" placeholder="<%= placeholder %>"><%= text %></textarea>
+</script>

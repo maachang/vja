@@ -197,7 +197,14 @@ const WIDGET_DEFS = {
             { k: "disabled", lb: "Disabled", t: "bool" },
             ...PP_TAIL,
         ],
-        preview: (p, base, vis) => `<button style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};border-radius:${p.borderRadius || 2}px;cursor:default;pointer-events:none;${vis}">${esc(p.text)}</button>`,
+        preview: (p, base, vis) => render("wp-tpl-button", {
+            base, vis, bg: p.bg, fg: p.fg, fontSize: p.fontSize,
+            fontFamily: p.fontFamily || "",
+            fontWeight: p.fontBold ? "bold" : "normal",
+            border: (p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc"),
+            borderRadius: p.borderRadius || 2,
+            text: p.text,
+        }),
     },
     label: {
         label: "label", icon: "🏷️",
@@ -222,7 +229,13 @@ const WIDGET_DEFS = {
             { k: "align", lb: "Align", t: "sel", opts: ["left", "center", "right"] },
             ...PP_TAIL,
         ],
-        preview: (p, base, vis) => `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};text-align:${p.align || "left"};display:flex;align-items:center;overflow:hidden;padding:0 2px;${vis}">${esc(p.text)}</div>`,
+        preview: (p, base, vis) => render("wp-tpl-label", {
+            base, vis, bg: p.bg, fg: p.fg, fontSize: p.fontSize,
+            fontFamily: p.fontFamily || "",
+            fontWeight: p.fontBold ? "bold" : "normal",
+            align: p.align || "left",
+            text: p.text,
+        }),
     },
     inputtype: {
         label: "text", icon: "📝",
@@ -284,10 +297,20 @@ const WIDGET_DEFS = {
             const needsPreview = [
                 "date", "time", "month", "week", "datetime-local", "color", "range", "file",
             ].includes(itype);
+            const fontFamily = p.fontFamily || "";
+            const fontWeight = p.fontBold ? "bold" : "normal";
+            const border = (p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc");
             if (needsPreview) {
-                return `<div style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};display:flex;align-items:center;padding:0 6px;gap:6px;pointer-events:none;${vis}"><span style="font-size:11px;opacity:.7">${typeIcons[itype] || itype}</span></div>`;
+                return render("wp-tpl-input-preview-only", {
+                    base, vis, bg: p.bg, fg: p.fg, fontSize: p.fontSize, fontFamily, fontWeight, border,
+                    icon: typeIcons[itype] || itype,
+                });
             }
-            return `<input type="${itype}" value="${esc(p.text)}" placeholder="${esc(p.placeholder || "")}" ${p.maxLength ? `maxlength="${p.maxLength}"` : ""}  style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};padding:0 4px;pointer-events:none;${vis}">`;
+            return render("wp-tpl-input", {
+                itype, text: p.text, placeholder: p.placeholder || "",
+                maxlen: p.maxLength ? `maxlength="${p.maxLength}"` : "",
+                base, vis, bg: p.bg, fg: p.fg, fontSize: p.fontSize, fontFamily, fontWeight, border,
+            });
         },
     },
     textarea: {
@@ -317,7 +340,14 @@ const WIDGET_DEFS = {
             { k: "readonly", lb: "ReadOnly", t: "bool" },
             ...PP_TAIL,
         ],
-        preview: (p, base, vis) => `<textarea style="${base}background:${p.bg || "#fff"};color:${p.fg || "#000"};font-size:${p.fontSize || 12}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc")};resize:none;padding:4px;box-sizing:border-box;pointer-events:none;${vis}" placeholder="${esc(p.placeholder || "")}">${esc(p.text || "")}</textarea>`,
+        preview: (p, base, vis) => render("wp-tpl-textarea", {
+            base, vis, bg: p.bg || "#fff", fg: p.fg || "#000", fontSize: p.fontSize || 12,
+            fontFamily: p.fontFamily || "",
+            fontWeight: p.fontBold ? "bold" : "normal",
+            border: (p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc"),
+            placeholder: p.placeholder || "",
+            text: p.text || "",
+        }),
     },
     checkbox: {
         label: "checkbox", icon: "☑️",

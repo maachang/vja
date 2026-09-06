@@ -61,6 +61,15 @@ server.registerTool(
 );
 
 server.registerTool(
+    "vja_get_widget_html",
+    {
+        description: "指定ウィジェットidのDOM要素（#w{id}）のinnerHTMLをそのまま返す（jhtmlテンプレート移行の検証用、WIDGET_DEFS.previewの描画結果確認）",
+        inputSchema: { id: z.number().describe("対象ウィジェットのid") },
+    },
+    async (args) => toToolResult(await callVja("testGetWidgetHtml", args)),
+);
+
+server.registerTool(
     "vja_get_widgets",
     {
         description: "VJAデザイナーの現在フォームに配置されている全ウィジェットのデータを取得する",

@@ -1590,7 +1590,7 @@ if (!isWin) {
 if (process.env.VJA_TEST_MODE === "1") {
     const testMethods = [
         "testAddWidget", "testDeleteWidget", "testGetWidgets",
-        "testSelectWidget", "testSwitchTab", "testGetPropsHtml", "testRenderCloudModal", "testOpenModal",
+        "testSelectWidget", "testSwitchTab", "testGetWidgetHtml", "testGetPropsHtml", "testRenderCloudModal", "testOpenModal",
         "testOpenYamlEditor", "testOpenTableEdit", "testOpenValidationEdit",
         "testSaveYaml", "testDeleteYaml", "testGetOverrides",
         "testGetValidations", "testSaveValidation", "testDeleteValidation",
