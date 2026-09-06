@@ -766,7 +766,10 @@ function pinput(d, val, wid) {
             // setProp側で「テーマに戻す」表示の直接更新に留めており、
             // <input type="color">要素自体には一切触れないため、
             // OS・WebViewエンジンを問わずネイティブピッカーを壊さない）。
-            return html`<input type="color" value="${val || "#000000"}" style="width:100%;height:22px;padding:1px 2px;cursor:pointer;border:1px solid var(--border);border-radius:2px;background:var(--bg3)"${raw(evtAttr("oninput", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")"))}>`;
+            return render("pv-tpl-color", {
+                val: val || "#000000",
+                attr: evtAttr("oninput", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")"),
+            });
         case "sel":
         case "select": {
             const sid = "pvs_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
