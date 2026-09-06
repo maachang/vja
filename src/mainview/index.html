@@ -453,8 +453,10 @@
     </script>
 
     <!-- ═══════════════════════════════════════════════════════════════
-         VJA デザイナー本体 — 10ファイルに分割（依存順に読み込むこと）
+         VJA デザイナー本体 — 12ファイルに分割（依存順に読み込むこと）
          詳しい依存関係は各ファイル冒頭のヘッダーコメントを参照。
+         0. vja-html.js             HTML文字列組み立て用テンプレート機構(html/raw/compile/render/renderTo)
+         0.5 vja-templates-loader.js templates/配下のテンプレートHTMLを読み込みDOMへ挿入
          1. vja-defs.js             状態管理・ウィジェット定義（最も依存される）
          2. vja-designer.js         デザイナー本体（描画・選択・プロパティパネル）
          3. vja-mock-runtime.js     AI生成JS検証用モックランタイム（副作用なし）
@@ -469,6 +471,8 @@
     ═══════════════════════════════════════════════════════════════ -->
     <script src="./qrcode.js"></script>
     <script src="./marked.umd.js"></script>
+    <script src="./vja-html.js"></script>
+    <script src="./vja-templates-loader.js"></script>
     <script src="./vja-defs.js"></script>
     <script src="./vja-designer.js"></script>
     <script src="./vja-mock-runtime.js"></script>

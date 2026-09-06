@@ -1,0 +1,29 @@
+<!--
+    templates/pinput.html
+    vja-designer.js の pinput() 関数用テンプレート定義。
+
+    AIメモ:
+    - このファイルはHTMLとしてブラウザに解釈されない（type="text/vja-tpl"は
+      ブラウザが実行不能なtypeとして無視するため、単なるテキストコンテナになる）。
+      vja-templates-loader.js が起動時に同期XHRで読み込みDOMへ挿入する。
+    - render(id, params) から呼ばれる。テンプレート内の <%= %> は自動エスケープ、
+      <%- %> は生HTML出力（evtAttr()の戻り値のように既にエスケープ済みの
+      属性文字列を埋め込む場合に使う）。
+    - テンプレート内には複雑なJSロジックを書かない。evtAttr()呼び出しに渡す
+      コード文字列の組み立て等は、呼び出し元（pinput()側）で事前に計算してから
+      paramsとして渡すこと（デバッグ時のスタックトレースが追いにくくなるため）。
+-->
+<script type="text/vja-tpl" id="pv-tpl-text">
+<input type="text" class="pv-input" value="<%= val ?? '' %>" <%- attr %>>
+</script>
+
+<script type="text/vja-tpl" id="pv-tpl-num">
+<div style="display:flex;align-items:center;gap:2px;width:100%">
+    <input type="number" id="<%= nid %>" class="pv-input" value="<%= val ?? 0 %>" min="<%= nMin %>" max="<%= nMax %>"
+        style="flex:1;height:22px;-webkit-appearance:none;appearance:none;text-align:right" <%- attrChange %>>
+    <button <%- attrUp %>
+        style="width:18px;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:10px;cursor:pointer;padding:0;flex-shrink:0">▲</button>
+    <button <%- attrDown %>
+        style="width:18px;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:10px;cursor:pointer;padding:0;flex-shrink:0">▼</button>
+</div>
+</script>

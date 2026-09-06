@@ -52,7 +52,7 @@ function buildTools() {
             "tool-item" +
             (t.id === "pointer" ? " active-tool" : "");
         d.dataset.tid = t.id;
-        d.innerHTML = `<span class="ti">${t.icon}</span><span>${t.label}</span>`;
+        d.innerHTML = html`<span class="ti">${t.icon}</span><span>${t.label}</span>`;
         d.addEventListener("click", () => setTool(t.id));
         g.appendChild(d);
     });
@@ -69,7 +69,7 @@ function setTool(id) {
             ),
         );
     const tool = getToolById(id);
-    $("st-tool").innerHTML = `<b>${tool?.label ?? id}</b>`;
+    $("st-tool").innerHTML = html`<b>${tool?.label ?? id}</b>`;
     // フォームボディのカーソル
     fb().style.cursor = id === "pointer" ? "default" : "crosshair";
 }
@@ -173,8 +173,8 @@ function selectMultiple(ids) {
     getDesignerState().selIds = ids;
     updateSelVisual();
     $("prop-obj").textContent = ids.length + "個選択中";
-    $("st-pos").innerHTML = `X:<b>-</b> Y:<b>-</b>`;
-    $("st-size").innerHTML = `W:<b>-</b> H:<b>-</b>`;
+    $("st-pos").innerHTML = html`X:<b>-</b> Y:<b>-</b>`;
+    $("st-size").innerHTML = html`W:<b>-</b> H:<b>-</b>`;
     renderProps();
 }
 
@@ -183,14 +183,14 @@ function deselect() {
     getDesignerState().selIds = [];
     updateSelVisual();
     $("prop-obj").textContent = getProjectData().formCfg.title;
-    $("st-size").innerHTML = `W:<b>-</b> H:<b>-</b>`;
+    $("st-size").innerHTML = html`W:<b>-</b> H:<b>-</b>`;
     renderProps();
 }
 
 function updateStatusSel(w) {
     if (!w) return;
-    $("st-pos").innerHTML = `X:<b>${w.x}</b> Y:<b>${w.y}</b>`;
-    $("st-size").innerHTML = `W:<b>${w.w}</b> H:<b>${w.h}</b>`;
+    $("st-pos").innerHTML = html`X:<b>${w.x}</b> Y:<b>${w.y}</b>`;
+    $("st-size").innerHTML = html`W:<b>${w.w}</b> H:<b>${w.h}</b>`;
 }
 
 /* ═══════════════════════════════════════════
@@ -273,9 +273,8 @@ function initFormBodyEvents() {
             rb.style.top = cy + "px";
             rb.style.width = cw + "px";
             rb.style.height = ch + "px";
-            $("st-pos").innerHTML = `X:<b>${cx}</b> Y:<b>${cy}</b>`;
-            $("st-size").innerHTML =
-                `W:<b>${cw}</b> H:<b>${ch}</b>`;
+            $("st-pos").innerHTML = html`X:<b>${cx}</b> Y:<b>${cy}</b>`;
+            $("st-size").innerHTML = html`W:<b>${cw}</b> H:<b>${ch}</b>`;
         }
 
         function onUp() {
@@ -307,7 +306,7 @@ function initFormBodyEvents() {
         const r = body.getBoundingClientRect();
         const x = sn(e.clientX - r.left),
             y = sn(e.clientY - r.top);
-        $("st-pos").innerHTML = `X:<b>${x}</b> Y:<b>${y}</b>`;
+        $("st-pos").innerHTML = html`X:<b>${x}</b> Y:<b>${y}</b>`;
     });
 }
 
@@ -732,7 +731,7 @@ function makeSec(txt) {
 function makeProw(d, val, wid) {
     const row = document.createElement("div");
     row.className = "prow";
-    row.innerHTML = `<div class="pk">${d.lb}</div><div class="pv">${pinput(d, val, wid)}</div>`;
+    row.innerHTML = html`<div class="pk">${d.lb}</div><div class="pv">${raw(pinput(d, val, wid))}</div>`;
     return row;
 }
 
@@ -740,20 +739,20 @@ function pinput(d, val, wid) {
     const w2 = wid;
     switch (d.t) {
         case "text":
-            return `<input type="text" class="pv-input" value="${esc(val ?? "")}"${evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")")}>`;
+            return render("pv-tpl-text", {
+                val: val ?? "",
+                attr: evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")"),
+            });
         case "num": {
             const nid = "pn_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
             const nMin = d.min ?? -9999;
             const nMax = d.max ?? 9999;
-            return `<div style="display:flex;align-items:center;gap:2px;width:100%">` +
-                `<input type="number" id="${nid}" class="pv-input" value="${val ?? 0}" min="${nMin}" max="${nMax}" ` +
-                `style="flex:1;height:22px;-webkit-appearance:none;appearance:none;text-align:right"` +
-                evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',+this.value," + w2 + ")") + ">" +
-                `<button` + evtAttr("onmousedown", "pvNumStep('" + nid + "',1,'" + d.k + "','" + (d.sp || "") + "'," + w2 + "," + nMin + "," + nMax + ")") +
-                ` style="width:18px;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:10px;cursor:pointer;padding:0;flex-shrink:0">▲</button>` +
-                `<button` + evtAttr("onmousedown", "pvNumStep('" + nid + "',-1,'" + d.k + "','" + (d.sp || "") + "'," + w2 + "," + nMin + "," + nMax + ")") +
-                ` style="width:18px;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:10px;cursor:pointer;padding:0;flex-shrink:0">▼</button>` +
-                `</div>`;
+            return render("pv-tpl-num", {
+                nid, val: val ?? 0, nMin, nMax,
+                attrChange: evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',+this.value," + w2 + ")"),
+                attrUp: evtAttr("onmousedown", "pvNumStep('" + nid + "',1,'" + d.k + "','" + (d.sp || "") + "'," + w2 + "," + nMin + "," + nMax + ")"),
+                attrDown: evtAttr("onmousedown", "pvNumStep('" + nid + "',-1,'" + d.k + "','" + (d.sp || "") + "'," + w2 + "," + nMin + "," + nMax + ")"),
+            });
         }
         case "bool": {
             const bid = "pvs_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
@@ -767,8 +766,7 @@ function pinput(d, val, wid) {
             // setProp側で「テーマに戻す」表示の直接更新に留めており、
             // <input type="color">要素自体には一切触れないため、
             // OS・WebViewエンジンを問わずネイティブピッカーを壊さない）。
-            return `<input type="color" value="${val || "#000000"}" style="width:100%;height:22px;padding:1px 2px;cursor:pointer;border:1px solid var(--border);border-radius:2px;background:var(--bg3)"` +
-                evtAttr("oninput", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")") + ">";
+            return html`<input type="color" value="${val || "#000000"}" style="width:100%;height:22px;padding:1px 2px;cursor:pointer;border:1px solid var(--border);border-radius:2px;background:var(--bg3)"${raw(evtAttr("oninput", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")"))}>`;
         case "sel":
         case "select": {
             const sid = "pvs_" + w2 + "_" + d.k.replace(/[^a-z0-9]/gi, "_");
@@ -777,44 +775,43 @@ function pinput(d, val, wid) {
                 "setProp('" + d.k + "','" + (d.sp || "") + "',{value}," + w2 + ")");
         }
         case "itemsdef":
-            return `<button${evtAttr("onmousedown", "openItemsDefEditor(" + w2 + ")")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ 項目編集…</button>`;
+            return html`<button${raw(evtAttr("onmousedown", "openItemsDefEditor(" + w2 + ")"))} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ 項目編集…</button>`;
         case "themeReset":
-            return `<button id="theme-reset-btn-${w2}"${evtAttr("onmousedown", "resetWidgetTheme(" + w2 + ")")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">↺ テーマに戻す${val == null ? "" : "（連動中）"}</button>`;
+            return html`<button id="theme-reset-btn-${w2}"${raw(evtAttr("onmousedown", "resetWidgetTheme(" + w2 + ")"))} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">↺ テーマに戻す${val == null ? "" : "（連動中）"}</button>`;
         case "formThemeAction":
             return _formThemeActionHtml();
         case "formAiDesign":
-            return `<button${evtAttr("onmousedown", "openFormDesignAi()")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">🤖 AIでフォーム設計…</button>`;
+            return html`<button${raw(evtAttr("onmousedown", "openFormDesignAi()"))} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">🤖 AIでフォーム設計…</button>`;
         case "area":
-            return `<textarea class="pv-textarea" style="height:56px"${evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")")}>${esc(val || "")}</textarea>`;
+            return html`<textarea class="pv-textarea" style="height:56px"${raw(evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")"))}>${val || ""}</textarea>`;
         case "img": {
             const hasImg = val && val.startsWith("data:");
             const iid = "pvimg_" + w2;
-            return `<div style="display:flex;flex-direction:column;gap:4px;width:100%">` +
-                `<div id="${iid}_preview" style="width:100%;height:60px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;display:flex;align-items:center;justify-content:center;overflow:hidden">` +
-                (hasImg
-                    ? `<img src="${val}" style="max-width:100%;max-height:100%;object-fit:contain">`
-                    : `<span style="color:var(--text3);font-size:11px">画像なし</span>`) +
-                `</div>` +
-                `<div style="display:flex;gap:4px">` +
-                `<button class="pv-input" style="flex:1;cursor:pointer;color:var(--accent)"` + evtAttr("onmousedown", "openImgUpload(" + w2 + ")") + `>📁 選択…</button>` +
-                (hasImg ? `<button class="pv-input" style="cursor:pointer;color:#ff6b6b"` + evtAttr("onmousedown", "clearImg(" + w2 + ")") + `>✕</button>` : "") +
-                `</div>` +
-                `</div>`;
+            return html`<div style="display:flex;flex-direction:column;gap:4px;width:100%">
+                <div id="${iid}_preview" style="width:100%;height:60px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;display:flex;align-items:center;justify-content:center;overflow:hidden">
+                ${raw(hasImg
+                    ? html`<img src="${val}" style="max-width:100%;max-height:100%;object-fit:contain">`
+                    : html`<span style="color:var(--text3);font-size:11px">画像なし</span>`)}
+                </div>
+                <div style="display:flex;gap:4px">
+                <button class="pv-input" style="flex:1;cursor:pointer;color:var(--accent)"${raw(evtAttr("onmousedown", "openImgUpload(" + w2 + ")"))}>📁 選択…</button>
+                ${raw(hasImg ? html`<button class="pv-input" style="cursor:pointer;color:#ff6b6b"${raw(evtAttr("onmousedown", "clearImg(" + w2 + ")"))}>✕</button>` : "")}
+                </div>
+                </div>`;
         }
         case "coldef":
-            return `<button${evtAttr("onmousedown", "openColDefEditor(" + w2 + ")")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ カラム編集…</button>`;
+            return html`<button${raw(evtAttr("onmousedown", "openColDefEditor(" + w2 + ")"))} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ カラム編集…</button>`;
         case "fontsel": {
             const curFF = val || "";
             const curFFL = WIDGET_FONTS.find(f => f.value === curFF)?.label || "（デフォルト）";
             const fid = "pv-ff-" + w2;
             const fopts = WIDGET_FONTS.map((f, i) =>
-                `<div class="pv-sel-opt ${f.value === curFF ? "active" : ""}"` +
-                evtAttr("onmousedown", "pvSelPick('" + fid + "','" + esc(f.label) + "',event);setFontFamilyChoice(" + i + ",'" + d.k + "','" + (d.sp || "") + "'," + w2 + ")") + `>${esc(f.label)}</div>`
-            ).join("");
-            return `<div class="pv-sel" id="${fid}">` +
-                `<div class="pv-sel-btn"` + evtAttr("onmousedown", "pvSelOpen('" + fid + "',event)") + `>` +
-                `<span>${esc(curFFL)}</span><span class="arr">▼</span></div>` +
-                `<div class="pv-sel-list">${fopts}</div></div>`;
+                html`<div class="pv-sel-opt ${f.value === curFF ? "active" : ""}"${raw(evtAttr("onmousedown", "pvSelPick('" + fid + "','" + esc(f.label) + "',event);setFontFamilyChoice(" + i + ",'" + d.k + "','" + (d.sp || "") + "'," + w2 + ")"))}>${f.label}</div>`
+            );
+            return html`<div class="pv-sel" id="${fid}">
+                <div class="pv-sel-btn"${raw(evtAttr("onmousedown", "pvSelOpen('" + fid + "',event)"))}>
+                <span>${curFFL}</span><span class="arr">▼</span></div>
+                <div class="pv-sel-list">${fopts}</div></div>`;
         }
     }
     return "";
@@ -963,10 +960,10 @@ function _formThemeActionHtml() {
     const cur = getProjectData().forms[getProjectData().curFormIdx];
     const isTop = cur && cur.id === getProjectData().startFormId;
     if (isTop) {
-        return `<button id="form-theme-action-btn"${evtAttr("onmousedown", "applyThemeToAllForms()")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">🎨 全体に反映</button>`;
+        return html`<button id="form-theme-action-btn"${raw(evtAttr("onmousedown", "applyThemeToAllForms()"))} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">🎨 全体に反映</button>`;
     }
     const customized = !!cur?.cfg.themeCustomized;
-    return `<button id="form-theme-action-btn"${evtAttr("onmousedown", "resetFormThemeToTop()")} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">↺ トップに合わせる${customized ? "（個別設定中）" : ""}</button>`;
+    return html`<button id="form-theme-action-btn"${raw(evtAttr("onmousedown", "resetFormThemeToTop()"))} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">↺ トップに合わせる${customized ? "（個別設定中）" : ""}</button>`;
 }
 
 // setFormCfg()でthemeCustomizedが変わった際、パネル全体を再描画せず
@@ -1155,11 +1152,11 @@ function renderEvents() {
             const hasY = fev[ev]?.trim().length > 0;
             const row = document.createElement("div");
             row.className = "erow";
-            row.innerHTML = `<div class="ek ${hasY ? "has-yaml" : ""}">${ev}${hasY ? " ✓" : ""}</div>
-      <button class="ebtn"${evtAttr("onmousedown", "openFormYaml('" + ev + "')")}>
+            row.innerHTML = html`<div class="ek ${hasY ? "has-yaml" : ""}">${ev}${hasY ? " ✓" : ""}</div>
+      <button class="ebtn"${raw(evtAttr("onmousedown", "openFormYaml('" + ev + "')"))}>
         <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       </button>
-      <button class="edelbtn ${hasY ? "has-yaml" : ""}"${evtAttr("onmousedown", "deleteFormYaml('" + ev + "')")} title="イベントを削除">✕</button>`;
+      <button class="edelbtn ${hasY ? "has-yaml" : ""}"${raw(evtAttr("onmousedown", "deleteFormYaml('" + ev + "')"))} title="イベントを削除">✕</button>`;
             el.appendChild(row);
         });
         return;
@@ -1170,11 +1167,11 @@ function renderEvents() {
         const hasY = w.events?.[ev]?.trim().length > 0;
         const row = document.createElement("div");
         row.className = "erow";
-        row.innerHTML = `<div class="ek ${hasY ? "has-yaml" : ""}">${ev}${hasY ? " ✓" : ""}</div>
-      <button class="ebtn"${evtAttr("onmousedown", "openYaml(" + w.id + ",'" + ev + "')")}>
+        row.innerHTML = html`<div class="ek ${hasY ? "has-yaml" : ""}">${ev}${hasY ? " ✓" : ""}</div>
+      <button class="ebtn"${raw(evtAttr("onmousedown", "openYaml(" + w.id + ",'" + ev + "')"))}>
         <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       </button>
-      <button class="edelbtn ${hasY ? "has-yaml" : ""}"${evtAttr("onmousedown", "deleteYaml(" + w.id + ",'" + ev + "')")} title="イベントを削除">✕</button>`;
+      <button class="edelbtn ${hasY ? "has-yaml" : ""}"${raw(evtAttr("onmousedown", "deleteYaml(" + w.id + ",'" + ev + "')"))} title="イベントを削除">✕</button>`;
         el.appendChild(row);
     });
 }

@@ -63,6 +63,15 @@ if (process.argv.includes("build") || process.argv.includes("dev")) {
     // するだけでよく、このファイルの変更は不要（copyCompileAssetsとは別枠。
     // コンパイル済みユーザーアプリには同梱しない、VJA自身の実行時専用データのため）。
     target[join("src", "wizard-system-models")] = join("src", "wizard-system-models");
+    // VJAデザイナー本体（vja-templates-loader.js）が起動時に同期XHRで読み込む
+    // HTMLテンプレート定義。index.htmlのentrypointビルドでは<script src>のような
+    // 静的参照ではないため自動検出されず、明示的にコピー対象へ加える必要がある。
+    // webview側は views://mainview/... で配信されるため、コピー先は
+    // src/mainview/ではなくviews/mainview/にする必要がある（Resources/app/views/mainview/
+    // 配下をwebviewが直接参照するため。src/wizard-system-models等はbun側からの
+    // fsアクセス用でこれとは配信経路が異なる）。
+    // ディレクトリ単位でコピーされるため、中身のファイルを追加・削除するだけでよい。
+    target[join("src", "mainview", "templates")] = join("views", "mainview", "templates");
 }
 
 // バージョンを取得して差し替える.
