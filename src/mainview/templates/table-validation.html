@@ -1,0 +1,43 @@
+<!--
+    templates/table-validation.html
+    vja-table-validation.js（定数編集・テーブル管理・バリデーション編集）用テンプレート定義。
+    詳細は templates/pinput.html のAIメモを参照。
+-->
+<script type="text/vja-tpl" id="tv-tpl-sel-opt">
+<div class="pv-sel-opt <%= active %>" <%- attr %>><%= label %></div>
+</script>
+
+<script type="text/vja-tpl" id="tv-tpl-sel">
+<div class="pv-sel" id="<%= id %>">
+<div class="pv-sel-btn" <%- attrOpen %>>
+<span><%= curLabel %></span><span class="arr">▼</span>
+</div>
+<div class="pv-sel-list"><%- opts %></div>
+</div>
+</script>
+
+<script type="text/vja-tpl" id="tv-tpl-const-row">
+<tr>
+<td><%= no %></td>
+<td><input type="text" value="<%= name %>" <%- attrName %> placeholder="定数名"></td>
+<td><input type="text" value="<%= value %>" <%- attrValue %> placeholder="値"></td>
+<td><button class="del-btn" <%- attrDel %> title="削除">✕</button></td>
+</tr>
+</script>
+
+<script type="text/vja-tpl" id="tv-tpl-const-modal">
+<div id="const-modal">
+<%- header %>
+<div class="mbody" style="gap:6px">
+<div class="infobox"><%= infoText %></div>
+<div class="const-scroll">
+<table class="const-table">
+<thead><tr><th style="width:36px">No</th><th>定数名</th><th>値</th><th style="width:30px"></th></tr></thead>
+<tbody><%- tbody %></tbody>
+</table>
+</div>
+<button class="add-row-btn" <%- attrAdd %>>＋ 行を追加</button>
+</div>
+<div class="mfoot"><%- footBtns %><button class="pri" <%- attrSave %>>保存</button></div>
+</div>
+</script>

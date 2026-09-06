@@ -100,34 +100,22 @@ function renderConstModal() {
 
 function renderConstModalBase(title, infoText, addAction, saveAction, delRenderFn) {
     const rows = CONST_MODAL.rows || [];
-    let tbody = "";
-    rows.forEach((r, i) => {
-        const oi_n = "constUpdate(" + i + ",'name',this.value)";
-        const oi_v = "constUpdate(" + i + ",'value',this.value)";
-        tbody += "<tr>"
-            + "<td>" + (i + 1) + "</td>"
-            + "<td><input type='text' value='" + esc(r.name) + "'" + evtAttr("oninput", oi_n) + " placeholder='定数名'></td>"
-            + "<td><input type='text' value='" + esc(r.value) + "'" + evtAttr("oninput", oi_v) + " placeholder='値'></td>"
-            + "<td><button class='del-btn'" + evtAttr("onmousedown", "constDelRow(" + i + ",'" + delRenderFn + "')") + " title='削除'>✕</button></td>"
-            + "</tr>";
-    });
-    showModal("<div id='const-modal'>"
-        + mhdrHTML(title)
-        + "<div class='mbody' style='gap:6px'>"
-        + "<div class='infobox'>" + infoText + "</div>"
-        + "<div class='const-scroll'>"
-        + "<table class='const-table'>"
-        + "<thead><tr><th style='width:36px'>No</th><th>定数名</th><th>値</th><th style='width:30px'></th></tr></thead>"
-        + "<tbody>" + tbody + "</tbody>"
-        + "</table>"
-        + "</div>"
-        + "<button class='add-row-btn'" + evtAttr("onmousedown", addAction) + ">＋ 行を追加</button>"
-        + "</div>"
-        + "<div class='mfoot'>"
-        + mfootHTML([{ label: "キャンセル", action: "closeModal()" }])
-        + "<button class='pri'" + evtAttr("onmousedown", saveAction) + ">保存</button>"
-        + "</div>"
-        + "</div>");
+    const tbody = rows.map((r, i) => render("tv-tpl-const-row", {
+        no: i + 1,
+        name: r.name,
+        attrName: evtAttr("oninput", "constUpdate(" + i + ",'name',this.value)"),
+        value: r.value,
+        attrValue: evtAttr("oninput", "constUpdate(" + i + ",'value',this.value)"),
+        attrDel: evtAttr("onmousedown", "constDelRow(" + i + ",'" + delRenderFn + "')"),
+    })).join("");
+    showModal(render("tv-tpl-const-modal", {
+        header: mhdrHTML(title),
+        infoText,
+        tbody,
+        attrAdd: evtAttr("onmousedown", addAction),
+        footBtns: mfootHTML([{ label: "キャンセル", action: "closeModal()" }]),
+        attrSave: evtAttr("onmousedown", saveAction),
+    }));
 }
 
 // DOM から現在の入力値を CONST_MODAL.rows に同期する
@@ -197,20 +185,22 @@ function makePvSel(id, options, currentVal, onPickCode) {
         const code = onPickCode.replace(/\{value\}/g, "'" + String(val).replace(/'/g, "\\'") + "'");
         const isActive = currentVal === val;
         const pickCode = "pvSelPick('" + id + "','" + String(val).replace(/'/g, "\\'") + "','" + String(lbl).replace(/'/g, "\\'") + "',event);" + code;
-        return "<div class='pv-sel-opt" + (isActive ? " active" : "") + "'" +
-            evtAttr("onmousedown", pickCode) + ">" + esc(lbl) + "</div>";
+        return render("tv-tpl-sel-opt", {
+            active: isActive ? "active" : "",
+            attr: evtAttr("onmousedown", pickCode),
+            label: lbl,
+        });
     }).join("");
     const curLabel = (() => {
         const found = options.find(o => (typeof o === "object" ? o.value : o) === currentVal);
         if (found) return typeof found === "object" ? (found.label || found.value) : found;
         return currentVal || (options.length > 0 ? (typeof options[0] === "object" ? options[0].label : options[0]) : "");
     })();
-    return "<div class='pv-sel' id='" + id + "'>" +
-        "<div class='pv-sel-btn'" + evtAttr("onmousedown", "pvSelOpen('" + id + "',event)") + ">" +
-        "<span>" + esc(curLabel) + "</span><span class='arr'>▼</span>" +
-        "</div>" +
-        "<div class='pv-sel-list'>" + opts + "</div>" +
-        "</div>";
+    return render("tv-tpl-sel", {
+        id, curLabel,
+        attrOpen: evtAttr("onmousedown", "pvSelOpen('" + id + "',event)"),
+        opts,
+    });
 }
 
 function pvSelOpen(id, e) {
