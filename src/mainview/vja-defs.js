@@ -163,6 +163,20 @@ const PP_TAIL = [
 // ポインタツール（WIDGET_DEFSとは別の特殊ツール。配置可能なウィジェットではない）
 const POINTER_TOOL = { id: "pointer", label: "ポインタ", icon: "🖱️" };
 
+// selectBox/listboxのitems文字列（改行区切り、"表示名=Value"形式）から
+// <option>要素のHTML文字列を組み立てる共通ヘルパー（WIDGET_DEFS.preview専用）
+function _wpBuildOptions(items) {
+    return (items || "")
+        .split("\n")
+        .map((s) => {
+            const idx = s.indexOf("=");
+            const label = idx > 0 ? s.slice(0, idx).trim() : s.trim();
+            const val = idx > 0 ? s.slice(idx + 1).trim() : s.trim();
+            return render("wp-tpl-option", { val, label });
+        })
+        .join("");
+}
+
 /* ═══════════════════════════════════════════
     WIDGET_DEFS — ウィジェット定義の統合オブジェクト
     1タグにつき1エントリで、ラベル・アイコン・デフォルト値
@@ -371,7 +385,13 @@ const WIDGET_DEFS = {
             { k: "checked", lb: "Checked", t: "bool" },
             ...PP_TAIL,
         ],
-        preview: (p, base, vis) => `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};pointer-events:none;${vis}"><input type="checkbox" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
+        preview: (p, base, vis) => render("wp-tpl-checkbox", {
+            base, vis, fg: p.fg, fontSize: p.fontSize,
+            fontFamily: p.fontFamily || "",
+            fontWeight: p.fontBold ? "bold" : "normal",
+            checked: p.checked ? "checked" : "",
+            text: p.text,
+        }),
     },
     radio: {
         label: "radioButton", icon: "🔘",
@@ -396,7 +416,14 @@ const WIDGET_DEFS = {
             { k: "checked", lb: "Checked", t: "bool" },
             ...PP_TAIL,
         ],
-        preview: (p, base, vis) => `<label style="${base}display:flex;align-items:center;gap:4px;color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};pointer-events:none;${vis}"><input type="radio" name="${esc(p.group || "g")}" ${p.checked ? "checked" : ""}>${esc(p.text)}</label>`,
+        preview: (p, base, vis) => render("wp-tpl-radio", {
+            base, vis, fg: p.fg, fontSize: p.fontSize,
+            fontFamily: p.fontFamily || "",
+            fontWeight: p.fontBold ? "bold" : "normal",
+            group: p.group || "g",
+            checked: p.checked ? "checked" : "",
+            text: p.text,
+        }),
     },
     selectBox: {
         label: "selectBox", icon: "🔽",
@@ -420,12 +447,13 @@ const WIDGET_DEFS = {
             ...PP_BORDER,
             ...PP_TAIL,
         ],
-        preview: (p, base, vis) => `<select style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};pointer-events:none;${vis}">${(
-            p.items || ""
-        )
-            .split("\n")
-            .map((s) => { const idx = s.indexOf("="); const label = idx > 0 ? s.slice(0, idx).trim() : s.trim(); const val = idx > 0 ? s.slice(idx + 1).trim() : s.trim(); return `<option value="${esc(val)}">${esc(label)}</option>`; })
-            .join("")}</select>`,
+        preview: (p, base, vis) => render("wp-tpl-select", {
+            base, vis, bg: p.bg, fg: p.fg, fontSize: p.fontSize,
+            fontFamily: p.fontFamily || "",
+            fontWeight: p.fontBold ? "bold" : "normal",
+            border: (p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc"),
+            options: _wpBuildOptions(p.items),
+        }),
     },
     listbox: {
         label: "listBox", icon: "📋",
@@ -449,12 +477,13 @@ const WIDGET_DEFS = {
             ...PP_BORDER,
             ...PP_TAIL,
         ],
-        preview: (p, base, vis) => `<select multiple style="${base}background:${p.bg};color:${p.fg};font-size:${p.fontSize}px;font-family:${p.fontFamily || ""};font-weight:${p.fontBold ? "bold" : "normal"};border:${(p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc")};pointer-events:none;${vis}">${(
-            p.items || ""
-        )
-            .split("\n")
-            .map((s) => { const idx = s.indexOf("="); const label = idx > 0 ? s.slice(0, idx).trim() : s.trim(); const val = idx > 0 ? s.slice(idx + 1).trim() : s.trim(); return `<option value="${esc(val)}">${esc(label)}</option>`; })
-            .join("")}</select>`,
+        preview: (p, base, vis) => render("wp-tpl-select-multiple", {
+            base, vis, bg: p.bg, fg: p.fg, fontSize: p.fontSize,
+            fontFamily: p.fontFamily || "",
+            fontWeight: p.fontBold ? "bold" : "normal",
+            border: (p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc"),
+            options: _wpBuildOptions(p.items),
+        }),
     },
     datagrid: {
         label: "テーブル", icon: "🗃️",

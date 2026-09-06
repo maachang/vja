@@ -26,6 +26,26 @@
 <input type="<%= itype %>" value="<%= text %>" placeholder="<%= placeholder %>" <%- maxlen %> style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;padding:0 4px;pointer-events:none;<%- vis %>">
 </script>
 
+<script type="text/vja-tpl" id="wp-tpl-checkbox">
+<label style="<%- base %>display:flex;align-items:center;gap:4px;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;pointer-events:none;<%- vis %>"><input type="checkbox" <%= checked %>><%= text %></label>
+</script>
+
+<script type="text/vja-tpl" id="wp-tpl-radio">
+<label style="<%- base %>display:flex;align-items:center;gap:4px;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;pointer-events:none;<%- vis %>"><input type="radio" name="<%= group %>" <%= checked %>><%= text %></label>
+</script>
+
+<script type="text/vja-tpl" id="wp-tpl-option">
+<option value="<%= val %>"><%= label %></option>
+</script>
+
+<script type="text/vja-tpl" id="wp-tpl-select">
+<select style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;pointer-events:none;<%- vis %>"><%- options %></select>
+</script>
+
+<script type="text/vja-tpl" id="wp-tpl-select-multiple">
+<select multiple style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;pointer-events:none;<%- vis %>"><%- options %></select>
+</script>
+
 <script type="text/vja-tpl" id="wp-tpl-textarea">
 <textarea style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;resize:none;padding:4px;box-sizing:border-box;pointer-events:none;<%- vis %>" placeholder="<%= placeholder %>"><%= text %></textarea>
 </script>
