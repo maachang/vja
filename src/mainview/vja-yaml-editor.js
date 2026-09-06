@@ -4478,28 +4478,19 @@ function renderLearnedFixesModal() {
         list.forEach(item => {
             count++;
             const isPinned = !!item.pinned;
-            rowsHtml += `
-            <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-bottom:1px solid var(--border); gap:8px;">
-                <div style="flex:1;">
-                    <span style="font-size:11px; padding:2px 6px; border-radius:4px; margin-right:6px; background:var(--bg3); color:var(--accent2);">${esc(label)}</span>
-                    <span style="font-size:13px;">${esc(item.mistakeSummary)}</span>
-                </div>
-                <div style="display:flex; gap:6px; align-items:center;">
-                    <button class="tb-btn" style="padding:2px 8px; font-size:12px; background:${isPinned ? 'var(--accent)' : 'transparent'}; color:${isPinned ? '#fff' : 'var(--text)'};"
-                            onclick="togglePinLearnedFixItem('${esc(key)}', '${esc(item.id)}')">
-                        ${isPinned ? '📌 固定済' : '📌 固定'}
-                    </button>
-                    <button class="tb-btn" style="padding:2px 8px; font-size:12px; color:#ff5f56;"
-                            onclick="deleteLearnedFixItem('${esc(key)}', '${esc(item.id)}')">
-                        削除
-                    </button>
-                </div>
-            </div>`;
+            rowsHtml += render("ye-tpl-lf-row", {
+                label, summary: item.mistakeSummary,
+                pinBg: isPinned ? "var(--accent)" : "transparent",
+                pinColor: isPinned ? "#fff" : "var(--text)",
+                attrPin: evtAttr("onclick", "togglePinLearnedFixItem('" + key + "','" + item.id + "')"),
+                pinLabel: isPinned ? "📌 固定済" : "📌 固定",
+                attrDel: evtAttr("onclick", "deleteLearnedFixItem('" + key + "','" + item.id + "')"),
+            });
         });
     }
 
     if (count === 0) {
-        rowsHtml = `<div style="padding:24px; text-align:center; color:var(--text2); font-size:13px;">学習済みのノウハウや個別ルールはまだありません</div>`;
+        rowsHtml = render("ye-tpl-lf-empty", {});
     }
 
     const curScope = getEditorContext().lfSelectedScope || "global";
@@ -4513,31 +4504,15 @@ function renderLearnedFixesModal() {
     ];
     const scopeSelHtml = makePvSel("lf-new-scope", scopeOptions, curScope, "getEditorContext().lfSelectedScope={value}");
 
-    const html = `
-    ${mhdrHTML("🧠 学習ノウハウ（AIプロンプト記憶）管理")}
-    <div style="padding:16px; display:flex; flex-direction:column; gap:12px; max-height:70vh; overflow-y:auto;">
-        <p style="font-size:12px; color:var(--text2); margin:0;">
-            AIが過去のリトライで学習した注意事項や、手動で指定した開発ルールの一覧です。これらはAIへのコード生成プロンプトに自動挿入されます。
-        </p>
-
-        <!-- 手動ルール追加エリア -->
-        <div style="display:flex; gap:8px; align-items:center; background:var(--bg2); padding:10px; border-radius:6px; border:1px solid var(--border);">
-            <div style="width:180px; flex-shrink:0;">
-                ${scopeSelHtml}
-            </div>
-            <input type="text" id="lf-new-text" placeholder="例: 日付文字列は YYYY-MM-DD 形式で展開すること" style="flex:1; padding:6px; font-size:12px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px;" />
-            <button class="tb-btn" style="padding:6px 12px; font-size:12px; background:var(--accent); color:#fff;" onclick="addManualLearnedFix()">追加</button>
-        </div>
-
-        <!-- ルール一覧 -->
-        <div style="background:var(--bg); border:1px solid var(--border); border-radius:6px; max-height:360px; overflow-y:auto;">
-            ${rowsHtml}
-        </div>
-    </div>
-    ${mfootHTML([{ label: "閉じる", action: "closeModal()" }])}
-    `;
-
-    showModal(html);
+    showModal(
+        mhdrHTML("🧠 学習ノウハウ（AIプロンプト記憶）管理") +
+        render("ye-tpl-lf-body", {
+            scopeSelHtml,
+            attrAdd: evtAttr("onclick", "addManualLearnedFix()"),
+            rowsHtml,
+        }) +
+        mfootHTML([{ label: "閉じる", action: "closeModal()" }])
+    );
 }
 
 function togglePinLearnedFixItem(key, id) {
