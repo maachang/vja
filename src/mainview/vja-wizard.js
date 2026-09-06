@@ -729,31 +729,30 @@ function _wizardRenderColumnsReviewModal() {
         ? targetTables.map((t) => {
             const idx = allTables.indexOf(t);
             const colsPreview = (t.columns || []).length > 0
-                ? (t.columns || []).map((c) =>
-                    "<span style='display:inline-block;font-size:11px;padding:2px 6px;margin:2px;border-radius:8px;background:var(--bg2);border:1px solid var(--border)'>" +
-                    esc(c.name) + (c.pk ? " 🔑" : "") + ": " + esc(c.type) +
-                    "</span>"
-                ).join("")
+                ? (t.columns || []).map((c) => render("wz-tpl-col-preview-tag", {
+                    name: c.name,
+                    pkMark: c.pk ? " 🔑" : "",
+                    type: c.type,
+                })).join("")
                 : "<span style='font-size:11px;color:var(--text3)'>（カラム生成に失敗しました。編集ボタンから作成してください）</span>";
-            return "<div class='rp-tbl-row'><div class='rp-tbl-header'>" +
-                "<span class='rp-tbl-name'><b>" + esc(t.name) + "</b> — " + esc(t.description || "") + "</span>" +
-                "<button style='font-size:11px;padding:2px 8px'" + evtAttr("onmousedown", "wizardEditTableColumns(" + idx + ")") + ">✏️ 編集</button>" +
-                "</div><div style='padding:4px 0'>" + colsPreview + "</div></div>";
+            return render("wz-tpl-col-review-row", {
+                name: t.name,
+                description: t.description || "",
+                attrEdit: evtAttr("onmousedown", "wizardEditTableColumns(" + idx + ")"),
+                colsPreview,
+            });
         }).join("")
         : "<div class='infobox' style='font-size:11px'>テーブルはありません</div>";
 
     showModal(
         mhdrHTML("🧙 ウィザード（カラム確認）") +
-        "<div class='mbody' style='gap:10px'>" +
-        _wizardRenderStepIndicator() +
-        "<div class='infobox'>AIが生成したテーブルのカラム構成です。「✏️ 編集」から修正できます。よければ「次へ」を押してください。</div>" +
-        tablesHtml +
-        "</div>" +
-        "<div class='mfoot'>" +
-        "<button" + evtAttr("onmousedown", "closeModal()") + ">キャンセル</button>" +
-        "<button" + evtAttr("onmousedown", "wizardGoBackToTableCandidates()") + ">← 戻る</button>" +
-        "<button class='pri'" + evtAttr("onmousedown", "wizardProceedToFormDecompose()") + ">次へ →</button>" +
-        "</div>"
+        render("wz-tpl-col-review-body", {
+            stepIndicator: _wizardRenderStepIndicator(),
+            tablesHtml,
+            attrCancel: evtAttr("onmousedown", "closeModal()"),
+            attrBack: evtAttr("onmousedown", "wizardGoBackToTableCandidates()"),
+            attrNext: evtAttr("onmousedown", "wizardProceedToFormDecompose()"),
+        })
     );
 }
 

@@ -89,6 +89,30 @@
 </div>
 </script>
 
+<script type="text/vja-tpl" id="wz-tpl-col-preview-tag">
+<span style="display:inline-block;font-size:11px;padding:2px 6px;margin:2px;border-radius:8px;background:var(--bg2);border:1px solid var(--border)"><%= name %><%= pkMark %>: <%= type %></span>
+</script>
+
+<script type="text/vja-tpl" id="wz-tpl-col-review-row">
+<div class="rp-tbl-row"><div class="rp-tbl-header">
+<span class="rp-tbl-name"><b><%= name %></b> — <%= description %></span>
+<button style="font-size:11px;padding:2px 8px" <%- attrEdit %>>✏️ 編集</button>
+</div><div style="padding:4px 0"><%- colsPreview %></div></div>
+</script>
+
+<script type="text/vja-tpl" id="wz-tpl-col-review-body">
+<div class="mbody" style="gap:10px">
+<%- stepIndicator %>
+<div class="infobox">AIが生成したテーブルのカラム構成です。「✏️ 編集」から修正できます。よければ「次へ」を押してください。</div>
+<%- tablesHtml %>
+</div>
+<div class="mfoot">
+<button <%- attrCancel %>>キャンセル</button>
+<button <%- attrBack %>>← 戻る</button>
+<button class="pri" <%- attrNext %>>次へ →</button>
+</div>
+</script>
+
 <script type="text/vja-tpl" id="wz-tpl-resume-body">
 <div class="mbody" style="gap:10px">
 <div class="infobox">前回、プロジェクト作成ウィザードが完了する前に中断されたようです。続きから再開しますか？</div>
