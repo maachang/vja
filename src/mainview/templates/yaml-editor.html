@@ -150,6 +150,38 @@ style="height:30px;background:var(--bg3);border:1px solid var(--border);border-r
 <tr><td colspan="3" style="white-space:normal;color:var(--text3)"><%= note %></td></tr>
 </script>
 
+<script type="text/vja-tpl" id="ye-tpl-mockcheck-section">
+<div style="padding:6px 10px;display:flex;flex-direction:column;gap:6px">
+<div style="font-size:11px;color:var(--text2)">AI生成直後の自動モック実行検証（「🧪 モック実行」の手動実行には影響しません）</div>
+<%- sel %>
+</div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-learned-row">
+<div class="rp-learned-row" style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px">
+<div style="margin-bottom:4px;color:var(--text2)"><%= summary %></div>
+<div style="display:flex;gap:6px">
+<button class="yaml-ai-btn" style="font-size:11px;padding:2px 6px" <%= disabled %> <%- attrPin %>><%= pinLabel %></button>
+<button class="yaml-ai-btn" style="font-size:11px;padding:2px 6px" <%- attrDel %>>🗑 削除</button>
+</div>
+</div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-apiopt-locked">
+<div style="padding:4px 10px;font-size:12px;color:var(--text3)">🔒 <%= label %>：このイベントでは常時有効です（OFF不可）</div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-apiopt-row">
+<div style="display:flex;align-items:center;gap:8px;padding:4px 10px;font-size:12px">
+<div style="width:64px;flex-shrink:0"><%- sel %></div>
+<span><%= label %></span>
+</div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-apiopt-dbnote">
+<div style="padding:6px 10px;font-size:11px;color:var(--text3)">🗄 vja.db.*: YAMLの「利用テーブル:」に記載があれば自動的に利用可能になります（チェック不要）</div>
+</script>
+
 <script type="text/vja-tpl" id="ye-tpl-mock-row">
 <div class="mock-editor-row" data-idx="<%= idx %>" data-type="<%= type %>" style="display:flex;gap:6px;margin-bottom:6px;align-items:flex-start">
 <div style="width:120px;flex-shrink:0"><%- typeSel %></div>

@@ -577,10 +577,7 @@ function _rpBuildMockCheckSection(wid, evName) {
     const cur = _getMockCheckOverride(wid, evName);
     const selId = "mockchk-" + _sanitizeIdPart(wid) + "-" + _sanitizeIdPart(evName);
     const onPickCode = "yamlSetMockCheckOpt('" + wid + "','" + evName + "',{value})";
-    return "<div style='padding:6px 10px;display:flex;flex-direction:column;gap:6px'>"
-        + "<div style='font-size:11px;color:var(--text2)'>AI生成直後の自動モック実行検証（「🧪 モック実行」の手動実行には影響しません）</div>"
-        + makePvSel(selId, ["既定", "ON", "OFF"], cur, onPickCode)
-        + "</div>";
+    return render("ye-tpl-mockcheck-section", { sel: makePvSel(selId, ["既定", "ON", "OFF"], cur, onPickCode) });
 }
 
 
@@ -591,20 +588,13 @@ function _rpBuildLearnedFixesSection(wid, evName) {
     if (list.length === 0) {
         return "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>学習履歴なし（「もう一度AIに修正を依頼」が成功すると自動的に記録されます）</div>";
     }
-    return "<div>" + list.map(e => {
-        const pinLabel = e.pinned ? "👍 固定済み" : "👍 役に立った";
-        return "<div class='rp-learned-row' style='padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px'>"
-            + "<div style='margin-bottom:4px;color:var(--text2)'>" + esc(e.mistakeSummary) + "</div>"
-            + "<div style='display:flex;gap:6px'>"
-            + "<button class='yaml-ai-btn' style='font-size:11px;padding:2px 6px'" + (e.pinned ? " disabled" : "")
-            + evtAttr("onmousedown", "yamlPinLearnedFix('" + wid + "','" + evName + "','" + e.id + "');this.textContent='👍 固定済み';this.disabled=true;")
-            + ">" + pinLabel + "</button>"
-            + "<button class='yaml-ai-btn' style='font-size:11px;padding:2px 6px'"
-            + evtAttr("onmousedown", "yamlDeleteLearnedFix('" + wid + "','" + evName + "','" + e.id + "');this.closest('.rp-learned-row').remove();")
-            + ">🗑 削除</button>"
-            + "</div>"
-            + "</div>";
-    }).join("") + "</div>";
+    return "<div>" + list.map(e => render("ye-tpl-learned-row", {
+        summary: e.mistakeSummary,
+        disabled: e.pinned ? "disabled" : "",
+        pinLabel: e.pinned ? "👍 固定済み" : "👍 役に立った",
+        attrPin: evtAttr("onmousedown", "yamlPinLearnedFix('" + wid + "','" + evName + "','" + e.id + "');this.textContent='👍 固定済み';this.disabled=true;"),
+        attrDel: evtAttr("onmousedown", "yamlDeleteLearnedFix('" + wid + "','" + evName + "','" + e.id + "');this.closest('.rp-learned-row').remove();"),
+    })).join("") + "</div>";
 }
 
 // ── 右パネル: 利用API（任意カテゴリ）セクション ──
@@ -619,21 +609,17 @@ function _rpBuildApiOptSection(wid, evName) {
         // 「event」カテゴリは、ロック対象イベント（KeyDown/KeyUp/RowClick/HeaderClick）
         // では常時有効固定とし、ON/OFF切り替え自体を出さない（vja.dbの注記と同じ扱い）。
         if (key === "event" && locked) {
-            return "<div style='padding:4px 10px;font-size:12px;color:var(--text3)'>"
-                + "🔒 " + esc(labels[key]) + "：このイベントでは常時有効です（OFF不可）"
-                + "</div>";
+            return render("ye-tpl-apiopt-locked", { label: labels[key] });
         }
         const selId = "apiopt-" + String(wid).replace(/[^a-zA-Z0-9_-]/g, "_") + "-" + String(evName).replace(/[^a-zA-Z0-9_-]/g, "_") + "-" + key;
         const curVal = enabled.has(key) ? "ON" : "OFF";
         const onPickCode = "yamlSetApiOpt('" + wid + "','" + evName + "','" + key + "',{value})";
-        return "<div style='display:flex;align-items:center;gap:8px;padding:4px 10px;font-size:12px'>"
-            + "<div style='width:64px;flex-shrink:0'>" + makePvSel(selId, ["ON", "OFF"], curVal, onPickCode) + "</div>"
-            + "<span>" + esc(labels[key]) + "</span>"
-            + "</div>";
+        return render("ye-tpl-apiopt-row", {
+            sel: makePvSel(selId, ["ON", "OFF"], curVal, onPickCode),
+            label: labels[key],
+        });
     }).join("");
-    const dbNote = "<div style='padding:6px 10px;font-size:11px;color:var(--text3)'>"
-        + "🗄 vja.db.*: YAMLの「利用テーブル:」に記載があれば自動的に利用可能になります（チェック不要）"
-        + "</div>";
+    const dbNote = render("ye-tpl-apiopt-dbnote", {});
     return "<div>" + rows + dbNote + "</div>";
 }
 
