@@ -18,6 +18,40 @@
 </div>
 </script>
 
+<script type="text/vja-tpl" id="ac-tpl-ai-bar">
+<button class="yaml-ai-btn" <%- attr %>>🤖 AI向け説明を生成</button>
+</script>
+
+<script type="text/vja-tpl" id="ac-tpl-coldef-row">
+<tr>
+<td><%= no %></td>
+<td><input type="text" value="<%= label %>" <%- attrLabel %> placeholder="カラム名"></td>
+<td><input type="text" value="<%= displayName %>" <%- attrDisplayName %> placeholder="表示名（省略可）"></td>
+<td><input type="number" value="<%= width %>" <%- attrWidth %> style="width:70px" min="1" max="100"></td>
+<td style="white-space:nowrap">
+<button class="del-btn" <%- attrInsert %> title="この行の前に挿入" style="margin-right:2px">＋</button>
+<button class="del-btn" <%- attrDel %> title="削除">✕</button>
+</td></tr>
+</script>
+
+<script type="text/vja-tpl" id="ac-tpl-coldef-extra">
+<div style="display:flex;align-items:center;gap:8px;padding:4px 0">
+<label style="font-size:12px;color:var(--text2);white-space:nowrap">最大表示件数（0=無制限）:</label>
+<input type="number" id="coldef-maxrows" value="<%= maxRows %>" min="0" class="pv-input" style="width:80px">
+</div>
+</script>
+
+<script type="text/vja-tpl" id="ac-tpl-itemsdef-row">
+<tr>
+<td><%= no %></td>
+<td><input type="text" class="pv-input" value="<%= label %>" <%- attrLabel %> placeholder="表示名"></td>
+<td><input type="text" class="pv-input" value="<%= value %>" <%- attrValue %> placeholder="Value（省略可）"></td>
+<td style="white-space:nowrap">
+<button class="del-btn" <%- attrInsert %> title="この行の前に挿入" style="margin-right:2px">＋</button>
+<button class="del-btn" <%- attrDel %> title="削除">✕</button>
+</td></tr>
+</script>
+
 <script type="text/vja-tpl" id="ac-tpl-project-info">
 <div class="mbody" style="gap:10px">
 <div class="ai-cfg-row"><label>プロジェクト名</label>

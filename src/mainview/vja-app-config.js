@@ -168,7 +168,7 @@ function openExtRuntime() {
             { id: "extrt-js", label: "📜 JavaScript", type: "js", val: getProjectData().extRuntime.js || "" },
             { id: "extrt-doc", label: "📋 AI向け説明", type: "yaml", val: getProjectData().extRuntime.doc || "" },
         ],
-        aiBar: "<button class='yaml-ai-btn'" + evtAttr("onmousedown", "extRtGenDoc()") + ">🤖 AI向け説明を生成</button>",
+        aiBar: render("ac-tpl-ai-bar", { attr: evtAttr("onmousedown", "extRtGenDoc()") }),
         saveAction: "saveExtRuntime()",
     };
     showModal(buildYamlEditorHTML("", "", false, mhdrHTML("⚡ 拡張ランタイム"), "", tabConfig));
@@ -672,21 +672,20 @@ function renderColDefModal() {
         rows: COLDEF_MODAL.rows,
         maxLen: 100,
         headerHtml: "<th style='width:36px'>No</th><th>カラム名</th><th>表示名</th><th style='width:80px'>幅(%)</th><th style='width:56px'></th>",
-        rowHtmlFn: (r, i) => "<tr>"
-            + "<td>" + (i + 1) + "</td>"
-            + "<td><input type='text' value='" + esc(r.label) + "'" + evtAttr("oninput", "coldefUpdate(" + i + ",'label',this.value)") + " placeholder='カラム名'></td>"
-            + "<td><input type='text' value='" + esc(r.displayName || "") + "'" + evtAttr("oninput", "coldefUpdate(" + i + ",'displayName',this.value)") + " placeholder='表示名（省略可）'></td>"
-            + "<td><input type='number' value='" + esc(r.width) + "'" + evtAttr("oninput", "coldefUpdate(" + i + ",'width',this.value)") + " style='width:70px' min='1' max='100'></td>"
-            + "<td style='white-space:nowrap'>"
-            + "<button class='del-btn'" + evtAttr("onmousedown", "coldefInsertRow(" + i + ")") + " title='この行の前に挿入' style='margin-right:2px'>＋</button>"
-            + "<button class='del-btn'" + evtAttr("onmousedown", "coldefDelRow(" + i + ")") + " title='削除'>✕</button>"
-            + "</td></tr>",
+        rowHtmlFn: (r, i) => render("ac-tpl-coldef-row", {
+            no: i + 1,
+            label: r.label,
+            attrLabel: evtAttr("oninput", "coldefUpdate(" + i + ",'label',this.value)"),
+            displayName: r.displayName || "",
+            attrDisplayName: evtAttr("oninput", "coldefUpdate(" + i + ",'displayName',this.value)"),
+            width: r.width,
+            attrWidth: evtAttr("oninput", "coldefUpdate(" + i + ",'width',this.value)"),
+            attrInsert: evtAttr("onmousedown", "coldefInsertRow(" + i + ")"),
+            attrDel: evtAttr("onmousedown", "coldefDelRow(" + i + ")"),
+        }),
         addAction: "coldefAddRow()",
         saveAction: "coldefSave()",
-        extraHtml: "<div style='display:flex;align-items:center;gap:8px;padding:4px 0'>"
-            + "<label style='font-size:12px;color:var(--text2);white-space:nowrap'>最大表示件数（0=無制限）:</label>"
-            + "<input type='number' id='coldef-maxrows' value='" + (COLDEF_MODAL.maxRows || 0) + "' min='0' class='pv-input' style='width:80px'>"
-            + "</div>",
+        extraHtml: render("ac-tpl-coldef-extra", { maxRows: COLDEF_MODAL.maxRows || 0 }),
     });
 }
 function coldefUpdate(idx, key, val) {
@@ -738,14 +737,15 @@ function renderItemsDefModal() {
         infoText: "選択肢を定義します。Value省略時は表示名が使われます。",
         rows: ITEMSDEF_EDITOR.rows,
         headerHtml: "<th style='width:36px'>No</th><th>表示名</th><th>Value（省略可）</th><th style='width:56px'></th>",
-        rowHtmlFn: (r, i) => "<tr>"
-            + "<td>" + (i + 1) + "</td>"
-            + "<td><input type='text' class='pv-input' value='" + esc(r.label) + "'" + evtAttr("oninput", "ITEMSDEF_EDITOR.rows[" + i + "].label=this.value") + " placeholder='表示名'></td>"
-            + "<td><input type='text' class='pv-input' value='" + esc(r.value || "") + "'" + evtAttr("oninput", "ITEMSDEF_EDITOR.rows[" + i + "].value=this.value") + " placeholder='Value（省略可）'></td>"
-            + "<td style='white-space:nowrap'>"
-            + "<button class='del-btn'" + evtAttr("onmousedown", "itemsdefInsertRow(" + i + ")") + " title='この行の前に挿入' style='margin-right:2px'>＋</button>"
-            + "<button class='del-btn'" + evtAttr("onmousedown", "itemsdefDelRow(" + i + ")") + " title='削除'>✕</button>"
-            + "</td></tr>",
+        rowHtmlFn: (r, i) => render("ac-tpl-itemsdef-row", {
+            no: i + 1,
+            label: r.label,
+            attrLabel: evtAttr("oninput", "ITEMSDEF_EDITOR.rows[" + i + "].label=this.value"),
+            value: r.value || "",
+            attrValue: evtAttr("oninput", "ITEMSDEF_EDITOR.rows[" + i + "].value=this.value"),
+            attrInsert: evtAttr("onmousedown", "itemsdefInsertRow(" + i + ")"),
+            attrDel: evtAttr("onmousedown", "itemsdefDelRow(" + i + ")"),
+        }),
         addAction: "itemsdefAddRow()",
         saveAction: "itemsdefSave()",
     });
