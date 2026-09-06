@@ -26,15 +26,14 @@
 // 汎用モーダルを表示する。yaml系モーダルは外クリックで閉じない制御も兼ねる。
 // extraClass: 追加CSSクラス（例: "modal-yaml", "modal-cloud"）
 // layer: 表示先のroot要素ID（省略時は"modal-root"）
-function showModal(html, extraClass = "", layer = "modal-root") {
-    const isYaml = /^\s*<div class=["']modal-yaml["']>/.test(html);
-    const cls = isYaml ? " modal-yaml" : (extraClass ? " " + extraClass : "");
+function showModal(htmlStr, extraClass = "", layer = "modal-root") {
+    const isYaml = /^\s*<div class=["']modal-yaml["']>/.test(htmlStr);
+    const cls = isYaml ? "modal-yaml" : (extraClass || "");
     // modal-yaml ラッパーは不要なので中身を取り出す
     const inner = isYaml
-        ? html.replace(/^\s*<div class=["']modal-yaml["']>/, "").replace(/<\/div>\s*$/, "")
-        : html;
-    $(layer).innerHTML =
-        `<div class="ov"><div class="modal${cls}">${inner}</div></div>`;
+        ? htmlStr.replace(/^\s*<div class=["']modal-yaml["']>/, "").replace(/<\/div>\s*$/, "")
+        : htmlStr;
+    $(layer).innerHTML = render("md-tpl-wrap", { cls, inner });
 }
 // ── vja.app ダイアログ（#dialog-root, z-index:8000）────────────────
 // showVjaDialog / showVjaAlert / showVjaPrompt / _onVjaDialog* は
@@ -48,26 +47,25 @@ function closeModal(layer = "modal-root") {
 }
 // モーダルヘッダー生成ヘルパー
 function mhdrHTML(title, layer = "modal-root") {
-    return "<div class='mhdr'><h4>" + title + "</h4>" +
-        "<button class='mclose'" + evtAttr("onmousedown", "closeModal(\"" + layer + "\")") + ">✕</button></div>";
+    return render("md-tpl-hdr", {
+        title,
+        attrClose: evtAttr("onmousedown", "closeModal(\"" + layer + "\")"),
+    });
 }
 // モーダルフッター生成ヘルパー
 function mfootHTML(btns) {
     // btns: [{label, cls, action}]
-    return "<div class='mfoot'>" +
-        btns.map(b => `<button class='${b.cls || ""}'${evtAttr("onmousedown", b.action)}>${b.label}</button>`).join("") +
-        "</div>";
+    const btnsHtml = btns.map(b => render("md-tpl-foot-btn", {
+        cls: b.cls || "",
+        attr: evtAttr("onmousedown", b.action),
+        label: b.label,
+    })).join("");
+    return render("md-tpl-foot", { btnsHtml });
 }
 // AI生成中のローディングモーダルを表示する。
 // 経過秒数タイマーとキャンセルボタンを持つ。getAiContext().loadingTimer で管理。
 function showLoadingModal(msg) {
-    $("modal-root").innerHTML =
-        `<div class="ov"><div class="modal modal-loading" style="padding:32px 40px;display:flex;flex-direction:column;align-items:center;gap:16px;min-width:260px">` +
-        `<div style="font-size:28px;animation:spin 1s linear infinite">⏳</div>` +
-        `<div style="color:var(--text1);font-size:14px">${msg}</div>` +
-        `<div id="loading-timer" style="color:var(--accent,#7eb8f7);font-size:20px;font-weight:bold">0秒</div>` +
-        `<button class="modal-btn" onmousedown="cancelAiGenerate()" style="margin-top:12px;padding:8px 28px">キャンセル</button>` +
-        `</div></div>`;
+    $("modal-root").innerHTML = render("md-tpl-loading", { msg });
     if (getAiContext().loadingTimer) { clearInterval(getAiContext().loadingTimer); getAiContext().loadingTimer = null; }
     let sec = 0;
     getAiContext().loadingTimer = setInterval(() => {

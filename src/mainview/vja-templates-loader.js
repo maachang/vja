@@ -21,6 +21,7 @@
         "templates/pinput.html",
         "templates/status.html",
         "templates/events.html",
+        "templates/modal.html",
     ];
 
     function loadTemplateFileSync(path) {

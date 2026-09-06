@@ -1,0 +1,29 @@
+<!--
+    templates/modal.html
+    vja-modal.js のモーダル基盤（showModal/mhdrHTML/mfootHTML/showLoadingModal）用テンプレート定義。
+    詳細は templates/pinput.html のAIメモを参照。
+-->
+<script type="text/vja-tpl" id="md-tpl-wrap">
+<div class="ov"><div class="modal <%= cls %>"><%- inner %></div></div>
+</script>
+
+<script type="text/vja-tpl" id="md-tpl-hdr">
+<div class="mhdr"><h4><%= title %></h4><button class="mclose" <%- attrClose %>>✕</button></div>
+</script>
+
+<script type="text/vja-tpl" id="md-tpl-foot-btn">
+<button class="<%= cls %>" <%- attr %>><%= label %></button>
+</script>
+
+<script type="text/vja-tpl" id="md-tpl-foot">
+<div class="mfoot"><%- btnsHtml %></div>
+</script>
+
+<script type="text/vja-tpl" id="md-tpl-loading">
+<div class="ov"><div class="modal modal-loading" style="padding:32px 40px;display:flex;flex-direction:column;align-items:center;gap:16px;min-width:260px">
+<div style="font-size:28px;animation:spin 1s linear infinite">⏳</div>
+<div style="color:var(--text1);font-size:14px"><%= msg %></div>
+<div id="loading-timer" style="color:var(--accent,#7eb8f7);font-size:20px;font-weight:bold">0秒</div>
+<button class="modal-btn" onmousedown="cancelAiGenerate()" style="margin-top:12px;padding:8px 28px">キャンセル</button>
+</div></div>
+</script>
