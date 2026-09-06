@@ -113,6 +113,27 @@
 </div>
 </script>
 
+<script type="text/vja-tpl" id="wz-tpl-form-review-row">
+<div class="rp-tbl-row"><div class="rp-tbl-header">
+<span class="rp-tbl-name"><%= title %></span>
+<span class="rp-tbl-desc"><%= description %></span>
+</div></div>
+</script>
+
+<script type="text/vja-tpl" id="wz-tpl-form-review-body">
+<div class="mbody" style="gap:10px">
+<%- stepIndicator %>
+<div class="infobox">以下の画面を作成します。よければ「生成開始」を押してください。</div>
+<div><b>作成するフォーム</b></div>
+<%- formsHtml %>
+</div>
+<div class="mfoot">
+<button <%- attrCancel %>>キャンセル</button>
+<button <%- attrBack %>>← 戻る</button>
+<button class="pri" <%- attrGenerate %>>生成開始</button>
+</div>
+</script>
+
 <script type="text/vja-tpl" id="wz-tpl-resume-body">
 <div class="mbody" style="gap:10px">
 <div class="infobox">前回、プロジェクト作成ウィザードが完了する前に中断されたようです。続きから再開しますか？</div>

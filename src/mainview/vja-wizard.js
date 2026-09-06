@@ -805,25 +805,21 @@ async function wizardDecomposeForms() {
 function _wizardRenderFormReviewModal() {
     _wizardSaveProgress();
     const formsHtml = WIZARD_STATE.formPlan
-        .map((f) => "<div class='rp-tbl-row'><div class='rp-tbl-header'>" +
-            "<span class='rp-tbl-name'>" + esc(f.formTitle) + "</span>" +
-            "<span class='rp-tbl-desc'>" + esc(f.description || "") + "</span>" +
-            "</div></div>")
+        .map((f) => render("wz-tpl-form-review-row", {
+            title: f.formTitle,
+            description: f.description || "",
+        }))
         .join("");
 
     showModal(
         mhdrHTML("🧙 ウィザード（画面構成）") +
-        "<div class='mbody' style='gap:10px'>" +
-        _wizardRenderStepIndicator() +
-        "<div class='infobox'>以下の画面を作成します。よければ「生成開始」を押してください。</div>" +
-        "<div><b>作成するフォーム</b></div>" +
-        formsHtml +
-        "</div>" +
-        "<div class='mfoot'>" +
-        "<button" + evtAttr("onmousedown", "closeModal()") + ">キャンセル</button>" +
-        "<button" + evtAttr("onmousedown", "wizardGoBackToColumnsReview()") + ">← 戻る</button>" +
-        "<button class='pri'" + evtAttr("onmousedown", "wizardConfirmAndGenerate()") + ">生成開始</button>" +
-        "</div>"
+        render("wz-tpl-form-review-body", {
+            stepIndicator: _wizardRenderStepIndicator(),
+            formsHtml,
+            attrCancel: evtAttr("onmousedown", "closeModal()"),
+            attrBack: evtAttr("onmousedown", "wizardGoBackToColumnsReview()"),
+            attrGenerate: evtAttr("onmousedown", "wizardConfirmAndGenerate()"),
+        })
     );
 }
 
