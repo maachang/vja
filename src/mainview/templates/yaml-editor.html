@@ -432,6 +432,44 @@ AIが過去のリトライで学習した注意事項や、手動で指定した
 </div>
 </script>
 
+<script type="text/vja-tpl" id="ye-tpl-ai-preset-save-body">
+<div style="padding:16px; display:flex; flex-direction:column; gap:12px;">
+<label style="font-size:12px; font-weight:bold;">プリセット名を入力してください</label>
+<input type="text" id="ai-preset-name-in" value="<%= curName %>" placeholder="例: OpenAI (gpt-4o-mini)" style="padding:8px; font-size:13px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px;">
+<div class="infobox" style="font-size:11px">既存のプリセットと同じ名前・保存先で保存すると、新規作成ではなく上書き更新されます</div>
+<label style="font-size:12px; font-weight:bold;">保存先</label>
+<%- scopeSel %>
+</div>
+<div class="mfoot">
+<%- footBtns %>
+<button class="pri" <%- attrSave %>>保存</button>
+</div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-fd-item">
+<label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);cursor:pointer;margin-bottom:8px;transition:background 0.15s">
+<input type="radio" name="fd-tmpl-radio" value="<%= id %>" <%= checked %> style="margin-top:3px;cursor:pointer">
+<div style="flex:1">
+<div style="font-weight:bold;font-size:13px;color:var(--text);margin-bottom:3px"><%= label %></div>
+<div style="font-size:11px;color:var(--text2);line-height:1.4"><%= desc %></div>
+</div>
+</label>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-fd-select-modal">
+<div class="modal" style="width:500px">
+<%- header %>
+<div style="padding:16px;max-height:400px;overflow-y:auto">
+<div style="font-size:12px;color:var(--text2);margin-bottom:12px">反映したい画面レイアウトのテンプレートを選択してください。</div>
+<%- itemsHtml %>
+</div>
+<div class="mfoot">
+<button <%- attrCancel %>>キャンセル</button>
+<button class="pri" <%- attrConfirm %>>反映</button>
+</div>
+</div>
+</script>
+
 <script type="text/vja-tpl" id="ye-tpl-mock-row">
 <div class="mock-editor-row" data-idx="<%= idx %>" data-type="<%= type %>" style="display:flex;gap:6px;margin-bottom:6px;align-items:flex-start">
 <div style="width:120px;flex-shrink:0"><%- typeSel %></div>

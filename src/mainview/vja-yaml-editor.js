@@ -2803,39 +2803,23 @@ function insertFormDesignTemplate(id) {
 
 function openFormDesignTemplateModal() {
     const templates = typeof FORM_DESIGN_TEMPLATES !== "undefined" ? FORM_DESIGN_TEMPLATES : [];
-    let itemsHtml = templates.map((t, idx) => {
-        const checked = idx === 0 ? "checked" : "";
+    const itemsHtml = templates.map((t, idx) => {
         const descMatch = (t.yaml || "").match(/説明:\s*(.+)/);
-        const desc = descMatch ? descMatch[1].trim() : "";
-        return (
-            `<label style='display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);cursor:pointer;margin-bottom:8px;transition:background 0.15s'>` +
-            `<input type='radio' name='fd-tmpl-radio' value='${t.id}' ${checked} style='margin-top:3px;cursor:pointer'>` +
-            `<div style='flex:1'>` +
-            `<div style='font-weight:bold;font-size:13px;color:var(--text);margin-bottom:3px'>${t.label}</div>` +
-            `<div style='font-size:11px;color:var(--text2);line-height:1.4'>${desc}</div>` +
-            `</div>` +
-            `</label>`
-        );
+        return render("ye-tpl-fd-item", {
+            id: t.id,
+            checked: idx === 0 ? "checked" : "",
+            label: t.label,
+            desc: descMatch ? descMatch[1].trim() : "",
+        });
     }).join("");
 
-    const bodyHtml =
-        `<div style='padding:16px;max-height:400px;overflow-y:auto'>` +
-        `<div style='font-size:12px;color:var(--text2);margin-bottom:12px'>反映したい画面レイアウトのテンプレートを選択してください。</div>` +
-        itemsHtml +
-        `</div>`;
-
-    const footHtml =
-        `<div class='mfoot'>` +
-        `<button onclick='closeModal("modal-layer-1")'>キャンセル</button>` +
-        `<button class='pri' onclick='confirmApplyFormDesignTemplate()'>反映</button>` +
-        `</div>`;
-
     showModal(
-        `<div class='modal' style='width:500px'>` +
-        mhdrHTML("📋 画面デザインテンプレート選択", "modal-layer-1") +
-        bodyHtml +
-        footHtml +
-        `</div>`,
+        render("ye-tpl-fd-select-modal", {
+            header: mhdrHTML("📋 画面デザインテンプレート選択", "modal-layer-1"),
+            itemsHtml,
+            attrCancel: evtAttr("onclick", 'closeModal("modal-layer-1")'),
+            attrConfirm: evtAttr("onclick", "confirmApplyFormDesignTemplate()"),
+        }),
         "",
         "modal-layer-1"
     );
@@ -4149,21 +4133,15 @@ function aiCfgSaveAsPreset() {
     const curName = curPreset?.name || "";
     const curScope = curPreset?.scope || "project";
 
-    const html = `
-    ${mhdrHTML("💾 AI設定をプリセット保存")}
-    <div style="padding:16px; display:flex; flex-direction:column; gap:12px;">
-        <label style="font-size:12px; font-weight:bold;">プリセット名を入力してください</label>
-        <input type="text" id="ai-preset-name-in" value="${esc(curName)}" placeholder="例: OpenAI (gpt-4o-mini)" style="padding:8px; font-size:13px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px;" />
-        <div class="infobox" style="font-size:11px">既存のプリセットと同じ名前・保存先で保存すると、新規作成ではなく上書き更新されます</div>
-        <label style="font-size:12px; font-weight:bold;">保存先</label>
-        ${makePvSel("ai-preset-scope-sel", _AI_PRESET_SCOPE_OPTS, curScope, "")}
-    </div>
-    <div class="mfoot">
-        ${mfootHTML([{ label: "キャンセル", action: "openAiConfig()" }])}
-        <button class="pri" onclick="aiCfgDoSaveAsPreset()">保存</button>
-    </div>
-    `;
-    showModal(html);
+    showModal(
+        mhdrHTML("💾 AI設定をプリセット保存") +
+        render("ye-tpl-ai-preset-save-body", {
+            curName,
+            scopeSel: makePvSel("ai-preset-scope-sel", _AI_PRESET_SCOPE_OPTS, curScope, ""),
+            footBtns: mfootHTML([{ label: "キャンセル", action: "openAiConfig()" }]),
+            attrSave: evtAttr("onclick", "aiCfgDoSaveAsPreset()"),
+        })
+    );
 }
 
 // AIプリセットの保存先区分（プロジェクト固有 / プロジェクト共通）の選択肢

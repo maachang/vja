@@ -182,7 +182,7 @@ const _TEST_OPEN_MODAL_FNS = [
     "openFormConstEditor", "openCloudInfraConfig", "openFontConfig",
     "openDebugTools", "openApiRef", "openAiValidationDetailModal", "openFormDesignAi",
     "openAiConfig", "openConstEditor", "openTableManager", "openValidationEditor",
-    "openLearnedFixesModal",
+    "openLearnedFixesModal", "openFormDesignTemplateModal",
 ];
 const _testOpenModal = (p: { fn: string }) => {
     const g = window as any;
