@@ -1108,24 +1108,20 @@ function rowDel(getRows, idx, fallback, renderFn) {
 function renderRowListModal(opts) {
     const rows = opts.rows || [];
     const tbody = rows.map((r, i) => opts.rowHtmlFn(r, i)).join("");
-    showModal("<div id='" + opts.modalId + "'>"
-        + mhdrHTML(opts.title)
-        + "<div class='mbody' style='gap:6px'>"
-        + "<div class='infobox'>" + opts.infoText + "</div>"
-        + (opts.extraHtml || "")
-        + "<div class='coldef-scroll'>"
-        + "<table class='coldef-table'>"
-        + "<thead><tr>" + opts.headerHtml + "</tr></thead>"
-        + "<tbody>" + tbody + "</tbody>"
-        + "</table>"
-        + "</div>"
-        + (!opts.maxLen || rows.length < opts.maxLen ? "<button class='add-row-btn'" + evtAttr("onmousedown", opts.addAction) + ">＋ 行を追加</button>" : "")
-        + "</div>"
-        + "<div class='mfoot'>"
-        + mfootHTML([{ label: "キャンセル", action: "closeModal()" }])
-        + "<button class='pri'" + evtAttr("onmousedown", opts.saveAction) + ">保存</button>"
-        + "</div>"
-        + "</div>");
+    const addBtn = (!opts.maxLen || rows.length < opts.maxLen)
+        ? render("tv-tpl-add-row-btn", { attr: evtAttr("onmousedown", opts.addAction) })
+        : "";
+    showModal(render("tv-tpl-row-list-modal", {
+        modalId: opts.modalId,
+        header: mhdrHTML(opts.title),
+        infoText: opts.infoText,
+        extraHtml: opts.extraHtml || "",
+        headerHtml: opts.headerHtml,
+        tbody,
+        addBtn,
+        footBtns: mfootHTML([{ label: "キャンセル", action: "closeModal()" }]),
+        attrSave: evtAttr("onmousedown", opts.saveAction),
+    }));
 }
 
 // ── 一覧管理モーダル共通テンプレート ──────────────────────
@@ -1141,24 +1137,16 @@ function renderListManagerModal(opts) {
     const items = opts.items || [];
     const rows = items.length > 0
         ? items.map((item, i) => opts.rowHtmlFn(item, i)).join("")
-        : "<tr><td colspan='" + opts.colCount + "' class='tbl-empty'>" + opts.emptyText + "</td></tr>";
-    showModal(
-        mhdrHTML(opts.title) +
-        "<div class='mbody tbl-mgr-wrap'>" +
-        "<div class='tbl-mgr-header'>" +
-        "<span style='font-size:12px;color:var(--text2)'>" + opts.countLabel(items.length) + "</span>" +
-        "<button class='tbl-add-btn'" + evtAttr("onmousedown", opts.addAction) + ">" + opts.addLabel + "</button>" +
-        "</div>" +
-        "<div class='tbl-list-scroll'>" +
-        "<table class='tbl-list-table'>" +
-        "<thead><tr>" + opts.headerHtml + "</tr></thead>" +
-        "<tbody>" + rows + "</tbody>" +
-        "</table></div>" +
-        "</div>" +
-        "<div class='mfoot'>" +
-        "<button" + evtAttr("onmousedown", "closeModal()") + ">閉じる</button>" +
-        "</div>"
-    );
+        : render("tv-tpl-empty-row", { colCount: opts.colCount, emptyText: opts.emptyText });
+    showModal(render("tv-tpl-list-manager-modal", {
+        header: mhdrHTML(opts.title),
+        countLabel: opts.countLabel(items.length),
+        attrAdd: evtAttr("onmousedown", opts.addAction),
+        addLabel: opts.addLabel,
+        headerHtml: opts.headerHtml,
+        rows,
+        attrClose: evtAttr("onmousedown", "closeModal()"),
+    }));
 }
 
 function validAddRow() {

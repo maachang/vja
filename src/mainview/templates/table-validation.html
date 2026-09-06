@@ -25,6 +25,48 @@
 </tr>
 </script>
 
+<script type="text/vja-tpl" id="tv-tpl-add-row-btn">
+<button class="add-row-btn" <%- attr %>>＋ 行を追加</button>
+</script>
+
+<script type="text/vja-tpl" id="tv-tpl-row-list-modal">
+<div id="<%= modalId %>">
+<%- header %>
+<div class="mbody" style="gap:6px">
+<div class="infobox"><%= infoText %></div>
+<%- extraHtml %>
+<div class="coldef-scroll">
+<table class="coldef-table">
+<thead><tr><%- headerHtml %></tr></thead>
+<tbody><%- tbody %></tbody>
+</table>
+</div>
+<%- addBtn %>
+</div>
+<div class="mfoot"><%- footBtns %><button class="pri" <%- attrSave %>>保存</button></div>
+</div>
+</script>
+
+<script type="text/vja-tpl" id="tv-tpl-empty-row">
+<tr><td colspan="<%= colCount %>" class="tbl-empty"><%= emptyText %></td></tr>
+</script>
+
+<script type="text/vja-tpl" id="tv-tpl-list-manager-modal">
+<%- header %>
+<div class="mbody tbl-mgr-wrap">
+<div class="tbl-mgr-header">
+<span style="font-size:12px;color:var(--text2)"><%= countLabel %></span>
+<button class="tbl-add-btn" <%- attrAdd %>><%= addLabel %></button>
+</div>
+<div class="tbl-list-scroll">
+<table class="tbl-list-table">
+<thead><tr><%- headerHtml %></tr></thead>
+<tbody><%- rows %></tbody>
+</table></div>
+</div>
+<div class="mfoot"><button <%- attrClose %>>閉じる</button></div>
+</script>
+
 <script type="text/vja-tpl" id="tv-tpl-const-modal">
 <div id="const-modal">
 <%- header %>
