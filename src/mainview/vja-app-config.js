@@ -863,10 +863,16 @@ function applyViewSettings() {
     // グリッド
     fb().classList.toggle("show-grid", getDesignerState().showGrid);
     const stg = $("st-grid");
-    if (stg) stg.innerHTML = "グリッド: <b style='color:" + (getDesignerState().showGrid ? "var(--accent)" : "#ff6b6b") + "'>" + (getDesignerState().showGrid ? "ON" : "OFF") + "</b>";
+    if (stg) stg.innerHTML = render("st-tpl-grid", {
+        color: getDesignerState().showGrid ? "var(--accent)" : "#ff6b6b",
+        label: getDesignerState().showGrid ? "ON" : "OFF",
+    });
     // スナップ
     const sts = $("st-snap");
-    if (sts) sts.innerHTML = "スナップ: <b style='color:" + (getDesignerState().snapOn ? "var(--accent)" : "#ff6b6b") + "'>" + (getDesignerState().snapOn ? "ON" : "OFF") + "</b>";
+    if (sts) sts.innerHTML = render("st-tpl-snap", {
+        color: getDesignerState().snapOn ? "var(--accent)" : "#ff6b6b",
+        label: getDesignerState().snapOn ? "ON" : "OFF",
+    });
     // メニュー項目
     const mgrid = document.querySelector(".dd-item[onmousedown=\"toggleGrid()\"]");
     if (mgrid) mgrid.textContent = "グリッド表示切替（現在: " + (getDesignerState().showGrid ? "ON" : "OFF") + "）";
@@ -885,8 +891,7 @@ function toggleSnap() {
     showToast("スナップ: " + (getDesignerState().snapOn ? "ON" : "OFF"));
 }
 function updateCount() {
-    $("st-cnt").innerHTML =
-        `ウィジェット: <b>${getProjectData().widgets.length}</b>`;
+    $("st-cnt").innerHTML = render("st-tpl-cnt", { count: getProjectData().widgets.length });
 }
 
 function toggleMenu(id, e) {

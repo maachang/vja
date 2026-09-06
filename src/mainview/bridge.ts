@@ -124,6 +124,9 @@ const _testGetPropsHtml = () => {
             stTool: document.getElementById("st-tool")?.innerHTML ?? "",
             stPos: document.getElementById("st-pos")?.innerHTML ?? "",
             stSize: document.getElementById("st-size")?.innerHTML ?? "",
+            stCnt: document.getElementById("st-cnt")?.innerHTML ?? "",
+            stGrid: document.getElementById("st-grid")?.innerHTML ?? "",
+            stSnap: document.getElementById("st-snap")?.innerHTML ?? "",
         };
     } catch (e: any) {
         return { ok: false, error: e.message };
