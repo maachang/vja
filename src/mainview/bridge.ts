@@ -147,7 +147,7 @@ const _testRenderCloudModal = () => {
 const _TEST_OPEN_MODAL_FNS = [
     "openProjectInfo", "openAppEvents", "openExtRuntime",
     "openFormConstEditor", "openCloudInfraConfig", "openFontConfig",
-    "openDebugTools", "openApiRef", "openAiValidationDetailModal",
+    "openDebugTools", "openApiRef", "openAiValidationDetailModal", "openFormDesignAi",
 ];
 const _testOpenModal = (p: { fn: string }) => {
     const g = window as any;

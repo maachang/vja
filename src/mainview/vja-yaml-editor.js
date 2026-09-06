@@ -3051,24 +3051,26 @@ async function textToYamlGenerate(wid, evName) {
 function buildFormLayoutPickerHtml() {
     const cur = getProjectData().formLayoutPattern || "";
     // 「指定なし」カード（一番左）: idは空文字。選択するとAIへの補足指示は付与しない。
-    const noneActive = cur === "" ? " active" : "";
-    const noneCard = `<div class='form-layout-card${noneActive}' data-pattern-id='' style='border:2px solid ${cur === "" ? "var(--accent)" : "var(--border)"};border-radius:6px;padding:8px;cursor:pointer;width:220px'` +
-        evtAttr("onmousedown", `selectFormLayoutPattern('')`) + `>` +
-        `<div style='width:100%;height:143px;display:flex;align-items:center;justify-content:center;background:#22222e;border-radius:4px;color:var(--text3);font-size:14px'>指定なし</div>` +
-        `<div style='margin-top:6px;font-size:13px;text-align:center'>指定なし</div>` +
-        `</div>`;
+    const noneCard = render("ye-tpl-layout-card", {
+        active: cur === "" ? "active" : "",
+        id: "",
+        borderColor: cur === "" ? "var(--accent)" : "var(--border)",
+        attr: evtAttr("onmousedown", "selectFormLayoutPattern('')"),
+        inner: `<div style="width:100%;height:143px;display:flex;align-items:center;justify-content:center;background:#22222e;border-radius:4px;color:var(--text3);font-size:14px">指定なし</div>`,
+        label: "指定なし",
+    });
     const cards = noneCard + getFormLayoutPatterns().map((p) => {
-        const active = p.id === cur ? " active" : "";
-        return `<div class='form-layout-card${active}' data-pattern-id='${esc(p.id)}' style='border:2px solid ${p.id === cur ? "var(--accent)" : "var(--border)"};border-radius:6px;padding:8px;cursor:pointer;width:220px'` +
-            evtAttr("onmousedown", `selectFormLayoutPattern('${p.id}')`) + `>` +
-            buildLayoutPatternDiagramSvg(p) +
-            `<div style='margin-top:6px;font-size:13px;text-align:center'>${esc(p.label)}</div>` +
-            `</div>`;
+        const active = p.id === cur;
+        return render("ye-tpl-layout-card", {
+            active: active ? "active" : "",
+            id: p.id,
+            borderColor: active ? "var(--accent)" : "var(--border)",
+            attr: evtAttr("onmousedown", "selectFormLayoutPattern('" + p.id + "')"),
+            inner: buildLayoutPatternDiagramSvg(p),
+            label: p.label,
+        });
     }).join("");
-    return `<div style='display:flex;flex-wrap:wrap;gap:14px'>${cards}</div>` +
-        `<div style='margin-top:10px;font-size:11px;color:var(--text3)'>` +
-        `選択したレイアウトイメージは、YAMLには書き込まれず、「🤖 画面反映」実行時にAIへの補足指示として渡されます（もう一度クリックすると選択解除できます）。` +
-        `</div>`;
+    return render("ye-tpl-layout-picker", { cards });
 }
 
 // レイアウトイメージカードのクリック処理（トグル選択）。
@@ -3101,13 +3103,10 @@ function openFormDesignAi() {
             { id: "fd-doc", label: "✨ YAMLドラフト", type: "doc", val: docTemplate, ph: "✨ 作成したい画面デザインの要望を日本語で自由に記述できます（複数行可）\n\n例:\n1. ユーザー情報登録フォーム\n2. 氏名、メールアドレス、部署（セレクトボックス）の入力項目\n3. 保存ボタンとクリアボタンを配置する" },
             { id: "fd-layout", label: "🖼 レイアウト", type: "layout" },
         ],
-        aiBar:
-            "<div style='display:flex;gap:6px;align-items:center;width:100%'>" +
-            "<button class='modal-btn' style='font-size:12px;padding:4px 10px;white-space:nowrap' onclick='openFormDesignTemplateModal()'>📋 テンプレート選択…</button>" +
-            "<input id='fd-prompt-in' placeholder='AIへの補足指示（任意）' style='flex:1'>" +
-            "<button class='yaml-ai-btn' id='fd-gen-yaml-btn' title='依頼文章から画面デザインYAMLを作成します' " + evtAttr("onmousedown", "formDesignTextToYamlGenerate()") + ">✨ YAMLドラフト生成</button>" +
-            "<button class='yaml-ai-btn' id='fd-gen-btn' " + evtAttr("onmousedown", "formDesignAiGenerate()") + ">🤖 画面反映</button>" +
-            "</div>",
+        aiBar: render("ye-tpl-formdesign-ai-bar", {
+            attrYaml: evtAttr("onmousedown", "formDesignTextToYamlGenerate()"),
+            attrGen: evtAttr("onmousedown", "formDesignAiGenerate()"),
+        }),
         saveAction: "saveFormDesignDraft()",
         rightPanel: "formDesign",
     };

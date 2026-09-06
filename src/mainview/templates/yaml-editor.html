@@ -61,6 +61,27 @@ style="height:30px;background:var(--bg3);border:1px solid var(--border);border-r
 </div>
 </script>
 
+<script type="text/vja-tpl" id="ye-tpl-layout-card">
+<div class="form-layout-card <%= active %>" data-pattern-id="<%= id %>" style="border:2px solid <%= borderColor %>;border-radius:6px;padding:8px;cursor:pointer;width:220px" <%- attr %>>
+<%- inner %>
+<div style="margin-top:6px;font-size:13px;text-align:center"><%= label %></div>
+</div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-layout-picker">
+<div style="display:flex;flex-wrap:wrap;gap:14px"><%- cards %></div>
+<div style="margin-top:10px;font-size:11px;color:var(--text3)">選択したレイアウトイメージは、YAMLには書き込まれず、「🤖 画面反映」実行時にAIへの補足指示として渡されます（もう一度クリックすると選択解除できます）。</div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-formdesign-ai-bar">
+<div style="display:flex;gap:6px;align-items:center;width:100%">
+<button class="modal-btn" style="font-size:12px;padding:4px 10px;white-space:nowrap" onclick="openFormDesignTemplateModal()">📋 テンプレート選択…</button>
+<input id="fd-prompt-in" placeholder="AIへの補足指示（任意）" style="flex:1">
+<button class="yaml-ai-btn" id="fd-gen-yaml-btn" title="依頼文章から画面デザインYAMLを作成します" <%- attrYaml %>>✨ YAMLドラフト生成</button>
+<button class="yaml-ai-btn" id="fd-gen-btn" <%- attrGen %>>🤖 画面反映</button>
+</div>
+</script>
+
 <script type="text/vja-tpl" id="ye-tpl-mock-row">
 <div class="mock-editor-row" data-idx="<%= idx %>" data-type="<%= type %>" style="display:flex;gap:6px;margin-bottom:6px;align-items:flex-start">
 <div style="width:120px;flex-shrink:0"><%- typeSel %></div>
