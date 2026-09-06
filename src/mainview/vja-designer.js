@@ -731,7 +731,7 @@ function makeSec(txt) {
 function makeProw(d, val, wid) {
     const row = document.createElement("div");
     row.className = "prow";
-    row.innerHTML = html`<div class="pk">${d.lb}</div><div class="pv">${raw(pinput(d, val, wid))}</div>`;
+    row.innerHTML = render("pv-tpl-row", { lb: d.lb, inputHtml: pinput(d, val, wid) });
     return row;
 }
 
@@ -972,10 +972,16 @@ function _formThemeActionHtml() {
     const cur = getProjectData().forms[getProjectData().curFormIdx];
     const isTop = cur && cur.id === getProjectData().startFormId;
     if (isTop) {
-        return html`<button id="form-theme-action-btn"${raw(evtAttr("onmousedown", "applyThemeToAllForms()"))} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">🎨 全体に反映</button>`;
+        return render("pv-tpl-theme-action", {
+            attr: evtAttr("onmousedown", "applyThemeToAllForms()"),
+            label: "🎨 全体に反映",
+        });
     }
     const customized = !!cur?.cfg.themeCustomized;
-    return html`<button id="form-theme-action-btn"${raw(evtAttr("onmousedown", "resetFormThemeToTop()"))} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">↺ トップに合わせる${customized ? "（個別設定中）" : ""}</button>`;
+    return render("pv-tpl-theme-action", {
+        attr: evtAttr("onmousedown", "resetFormThemeToTop()"),
+        label: "↺ トップに合わせる" + (customized ? "（個別設定中）" : ""),
+    });
 }
 
 // setFormCfg()でthemeCustomizedが変わった際、パネル全体を再描画せず
