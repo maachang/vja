@@ -91,6 +91,15 @@ server.registerTool(
 );
 
 server.registerTool(
+    "vja_open_table_edit",
+    {
+        description: "テーブル編集モーダル（idx=-1で新規作成、それ以外は既存テーブル編集）を開き、描画結果のHTML（modal-root）を返す（jhtmlテンプレート移行の検証用）",
+        inputSchema: { idx: z.number().describe("編集対象テーブルのindex（-1で新規作成）") },
+    },
+    async (args) => toToolResult(await callVja("testOpenTableEdit", args)),
+);
+
+server.registerTool(
     "vja_render_cloud_modal",
     {
         description: "クラウドインフラ設定モーダルを開き、描画結果のHTML（modal-root）を返す（jhtmlテンプレート移行の検証用）",

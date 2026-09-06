@@ -143,6 +143,17 @@ const _testOpenYamlEditor = (p: { wid: number; evName: string }) => {
         return { ok: false, error: e.message };
     }
 };
+// テーブル編集モーダル（新規作成/idx指定編集）を開き、描画結果のHTMLを返す
+// （jhtmlテンプレート移行の検証用）
+const _testOpenTableEdit = (p: { idx: number }) => {
+    const g = window as any;
+    try {
+        g.openTableEdit(p.idx);
+        return { ok: true, modalRoot: document.getElementById("modal-root")?.innerHTML ?? "" };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
 // クラウドインフラ設定モーダルを開き、描画結果のHTMLを返す（jhtmlテンプレート移行の検証用）
 const _testRenderCloudModal = () => {
     const g = window as any;
@@ -299,6 +310,7 @@ const rpc = Electroview.defineRPC({
             testSwitchTab: _testSwitchTab,
             testGetPropsHtml: _testGetPropsHtml,
             testOpenYamlEditor: _testOpenYamlEditor,
+            testOpenTableEdit: _testOpenTableEdit,
             testRenderCloudModal: _testRenderCloudModal,
             testOpenModal: _testOpenModal,
             testSaveYaml: _testSaveYaml,

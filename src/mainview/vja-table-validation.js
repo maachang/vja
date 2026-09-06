@@ -269,22 +269,14 @@ function renderTableManagerModal() {
         addAction: "openTableEdit(-1)",
         addLabel: "＋ テーブル追加",
         headerHtml: "<th style='width:36px'>No</th><th>テーブル名</th><th style='width:72px;text-align:center'>カラム数</th><th style='width:90px;text-align:center'>インデックス数</th><th style='width:80px;text-align:center'>編集</th><th style='width:80px;text-align:center'>削除</th>",
-        rowHtmlFn: (t, i) => {
-            const colCount = t.columns ? t.columns.length : 0;
-            const idxCount = t.columns ? t.columns.filter(c => c.index).length : 0;
-            return "<tr>" +
-                "<td>" + (i + 1) + "</td>" +
-                "<td style='font-weight:bold'>" + esc(t.name) + "</td>" +
-                "<td style='text-align:center'>" + colCount + "</td>" +
-                "<td style='text-align:center'>" + idxCount + "</td>" +
-                "<td style='text-align:center'>" +
-                "<button class='tbl-action-btn'" + evtAttr("onmousedown", "openTableEdit(" + i + ")") + ">編集</button>" +
-                "</td>" +
-                "<td style='text-align:center'>" +
-                "<button class='tbl-action-btn del'" + evtAttr("onmousedown", "deleteTable(" + i + ")") + ">削除</button>" +
-                "</td>" +
-                "</tr>";
-        },
+        rowHtmlFn: (t, i) => render("tv-tpl-table-row", {
+            no: i + 1,
+            name: t.name,
+            colCount: t.columns ? t.columns.length : 0,
+            idxCount: t.columns ? t.columns.filter(c => c.index).length : 0,
+            attrEdit: evtAttr("onmousedown", "openTableEdit(" + i + ")"),
+            attrDel: evtAttr("onmousedown", "deleteTable(" + i + ")"),
+        }),
     });
 }
 
@@ -321,89 +313,49 @@ function renderTableEditModal() {
     const isNew = TABLE_MODAL.editIdx < 0;
     const cols = tbl.columns || [];
 
-    let tbody = cols.map((c, i) => {
-        const oi_name = "tblColUpdate(" + i + ",'name',this.value)";
-        const oi_labelJa = "tblColUpdate(" + i + ",'labelJa',this.value)";
-        const oi_notNull = "tblColUpdate(" + i + ",'notNull',this.checked)";
-        const oi_pk = "tblColUpdatePk(" + i + ",this.checked)";
-        const oi_index = "tblColUpdate(" + i + ",'index',this.checked)";
-        const oi_default = "tblColUpdate(" + i + ",'default',this.value)";
-        const oi_useDefault = "tblColUpdate(" + i + ",'useDefault',this.checked)";
-        const defCell =
-            "<input class='col-check' type='checkbox' " + (c.useDefault ? "checked" : "") + evtAttr("onchange", oi_useDefault) + " style='margin-right:6px'>" +
-            "<input class='col-input' type='text' value='" + esc(c.default || "") + "' " +
-            evtAttr("oninput", oi_default) + " placeholder='" + esc(defaultValueForType(c.type)) + "' style='width:72px'>";
-        return "<tr id='col-row-" + i + "'>" +
-            "<td>" + (i + 1) + "</td>" +
-            "<td><input class='col-input' type='text' value='" + esc(c.name) + "' " +
-            evtAttr("oninput", oi_name) + " placeholder='カラム名'></td>" +
-            "<td><input class='col-input' type='text' value='" + esc(c.labelJa || "") + "' " +
-            evtAttr("oninput", oi_labelJa) + " placeholder='例: ユーザー名'></td>" +
-            "<td>" +
-            "<button type='button' class='col-type-btn' data-colidx='" + i + "'>" +
-            "<span class='col-type-lbl'>" + esc(c.type || "TEXT") + "</span>" +
-            "<span class='arr'>▼</span></button>" +
-            "</td>" +
-            "<td><input class='col-check' type='checkbox' " + (c.notNull ? "checked" : "") + " " +
-            evtAttr("onchange", oi_notNull) + "></td>" +
-            "<td><input class='col-check' type='checkbox' " + (c.pk ? "checked" : "") + " " +
-            evtAttr("onchange", oi_pk) + "></td>" +
-            "<td><input class='col-check' type='checkbox' " + (c.index ? "checked" : "") + " " +
-            evtAttr("onchange", oi_index) + "></td>" +
-            "<td style='white-space:nowrap'>" + defCell + "</td>" +
-            "<td style='white-space:nowrap'><button class='tbl-action-btn'" + evtAttr("onmousedown", "tblColInsert(" + i + ")") + " style='margin-right:2px'>＋</button><button class='tbl-action-btn del'" + evtAttr("onmousedown", "tblColDelete(" + i + ")") + ">✕</button></td>" +
-            "</tr>";
+    const tbody = cols.map((c, i) => {
+        const defCell = render("tv-tpl-col-default-cell", {
+            useDefaultChecked: c.useDefault ? "checked" : "",
+            attrUseDefault: evtAttr("onchange", "tblColUpdate(" + i + ",'useDefault',this.checked)"),
+            defaultVal: c.default || "",
+            attrDefault: evtAttr("oninput", "tblColUpdate(" + i + ",'default',this.value)"),
+            placeholder: defaultValueForType(c.type),
+        });
+        return render("tv-tpl-col-row", {
+            i, no: i + 1,
+            name: c.name,
+            attrName: evtAttr("oninput", "tblColUpdate(" + i + ",'name',this.value)"),
+            labelJa: c.labelJa || "",
+            attrLabelJa: evtAttr("oninput", "tblColUpdate(" + i + ",'labelJa',this.value)"),
+            type: c.type || "TEXT",
+            notNullChecked: c.notNull ? "checked" : "",
+            attrNotNull: evtAttr("onchange", "tblColUpdate(" + i + ",'notNull',this.checked)"),
+            pkChecked: c.pk ? "checked" : "",
+            attrPk: evtAttr("onchange", "tblColUpdatePk(" + i + ",this.checked)"),
+            indexChecked: c.index ? "checked" : "",
+            attrIndex: evtAttr("onchange", "tblColUpdate(" + i + ",'index',this.checked)"),
+            defCell,
+            attrInsert: evtAttr("onmousedown", "tblColInsert(" + i + ")"),
+            attrDelete: evtAttr("onmousedown", "tblColDelete(" + i + ")"),
+        });
     }).join("");
 
     showModal(
         mhdrHTML(isNew ? "➕ テーブル新規作成" : "✏ テーブル編集") +
-        "<div class='mbody tbl-edit-wrap'>" +
-        // テーブル名
-        "<div class='tbl-name-row'><label>テーブル名</label>" +
-        "<input id='tbl-name-in' value='" + esc(tbl.name) + "' placeholder='例: users' " +
-        evtAttr("oninput", "TABLE_MODAL.edit.name=this.value") + "></div>" +
-        // 説明
-        "<div class='tbl-desc-row'><label>説明（任意）</label>" +
-        "<textarea id='tbl-desc-in'" + evtAttr("oninput", "TABLE_MODAL.edit.description=this.value") + ">" + esc(tbl.description || "") + "</textarea></div>" +
-        // AIによるカラム構成の雛形生成
-        "<div class='tbl-desc-row'><label>✨ AI生成</label>" +
-        "<div style='display:flex;gap:6px;align-items:flex-start;flex:1'>" +
-        "<input id='tbl-ai-req-in' placeholder='どんなテーブルにしたいか自由に記述（任意。テーブル名・説明があれば自動で考慮します）' style='flex:1'>" +
-        "<button class='yaml-ai-btn' style='white-space:nowrap'" + evtAttr("onmousedown", "tblAiGenerateSchema()") + ">🤖 AI生成</button>" +
-        "</div></div>" +
-        // マスターCSV
-        renderMasterCsvArea(tbl) +
-        // カラム一覧
-        "<div style='display:flex;justify-content:space-between;align-items:center'>" +
-        "<span style='font-size:12px;color:var(--text2)'>カラム定義（" + cols.length + "列）</span>" +
-        "<button class='col-add-btn'" + evtAttr("onmousedown", "tblColAdd()") + ">＋ カラム追加</button>" +
-        "</div>" +
-        "<div class='col-list-scroll'>" +
-        "<table class='col-list-table'>" +
-        "<thead><tr>" +
-        "<th style='width:32px'>No</th>" +
-        "<th style='text-align:left;min-width:120px'>カラム名</th>" +
-        "<th style='text-align:left;min-width:100px'>日本語名</th>" +
-        "<th style='width:100px'>型</th>" +
-        "<th style='width:64px'>NOT NULL</th>" +
-        "<th style='width:48px'>KEY</th>" +
-        "<th style='width:72px'>インデックス</th>" +
-        "<th style='min-width:90px'>DEFAULT</th>" +
-        "<th style='width:40px'>削除</th>" +
-        "</tr></thead>" +
-        "<tbody id='col-tbody'>" + tbody + "</tbody>" +
-        "</table></div>" +
-        // DDL プレビュー
-        "<div style='font-size:11px;color:var(--text3);margin-top:2px'>" +
-        "<span" + evtAttr("onmousedown", "tblShowDdl()") + " style='cursor:pointer;text-decoration:underline'>DDLプレビューを表示</span>" +
-        "</div>" +
-        "<pre id='tbl-ddl-preview' style='display:none;background:var(--bg3);border:1px solid var(--border);" +
-        "border-radius:3px;padding:8px;font-size:11px;color:#98d982;overflow-x:auto;white-space:pre-wrap'></pre>" +
-        "</div>" +
-        "<div class='mfoot'>" +
-        "<button" + evtAttr("onmousedown", "openTableManager()") + ">← 一覧に戻る</button>" +
-        "<button class='pri'" + evtAttr("onmousedown", "tblSave()") + ">保存</button>" +
-        "</div>"
+        render("tv-tpl-table-edit-body", {
+            name: tbl.name,
+            attrName: evtAttr("oninput", "TABLE_MODAL.edit.name=this.value"),
+            description: tbl.description || "",
+            attrDesc: evtAttr("oninput", "TABLE_MODAL.edit.description=this.value"),
+            attrAiGen: evtAttr("onmousedown", "tblAiGenerateSchema()"),
+            masterCsvArea: renderMasterCsvArea(tbl),
+            colCount: cols.length,
+            attrColAdd: evtAttr("onmousedown", "tblColAdd()"),
+            tbody,
+            attrDdl: evtAttr("onmousedown", "tblShowDdl()"),
+            attrBack: evtAttr("onmousedown", "openTableManager()"),
+            attrSave: evtAttr("onmousedown", "tblSave()"),
+        })
     );
     // showModal後にイベントデリゲーション登録
     requestAnimationFrame(() => {
@@ -428,24 +380,18 @@ function renderMasterCsvArea(tbl) {
     if (csv && csv.data) {
         const origKb = csv.originalSize ? (csv.originalSize / 1024).toFixed(1) + " KB" : "不明";
         const compKb = csv.compressedSize ? (csv.compressedSize / 1024).toFixed(1) + " KB" : "不明";
-        return "<div class='tbl-csv-area'>" +
-            "<label>マスターCSV</label>" +
-            "<div class='tbl-csv-info'>" +
-            "<span>📄 " + esc(csv.filename || "master.csv") + "</span>" +
-            "<span style='color:var(--text2);font-size:11px'>" +
-            csv.rows + " 行 / 元サイズ: " + origKb + " / 圧縮後: " + compKb +
-            "</span>" +
-            "<div style='display:flex;gap:6px;margin-top:4px'>" +
-            "<button class='modal-btn'" + evtAttr("onmousedown", "tblDownloadMasterCsv()") + ">⬇ ダウンロード</button>" +
-            "<button class='modal-btn'" + evtAttr("onmousedown", "tblReuploadMasterCsv()") + ">🔄 再アップロード</button>" +
-            "<button class='modal-btn' style='color:#ff6b6b'" + evtAttr("onmousedown", "tblDeleteMasterCsv()") + ">🗑 削除</button>" +
-            "</div></div></div>";
+        return render("tv-tpl-csv-area-has", {
+            filename: csv.filename || "master.csv",
+            rows: csv.rows, origKb, compKb,
+            attrDownload: evtAttr("onmousedown", "tblDownloadMasterCsv()"),
+            attrReupload: evtAttr("onmousedown", "tblReuploadMasterCsv()"),
+            attrDelete: evtAttr("onmousedown", "tblDeleteMasterCsv()"),
+        });
     } else {
-        return "<div class='tbl-csv-area'>" +
-            "<label>マスターCSV <span style='font-size:11px;color:var(--text2)'>（テーブルが空の場合に自動INSERT）</span></label>" +
-            "<button class='modal-btn'" + evtAttr("onmousedown", "tblUploadMasterCsv()") + ">📂 CSVをアップロード</button>" +
-            "<input type='file' id='tbl-csv-file' accept='.csv' style='display:none'" + evtAttr("onchange", "tblOnCsvSelected(event)") + ">" +
-            "</div>";
+        return render("tv-tpl-csv-area-none", {
+            attrUpload: evtAttr("onmousedown", "tblUploadMasterCsv()"),
+            attrChange: evtAttr("onchange", "tblOnCsvSelected(event)"),
+        });
     }
 }
 

@@ -67,6 +67,96 @@
 <div class="mfoot"><button <%- attrClose %>>閉じる</button></div>
 </script>
 
+<script type="text/vja-tpl" id="tv-tpl-table-row">
+<tr>
+<td><%= no %></td>
+<td style="font-weight:bold"><%= name %></td>
+<td style="text-align:center"><%= colCount %></td>
+<td style="text-align:center"><%= idxCount %></td>
+<td style="text-align:center"><button class="tbl-action-btn" <%- attrEdit %>>編集</button></td>
+<td style="text-align:center"><button class="tbl-action-btn del" <%- attrDel %>>削除</button></td>
+</tr>
+</script>
+
+<script type="text/vja-tpl" id="tv-tpl-col-default-cell">
+<input class="col-check" type="checkbox" <%= useDefaultChecked %> <%- attrUseDefault %> style="margin-right:6px">
+<input class="col-input" type="text" value="<%= defaultVal %>" <%- attrDefault %> placeholder="<%= placeholder %>" style="width:72px">
+</script>
+
+<script type="text/vja-tpl" id="tv-tpl-col-row">
+<tr id="col-row-<%= i %>">
+<td><%= no %></td>
+<td><input class="col-input" type="text" value="<%= name %>" <%- attrName %> placeholder="カラム名"></td>
+<td><input class="col-input" type="text" value="<%= labelJa %>" <%- attrLabelJa %> placeholder="例: ユーザー名"></td>
+<td><button type="button" class="col-type-btn" data-colidx="<%= i %>"><span class="col-type-lbl"><%= type %></span><span class="arr">▼</span></button></td>
+<td><input class="col-check" type="checkbox" <%= notNullChecked %> <%- attrNotNull %>></td>
+<td><input class="col-check" type="checkbox" <%= pkChecked %> <%- attrPk %>></td>
+<td><input class="col-check" type="checkbox" <%= indexChecked %> <%- attrIndex %>></td>
+<td style="white-space:nowrap"><%- defCell %></td>
+<td style="white-space:nowrap"><button class="tbl-action-btn" <%- attrInsert %> style="margin-right:2px">＋</button><button class="tbl-action-btn del" <%- attrDelete %>>✕</button></td>
+</tr>
+</script>
+
+<script type="text/vja-tpl" id="tv-tpl-table-edit-body">
+<div class="mbody tbl-edit-wrap">
+<div class="tbl-name-row"><label>テーブル名</label>
+<input id="tbl-name-in" value="<%= name %>" placeholder="例: users" <%- attrName %>></div>
+<div class="tbl-desc-row"><label>説明（任意）</label>
+<textarea id="tbl-desc-in" <%- attrDesc %>><%= description %></textarea></div>
+<div class="tbl-desc-row"><label>✨ AI生成</label>
+<div style="display:flex;gap:6px;align-items:flex-start;flex:1">
+<input id="tbl-ai-req-in" placeholder="どんなテーブルにしたいか自由に記述（任意。テーブル名・説明があれば自動で考慮します）" style="flex:1">
+<button class="yaml-ai-btn" style="white-space:nowrap" <%- attrAiGen %>>🤖 AI生成</button>
+</div></div>
+<%- masterCsvArea %>
+<div style="display:flex;justify-content:space-between;align-items:center">
+<span style="font-size:12px;color:var(--text2)">カラム定義（<%= colCount %>列）</span>
+<button class="col-add-btn" <%- attrColAdd %>>＋ カラム追加</button>
+</div>
+<div class="col-list-scroll">
+<table class="col-list-table">
+<thead><tr>
+<th style="width:32px">No</th>
+<th style="text-align:left;min-width:120px">カラム名</th>
+<th style="text-align:left;min-width:100px">日本語名</th>
+<th style="width:100px">型</th>
+<th style="width:64px">NOT NULL</th>
+<th style="width:48px">KEY</th>
+<th style="width:72px">インデックス</th>
+<th style="min-width:90px">DEFAULT</th>
+<th style="width:40px">削除</th>
+</tr></thead>
+<tbody id="col-tbody"><%- tbody %></tbody>
+</table></div>
+<div style="font-size:11px;color:var(--text3);margin-top:2px">
+<span <%- attrDdl %> style="cursor:pointer;text-decoration:underline">DDLプレビューを表示</span>
+</div>
+<pre id="tbl-ddl-preview" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:8px;font-size:11px;color:#98d982;overflow-x:auto;white-space:pre-wrap"></pre>
+</div>
+<div class="mfoot"><button <%- attrBack %>>← 一覧に戻る</button><button class="pri" <%- attrSave %>>保存</button></div>
+</script>
+
+<script type="text/vja-tpl" id="tv-tpl-csv-area-has">
+<div class="tbl-csv-area">
+<label>マスターCSV</label>
+<div class="tbl-csv-info">
+<span>📄 <%= filename %></span>
+<span style="color:var(--text2);font-size:11px"><%= rows %> 行 / 元サイズ: <%= origKb %> / 圧縮後: <%= compKb %></span>
+<div style="display:flex;gap:6px;margin-top:4px">
+<button class="modal-btn" <%- attrDownload %>>⬇ ダウンロード</button>
+<button class="modal-btn" <%- attrReupload %>>🔄 再アップロード</button>
+<button class="modal-btn" style="color:#ff6b6b" <%- attrDelete %>>🗑 削除</button>
+</div></div></div>
+</script>
+
+<script type="text/vja-tpl" id="tv-tpl-csv-area-none">
+<div class="tbl-csv-area">
+<label>マスターCSV <span style="font-size:11px;color:var(--text2)">（テーブルが空の場合に自動INSERT）</span></label>
+<button class="modal-btn" <%- attrUpload %>>📂 CSVをアップロード</button>
+<input type="file" id="tbl-csv-file" accept=".csv" style="display:none" <%- attrChange %>>
+</div>
+</script>
+
 <script type="text/vja-tpl" id="tv-tpl-const-modal">
 <div id="const-modal">
 <%- header %>
