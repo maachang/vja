@@ -782,7 +782,11 @@ function pinput(d, val, wid) {
                 attr: evtAttr("onmousedown", "openItemsDefEditor(" + w2 + ")"),
             });
         case "themeReset":
-            return html`<button id="theme-reset-btn-${w2}"${raw(evtAttr("onmousedown", "resetWidgetTheme(" + w2 + ")"))} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">↺ テーマに戻す${val == null ? "" : "（連動中）"}</button>`;
+            return render("pv-tpl-theme-reset", {
+                w2,
+                attr: evtAttr("onmousedown", "resetWidgetTheme(" + w2 + ")"),
+                linked: val == null ? "" : "（連動中）",
+            });
         case "formThemeAction":
             return _formThemeActionHtml();
         case "formAiDesign":
