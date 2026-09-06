@@ -257,26 +257,21 @@ function _wizardRenderFormSizeModal() {
     _wizardSaveProgress();
     const options = _wizardCalcFormSizeOptions();
     const curKey = WIZARD_STATE.formSize?.key || "small";
-    const optionsHtml = options.map((o) =>
-        "<label style='display:flex;align-items:center;gap:8px;padding:6px 0'>" +
-        "<input type='radio' name='wiz-form-size'" + (o.key === curKey ? " checked" : "") +
-        evtAttr("onchange", "wizardPickFormSize('" + o.key + "')") + ">" +
-        "<span><b>" + esc(o.label) + "</b> — " + o.w + " × " + o.h + "px" +
-        (o.key === "small" ? "（現状の初期フォームサイズ相当）" : "") + "</span>" +
-        "</label>"
-    ).join("");
+    const optionsHtml = options.map((o) => render("wz-tpl-form-size-opt", {
+        checked: o.key === curKey ? "checked" : "",
+        attr: evtAttr("onchange", "wizardPickFormSize('" + o.key + "')"),
+        label: o.label, w: o.w, h: o.h,
+        note: o.key === "small" ? "（現状の初期フォームサイズ相当）" : "",
+    })).join("");
 
     showModal(
         mhdrHTML("🧙 ウィザード（画面サイズ）") +
-        "<div class='mbody' style='gap:10px'>" +
-        _wizardRenderStepIndicator() +
-        "<div class='infobox'>作成する画面のサイズを選んでください。現状のVJAのフォーム初期サイズ（640×420px）は「小」に相当します。項目数が多いアプリでは「中」「大」を選ぶと、1つの画面に項目を詰め込みすぎずに済みます。</div>" +
-        optionsHtml +
-        "</div>" +
-        "<div class='mfoot'>" +
-        "<button" + evtAttr("onmousedown", "closeModal()") + ">キャンセル</button>" +
-        "<button class='pri'" + evtAttr("onmousedown", "wizardConfirmFormSize()") + ">次へ →</button>" +
-        "</div>"
+        render("wz-tpl-form-size-body", {
+            stepIndicator: _wizardRenderStepIndicator(),
+            optionsHtml,
+            attrCancel: evtAttr("onmousedown", "closeModal()"),
+            attrNext: evtAttr("onmousedown", "wizardConfirmFormSize()"),
+        })
     );
 }
 

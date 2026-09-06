@@ -18,6 +18,25 @@
 <div style="display:flex;align-items:center;gap:4px;margin-bottom:10px;flex-wrap:wrap"><%- items %></div>
 </script>
 
+<script type="text/vja-tpl" id="wz-tpl-form-size-opt">
+<label style="display:flex;align-items:center;gap:8px;padding:6px 0">
+<input type="radio" name="wiz-form-size" <%= checked %> <%- attr %>>
+<span><b><%= label %></b> — <%= w %> × <%= h %>px<%= note %></span>
+</label>
+</script>
+
+<script type="text/vja-tpl" id="wz-tpl-form-size-body">
+<div class="mbody" style="gap:10px">
+<%- stepIndicator %>
+<div class="infobox">作成する画面のサイズを選んでください。現状のVJAのフォーム初期サイズ（640×420px）は「小」に相当します。項目数が多いアプリでは「中」「大」を選ぶと、1つの画面に項目を詰め込みすぎずに済みます。</div>
+<%- optionsHtml %>
+</div>
+<div class="mfoot">
+<button <%- attrCancel %>>キャンセル</button>
+<button class="pri" <%- attrNext %>>次へ →</button>
+</div>
+</script>
+
 <script type="text/vja-tpl" id="wz-tpl-resume-body">
 <div class="mbody" style="gap:10px">
 <div class="infobox">前回、プロジェクト作成ウィザードが完了する前に中断されたようです。続きから再開しますか？</div>
