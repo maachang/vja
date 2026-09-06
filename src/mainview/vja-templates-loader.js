@@ -28,6 +28,7 @@
         "templates/table-validation.html",
         "templates/wizard.html",
         "templates/widget-preview.html",
+        "templates/editor-utils.html",
     ];
 
     function loadTemplateFileSync(path) {

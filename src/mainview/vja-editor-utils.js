@@ -217,43 +217,46 @@ function hlUpdate(taId, hlId, tokenizeFn) {
 }
 function yamlHlUpdate() { hlUpdate("yaml-ta", "yaml-hl", yamlTokenize); }
 function yamlHlSync() { hlSync("yaml-ta", "yaml-hl"); }
+// シンタックスハイライト用の<span class="...">生成ヘルパー（yamlTokenize/jsTokenize共通）。
+// escapeHtml()は' と "もエスケープするが、既存のescHl()（&<>のみ）と違いが出るのは
+// 引用符を含むテキストのみで、表示上は&#39;/&quot;として同じ文字に描画されるため実害はない。
+function _hlSpan(cls, text) {
+    return render("eu-tpl-hl-span", { cls, text });
+}
 function yamlTokenize(text) {
     return text.split("\n").map(line => {
         // コメント行
         if (/^\s*#/.test(line)) {
-            return '<span class="yc">' + escHl(line) + '</span>';
+            return _hlSpan("yc", line);
         }
         // キー: 値 の行
         const kvMatch = line.match(/^(\s*-?\s*)([^:\s][^:]*)(:)(\s*)(.*)?$/);
         if (kvMatch) {
-            const indent = escHl(kvMatch[1]);
-            const key = '<span class="yk">' + escHl(kvMatch[2]) + '</span>';
+            const indent = escapeHtml(kvMatch[1]);
+            const key = _hlSpan("yk", kvMatch[2]);
             const colon = '<span class="yk">:</span>';
-            const space = escHl(kvMatch[4]);
+            const space = escapeHtml(kvMatch[4]);
             const val = kvMatch[5] !== undefined ? colorVal(kvMatch[5]) : '';
             return indent + key + colon + space + val;
         }
         // リスト項目 (- value)
         const listMatch = line.match(/^(\s*-\s+)(.*)?$/);
         if (listMatch) {
-            return '<span class="ys">' + escHl(listMatch[1]) + '</span>' + colorVal(listMatch[2] || '');
+            return _hlSpan("ys", listMatch[1]) + colorVal(listMatch[2] || '');
         }
         // ブロックスカラー継続行（インデントのみ）
-        return '<span class="yv">' + escHl(line) + '</span>';
+        return _hlSpan("yv", line);
     }).join("\n");
 }
 function colorVal(v) {
     if (!v) return '';
-    if (/^#/.test(v)) return '<span class="yc">' + escHl(v) + '</span>';
-    if (/^[|>]/.test(v)) return '<span class="yp">' + escHl(v) + '</span>';
-    if (/^(true|false|yes|no|on|off)$/i.test(v.trim())) return '<span class="yd">' + escHl(v) + '</span>';
-    if (/^null$/i.test(v.trim())) return '<span class="yd">' + escHl(v) + '</span>';
-    if (/^-?[0-9]+(\.?[0-9]*)$/.test(v.trim())) return '<span class="yn">' + escHl(v) + '</span>';
-    if (/^["']/.test(v.trim())) return '<span class="yv">' + escHl(v) + '</span>';
-    return '<span class="yv">' + escHl(v) + '</span>';
-}
-function escHl(s) {
-    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    if (/^#/.test(v)) return _hlSpan("yc", v);
+    if (/^[|>]/.test(v)) return _hlSpan("yp", v);
+    if (/^(true|false|yes|no|on|off)$/i.test(v.trim())) return _hlSpan("yd", v);
+    if (/^null$/i.test(v.trim())) return _hlSpan("yd", v);
+    if (/^-?[0-9]+(\.?[0-9]*)$/.test(v.trim())) return _hlSpan("yn", v);
+    if (/^["']/.test(v.trim())) return _hlSpan("yv", v);
+    return _hlSpan("yv", v);
 }
 
 /* ── JavaScript シンタックスハイライト ── */
@@ -264,25 +267,25 @@ function jsTokenize(code) {
     const BOOL = /^(true|false|null|undefined|NaN|Infinity)$/;
     return code.split("\n").map(line => {
         // 行コメント
-        if (/^\s*\/\//.test(line)) return '<span class="jc">' + escHl(line) + '</span>';
+        if (/^\s*\/\//.test(line)) return _hlSpan("jc", line);
         let out = ""; let i = 0;
         while (i < line.length) {
             // 行コメント（途中）
             if (line[i] === "/" && line[i + 1] === "/") {
-                out += '<span class="jc">' + escHl(line.slice(i)) + '</span>';
+                out += _hlSpan("jc", line.slice(i));
                 break;
             }
             // 文字列
             if (line[i] === '"' || line[i] === "'" || line[i] === "`") {
                 const q = line[i]; let j = i + 1;
                 while (j < line.length) { if (line[j] === "\\") { j += 2; continue; } if (line[j] === q) { j++; break; } j++; }
-                out += '<span class="js">' + escHl(line.slice(i, j)) + '</span>';
+                out += _hlSpan("js", line.slice(i, j));
                 i = j; continue;
             }
             // 数値
             if (/[0-9]/.test(line[i]) && (i === 0 || !/\w/.test(line[i - 1]))) {
                 let j = i; while (j < line.length && /[0-9._xXa-fA-F]/.test(line[j])) j++;
-                out += '<span class="jn">' + escHl(line.slice(i, j)) + '</span>';
+                out += _hlSpan("jn", line.slice(i, j));
                 i = j; continue;
             }
             // 識別子・キーワード
@@ -290,13 +293,13 @@ function jsTokenize(code) {
                 let j = i; while (j < line.length && /[\w$]/.test(line[j])) j++;
                 const word = line.slice(i, j);
                 const next = line[j];
-                if (KW.test(word)) out += '<span class="jk">' + escHl(word) + '</span>';
-                else if (BOOL.test(word)) out += '<span class="jb">' + escHl(word) + '</span>';
-                else if (next === "(") out += '<span class="jf">' + escHl(word) + '</span>';
-                else out += '<span class="jp">' + escHl(word) + '</span>';
+                if (KW.test(word)) out += _hlSpan("jk", word);
+                else if (BOOL.test(word)) out += _hlSpan("jb", word);
+                else if (next === "(") out += _hlSpan("jf", word);
+                else out += _hlSpan("jp", word);
                 i = j; continue;
             }
-            out += escHl(line[i]); i++;
+            out += escapeHtml(line[i]); i++;
         }
         return out;
     }).join("\n");
@@ -388,6 +391,6 @@ Object.assign(window, {
     editorUndoPush, editorUndoInit, editorUndo, editorRedo,
     hlSync, hlUpdate, yamlHlUpdate, yamlHlSync, yamlTokenize,
     jsHlUpdate, jsHlSync, jsTokenize,
-    colorVal, escHl, ensureCursorVisible,
+    colorVal, ensureCursorVisible,
     saveYamlData, saveYaml, openFormYaml, saveFormYaml, deleteFormYaml,
 });
