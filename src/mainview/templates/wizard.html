@@ -69,6 +69,26 @@
 </div>
 </script>
 
+<script type="text/vja-tpl" id="wz-tpl-table-cand-item">
+<label style="display:flex;align-items:center;gap:8px;padding:4px 0">
+<input type="checkbox" <%= checked %> <%- attr %>>
+<span><b><%= name %></b> — <%= description %></span>
+</label>
+</script>
+
+<script type="text/vja-tpl" id="wz-tpl-table-cand-body">
+<div class="mbody" style="gap:10px">
+<%- stepIndicator %>
+<div class="infobox">このアプリで使いそうなテーブルの候補です。不要なものはチェックを外してください。</div>
+<%- tablesHtml %>
+</div>
+<div class="mfoot">
+<button <%- attrCancel %>>キャンセル</button>
+<button <%- attrBack %>>← 戻る</button>
+<button class="pri" <%- attrNext %>>次へ →</button>
+</div>
+</script>
+
 <script type="text/vja-tpl" id="wz-tpl-resume-body">
 <div class="mbody" style="gap:10px">
 <div class="infobox">前回、プロジェクト作成ウィザードが完了する前に中断されたようです。続きから再開しますか？</div>

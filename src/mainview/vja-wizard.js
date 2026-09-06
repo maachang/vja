@@ -605,26 +605,23 @@ async function wizardExtractTableCandidates() {
 function _wizardRenderTableCandidatesModal() {
     _wizardSaveProgress();
     const tablesHtml = WIZARD_STATE.tableCandidates.length > 0
-        ? WIZARD_STATE.tableCandidates.map((t, i) =>
-            "<label style='display:flex;align-items:center;gap:8px;padding:4px 0'>" +
-            "<input type='checkbox'" + (t.selected ? " checked" : "") + evtAttr("onchange", "wizardToggleTableCandidate(" + i + ")") + ">" +
-            "<span><b>" + esc(t.name) + "</b> — " + esc(t.description || "") + "</span>" +
-            "</label>"
-        ).join("")
+        ? WIZARD_STATE.tableCandidates.map((t, i) => render("wz-tpl-table-cand-item", {
+            checked: t.selected ? "checked" : "",
+            attr: evtAttr("onchange", "wizardToggleTableCandidate(" + i + ")"),
+            name: t.name,
+            description: t.description || "",
+        })).join("")
         : "<div class='infobox' style='font-size:11px'>DBテーブルは不要と判断されました</div>";
 
     showModal(
         mhdrHTML("🧙 ウィザード（テーブル候補）") +
-        "<div class='mbody' style='gap:10px'>" +
-        _wizardRenderStepIndicator() +
-        "<div class='infobox'>このアプリで使いそうなテーブルの候補です。不要なものはチェックを外してください。</div>" +
-        tablesHtml +
-        "</div>" +
-        "<div class='mfoot'>" +
-        "<button" + evtAttr("onmousedown", "closeModal()") + ">キャンセル</button>" +
-        "<button" + evtAttr("onmousedown", "wizardGoBackToQa()") + ">← 戻る</button>" +
-        "<button class='pri'" + evtAttr("onmousedown", "wizardProceedToColumnGen()") + ">次へ →</button>" +
-        "</div>"
+        render("wz-tpl-table-cand-body", {
+            stepIndicator: _wizardRenderStepIndicator(),
+            tablesHtml,
+            attrCancel: evtAttr("onmousedown", "closeModal()"),
+            attrBack: evtAttr("onmousedown", "wizardGoBackToQa()"),
+            attrNext: evtAttr("onmousedown", "wizardProceedToColumnGen()"),
+        })
     );
 }
 
