@@ -801,17 +801,11 @@ function pinput(d, val, wid) {
         case "img": {
             const hasImg = val && val.startsWith("data:");
             const iid = "pvimg_" + w2;
-            return html`<div style="display:flex;flex-direction:column;gap:4px;width:100%">
-                <div id="${iid}_preview" style="width:100%;height:60px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;display:flex;align-items:center;justify-content:center;overflow:hidden">
-                ${raw(hasImg
-                    ? html`<img src="${val}" style="max-width:100%;max-height:100%;object-fit:contain">`
-                    : html`<span style="color:var(--text3);font-size:11px">画像なし</span>`)}
-                </div>
-                <div style="display:flex;gap:4px">
-                <button class="pv-input" style="flex:1;cursor:pointer;color:var(--accent)"${raw(evtAttr("onmousedown", "openImgUpload(" + w2 + ")"))}>📁 選択…</button>
-                ${raw(hasImg ? html`<button class="pv-input" style="cursor:pointer;color:#ff6b6b"${raw(evtAttr("onmousedown", "clearImg(" + w2 + ")"))}>✕</button>` : "")}
-                </div>
-                </div>`;
+            return render("pv-tpl-img", {
+                iid, val, hasImg,
+                attrUpload: evtAttr("onmousedown", "openImgUpload(" + w2 + ")"),
+                attrClear: evtAttr("onmousedown", "clearImg(" + w2 + ")"),
+            });
         }
         case "coldef":
             return html`<button${raw(evtAttr("onmousedown", "openColDefEditor(" + w2 + ")"))} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ カラム編集…</button>`;
