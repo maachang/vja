@@ -132,6 +132,17 @@ const _testGetPropsHtml = () => {
         return { ok: false, error: e.message };
     }
 };
+// 指定ウィジェット・イベントのYAMLエディタモーダルを開き、描画結果のHTMLを返す
+// （jhtmlテンプレート移行の検証用。右パネル（定数/画面/ウィジェット/テーブル/検証）の確認に使う）
+const _testOpenYamlEditor = (p: { wid: number; evName: string }) => {
+    const g = window as any;
+    try {
+        g.openYaml(p.wid, p.evName);
+        return { ok: true, modalRoot: document.getElementById("modal-root")?.innerHTML ?? "" };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
 // クラウドインフラ設定モーダルを開き、描画結果のHTMLを返す（jhtmlテンプレート移行の検証用）
 const _testRenderCloudModal = () => {
     const g = window as any;
@@ -287,6 +298,7 @@ const rpc = Electroview.defineRPC({
             testSelectWidget: _testSelectWidget,
             testSwitchTab: _testSwitchTab,
             testGetPropsHtml: _testGetPropsHtml,
+            testOpenYamlEditor: _testOpenYamlEditor,
             testRenderCloudModal: _testRenderCloudModal,
             testOpenModal: _testOpenModal,
             testSaveYaml: _testSaveYaml,

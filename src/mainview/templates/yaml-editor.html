@@ -90,6 +90,66 @@ style="height:30px;background:var(--bg3);border:1px solid var(--border);border-r
 <div class="pv-sel-opt <%= active %>" <%- attr %>><%= label %></div>
 </script>
 
+<script type="text/vja-tpl" id="ye-tpl-rp-tr">
+<tr class="rp-insert" data-insert="<%= insert %>"><td class="<%= cls1 %>"><%= col1 %></td><td class="<%= cls2 %>"><%= col2 %></td><td class="<%= cls3 %>"><%= col3 %></td></tr>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-rp-expand-btn">
+<button class="rp-tbl-expand" onmousedown="event.stopPropagation();yamlToggleTblCols(this)">▶</button>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-rp-row-wrap">
+<div class="rp-tbl-row"><div class="rp-tbl-header" style="<%= headerStyle %>"><%- headerInner %><%- expandBtn %></div><%- cols %></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-rp-cols">
+<div class="rp-tbl-cols"><table><%- rows %></table></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-rp-const-section">
+<table class="rp-table"><%- rows %></table>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-rp-const-row">
+<tr class="rp-insert" data-insert="<%= n %>"><td class="rp-name-col"><%= n %></td><td class="rp-val-col"><%= v %></td><td class="rp-tag-col"><%= tag %></td></tr>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-rp-form-header-inner">
+<span class="rp-tbl-name rp-insert" data-insert="<%= ft %>" style="<%= nameStyle %>"><%= star %><%= ft %></span>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-rp-widget-header-inner">
+<span class="rp-tbl-name rp-insert" data-insert="<%= n %>"><%= n %></span><span class="rp-tbl-desc"><%= tag %></span><%- descSpan %>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-rp-desc-span">
+<span class="rp-tbl-desc"><%= desc %></span>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-rp-table-header-inner">
+<%- toggleHtml %><span class="rp-tbl-name rp-insert" data-insert="<%= tn %>"><%= tn %></span>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-rp-table-toggle-wrap">
+<div style="width:52px;flex-shrink:0;margin-right:6px"><%- sel %></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-rp-validation-header-inner">
+<span class="rp-tbl-name"><%= vn %></span>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-rp-validation-tr">
+<tr><td class="col-name"><%= name %></td><td class="col-type"><%= type %></td><td class="col-flag"><%= flag %></td></tr>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-rp-widgettag-header-inner">
+<span class="rp-tbl-name rp-insert" data-insert="<%= tn %>"><%= tn %></span><span class="rp-tbl-desc"><%= label %></span>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-rp-widgettag-note-tr">
+<tr><td colspan="3" style="white-space:normal;color:var(--text3)"><%= note %></td></tr>
+</script>
+
 <script type="text/vja-tpl" id="ye-tpl-mock-row">
 <div class="mock-editor-row" data-idx="<%= idx %>" data-type="<%= type %>" style="display:flex;gap:6px;margin-bottom:6px;align-items:flex-start">
 <div style="width:120px;flex-shrink:0"><%- typeSel %></div>

@@ -79,6 +79,18 @@ server.registerTool(
 );
 
 server.registerTool(
+    "vja_open_yaml_editor",
+    {
+        description: "指定ウィジェット・イベントのYAMLエディタモーダルを開き、描画結果のHTML（modal-root、右パネル含む）を返す（jhtmlテンプレート移行の検証用）",
+        inputSchema: {
+            wid: z.number().describe("対象ウィジェットのid"),
+            evName: z.string().describe("イベント名（例: onClick等）"),
+        },
+    },
+    async (args) => toToolResult(await callVja("testOpenYamlEditor", args)),
+);
+
+server.registerTool(
     "vja_render_cloud_modal",
     {
         description: "クラウドインフラ設定モーダルを開き、描画結果のHTML（modal-root）を返す（jhtmlテンプレート移行の検証用）",

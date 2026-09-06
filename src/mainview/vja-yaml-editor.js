@@ -168,22 +168,26 @@ function openYaml(wid, evName) {
 // 右パネルHTML生成
 // ── 右パネル: 定数セクション ──
 // グローバル定数＋現在フォームのフォーム定数を一覧表示する。
+// 右パネル共通: rp-tbl-row（ヘッダー＋展開可能な明細テーブル）のラップ
+function _rpRowWrap(headerInner, rowsHtml, headerStyle) {
+    return render("ye-tpl-rp-row-wrap", {
+        headerStyle: headerStyle || "",
+        headerInner,
+        expandBtn: rowsHtml ? render("ye-tpl-rp-expand-btn", {}) : "",
+        cols: rowsHtml ? render("ye-tpl-rp-cols", { rows: rowsHtml }) : "",
+    });
+}
+
 function _rpBuildConstSection() {
     const curForm = getProjectData().forms[getProjectData().curFormIdx];
     const _formConsts = curForm?.constants || [];
     const _allConsts = [...getProjectData().constants, ..._formConsts];
-    return _allConsts.length > 0
-        ? "<table class='rp-table'>"
-        + _allConsts.map(c => {
-            const isForm = _formConsts.some(fc => fc.name === c.name);
-            const n = esc(c.name), v = esc(c.value);
-            return "<tr class='rp-insert' data-insert='" + n + "'>"
-                + "<td class='rp-name-col'>" + n + "</td>"
-                + "<td class='rp-val-col'>" + v + "</td>"
-                + "<td class='rp-tag-col'>" + (isForm ? "[F]" : "[G]") + "</td>"
-                + "</tr>";
-        }).join("") + "</table>"
-        : "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>定数なし</div>";
+    if (_allConsts.length === 0) return "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>定数なし</div>";
+    const rows = _allConsts.map(c => {
+        const isForm = _formConsts.some(fc => fc.name === c.name);
+        return render("ye-tpl-rp-const-row", { n: c.name, v: c.value, tag: isForm ? "[F]" : "[G]" });
+    }).join("");
+    return render("ye-tpl-rp-const-section", { rows });
 }
 
 // ── 右パネル: 画面一覧セクション ──
@@ -191,22 +195,15 @@ function _rpBuildConstSection() {
 function _rpBuildFormSection() {
     return "<div>" + getProjectData().forms.map((f, fi) => {
         const isCur = fi === getProjectData().curFormIdx;
-        const ft = esc(f.cfg.name);
-        const wids = (f.widgets || []).map(ww => {
-            const wn = esc(ww.name);
-            return "<tr class='rp-insert' data-insert='" + wn + "'>"
-                + "<td class='col-name'>" + wn + "</td>"
-                + "<td class='col-type'>" + esc(ww.tag) + "</td>"
-                + "<td></td></tr>";
-        }).join("");
-        return "<div class='rp-tbl-row'>"
-            + "<div class='rp-tbl-header'>"
-            + "<span class='rp-tbl-name rp-insert' data-insert='" + ft + "' style='" + (isCur ? "color:var(--accent);font-weight:bold" : "") + "'>"
-            + (isCur ? "★ " : "") + ft + "</span>"
-            + (wids ? "<button class='rp-tbl-expand' " + evtAttr("onmousedown", "event.stopPropagation();yamlToggleTblCols(this)") + ">▶</button>" : "")
-            + "</div>"
-            + (wids ? "<div class='rp-tbl-cols'><table>" + wids + "</table></div>" : "")
-            + "</div>";
+        const wids = (f.widgets || []).map(ww => render("ye-tpl-rp-tr", {
+            insert: ww.name, cls1: "col-name", col1: ww.name, cls2: "col-type", col2: ww.tag, cls3: "", col3: "",
+        })).join("");
+        const headerInner = render("ye-tpl-rp-form-header-inner", {
+            ft: f.cfg.name,
+            nameStyle: isCur ? "color:var(--accent);font-weight:bold" : "",
+            star: isCur ? "★ " : "",
+        });
+        return _rpRowWrap(headerInner, wids);
     }).join("") + "</div>";
 }
 
@@ -217,44 +214,34 @@ function _rpBuildWidgetSection() {
     return getProjectData().widgets.length > 0
         ? "<div>" + getProjectData().widgets.map(ww => {
             try {
-                const n = esc(ww.name);
                 const tag = (ww.tag || "").toLowerCase();
-                const desc = esc(ww.props?.description || "");
+                const desc = ww.props?.description || "";
                 let extraRows = "";
                 if (tag === "radio" && ww.props?.group) {
-                    extraRows += "<tr class='rp-insert' data-insert='" + esc(ww.props.group) + "'>"
-                        + "<td class='col-name'>groupName</td>"
-                        + "<td class='col-type'>" + esc(ww.props.group) + "</td>"
-                        + "<td></td></tr>";
+                    extraRows += render("ye-tpl-rp-tr", {
+                        insert: ww.props.group, cls1: "col-name", col1: "groupName",
+                        cls2: "col-type", col2: ww.props.group, cls3: "", col3: "",
+                    });
                 }
                 if ((tag === "selectbox" || tag === "listbox") && ww.props?.items) {
                     const itemList = String(ww.props.items).split("\n").map(s => s.trim()).filter(Boolean);
-                    extraRows += itemList.map(item =>
-                        "<tr class='rp-insert' data-insert='" + esc(item) + "'>"
-                        + "<td class='col-name'>" + esc(item) + "</td>"
-                        + "<td class='col-type'></td><td></td></tr>"
-                    ).join("");
+                    extraRows += itemList.map(item => render("ye-tpl-rp-tr", {
+                        insert: item, cls1: "col-name", col1: item, cls2: "col-type", col2: "", cls3: "", col3: "",
+                    })).join("");
                 }
                 if (tag === "datagrid" && ww.props?.columns) {
                     const colStr = String(ww.props.columns);
                     const colItems = colStr.split(/[;\n]/).map(s => s.trim()).filter(Boolean);
                     extraRows += colItems.map(c => {
                         const label = c.split(":")[0].trim();
-                        return "<tr class='rp-insert' data-insert='" + esc(label) + "'>"
-                            + "<td class='col-name'>" + esc(label) + "</td>"
-                            + "<td class='col-type'></td><td></td></tr>";
+                        return render("ye-tpl-rp-tr", {
+                            insert: label, cls1: "col-name", col1: label, cls2: "col-type", col2: "", cls3: "", col3: "",
+                        });
                     }).join("");
                 }
-                const hasExtra = extraRows.length > 0;
-                return "<div class='rp-tbl-row'>"
-                    + "<div class='rp-tbl-header'>"
-                    + "<span class='rp-tbl-name rp-insert' data-insert='" + n + "'>" + n + "</span>"
-                    + "<span class='rp-tbl-desc'>" + esc(ww.tag) + "</span>"
-                    + (desc ? "<span class='rp-tbl-desc'>" + desc + "</span>" : "")
-                    + (hasExtra ? "<button class='rp-tbl-expand' " + evtAttr("onmousedown", "event.stopPropagation();yamlToggleTblCols(this)") + ">▶</button>" : "")
-                    + "</div>"
-                    + (hasExtra ? "<div class='rp-tbl-cols'><table>" + extraRows + "</table></div>" : "")
-                    + "</div>";
+                const descSpan = desc ? render("ye-tpl-rp-desc-span", { desc }) : "";
+                const headerInner = render("ye-tpl-rp-widget-header-inner", { n: ww.name, tag: ww.tag, descSpan });
+                return _rpRowWrap(headerInner, extraRows);
             } catch (e) {
                 return "<div class='rp-tbl-row'><div class='rp-tbl-header'>"
                     + "<span class='rp-tbl-name'>" + esc(ww.name || "?") + "</span>"
@@ -278,31 +265,24 @@ function _rpBuildTableSection(wid, evName, curYaml) {
         enabledSet = new Set(_ensureTableOptInitialized(wid, evName, curYaml || ""));
     }
     return "<div>" + getProjectData().tables.map((t) => {
-        const tn = esc(t.name);
         const cols = (t.columns || []).map(c => {
             const flags = [c.pk ? "PK" : "", c.notNull ? "NN" : "", c.useDefault ? "DEF" : "", c.index ? "IDX" : ""].filter(Boolean).join(" ");
-            const cn = esc(c.name);
-            return "<tr class='rp-insert' data-insert='" + cn + "'>"
-                + "<td class='col-name'>" + cn + "</td>"
-                + "<td class='col-type'>" + esc(c.type) + "</td>"
-                + "<td class='col-flag'>" + flags + "</td></tr>";
+            return render("ye-tpl-rp-tr", {
+                insert: c.name, cls1: "col-name", col1: c.name, cls2: "col-type", col2: c.type, cls3: "col-flag", col3: flags,
+            });
         }).join("");
         const toggleHtml = hasCtx
-            ? "<div style='width:52px;flex-shrink:0;margin-right:6px'>" + makePvSel(
-                "tblopt-" + _sanitizeIdPart(wid) + "-" + _sanitizeIdPart(evName) + "-" + _sanitizeIdPart(t.name),
-                ["ON", "OFF"],
-                enabledSet.has(t.name) ? "ON" : "OFF",
-                "yamlSetTableOpt('" + wid + "','" + evName + "','" + t.name + "',{value})"
-            ) + "</div>"
+            ? render("ye-tpl-rp-table-toggle-wrap", {
+                sel: makePvSel(
+                    "tblopt-" + _sanitizeIdPart(wid) + "-" + _sanitizeIdPart(evName) + "-" + _sanitizeIdPart(t.name),
+                    ["ON", "OFF"],
+                    enabledSet.has(t.name) ? "ON" : "OFF",
+                    "yamlSetTableOpt('" + wid + "','" + evName + "','" + t.name + "',{value})"
+                ),
+            })
             : "";
-        return "<div class='rp-tbl-row'>"
-            + "<div class='rp-tbl-header' style='display:flex;align-items:center'>"
-            + toggleHtml
-            + "<span class='rp-tbl-name rp-insert' data-insert='" + tn + "'>" + tn + "</span>"
-            + (cols ? "<button class='rp-tbl-expand' " + evtAttr("onmousedown", "event.stopPropagation();yamlToggleTblCols(this)") + ">▶</button>" : "")
-            + "</div>"
-            + (cols ? "<div class='rp-tbl-cols'><table>" + cols + "</table></div>" : "")
-            + "</div>";
+        const headerInner = render("ye-tpl-rp-table-header-inner", { toggleHtml, tn: t.name });
+        return _rpRowWrap(headerInner, cols, "display:flex;align-items:center");
     }).join("") + "</div>";
 }
 
@@ -327,21 +307,13 @@ function _rpBuildValidationSection(wid, evName) {
         ) + "</div>"
         : "";
     const listHtml = "<div>" + validations.map(v => {
-        const vn = esc(v.name);
         const rules = (v.rules || []).filter(r => r.name && r.type);
         const ruleRows = rules.map(r => {
             const typeLabel = (VALIDATION_TYPES.find(t => t.value === r.type)?.label) || r.type;
-            return "<tr><td class='col-name'>" + esc(r.name) + "</td>"
-                + "<td class='col-type'>" + esc(typeLabel) + "</td>"
-                + "<td class='col-flag'>" + (r.not ? "NOT" : "") + "</td></tr>";
+            return render("ye-tpl-rp-validation-tr", { name: r.name, type: typeLabel, flag: r.not ? "NOT" : "" });
         }).join("");
-        return "<div class='rp-tbl-row'>"
-            + "<div class='rp-tbl-header'>"
-            + "<span class='rp-tbl-name'>" + vn + "</span>"
-            + (ruleRows ? "<button class='rp-tbl-expand' " + evtAttr("onmousedown", "event.stopPropagation();yamlToggleTblCols(this)") + ">▶</button>" : "")
-            + "</div>"
-            + (ruleRows ? "<div class='rp-tbl-cols'><table>" + ruleRows + "</table></div>" : "")
-            + "</div>";
+        const headerInner = render("ye-tpl-rp-validation-header-inner", { vn: v.name });
+        return _rpRowWrap(headerInner, ruleRows);
     }).join("") + "</div>";
     return selectorHtml + listHtml;
 }
@@ -352,26 +324,12 @@ function _rpBuildValidationSection(wid, evName) {
 // 折りたたみを展開すると詳細選択肢（inputType等）が表示され、クリックでその値を挿入する。
 function _rpBuildWidgetTagSection() {
     return "<div>" + FORM_DESIGN_TAGS.map(d => {
-        const tn = esc(d.tag);
-        const optRows = (d.options || []).map(o => {
-            const on = esc(o);
-            return "<tr class='rp-insert' data-insert='" + on + "'>"
-                + "<td class='col-name'>" + on + "</td>"
-                + "<td class='col-type'>" + (d.detailLabel ? esc(d.detailLabel) : "") + "</td>"
-                + "<td></td></tr>";
-        }).join("");
-        const noteRow = d.note
-            ? "<tr><td colspan='3' style='white-space:normal;color:var(--text3)'>" + esc(d.note) + "</td></tr>"
-            : "";
-        const hasExtra = optRows || noteRow;
-        return "<div class='rp-tbl-row'>"
-            + "<div class='rp-tbl-header'>"
-            + "<span class='rp-tbl-name rp-insert' data-insert='" + tn + "'>" + tn + "</span>"
-            + "<span class='rp-tbl-desc'>" + esc(d.label) + "</span>"
-            + (hasExtra ? "<button class='rp-tbl-expand' " + evtAttr("onmousedown", "event.stopPropagation();yamlToggleTblCols(this)") + ">▶</button>" : "")
-            + "</div>"
-            + (hasExtra ? "<div class='rp-tbl-cols'><table>" + optRows + noteRow + "</table></div>" : "")
-            + "</div>";
+        const optRows = (d.options || []).map(o => render("ye-tpl-rp-tr", {
+            insert: o, cls1: "col-name", col1: o, cls2: "col-type", col2: d.detailLabel || "", cls3: "", col3: "",
+        })).join("");
+        const noteRow = d.note ? render("ye-tpl-rp-widgettag-note-tr", { note: d.note }) : "";
+        const headerInner = render("ye-tpl-rp-widgettag-header-inner", { tn: d.tag, label: d.label });
+        return _rpRowWrap(headerInner, optRows + noteRow);
     }).join("") + "</div>";
 }
 
