@@ -528,57 +528,16 @@ function openFontConfig() {
     // value にフォントのCSS値を直接使用し、saveFontConfig で label→value 変換不要にする
     showModal(
         mhdrHTML("🔤 フォント設定") +
-        "<div class='mbody' style='gap:14px'>" +
-
-        // ── UIフォント設定 ──
-        "<div style='font-size:var(--ui-font-size);font-weight:bold;color:var(--accent);padding-bottom:4px;border-bottom:1px solid var(--border)'>UI全体フォント設定</div>" +
-        "<div class='ai-cfg-row'><label>フォントサイズ</label>" +
-        "<div style='display:flex;align-items:center;gap:8px'>" +
-        "<input id='uf-size' type='number' value='" + curUiSize + "' min='10' max='20' step='1' " +
-        "style='width:70px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);padding:0 8px;outline:none;text-align:center'>" +
-        "<button" + evtAttr("onmousedown", "ufSizeStep(1)") + " style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);cursor:pointer'>▲</button>" +
-        "<button" + evtAttr("onmousedown", "ufSizeStep(-1)") + " style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);cursor:pointer'>▼</button>" +
-        "<span style='color:var(--text2);font-size:var(--ui-font-size)'>px (10〜20)</span>" +
-        "</div></div>" +
-        "<div class='ai-cfg-row'><label>フォント</label>" +
-        makePvSel("uf-font-sel", UI_FONT_LIST, curUiFont, "setTimeout(function(){updateFontPreview('ui',null)},0)") +
-        "</div>" +
-        // UIフォントプレビュー
-        "<div style='display:flex;flex-direction:column;gap:6px'>" +
-        "<label style='font-size:var(--ui-font-size);color:var(--text2)'>UIプレビュー</label>" +
-        "<div id='uf-preview' style='background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:10px;" +
-        "font-size:" + curUiSize + "px;font-family:" + (curUiFont || "inherit") + ";line-height:1.8;color:var(--text)'>" +
-        "保存　キャンセル　閉じる　プロパティ　フォント設定　表示" +
-        "</div></div>" +
-
-        // ── エディタフォント設定 ──
-        "<div style='font-size:var(--ui-font-size);font-weight:bold;color:var(--accent);padding-bottom:4px;border-bottom:1px solid var(--border);margin-top:6px'>エディタフォント設定</div>" +
-        "<div class='ai-cfg-row'><label>フォントサイズ</label>" +
-        "<div style='display:flex;align-items:center;gap:8px'>" +
-        "<input id='ef-size' type='number' value='" + curSize + "' min='10' max='32' step='1' " +
-        "style='width:70px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);padding:0 8px;outline:none;text-align:center'>" +
-        "<button" + evtAttr("onmousedown", "efSizeStep(1)") + " style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);cursor:pointer'>▲</button>" +
-        "<button" + evtAttr("onmousedown", "efSizeStep(-1)") + " style='width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:var(--ui-font-size);cursor:pointer'>▼</button>" +
-        "<span style='color:var(--text2);font-size:var(--ui-font-size)'>px (10〜32)</span>" +
-        "</div></div>" +
-        "<div class='ai-cfg-row'><label>フォント</label>" +
-        makePvSel("ef-font-sel", EDITOR_FONTS, curFont, "setTimeout(function(){updateFontPreview('editor',null)},0)") +
-        "</div>" +
-
-        // エディタプレビュー
-        "<div style='display:flex;flex-direction:column;gap:6px'>" +
-        "<label style='font-size:var(--ui-font-size);color:var(--text2)'>エディタプレビュー</label>" +
-        "<div id='ef-preview' style='background:#1e1e2e;border:1px solid var(--border);border-radius:4px;padding:12px;" +
-        "font-size:" + curSize + "px;font-family:" + curFont + ";line-height:1.6;color:#e8e8f0;white-space:pre'>" +
-        "<span style='color:#7ec8ff'>function</span> <span style='color:#ffe080'>hello</span>() {\n" +
-        "  <span style='color:#7ec8ff'>const</span> msg = <span style='color:#f0a87a'>&quot;Hello, VJA!&quot;</span>;\n" +
-        "  <span style='color:#7ec8ff'>return</span> msg;\n" +
-        "}" +
-        "</div></div>" +
-        "<div class='mfoot'>" +
-        mfootHTML([{ label: "キャンセル", action: "closeModal()" }]) +
-        "<button class='pri' id='ef-save-btn'>保存</button>" +
-        "</div>"
+        render("ac-tpl-font-config", {
+            curUiSize, curUiFont: curUiFont || "inherit", curSize, curFont,
+            attrUfUp: evtAttr("onmousedown", "ufSizeStep(1)"),
+            attrUfDown: evtAttr("onmousedown", "ufSizeStep(-1)"),
+            ufFontSel: makePvSel("uf-font-sel", UI_FONT_LIST, curUiFont, "setTimeout(function(){updateFontPreview('ui',null)},0)"),
+            attrEfUp: evtAttr("onmousedown", "efSizeStep(1)"),
+            attrEfDown: evtAttr("onmousedown", "efSizeStep(-1)"),
+            efFontSel: makePvSel("ef-font-sel", EDITOR_FONTS, curFont, "setTimeout(function(){updateFontPreview('editor',null)},0)"),
+            footBtns: mfootHTML([{ label: "キャンセル", action: "closeModal()" }]),
+        })
     );
     rAfBind("#ef-save-btn", "click", saveFontConfig);
 
