@@ -778,7 +778,9 @@ function pinput(d, val, wid) {
                 "setProp('" + d.k + "','" + (d.sp || "") + "',{value}," + w2 + ")");
         }
         case "itemsdef":
-            return html`<button${raw(evtAttr("onmousedown", "openItemsDefEditor(" + w2 + ")"))} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">✏ 項目編集…</button>`;
+            return render("pv-tpl-itemsdef", {
+                attr: evtAttr("onmousedown", "openItemsDefEditor(" + w2 + ")"),
+            });
         case "themeReset":
             return html`<button id="theme-reset-btn-${w2}"${raw(evtAttr("onmousedown", "resetWidgetTheme(" + w2 + ")"))} class="pv-input" style="color:var(--accent);cursor:pointer;text-align:left">↺ テーマに戻す${val == null ? "" : "（連動中）"}</button>`;
         case "formThemeAction":
