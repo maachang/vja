@@ -22,6 +22,7 @@
         "templates/status.html",
         "templates/events.html",
         "templates/modal.html",
+        "templates/cloud-modal.html",
     ];
 
     function loadTemplateFileSync(path) {

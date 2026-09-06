@@ -79,6 +79,15 @@ server.registerTool(
 );
 
 server.registerTool(
+    "vja_render_cloud_modal",
+    {
+        description: "クラウドインフラ設定モーダルを開き、描画結果のHTML（modal-root）を返す（jhtmlテンプレート移行の検証用）",
+        inputSchema: {},
+    },
+    async () => toToolResult(await callVja("testRenderCloudModal", {})),
+);
+
+server.registerTool(
     "vja_switch_tab",
     {
         description: "プロパティパネルの表示タブを切り替える（p=プロパティ, e=イベント）。イベントタブの描画結果を確認する前の下準備用",

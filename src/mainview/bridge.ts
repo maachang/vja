@@ -129,6 +129,16 @@ const _testGetPropsHtml = () => {
         return { ok: false, error: e.message };
     }
 };
+// クラウドインフラ設定モーダルを開き、描画結果のHTMLを返す（jhtmlテンプレート移行の検証用）
+const _testRenderCloudModal = () => {
+    const g = window as any;
+    try {
+        g.renderCloudModal();
+        return { ok: true, modalRoot: document.getElementById("modal-root")?.innerHTML ?? "" };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
 const _testGetOverrides = (p: { wid: number; evName: string }) => {
     const g = window as any;
     try {
@@ -251,6 +261,7 @@ const rpc = Electroview.defineRPC({
             testSelectWidget: _testSelectWidget,
             testSwitchTab: _testSwitchTab,
             testGetPropsHtml: _testGetPropsHtml,
+            testRenderCloudModal: _testRenderCloudModal,
             testSaveYaml: _testSaveYaml,
             testDeleteYaml: _testDeleteYaml,
             testGetOverrides: _testGetOverrides,

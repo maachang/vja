@@ -293,11 +293,7 @@ function renderCloudModal() {
         "<div style='color:var(--text3);font-size:12px;padding:8px'>登録なし</div>";
     showModal(
         mhdrHTML("☁️ クラウドインフラ設定") +
-        "<div class='mbody' style='gap:10px;overflow-y:auto;max-height:60vh'>" +
-        "<div class='infobox'>同一クラウドを複数登録した場合、先頭のCredentialが優先されます。</div>" +
-        "<div id='cloud-list' style='display:flex;flex-direction:column;gap:8px'>" + rows + "</div>" +
-        "<button class='modal-btn' style='margin-top:4px'" + evtAttr("onmousedown", "addCloudInfra()") + ">＋ 追加</button>" +
-        "</div>" +
+        render("cm-tpl-body", { rows, attrAdd: evtAttr("onmousedown", "addCloudInfra()") }) +
         mfootHTML([
             { label: "保存", cls: "primary", action: "saveCloudInfraConfig()" },
             { label: "キャンセル", action: "closeModal()" },
@@ -310,18 +306,20 @@ function cloudSelId(prefix, i) { return prefix + "_" + i; }
 
 // クラウド種別セレクトの選択肢HTML生成
 function cloudOptsHtml(inf, csid, i) {
-    return CLOUD_PRESETS.map(p =>
-        `<div class="pv-sel-opt ${inf.name === p.name ? "active" : ""}"
-                    ${evtAttr("onmousedown", "pvSelPick('" + csid + "','" + esc(p.name) + "',event);selectCloudPreset(" + i + ",'" + esc(p.name) + "')")}>${esc(p.name)}</div>`
-    ).join("");
+    return CLOUD_PRESETS.map(p => render("cm-tpl-sel-opt", {
+        active: inf.name === p.name ? "active" : "",
+        attr: evtAttr("onmousedown", "pvSelPick('" + csid + "','" + esc(p.name) + "',event);selectCloudPreset(" + i + ",'" + esc(p.name) + "')"),
+        label: esc(p.name),
+    })).join("");
 }
 
 // サービスセレクトの選択肢HTML生成
 function cloudSvcOptsHtml(preset, curSvc, ssid, i) {
-    return preset.services.map(s =>
-        `<div class="pv-sel-opt ${curSvc === s.label ? "active" : ""}"
-                    ${evtAttr("onmousedown", "pvSelPick('" + ssid + "','" + esc(s.label) + "',event);selectCloudService(" + i + ",'" + esc(s.label) + "')")}>${esc(s.label)}</div>`
-    ).join("");
+    return preset.services.map(s => render("cm-tpl-sel-opt", {
+        active: curSvc === s.label ? "active" : "",
+        attr: evtAttr("onmousedown", "pvSelPick('" + ssid + "','" + esc(s.label) + "',event);selectCloudService(" + i + ",'" + esc(s.label) + "')"),
+        label: esc(s.label),
+    })).join("");
 }
 
 // SDK URL入力欄HTML生成
@@ -335,20 +333,18 @@ function cloudUrlFieldHtml(preset, curSvc, isCustomSvc, inf, i) {
         ? inf.sdkUrl.slice(baseUrl.length)
         : (urlEditable ? inf.sdkUrl || "" : inf.sdkUrl || "");
     if (!urlEditable) {
-        return `<input class="pv-input" style="flex:1;min-width:160px;color:var(--text3)" readonly
-                    value="${esc(inf.sdkUrl || "")}" title="サービス選択で自動入力されます">`;
+        return render("cm-tpl-url-readonly", { val: inf.sdkUrl || "" });
     }
     if (baseUrl) {
-        return `<div style="display:flex;align-items:center;flex:1;min-width:160px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;overflow:hidden">
-                        <span style="padding:0 4px;font-size:11px;color:var(--text3);white-space:nowrap;border-right:1px solid var(--border)">${esc(baseUrl)}</span>
-                        <input class="pv-input" style="flex:1;min-width:80px" placeholder="続きを入力"
-                            value="${esc(editVal)}"
-                            ${evtAttr("oninput", "updateCloudField(" + i + ",'sdkUrl','" + esc(baseUrl) + "'+this.value)")}>
-                       </div>`;
+        return render("cm-tpl-url-prefixed", {
+            baseUrl, editVal,
+            attr: evtAttr("oninput", "updateCloudField(" + i + ",'sdkUrl','" + esc(baseUrl) + "'+this.value)"),
+        });
     }
-    return `<input class="pv-input" style="flex:1;min-width:160px" placeholder="SDK URL を入力"
-                        value="${esc(inf.sdkUrl || "")}"
-                        ${evtAttr("oninput", "updateCloudField(" + i + ",'sdkUrl',this.value)")}>`;
+    return render("cm-tpl-url-plain", {
+        val: inf.sdkUrl || "",
+        attr: evtAttr("oninput", "updateCloudField(" + i + ",'sdkUrl',this.value)"),
+    });
 }
 
 // クレデンシャル欄HTML生成
@@ -357,12 +353,10 @@ function cloudUrlFieldHtml(preset, curSvc, isCustomSvc, inf, i) {
 function cloudCredFieldsHtml(inf, credDefs, isCustomCloud, i) {
     if (isCustomCloud) {
         const jsonVal = inf.credentialsJson || JSON.stringify(inf.credentials || {});
-        return `<div style="margin-top:6px">
-                    <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Credentials (JSON形式: {"key":"value",...})</div>
-                    <textarea class="pv-input pv-textarea" style="height:60px;resize:vertical"
-                        placeholder='{"accessKeyId":"xxx","secretAccessKey":"yyy"}'
-                        ${evtAttr("oninput", "updateCloudCredsJson(" + i + ",this.value)")}>${esc(jsonVal)}</textarea>
-                </div>`;
+        return render("cm-tpl-cred-json", {
+            jsonVal,
+            attr: evtAttr("oninput", "updateCloudCredsJson(" + i + ",this.value)"),
+        });
     }
     return credDefs.map((cd, ci) => {
         const k = typeof cd === "string" ? cd : cd.name;
@@ -382,34 +376,36 @@ function cloudCredFieldsHtml(inf, credDefs, isCustomCloud, i) {
                 const optVal = o.value ?? o.name ?? "";
                 const optDisp = (o.name !== undefined && o.name !== "") ? o.name : "&nbsp;";
                 const pickArg3 = optDisp === "&nbsp;" ? "" : esc(optDisp);
-                return `<div class="pv-sel-opt ${(selCur === optVal || selCur === o.name) ? "active" : ""}"
-                            ${evtAttr("onmousedown", "pvSelPick('" + selId + "','" + esc(optVal) + "','" + pickArg3 + "',event);updateCloudCred(" + i + ",'" + esc(k) + "','" + esc(optVal) + "')")}>${optDisp === "&nbsp;" ? "&nbsp;" : esc(optDisp)}</div>`;
+                return render("cm-tpl-sel-opt", {
+                    active: (selCur === optVal || selCur === o.name) ? "active" : "",
+                    attr: evtAttr("onmousedown", "pvSelPick('" + selId + "','" + esc(optVal) + "','" + pickArg3 + "',event);updateCloudCred(" + i + ",'" + esc(k) + "','" + esc(optVal) + "')"),
+                    label: optDisp === "&nbsp;" ? "&nbsp;" : esc(optDisp),
+                });
             }).join("");
             // ボタン表示は現在の保存値に対応する表示名を探す
             const selDispName = (selOpts.find(o => (o.value ?? o.name) === selCur || o.name === selCur) || {}).name ?? selCur;
-            inputHtml = `<div class="pv-sel" id="${selId}" style="flex:1">
-                        <div class="pv-sel-btn" ${evtAttr("onmousedown", "pvSelOpen('" + selId + "',event)")}>
-                            <span>${esc(selDispName)}</span><span class="arr">▼</span>
-                        </div>
-                        <div class="pv-sel-list">${opts}</div>
-                    </div>`;
+            inputHtml = render("cm-tpl-cred-select", {
+                selId,
+                attrOpen: evtAttr("onmousedown", "pvSelOpen('" + selId + "',event)"),
+                selDispName: esc(selDispName),
+                opts,
+            });
         } else {
-            inputHtml = `<input type="${isSecret ? "password" : "text"}" class="pv-input"
-                        style="flex:1;${appInput ? "opacity:0.5" : ""}"
-                        placeholder="${appInput ? "（アプリ側で入力）" : esc(k)}"
-                        value="${esc(curVal ?? "")}"
-                        ${appInput ? "disabled" : ""}
-                        ${evtAttr("oninput", "updateCloudCred(" + i + ",'" + esc(k) + "',this.value)")}>`;
+            inputHtml = render("cm-tpl-cred-input", {
+                type: isSecret ? "password" : "text",
+                opacity: appInput ? "opacity:0.5" : "",
+                placeholder: appInput ? "（アプリ側で入力）" : k,
+                val: curVal ?? "",
+                disabled: appInput ? "disabled" : "",
+                attr: evtAttr("oninput", "updateCloudCred(" + i + ",'" + esc(k) + "',this.value)"),
+            });
         }
-        return `<div style="display:flex;align-items:center;gap:6px;margin-top:4px">
-                    <span style="width:110px;font-size:11px;color:var(--text3);flex-shrink:0">${esc(k)}${isSecret ? " 🔒" : ""}</span>
-                    ${inputHtml}
-                    <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--text3);white-space:nowrap;cursor:pointer"
-                        title="チェックON: アプリ実行時にウィジェットから入力&#10;チェックOFF: ここで設定した値を使用">
-                        <input type="checkbox" ${appInput ? "checked" : ""}
-                            ${evtAttr("onchange", "updateCloudAppInput(" + i + ",'" + esc(k) + "',this.checked)")}>アプリ側入力
-                    </label>
-                </div>`;
+        return render("cm-tpl-cred-row", {
+            k, lockIcon: isSecret ? " 🔒" : "",
+            inputHtml,
+            checked: appInput ? "checked" : "",
+            attrChange: evtAttr("onchange", "updateCloudAppInput(" + i + ",'" + esc(k) + "',this.checked)"),
+        });
     }).join("");
 }
 
@@ -435,32 +431,21 @@ function cloudInfraRow(inf, i) {
         ? `<span style="font-size:11px;color:var(--accent)">有効</span>`
         : `<span style="font-size:11px;color:var(--text3)">無効</span>`;
 
-    return `<div style="padding:10px;border:1px solid var(--border);border-radius:4px">
-                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                    <label style="display:flex;align-items:center;gap:3px;cursor:pointer"
-                        title="ONにすると対象項目が有効になります">
-                        <input type="checkbox" ${inf.enabled ? "checked" : ""}
-                            ${evtAttr("onchange", "updateCloudField(" + i + ",'enabled',this.checked);refreshCloudList()")}>
-                        ${enabledLabel}
-                    </label>
-                    <div class="pv-sel" id="${csid}" style="width:100px;flex-shrink:0">
-                        <div class="pv-sel-btn" ${evtAttr("onmousedown", "pvSelOpen('" + csid + "',event)")}>
-                            <span>${esc(inf.name || "カスタム")}</span><span class="arr">▼</span>
-                        </div>
-                        <div class="pv-sel-list">${cloudOpts}</div>
-                    </div>
-                    <div class="pv-sel" id="${ssid}" style="width:110px;flex-shrink:0">
-                        <div class="pv-sel-btn" ${evtAttr("onmousedown", "pvSelOpen('" + ssid + "',event)")}>
-                            <span>${esc(curSvc)}</span><span class="arr">▼</span>
-                        </div>
-                        <div class="pv-sel-list">${svcOpts}</div>
-                    </div>
-                    ${urlField}
-                    <button style="color:#ff6b6b;background:none;border:none;cursor:pointer;font-size:16px;flex-shrink:0"
-                        ${evtAttr("onmousedown", "removeCloudInfra(" + i + ")")}>✕</button>
-                </div>
-                ${credFields ? `<div style="margin-top:6px">${credFields}</div>` : ""}
-            </div>`;
+    return render("cm-tpl-row", {
+        enabledChecked: inf.enabled ? "checked" : "",
+        attrEnabled: evtAttr("onchange", "updateCloudField(" + i + ",'enabled',this.checked);refreshCloudList()"),
+        enabledLabel,
+        csid, ssid,
+        attrCsOpen: evtAttr("onmousedown", "pvSelOpen('" + csid + "',event)"),
+        cloudName: inf.name || "カスタム",
+        cloudOpts,
+        attrSsOpen: evtAttr("onmousedown", "pvSelOpen('" + ssid + "',event)"),
+        curSvc,
+        svcOpts,
+        urlField,
+        attrRemove: evtAttr("onmousedown", "removeCloudInfra(" + i + ")"),
+        credFields,
+    });
 }
 
 function addCloudInfra() {
