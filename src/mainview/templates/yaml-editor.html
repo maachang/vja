@@ -55,6 +55,12 @@ style="height:30px;background:var(--bg3);border:1px solid var(--border);border-r
 </div>
 </script>
 
+<script type="text/vja-tpl" id="ye-tpl-validation-detail-body">
+<div class="mbody" style="display:flex;flex-direction:column;gap:8px">
+<div style="white-space:pre-line;max-height:60vh;overflow-y:auto;font-size:13px"><%- itemsHtml %></div>
+</div>
+</script>
+
 <script type="text/vja-tpl" id="ye-tpl-mock-row">
 <div class="mock-editor-row" data-idx="<%= idx %>" data-type="<%= type %>" style="display:flex;gap:6px;margin-bottom:6px;align-items:flex-start">
 <div style="width:120px;flex-shrink:0"><%- typeSel %></div>

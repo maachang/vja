@@ -2168,11 +2168,7 @@ let _lastAiValidationItems = [];
 function openAiValidationDetailModal() {
     showModal(
         mhdrHTML("⚠ 検出内容（全" + _lastAiValidationItems.length + "件）") +
-        "<div class='mbody' style='display:flex;flex-direction:column;gap:8px'>" +
-        "<div style='white-space:pre-line;max-height:60vh;overflow-y:auto;font-size:13px'>" +
-        _lastAiValidationItems.join("\n") +
-        "</div>" +
-        "</div>" +
+        render("ye-tpl-validation-detail-body", { itemsHtml: _lastAiValidationItems.join("\n") }) +
         mfootHTML([{ label: "閉じる", action: "closeModal()" }])
     );
 }
