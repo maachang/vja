@@ -409,9 +409,10 @@ function cloudInfraRow(inf, i) {
     const credFields = cloudCredFieldsHtml(inf, credDefs, isCustomCloud, i);
 
     // 有効チェックボックスのラベル
-    const enabledLabel = inf.enabled
-        ? `<span style="font-size:11px;color:var(--accent)">有効</span>`
-        : `<span style="font-size:11px;color:var(--text3)">無効</span>`;
+    const enabledLabel = render("cm-tpl-enabled-label", {
+        color: inf.enabled ? "var(--accent)" : "var(--text3)",
+        label: inf.enabled ? "有効" : "無効",
+    });
 
     return render("cm-tpl-row", {
         enabledChecked: inf.enabled ? "checked" : "",
