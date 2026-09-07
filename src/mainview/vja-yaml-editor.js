@@ -1038,6 +1038,20 @@ function _findMissingAwaits(code, isAppEvent) {
     return found;
 }
 
+// _findMissingAwaits() で検出したawait漏れを機械的に補完する
+// （awaitの付け忘れは小型ローカルLLMで頻出のミスであり、AIへの再修正依頼を
+//   挟まず、その場でawaitを挿入するだけで解消できるため）。
+// 判定ロジックは_findMissingAwaits()と同一の正規表現・必須APIセットを使う
+// （検出と補完の判定基準がずれるとawait漏れの見逃し/誤挿入につながるため）。
+function _fixMissingAwaits(code, isAppEvent) {
+    const required = isAppEvent ? _getVjaAwaitRequiredSet().back : _getVjaAwaitRequiredSet().front;
+    const re = /(await\s+)?\b(vja(?:\.\w+)+)\s*\(/g;
+    return code.replace(re, (match, hasAwait, api) => {
+        if (hasAwait || !required.has(api)) return match;
+        return "await " + match;
+    });
+}
+
 // 第1引数にウィジェット名（文字列リテラル）を取るAPIの一覧。
 // ここに列挙したAPIについて、指定されたウィジェット名が現在のフォームに
 // 実在するかを検証する。変数で渡されている場合（文字列リテラルでない場合）は
@@ -2266,7 +2280,7 @@ async function manualMockCheck(isAppEvent, evName, wtag, wid) {
     let code = jsTa?.value || "";
     if (!code.trim()) { showToast("JavaScriptが入力されていません"); return; }
     if (!(await vja.app.showConfirm("モックの実行を行います。よろしいですか？"))) return;
-    const strippedCode = _stripWidgetValueAccess(code);
+    const strippedCode = _fixMissingAwaits(_stripWidgetValueAccess(code), isAppEvent);
     if (strippedCode !== code && jsTa) {
         code = strippedCode;
         jsTa.value = code;
@@ -2300,7 +2314,7 @@ async function manualRetryAiFix(wid, evName, isAppEvent, isFormEvent) {
     const { sysPrompt, userPrompt, validationName, wtag } = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent);
     const jsTa = $("js-ta");
     let currentCode = _stripValidationWrapper(jsTa?.value || "", validationName);
-    const strippedCurrentCode = _stripWidgetValueAccess(currentCode);
+    const strippedCurrentCode = _fixMissingAwaits(_stripWidgetValueAccess(currentCode), isAppEvent);
     if (strippedCurrentCode !== currentCode) {
         currentCode = strippedCurrentCode;
         if (jsTa) {
@@ -2326,7 +2340,7 @@ async function manualRetryAiFix(wid, evName, isAppEvent, isFormEvent) {
         userPrompt: fixUserPrompt,
         loadingMsg: "検出した問題を自動修正中…",
         onSuccess: async (fixed) => {
-            fixed = _stripWidgetValueAccess(fixed);
+            fixed = _fixMissingAwaits(_stripWidgetValueAccess(fixed), isAppEvent);
             let revalidated = validateGeneratedJs(fixed, isAppEvent, evName, wtag, wid);
             revalidated = await _augmentWithMockCheck(revalidated, fixed, isAppEvent, evName, wtag, wid);
             const fixedCode = revalidated.code || fixed;
@@ -2668,7 +2682,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                     (_, inner) => inner.trim()
                 );
             };
-            let unwrapped = _stripWidgetValueAccess(_unwrap(clean));
+            let unwrapped = _fixMissingAwaits(_stripWidgetValueAccess(_unwrap(clean)), isAppEvent);
 
             // ── 生成結果の自動検証（構文チェック・APIホワイトリスト） ──
             // 問題があれば1回だけAIに自動修正を依頼し、それでも解消しない場合は
@@ -2696,7 +2710,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                     userPrompt: fixUserPrompt,
                     loadingMsg: "検出した問題を自動修正中…",
                     temperatureOverride: temperatureOverride,
-                    onSuccess: async (fixed) => { retryCode = _stripWidgetValueAccess(_unwrap(fixed)); },
+                    onSuccess: async (fixed) => { retryCode = _fixMissingAwaits(_stripWidgetValueAccess(_unwrap(fixed)), isAppEvent); },
                     onCancel: async () => { },
                     onError: async () => { },
                 });
