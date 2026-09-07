@@ -81,7 +81,7 @@
   - 引数:
     - name: string - ウィジェット名
   - 戻り値: "ウィジェットの種類によって以下のいずれかの型がそのまま返る（すべてプリミティブ値または配列であり、プロパティアクセスは不要）:
-      - datagrid（テーブル）: Record<string, any>[] - 行データの配列
+      - datagrid（データグリッド）: Record<string, any>[] - 行データの配列
       - checkbox / radioButton: boolean
       - progressbar / slider / hscroll / vscroll: number
       - inputType(number): number
@@ -101,12 +101,12 @@
       - checkbox/radio: boolean
       - selectBox/listBox（選択）: string（value値を指定）
       - selectBox/listBox（項目更新）: array（例: ['項目1', '項目2'] または [{label:'表示名', value:'値'}]）
-      - datagrid（テーブル）: object[]（行データの配列）
+      - datagrid（データグリッド）: object[]（行データの配列）
     - options?: object - オプション（datagrid時のみ有効）
       - startNo?: number - No列の自動採番開始値（省略時は1）
   - 戻り値: なし
   - 使用例: "vja.widget.setValue('txtResult', '処理完了');"
-  - 使用例（テーブル）: "vja.widget.setValue('tblUsers', rows, { startNo: 1 });"
+  - 使用例（データグリッド）: "vja.widget.setValue('tblUsers', rows, { startNo: 1 });"
   - 使用例（選択肢更新）: "vja.widget.setValue('selCategory', ['食品', '電化製品', '衣類']);"
   - 使用例説明: ウィジェットの種類に応じて値・データ・選択肢をセットする
 
@@ -120,9 +120,9 @@
   - 使用例説明: カテゴリー選択ボックスにアイテムをセットする
 
 - 関数名: vja.widget.setTableData(name, rows[], options?):
-  - 説明: テーブルウィジェットにデータをセットする
+  - 説明: データグリッドウィジェットにデータをセットする
   - 引数:
-    - name: string - テーブルウィジェット名
+    - name: string - データグリッドウィジェット名
     - rows: Record<string, any>[] - 行データの配列
     - options?: object - オプション（省略可）
       - startNo?: number - No列の自動採番開始値（省略時は1）。ページング時に使用
@@ -135,7 +135,7 @@
   - 使用例（ページング）: |
       // 101件目から表示する場合
       vja.widget.setTableData('tblUsers', rows, { startNo: 101 });
-  - 使用例説明: ユーザーテーブルに2行のデータをセットする
+  - 使用例説明: ユーザーデータグリッドに2行のデータをセットする
 
 - 関数名: vja.widget.getAllInputs():
   - 説明: フォーム内の全入力ウィジェットの値を取得する
@@ -343,7 +343,7 @@
   - 使用例: |
       const rows = await vja.io.openCsv();
       if (rows) vja.widget.setTableData('tblData', rows);
-  - 使用例説明: CSVを読み込んでテーブルに表示する
+  - 使用例説明: CSVを読み込んでデータグリッドに表示する
 
 - 関数名: await vja.io.openJson():
   - 説明: ファイル選択ダイアログでJSONファイルを選択して読み込む
@@ -512,7 +512,7 @@ getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ
   - 戻り値: object（nullになることはありません。全てのイベントで必ずオブジェクトを返します）
   - RowClick時: {type:'rowClick', row:行インデックス, column:'カラム名'}
   - HeaderClick時: {type:'headerClick', column:'カラム名'}
-  - Click時: テーブルの行クリックなら rowClick、ヘッダークリックなら headerClick の結果を返す。typeで判別して処理を分岐できる
+  - Click時: データグリッドの行クリックなら rowClick、ヘッダークリックなら headerClick の結果を返す。typeで判別して処理を分岐できる
   - それ以外の全てのイベント（KeyDown/KeyUp/TextChanged/CheckedChanged等）: {type: そのイベント名の先頭文字を小文字にしたもの}（例: KeyDownイベントなら{type:'keyDown'}、TextChangedイベントなら{type:'textChanged'}）
   - 【重要】ev.type の値は、上記のルール（rowClick/headerClick、またはイベント名の先頭を小文字にしたもの）以外には絶対に存在しません。実際のイベント名から機械的に導ける値以外（推測や創作した値）と比較してはいけません。なお、KeyDown/KeyUpイベントで押されたキーそのものを判定したい場合は、vja.event.get()ではなく vja.event.getKey() / vja.event.isEnter() 等を使用してください（下記参照）。
   - 使用例（行データ取得）: "const ev = vja.event.get(); const rows = vja.widget.get('tableView'); const rowData = rows[ev.row];"
