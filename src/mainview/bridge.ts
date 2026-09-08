@@ -65,6 +65,17 @@ const _testGetWidgets = () => {
         return { ok: false, widgets: [], error: e.message };
     }
 };
+// JS整形（Prettier）の動作確認用。formatJsCode()（vja-yaml-editor.js）を
+// 直接呼び出し、整形結果をそのまま返す。
+const _testFormatJs = async (p: { code: string }) => {
+    const g = window as any;
+    try {
+        const formatted = await g.formatJsCode(p.code);
+        return { ok: true, code: formatted };
+    } catch (e: any) {
+        return { ok: false, code: p.code, error: e.message };
+    }
+};
 const _testSaveYaml = (p: { wid: number; evName: string; yaml: string }) => {
     const g = window as any;
     try {
@@ -337,6 +348,7 @@ const rpc = Electroview.defineRPC({
             testOpenValidationEdit: _testOpenValidationEdit,
             testRenderCloudModal: _testRenderCloudModal,
             testOpenModal: _testOpenModal,
+            testFormatJs: _testFormatJs,
             testSaveYaml: _testSaveYaml,
             testDeleteYaml: _testDeleteYaml,
             testGetOverrides: _testGetOverrides,
@@ -414,6 +426,11 @@ w.vja = {
         // （大中小）選択で基準値として使う
         getDisplayWorkArea: () => r.getDisplayWorkAreaRequest({}),
         ...makeDialogHelpers(w),
+    },
+    // ── JS整形（Prettier、AI生成コードの整形用） ──────
+    editor: {
+        formatJs: (code: string, indentSize?: number) =>
+            r.formatJsRequest({ code, indentSize }),
     },
     // ── ウィザード: システムモデル定義（src/wizard-system-models/） ──
     wizard: {

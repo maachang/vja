@@ -15,6 +15,7 @@ import {
     copyFileSync,
 } from "fs";
 import { Database } from "bun:sqlite";
+import * as prettier from "prettier";
 import { type VjaRPCType, type DbRow, type DbResult } from "../shared/types";
 import { initLogger, writeLog } from "./logger";
 import { copyCompileAssets, getVersion, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH, WEBVIEW_RUNTIME_LIBS } from "./copy-compile-assets";
@@ -440,6 +441,22 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
             // ── VJA本体（ディスプレイ作業領域）サイズ取得 ──────
             getDisplayWorkAreaRequest: () => {
                 return { width: _displayWorkArea.width, height: _displayWorkArea.height };
+            },
+
+            // ── JS整形（Prettier） ──────────────────────────
+            // AI生成コード（1行べた書き・インデント不揃い等）をPrettierで整形する。
+            // 構文エラー等でPrettierが失敗した場合は整形前のコードをそのまま返す
+            // （呼び出し元の検証フローを止めないため）。
+            formatJsRequest: async ({ code, indentSize }) => {
+                try {
+                    const formatted = await prettier.format(code, {
+                        parser: "babel",
+                        tabWidth: indentSize || 4,
+                    });
+                    return { ok: true, code: formatted };
+                } catch (e: any) {
+                    return { ok: false, code, error: e.message };
+                }
             },
 
             // ── ウィザード: システムモデル定義一覧取得（要約） ──
@@ -1591,6 +1608,7 @@ if (process.env.VJA_TEST_MODE === "1") {
     const testMethods = [
         "testAddWidget", "testDeleteWidget", "testGetWidgets",
         "testSelectWidget", "testSwitchTab", "testGetWidgetHtml", "testGetPropsHtml", "testRenderCloudModal", "testOpenModal",
+        "testFormatJs",
         "testOpenYamlEditor", "testOpenTableEdit", "testOpenValidationEdit",
         "testSaveYaml", "testDeleteYaml", "testGetOverrides",
         "testGetValidations", "testSaveValidation", "testDeleteValidation",

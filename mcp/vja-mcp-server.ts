@@ -136,6 +136,15 @@ server.registerTool(
 );
 
 server.registerTool(
+    "vja_format_js",
+    {
+        description: "指定したJSコードをPrettierで整形した結果を返す（AI生成コードの整形機能の検証用）",
+        inputSchema: { code: z.string().describe("整形対象のJSコード") },
+    },
+    async (args) => toToolResult(await callVja("testFormatJs", args)),
+);
+
+server.registerTool(
     "vja_switch_tab",
     {
         description: "プロパティパネルの表示タブを切り替える（p=プロパティ, e=イベント）。イベントタブの描画結果を確認する前の下準備用",

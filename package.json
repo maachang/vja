@@ -11,6 +11,7 @@
     },
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.30.0",
-        "electrobun": "1.18.1"
+        "electrobun": "1.18.1",
+        "prettier": "^3.9.6"
     }
 }

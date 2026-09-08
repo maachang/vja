@@ -172,6 +172,14 @@ export type VjaRPCType = {
             // ウィザードの画面サイズ（大中小）選択で基準値として使う
             getDisplayWorkAreaRequest: { params: { _?: never }; response: { width: number; height: number } };
 
+            // ── JS整形（Prettier） ──────────────────────────
+            // AI生成コード（1行べた書き・インデント不揃い等）を整形する。
+            // indentSizeは省略時4（プロンプト側の「インデント4スペース」指定に合わせる）
+            formatJsRequest: {
+                params: { code: string; indentSize?: number };
+                response: { ok: boolean; code: string; error?: string };
+            };
+
             // ── ウィザード: システムモデル定義一覧取得（要約） ──
             // src/wizard-system-models/ 配下の *.summary.md をID(ファイル名)昇順で列挙する
             wizardSystemModelSummariesRequest: {

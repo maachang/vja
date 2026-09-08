@@ -305,23 +305,27 @@ function jsTokenize(code) {
     }).join("\n");
 }
 
-// YAMLデータをウィジェットに保存する（モーダルは閉じない）
-function saveYamlData(wid, evName) {
+// YAMLデータをウィジェットに保存する（モーダルは閉じない）。
+// 保存時にjs-taの内容をPrettierで整形してから格納する（1行べた書き・
+// インデント不揃いの救済。formatJsCode()はAI生成が絡まない手動編集後の
+// 保存でも安全に呼べるよう、失敗時は整形前のコードをそのまま返す設計）。
+async function saveYamlData(wid, evName) {
     // 保存直前に、有効化されている「利用テーブル」の状態をYAML本文へ再同期する。
     // （手動でブロックを消してしまっていても、保存時に補完される）
     if (typeof applyTableYamlSync === "function") applyTableYamlSync(wid, evName);
+    const jsCode = await formatJsCode($("js-ta")?.value || "");
     if (wid === "form") {
         const f = getProjectData().forms[getProjectData().curFormIdx];
         if (!f.events) f.events = {};
         f.events[evName] = $("yaml-ta")?.value || "";
-        f.events["_js_" + evName] = $("js-ta")?.value || "";
+        f.events["_js_" + evName] = jsCode;
         f.events["_doc_" + evName] = $("prompt-ta")?.value || "";
         return;
     }
     if (wid === "appev") {
         if (!getProjectData().projectInfo.appEvents) getProjectData().projectInfo.appEvents = {};
         getProjectData().projectInfo.appEvents[evName + "_yaml"] = $("yaml-ta")?.value || "";
-        getProjectData().projectInfo.appEvents[evName] = $("js-ta")?.value || "";
+        getProjectData().projectInfo.appEvents[evName] = jsCode;
         getProjectData().projectInfo.appEvents[evName + "_doc"] = $("prompt-ta")?.value || "";
         return;
     }
@@ -331,12 +335,12 @@ function saveYamlData(wid, evName) {
     if (!w.jsCode) w.jsCode = {};
     if (!w.docCode) w.docCode = {};
     w.events[evName] = $("yaml-ta")?.value || "";
-    w.jsCode[evName] = $("js-ta")?.value || "";
+    w.jsCode[evName] = jsCode;
     w.docCode[evName] = $("prompt-ta")?.value || "";
     renderEventsAndPush();
 }
-function saveYaml(wid, evName) {
-    saveYamlData(wid, evName);
+async function saveYaml(wid, evName) {
+    await saveYamlData(wid, evName);
     closeModal();
 }
 
@@ -359,11 +363,11 @@ function openFormYaml(evName) {
     initYamlEditorModal(cur, curJs, undefined, false, curDoc);
 }
 
-function saveFormYaml(evName) {
+async function saveFormYaml(evName) {
     const f = getProjectData().forms[getProjectData().curFormIdx];
     if (!f.events) f.events = {};
     f.events[evName] = $("yaml-ta")?.value || "";
-    f.events["_js_" + evName] = $("js-ta")?.value || "";
+    f.events["_js_" + evName] = await formatJsCode($("js-ta")?.value || "");
     f.events["_doc_" + evName] = $("prompt-ta")?.value || "";
     closeModal();
     renderEventsAndPush();

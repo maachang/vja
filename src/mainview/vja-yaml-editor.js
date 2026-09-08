@@ -1052,6 +1052,19 @@ function _fixMissingAwaits(code, isAppEvent) {
     });
 }
 
+// AI生成コード（1行べた書き・インデント不揃い等）をPrettier(bun側)で整形する。
+// Prettierが構文エラー等で失敗した場合は、整形前のコードをそのまま返す
+// （整形は品質向上のための後処理であり、失敗しても検証フロー自体は止めない）。
+async function formatJsCode(code) {
+    try {
+        const res = await vja.editor.formatJs(code);
+        return res?.ok ? res.code : code;
+    } catch (e) {
+        window.vja?.log?.debug?.("[JS整形] Prettier呼び出し失敗: " + e.message);
+        return code;
+    }
+}
+
 // 第1引数にウィジェット名（文字列リテラル）を取るAPIの一覧。
 // ここに列挙したAPIについて、指定されたウィジェット名が現在のフォームに
 // 実在するかを検証する。変数で渡されている場合（文字列リテラルでない場合）は
@@ -2340,7 +2353,7 @@ async function manualRetryAiFix(wid, evName, isAppEvent, isFormEvent) {
         userPrompt: fixUserPrompt,
         loadingMsg: "検出した問題を自動修正中…",
         onSuccess: async (fixed) => {
-            fixed = _fixMissingAwaits(_stripWidgetValueAccess(fixed), isAppEvent);
+            fixed = await formatJsCode(_fixMissingAwaits(_stripWidgetValueAccess(fixed), isAppEvent));
             let revalidated = validateGeneratedJs(fixed, isAppEvent, evName, wtag, wid);
             revalidated = await _augmentWithMockCheck(revalidated, fixed, isAppEvent, evName, wtag, wid);
             const fixedCode = revalidated.code || fixed;
@@ -2649,7 +2662,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
     const aiStartTime = Date.now(); // AI実行開始時刻を記録
 
     // AI生成操作の前に現在のエディタ内容（依頼・YAML・JS）を即時保存
-    saveYamlData(wid, evName);
+    await saveYamlData(wid, evName);
 
     // 確認ダイアログ
     const jsTaCur = $("js-ta")?.value || "";
@@ -2683,6 +2696,8 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                 );
             };
             let unwrapped = _fixMissingAwaits(_stripWidgetValueAccess(_unwrap(clean)), isAppEvent);
+            // 1行べた書き・インデント不揃いを、検証（行番号ベース）の前に整形しておく
+            unwrapped = await formatJsCode(unwrapped);
 
             // ── 生成結果の自動検証（構文チェック・APIホワイトリスト） ──
             // 問題があれば1回だけAIに自動修正を依頼し、それでも解消しない場合は
@@ -2710,7 +2725,9 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                     userPrompt: fixUserPrompt,
                     loadingMsg: "検出した問題を自動修正中…",
                     temperatureOverride: temperatureOverride,
-                    onSuccess: async (fixed) => { retryCode = _fixMissingAwaits(_stripWidgetValueAccess(_unwrap(fixed)), isAppEvent); },
+                    onSuccess: async (fixed) => {
+                        retryCode = await formatJsCode(_fixMissingAwaits(_stripWidgetValueAccess(_unwrap(fixed)), isAppEvent));
+                    },
                     onCancel: async () => { },
                     onError: async () => { },
                 });
@@ -2904,7 +2921,7 @@ async function textToYamlGenerate(wid, evName) {
     }
 
     // AI生成操作の前に現在のエディタ内容（依頼・YAML・JS）を即時保存
-    saveYamlData(wid, evName);
+    await saveYamlData(wid, evName);
 
     const yamlTaCur = $("yaml-ta");
     if (yamlTaCur && yamlTaCur.value.trim().length > 0) {
@@ -4572,4 +4589,5 @@ Object.assign(window, {
     openLearnedFixesModal, renderLearnedFixesModal, togglePinLearnedFixItem, deleteLearnedFixItem, addManualLearnedFix,
     closeCompletionPopup, acceptCompletionAt, clearBracketMatch, updateBracketMatch,purgeOverridesForWid,
     OVERRIDE_MAP_NAMES, purgeOverridesForKey,
+    formatJsCode,
 });
