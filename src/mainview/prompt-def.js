@@ -1516,12 +1516,12 @@ Your task is to read a Japanese YAML screen definition (including screen purpose
      - Columns ("カラム数" / "columns"): 1 | 2 | 3. Divide inputs into clean columns (e.g., 2 columns: Col 1 x=20, Col 2 x=${Math.floor(formW / 2) + 10}).
      - Label Position ("ラベル位置" / "labelPosition"): "左" (left / label on the left of input, e.g., lbl x=20 w=100, input x=125 w=180, same y) OR "上" (top / label above input, e.g., lbl x=20 y=Y w=180 h=20, input x=20 y=Y+22 w=180 h=26). Default is "left".
      - Button Alignment ("ボタン位置" / "buttonPosition"): "右下" (bottom-right) | "右" (top-right for search buttons) | "下部中央" (bottom-center).
-       - **When there are multiple action buttons, you MUST compute each button's x from the form's RIGHT EDGE, not from a single fixed x.** Use this exact formula for N buttons (button width w=85, gap=10px between buttons, right margin=20px):
-         - rightmost button: x = ${formW} - 20 - w
-         - each button to its left: x = (x of the button to its right) - gap - w
-         - i.e. for buttons ordered left-to-right [btn_1 .. btn_N], x(btn_i) = ${formW} - 20 - (N - i + 1) * w - (N - i) * gap
+       - **When there are multiple action buttons, you MUST compute each button's x from the form's RIGHT EDGE, not from a single fixed x.** The formulas below are given to EXPLAIN the calculation method in words — you must do the arithmetic yourself and write only the final resulting integer in the output JSON. NEVER copy a formula/expression (e.g. "768 - 20 - 85") literally into the "x" field; the output JSON must contain plain integers only, never arithmetic expressions.
+         - rightmost button: x = ${formW} - 20 - w  (compute this to a single integer)
+         - each button to its left: x = (x of the button to its right) - gap - w  (compute this to a single integer)
+         - i.e. for buttons ordered left-to-right [btn_1 .. btn_N], x(btn_i) = ${formW} - 20 - (N - i + 1) * w - (N - i) * gap  (compute this to a single integer)
          - All buttons share the same y = ${formH - 45} (bottom-right) and h=28~32.
-       - Example for N=3 buttons (w=85, gap=10) in a form of width ${formW}: x(btn_3)=${formW}-20-85, x(btn_2)=x(btn_3)-10-85, x(btn_1)=x(btn_2)-10-85.
+       - Example for N=3 buttons (w=85, gap=10) in a form of width ${formW}: x(btn_3)=${formW}-20-85, x(btn_2)=x(btn_3)-10-85, x(btn_1)=x(btn_2)-10-85. These are shown as formulas only to explain the method — the actual JSON output must have the computed integer results (see [Few-Shot Example: Multiple Action Buttons] below for the correct output style).
        - Verify after computing: the leftmost button's x MUST be >= 20 (left margin). If it is not, reduce button width or wrap to a second row instead of overlapping.
      - Density ("密度" / "density"): "コンパクト" (compact: item height 24px, gapY 28px) | "標準" (normal: item height 28px, gapY 36px).
 
@@ -1554,7 +1554,7 @@ Each object in the array must have the following keys:
 - "group": (Required only when tag is "radio") Group name.
 - "options": (Required only when tag is "selectBox" or "listbox") Array of options: ["Item1", "Item2"] or [{"label": "馬名", "value": "name"}, ...].
 - "columns": (Required only when tag is "datagrid") Array of column definitions: [{"name": "col_name", "displayName": "表示名", "width": 25}, ...].
-- "x", "y", "w", "h": Integers (pixels).
+- "x", "y", "w", "h": Integers (pixels). MUST be plain literal integers (e.g. 663) — NEVER arithmetic expressions (e.g. "768 - 20 - 85") or strings. Always compute the final number yourself before writing it.
 
 - Reference tables: Do not arbitrarily invent column names not in the reference table.
 - Number of buttons: Match the number of action items specified in the request.
