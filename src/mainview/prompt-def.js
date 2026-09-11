@@ -1070,7 +1070,7 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
     // ルール文言が分岐する。それぞれのルール内容（英語部分）の要約は以下の通り:
     // ## Structure: インラインで書く／if・try等のブロック内で変数宣言しない／
     //   バックエンドはconst禁止(letのみ)、フロントエンドはconst/let禁止(varのみ)／
-    //   フロントエンドはヘルパー関数(handleXxx等)の定義自体を禁止／インデント4スペース
+    //   フロントエンドはヘルパー関数(handleXxx等)の定義自体を禁止
     // ## vja API: vja.*APIがあれば必ず使う→なければ拡張ランタイム→最後に標準JS、の優先順位。
     //   crypto.subtle等の独自実装禁止。vja.*呼び出しはawait必須(例外あり)。
     //   画面遷移はvja.form.navigate()のみ、window.location禁止。
@@ -1116,8 +1116,6 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
   - Bad: if (cond) { let params = [...]; } await vja.db.query(sql, params);
   - Good: let params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
 - As a general rule, do not use "const"; use only "let".
-- One indentation level in the source code is four spaces.
-- Insert line breaks in the source code to make it easier to read.
 
 ## vja API
 - API selection priority (always follow this order, do NOT skip a tier): 1) If a vja.* API exists for the operation (see [vja Runtime(yaml)] below), you MUST use it. 2) If no vja.* API covers it, but a function is defined under the "### 拡張ランタイム(yaml)" section in the user message, use that. 3) Only if neither covers it, fall back to a standard/available JavaScript API. Never reimplement something a vja.* API already provides (e.g. do NOT use crypto.subtle directly — use vja.crypto.sha256/sha1/sha512 or vja.crypto.encrypt/decrypt instead).
@@ -1166,8 +1164,6 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
   - Bad: if (cond) { var params = [...]; } await vja.db.query(sql, params);
   - Good: var params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
 - As a general rule, the use of "const" and "let" is prohibited; use only "var".
-- One indentation level in the source code is four spaces.
-- Insert line breaks in the source code to make it easier to read.
 
 ## vja API
 - API selection priority (always follow this order, do NOT skip a tier): 1) If a vja.* API exists for the operation (see [vja Runtime(yaml)] below), you MUST use it. 2) If no vja.* API covers it, but a function is defined under the "### 拡張ランタイム(yaml)" section in the user message, use that. 3) Only if neither covers it, fall back to a standard/available JavaScript API. Never reimplement something a vja.* API already provides (e.g. do NOT use crypto.subtle directly — use vja.crypto.sha256/sha1/sha512 or vja.crypto.encrypt/decrypt instead).
