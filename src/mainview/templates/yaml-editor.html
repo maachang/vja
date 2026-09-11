@@ -255,6 +255,8 @@ style="height:30px;background:var(--bg3);border:1px solid var(--border);border-r
 <button class="yaml-api-ref-btn" style="margin-left:auto" <%- attrApiRef %>>📖 API</button>
 <button class="yaml-api-ref-btn" id="ai-mock-btn" style="margin-left:0" title="現在JavaScriptタブに表示されている内容を、モックVJAランタイムで試験実行します" <%- attrMockCheck %>>🧪 モック</button>
 <button class="yaml-api-ref-btn" id="ai-mock-edit-btn" style="margin-left:0" title="モック実行で使うダミー値を上書き設定します" <%- attrMockEdit %>>⚙ モック編集</button>
+<button class="yaml-api-ref-btn" id="ai-snapshot-record-btn" style="margin-left:0" title="現在の内容を「正常版」として履歴に記録します（最大5件）" <%- attrSnapshotRecord %>>📌 記録</button>
+<button class="yaml-api-ref-btn" id="ai-snapshot-history-btn" style="margin-left:0" title="記録した過去の正常版を確認・復元します" <%- attrSnapshotHistory %>>🕐 履歴</button>
 </div>
 </script>
 
@@ -344,6 +346,39 @@ style="height:30px;background:var(--bg3);border:1px solid var(--border);border-r
 
 <script type="text/vja-tpl" id="ye-tpl-mock-editor-footer">
 <div class="mfoot"><%- footBtns %><button class="pri" <%- attrSave %>>保存</button></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-snapshot-record-body">
+<div class="mbody" style="display:flex;flex-direction:column;gap:8px">
+<div style="font-size:12px;color:var(--text2)">この時点の内容を「正常版」として記録します。一言メモ（任意）を残せます。</div>
+<input id="snapshot-record-label" class="pv-input" placeholder="例: 検索結果が正しく表示されることを確認済み" maxlength="100" style="width:100%">
+</div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-snapshot-record-footer">
+<div class="mfoot"><%- footBtns %><button class="pri" <%- attrSave %>>記録</button></div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-snapshot-body">
+<div class="mbody" style="display:flex;flex-direction:column;gap:8px">
+<div style="font-size:12px;color:var(--text2)">「📌 記録」ボタンで記録した過去の正常版（最大5件、新しい順）です。復元すると現在のタブ内容が置き換わります（保存ボタンを押すまでプロジェクトには反映されません）。</div>
+<div id="snapshot-history-rows"><%- rowsHtml %></div>
+</div>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-snapshot-badge">
+<span style="display:inline-block;font-size:10px;font-weight:bold;padding:1px 5px;border-radius:3px;background:var(--accent-dim,#2a3a6a);color:var(--accent,#8ab4ff);margin-right:4px"><%= label %></span>
+</script>
+
+<script type="text/vja-tpl" id="ye-tpl-snapshot-row">
+<div class="rp-learned-row" style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px">
+<div style="margin-bottom:4px"><%- badges %><span style="color:var(--text)"><%= label %></span></div>
+<div style="margin-bottom:4px;color:var(--text3)"><%= date %></div>
+<div style="display:flex;gap:6px">
+<button class="yaml-ai-btn" style="font-size:11px;padding:2px 6px" <%- attrRestore %>>↩ 復元</button>
+<button class="yaml-ai-btn" style="font-size:11px;padding:2px 6px" <%- attrDelete %>>🗑 削除</button>
+</div>
+</div>
 </script>
 
 <script type="text/vja-tpl" id="ye-tpl-ai-config-body">

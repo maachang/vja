@@ -78,6 +78,8 @@ function openAppEvents(evKey) {
     pvRegister("yamlAiGenRandom", () => yamlAiGenerate("appev", evKey, _getBoostedTemperature()));
     pvRegister("yamlMockCheck", () => manualMockCheck(true, evKey, undefined, "appev"));
     pvRegister("yamlMockEdit", () => openMockOverrideEditor("appev", evKey));
+    pvRegister("yamlRecordSnapshot", () => yamlRecordSnapshot("appev", evKey));
+    pvRegister("yamlSnapshotHistory", () => openSnapshotHistoryModal("appev", evKey));
     const appEvHeader = render("ac-tpl-appev-hdr", {
         evTabs,
         attrClose: evtAttr("onmousedown", "closeModal()"),

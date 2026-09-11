@@ -159,6 +159,8 @@ function openYaml(wid, evName) {
     pvRegister("yamlAiGenRandom", () => yamlAiGenerate(wid, evName, _getBoostedTemperature()));
     pvRegister("yamlMockCheck", () => manualMockCheck(false, evName, getWidget(wid)?.tag, wid));
     pvRegister("yamlMockEdit", () => openMockOverrideEditor(wid, evName));
+    pvRegister("yamlRecordSnapshot", () => yamlRecordSnapshot(wid, evName));
+    pvRegister("yamlSnapshotHistory", () => openSnapshotHistoryModal(wid, evName));
     showModal(buildYamlEditorHTML(cur, curJs, true, mhdrHTML("📋 " + esc(w.name) + " — " + esc(evName)), "", null, isAppEvent, wid, evName, curDoc));
     initYamlEditorModal(cur, curJs, undefined, isAppEvent, curDoc);
 }
@@ -1146,7 +1148,7 @@ function _saveMockOverrideRows(wid, evName, rows) {
 // 削除処理側から呼び出す共通クリーンアップ関数をここにまとめる。
 const OVERRIDE_MAP_NAMES = [
     "mockOverrides", "apiOptOverrides", "tableOptOverrides",
-    "validationOverrides", "mockCheckOverrides", "learnedFixes",
+    "validationOverrides", "mockCheckOverrides", "learnedFixes", "snapshotHistory",
 ];
 // 指定したwid・evNameの組み合わせに完全一致するキーだけを6マップから削除する
 // （1イベント単位でのYAML削除時に使用）。
@@ -1170,6 +1172,117 @@ function purgeOverridesForWid(wid) {
         });
     });
 }
+/* ── イベント単位の「正常版」スナップショット履歴（ロールバック用） ──
+   保存先: getProjectData().snapshotHistory["wid_evName"] = [
+     { id, createdAt, yaml, jsCode, docCode }, ...
+   ]（新しい順、最大5件）
+   AI再生成でコードが悪化した場合に、ユーザーが手動で「📌 記録」した
+   過去のYAML/JS/依頼文へ手動で戻せるようにするための機能。
+   「正常に動作したこと」の自動判定は行わない（既存のmanualMockCheck等は
+   静的検証＋浅いモック実行に過ぎず実運用の正常性を保証しないため）。
+   記録・復元ともに、ユーザーの明示操作でのみ発生する。
+   キー生成方式は_getMockOverrideKey()と同一（wid_evName）。 */
+function _snapshotHistoryKey(wid, evName) {
+    return wid + "_" + evName;
+}
+function _getSnapshotHistory(wid, evName) {
+    return (getProjectData().snapshotHistory || {})[_snapshotHistoryKey(wid, evName)] || [];
+}
+function _setSnapshotHistory(wid, evName, arr) {
+    if (!getProjectData().snapshotHistory) getProjectData().snapshotHistory = {};
+    getProjectData().snapshotHistory[_snapshotHistoryKey(wid, evName)] = arr;
+}
+// 「📌 記録」ボタン。一言メモ（任意）を入力させるモーダルを開く。
+function yamlRecordSnapshot(wid, evName) {
+    showModal(
+        mhdrHTML("📌 正常版として記録", "modal-layer-1") +
+        render("ye-tpl-snapshot-record-body", {}) +
+        render("ye-tpl-snapshot-record-footer", {
+            footBtns: mfootHTML([{ label: "キャンセル", action: 'closeModal("modal-layer-1")' }]),
+            attrSave: evtAttr("onmousedown", "doRecordSnapshot(" + JSON.stringify(wid) + "," + JSON.stringify(evName) + ")"),
+        }),
+        "modal-snapshot-record", "modal-layer-1"
+    );
+    setTimeout(() => $("snapshot-record-label")?.focus(), 0);
+}
+// 「記録」ボタン（メモ入力モーダル内）。現在エディタに表示中の内容
+// （保存前の編集中の内容）を、入力されたメモとともに先頭に積む。
+// 上限5件を超えた分は末尾（最古）から間引く。
+function doRecordSnapshot(wid, evName) {
+    const label = ($("snapshot-record-label")?.value || "").trim();
+    const yaml = $("yaml-ta")?.value || "";
+    const jsCode = $("js-ta")?.value || "";
+    // 直前の記録（先頭＝最新）と比べて、YAML/JSのどちらが変わったかを
+    // 記録時点で確定させておく（履歴一覧のバッジ表示用）。直前の記録が
+    // 無い＝初回記録の場合は、両方とも新規扱いとする。
+    const prev = _getSnapshotHistory(wid, evName)[0];
+    const entry = {
+        id: Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+        createdAt: Date.now(),
+        label,
+        yaml,
+        jsCode,
+        docCode: $("prompt-ta")?.value || "",
+        yamlChanged: !prev || prev.yaml !== yaml,
+        jsChanged: !prev || prev.jsCode !== jsCode,
+    };
+    const MAX = 5;
+    const next = [entry, ..._getSnapshotHistory(wid, evName)].slice(0, MAX);
+    _setSnapshotHistory(wid, evName, next);
+    closeModal("modal-layer-1");
+    showToast("📌 現在の内容を正常版として記録しました（" + next.length + "/" + MAX + "件）");
+}
+// 「🕐 履歴」ボタン。記録済みの世代一覧を表示する。
+function openSnapshotHistoryModal(wid, evName) {
+    const list = _getSnapshotHistory(wid, evName);
+    const rowsHtml = list.length === 0
+        ? "<div style='padding:8px 10px;font-size:12px;color:var(--text3)'>記録された履歴はありません（「📌 記録」ボタンで現在の内容を記録できます）</div>"
+        : list.map((e, idx) => render("ye-tpl-snapshot-row", {
+            badges: (e.yamlChanged ? render("ye-tpl-snapshot-badge", { label: "YAML" }) : "")
+                + (e.jsChanged ? render("ye-tpl-snapshot-badge", { label: "JS" }) : ""),
+            label: esc(e.label || "(メモなし)"),
+            date: new Date(e.createdAt).toLocaleString("ja-JP"),
+            attrRestore: evtAttr("onmousedown", "restoreSnapshotHistory(" + JSON.stringify(wid) + "," + JSON.stringify(evName) + "," + idx + ")"),
+            attrDelete: evtAttr("onmousedown", "deleteSnapshotHistory(" + JSON.stringify(wid) + "," + JSON.stringify(evName) + "," + idx + ")"),
+        })).join("");
+    showModal(
+        mhdrHTML("🕐 履歴（" + esc(String(evName)) + "）", "modal-layer-1") +
+        render("ye-tpl-snapshot-body", { rowsHtml }) +
+        mfootHTML([{ label: "閉じる", action: 'closeModal("modal-layer-1")' }]),
+        "modal-snapshot-history", "modal-layer-1"
+    );
+}
+// 「↩ 復元」ボタン。エディタの3ペイン（YAML/JS/依頼文）を選択した世代の
+// 内容へ置き換える。プロジェクトデータへの反映は行わず、既存の「保存」
+// ボタン操作を経由させる（他の編集操作と同じ確定フローに統一するため）。
+async function restoreSnapshotHistory(wid, evName, idx) {
+    const list = _getSnapshotHistory(wid, evName);
+    const entry = list[idx];
+    if (!entry) return;
+    const labelPart = entry.label ? "「" + entry.label + "」" : "";
+    const dlg = await vja.app.showConfirm(
+        labelPart + "（" + new Date(entry.createdAt).toLocaleString("ja-JP") + "）の内容に復元しますか？\n（現在編集中の内容は上書きされます。保存ボタンを押すまでプロジェクトには反映されません）"
+    );
+    if (!dlg) return;
+    if ($("yaml-ta")) $("yaml-ta").value = entry.yaml || "";
+    if ($("js-ta")) $("js-ta").value = entry.jsCode || "";
+    if ($("prompt-ta")) $("prompt-ta").value = entry.docCode || "";
+    yamlHlUpdate();
+    jsHlUpdate();
+    editorUpdateGutter("yaml-ta", "yaml-gutter");
+    editorUpdateGutter("js-ta", "js-gutter");
+    editorUpdateGutter("prompt-ta", "prompt-gutter");
+    closeModal("modal-layer-1");
+    showToast("履歴から復元しました（内容を確認のうえ保存してください）");
+}
+// 「🗑 削除」ボタン。
+function deleteSnapshotHistory(wid, evName, idx) {
+    const list = _getSnapshotHistory(wid, evName);
+    list.splice(idx, 1);
+    _setSnapshotHistory(wid, evName, list);
+    openSnapshotHistoryModal(wid, evName);
+}
+
 // モック値編集の「JSON」欄をできるだけ寛容に解釈する。
 // 1. まず厳密なJSONとして解釈を試みる（"文字列"/123/{"a":1}/true 等はこれで通る）
 // 2. 失敗した場合、数値として解釈できれば数値として扱う（保険的なケース）
@@ -3753,6 +3866,8 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
         attrApiRef: evtAttr("onmousedown", "openApiRef(" + isAppEvent + ")"),
         attrMockCheck: evtAttr("onmousedown", "pvCall(\"yamlMockCheck\")"),
         attrMockEdit: evtAttr("onmousedown", "pvCall(\"yamlMockEdit\")"),
+        attrSnapshotRecord: evtAttr("onmousedown", "pvCall(\"yamlRecordSnapshot\")"),
+        attrSnapshotHistory: evtAttr("onmousedown", "pvCall(\"yamlSnapshotHistory\")"),
     });
     const paneYaml = render("ye-tpl-default-pane-yaml", {
         cur,
@@ -4590,4 +4705,5 @@ Object.assign(window, {
     closeCompletionPopup, acceptCompletionAt, clearBracketMatch, updateBracketMatch,purgeOverridesForWid,
     OVERRIDE_MAP_NAMES, purgeOverridesForKey,
     formatJsCode,
+    yamlRecordSnapshot, doRecordSnapshot, openSnapshotHistoryModal, restoreSnapshotHistory, deleteSnapshotHistory,
 });

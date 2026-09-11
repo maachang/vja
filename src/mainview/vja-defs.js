@@ -938,6 +938,8 @@ var CTX = {
         validationOverrides: {},
         mockCheckOverrides: {},
         learnedFixes: {},
+        // イベントごとの「正常版として記録」したYAML/JSスナップショット履歴（wid_evNameキー、最大5件）
+        snapshotHistory: {},
         aiConfig: {
             endpoint: "http://localhost:8080",
             apiKey: "",

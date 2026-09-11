@@ -266,6 +266,7 @@ function snapshot() {
         validationOverrides: p.validationOverrides || {},
         mockCheckOverrides: p.mockCheckOverrides || {},
         learnedFixes: p.learnedFixes || {},
+        snapshotHistory: p.snapshotHistory || {},
         aiPresets: p.aiPresets || [],
         currentAiPresetId: p.currentAiPresetId || "",
         wizardProgress: p.wizardProgress || null,
@@ -312,6 +313,7 @@ function applyProjectData(d) {
     getProjectData().validationOverrides = d.validationOverrides || {};
     getProjectData().mockCheckOverrides = d.mockCheckOverrides || {};
     getProjectData().learnedFixes = d.learnedFixes || {};
+    getProjectData().snapshotHistory = d.snapshotHistory || {};
     getProjectData().aiPresets = d.aiPresets || [];
     getProjectData().currentAiPresetId = d.currentAiPresetId || "";
     // ウィザードが完了前に中断された場合の進行状況（あれば「続きから再開」を提案する）

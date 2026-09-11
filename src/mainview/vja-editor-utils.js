@@ -359,6 +359,8 @@ function openFormYaml(evName) {
     pvRegister("yamlAiGenRandom", () => yamlAiGenerate("form", evName, _getBoostedTemperature()));
     pvRegister("yamlMockCheck", () => manualMockCheck(false, evName, undefined, "form"));
     pvRegister("yamlMockEdit", () => openMockOverrideEditor("form", evName));
+    pvRegister("yamlRecordSnapshot", () => yamlRecordSnapshot("form", evName));
+    pvRegister("yamlSnapshotHistory", () => openSnapshotHistoryModal("form", evName));
     showModal(buildYamlEditorHTML(cur, curJs, true, mhdrHTML("📋 フォーム — " + esc(evName)), "", null, false, "form", evName, curDoc));
     initYamlEditorModal(cur, curJs, undefined, false, curDoc);
 }
