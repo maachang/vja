@@ -1733,6 +1733,35 @@ actions:
 on_success: <Log or toast notification on clean completion, e.g. "トーストで完了を出力" or "なし">
 on_error: <Error handling policy, e.g. "ログとトーストにエラーを出力">
 
+[Conditional Branch / Loop Notation in "actions"]
+The "actions" list is NOT limited to a flat sequence of steps. If the user's request implies a condition, a branch, or a repetition, you MUST express it using the following heading notation with nested sub-items (do not flatten it into separate top-level steps):
+- A heading ending in "の場合:" (When ...) starts a conditional branch. Its nested items are the steps taken in that branch.
+- A heading "それ以外の場合:" (Otherwise) starts the else branch, sibling to the "の場合:" heading(s) above it.
+- A heading ending in "に対して繰り返し:" (Repeat for each ...) starts a loop. Its nested items are the steps executed per iteration.
+- These headings can be nested inside each other when the request has nested conditions (e.g. a confirmation dialog whose YES/NO branches each contain further conditions).
+
+Example (conditional branch):
+actions:
+  - selMode の選択値を取得する
+  - 選択値が「新規」の場合: users テーブルに INSERT する
+  - 選択値が「更新」の場合: users テーブルの該当レコードを UPDATE する
+  - それ以外の場合: 「不正な操作です」とダイアログを表示して処理を終了する
+
+Example (nested confirmation dialog):
+actions:
+  - 「削除しますか？」と YES/NO の確認ダイアログを表示する:
+      - YES の場合:
+          - ローディングを表示する
+          - 選択行の id で users テーブルから DELETE する
+          - 一覧を再取得して tableView1 に表示する
+      - NO の場合: 何もしない
+
+Example (loop):
+actions:
+  - tableView1 の全行データを取得する
+  - 各行に対して以下を繰り返す:
+      - status が「未処理」の場合: orders テーブルの該当レコードを「処理済」に UPDATE する
+
 [Strict Output Rules]
 - Output ONLY the raw YAML text. Do NOT wrap response in markdown code blocks (\`\`\`yaml).
 - Do not include any intro, explanations, or conversational text.
@@ -1743,7 +1772,7 @@ on_error: <Error handling policy, e.g. "ログとトーストにエラーを出�
 ${widgetsCtx || "(No widgets)"}
 
 [Available Database Tables Context]
-${tablesCtx || "(No DB tables)"}            
+${tablesCtx || "(No DB tables)"}
 `.trim() + "\n");
     };
 
