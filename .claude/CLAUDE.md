@@ -169,6 +169,17 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 - **アクセス点**: イベントYAMLエディタの **`✨ YAMLドラフト`タブ**（`tab-prompt`、旧称「✨ 依頼」タブ）に日本語のやりたいこと文章を入力し、`textToYamlGenerate(wid, evName)`を実行すると `📋 YAML`タブへドラフトが生成される（旧仕様の別モーダルボタン`openTextToYamlModal`は現在は存在せず、エディタ内タブに統合済み）
 - **プロンプト定義**: `prompt-def.js` の `ENG_TEXT_TO_YAML_SYS_PROMPT` / `ENG_TEXT_TO_YAML_USER_PROMPT`
 - **テスト**: `src/mainview/text-to-yaml-prompt.test.ts` でユニットテスト実装・検証済み
+- **条件分岐・繰り返しの見出し記法**（2026-09-11追加）: `アクション:`配下の`〇〇の場合:`/`それ以外の場合:`（if/else相当）、`〇〇に対して繰り返し:`（for/forEach相当）というYAML規約自体はJS変換プロンプト（`ENG_YAML_TO_JS_SYS_PROMPT`）側では以前から仕様化されていたが、ドラフト生成プロンプト（`ENG_TEXT_TO_YAML_SYS_PROMPT`）側には説明もFew-Shot例も無く、AIが条件分岐を使わずフラットな手順列挙しか生成しない問題があった。`docs/yaml-guide-engineer.md`の記法例をFew-Shotとして`ENG_TEXT_TO_YAML_SYS_PROMPT`にも追加し解消した
+
+# イベントYAML/JSロールバック機能（スナップショット履歴）
+
+- **概要**: AI再生成でイベントのYAML/JSコードが悪化した場合に、以前の「正常版」へユーザーが手動で戻せる機能（2026-09-11実装）
+- **保存先**: `getProjectData().snapshotHistory["wid_evName"]`（`wid_evName`キー方式は`mockOverrides`等と同一、`OVERRIDE_MAP_NAMES`に追加済みでウィジェット/イベント削除時に自動クリーンアップされる）。`.vjaproj`へ永続化（`snapshot()`/`applyProjectData()`, `vja-modal.js`）
+- **記録方式**: 「正常に実行できた」の自動判定はしない（既存の`manualMockCheck`等は静的検証＋浅いモック実行に過ぎず実運用の正常性を保証しないため）。イベントYAMLエディタの**`📌 記録`ボタン**を押した時のみ、その時点のYAML・JS・依頼文（`docCode`）を**常にセットで**（分離せず）記録する。JSはYAMLから生成される関係上、世代がズレる事故を防ぐための設計判断
+- **上限・メモ**: 1イベントあたり新しい順で最大5件（超過分は自動間引き）。記録時に一言メモ（Gitのコミットメッセージ的なもの、`label`）を入力可能
+- **UI**: `📌 記録`→メモ入力モーダル、`🕐 履歴`→世代一覧モーダル（`↩ 復元`/`🗑 削除`）。復元は直接プロジェクトデータへ反映せずエディタの3ペインを置き換えるのみで、確定は既存の保存ボタン経由。一覧の各行には、直前の記録と比べてYAML/JSどちらが変わったかを示す`[YAML]`/`[JS]`バッジを表示
+- **対象範囲**: ウィジェットイベント（`openYaml`）・フォームイベント（`openFormYaml`）・アプリイベント（`openAppEvents`）の3種類すべてに対応
+- 学習履歴機能と合わせて設計する、とされていた残課題だが、実装してみると両者はデータの性質（学習履歴＝軽量な文字列サマリ／スナップショット＝YAML+JS全文）が大きく異なるため、独立した機能として実装した
 
 # AI生成コードの機械的な後処理（await漏れ補完・JS整形）
 
@@ -176,7 +187,8 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 - **JS整形（Prettier）**: ローカルLLM生成コードにありがちな「1行べた書き」「インデント幅の不揃い（2スペース等）」を、本物のJSフォーマッタ（Prettier）で整形する。正規表現ベースの機械的パッチでは構文木を正しく解釈できず事故りやすいため、Prettierをbun側にのみ依存追加（`package.json`）し、RPC（`formatJsRequest`、`src/shared/types.ts`にスキーマ定義）経由で整形結果を返す方式にした
   - webview側の呼び出し口: `window.vja.editor.formatJs(code, indentSize)`（`bridge.ts`）。`vja-yaml-editor.js`の`formatJsCode(code)`がラップし、失敗時は整形前のコードをそのまま返す（整形はあくまで品質向上の後処理であり、検証フロー自体は止めない設計）
   - 適用タイミング: **AI生成時**（メイン生成・自動修正リトライ・手動修正依頼の各成功コールバック）と、**イベント保存時**（`saveYamlData`/`saveYaml`/`saveFormYaml`/`vja-app-config.js`の`saveAppEvent`、js-ta内容をPrettierで整形してから格納）。手動モック実行（`manualMockCheck`）単体では整形しない
-  - インデント幅は`indentSize`引数で指定可能（デフォルト4、プロンプト側の「インデント4スペース」指定と一致）。Prettier本体は`copy-compile-assets.ts`の`COPY_BUILD_FILES`には含めない（VJA編集機能専用でコンパイル済みユーザーアプリには不要なため）
+  - インデント幅は`indentSize`引数で指定可能（デフォルト4）。Prettier本体は`copy-compile-assets.ts`の`COPY_BUILD_FILES`には含めない（VJA編集機能専用でコンパイル済みユーザーアプリには不要なため）
+  - これに伴い、YAML→JS変換プロンプト（`ENG_YAML_TO_JS_SYS_PROMPT`）内にあった「インデント4スペース」「読みやすさのための改行」という生成時のコード整形指示は、最終的にPrettierで上書きされ無意味なため削除済み（2026-09-11）
   - テスト用API: `testFormatJs`/`vja_format_js`（`formatJsCode()`を直接呼び出し整形結果を確認できる）
 
 # DBテーブルAI生成機能
@@ -241,7 +253,7 @@ vjaの中核コンセプトである「AIに雛形を作ってもらい、それ
 - 【将来対応検討】ウィザードのシステムモデル定義（`src/wizard-system-models/`）を、カラム構成生成プロンプト（`ENG_TABLE_SCHEMA_GEN_SYS_PROMPT`、テーブル管理「✨ AI生成」と共有）にも反映したい場合、共有プロンプトの関数シグネチャ改修が必要。現状は未着手（詳細は「ウィザードのシステムモデル定義（AIヒント）」節参照）
 - 【AI生成の既知の混同要因】対応済み（2026-09-07）。prompt-def.js内で「テーブル」という言葉が、DBのテーブル（vja.db.*）とdatagridタグのウィジェット（vja.widget.set/setTableData等）の両方を指して使われており、ローカルLLMがYAML定義中の「テーブル」という語からどちらの操作か混同し、意図しない実装（ウィジェット側を触るべき所でDB操作をしようとする等）をするケースが確認されていた。datagridウィジェット側を指す箇所（8箇所）を「データグリッド」に統一する用語の書き分けで対応済み。DBテーブルを指す箇所（`利用テーブル:`等）は変更していない。
 - 既存プロジェクトの後方互換性（旧検証:記法のマイグレーション）は「今は自分しか使っていない」との理由で対応見送り
-- 【将来対応検討】YAML/JSのロールバック機能: イベントごとに「正常に実行できた」YAML定義＋生成JSの組を履歴として残し、AI再生成で悪化した場合に以前の正常動作バージョンへ戻せるようにする。学習履歴機能（上記）と合わせて設計する必要がある。まだ未着手・仕様未確定
+- YAML/JSのロールバック機能は対応済み（2026-09-11実装。詳細は「イベントYAML/JSロールバック機能（スナップショット履歴）」節を参照）
 - 【将来対応検討】生成コードの日本語解説機能: AIがイベント処理コードを生成した後、続けて「このコードは何をしているか」を日本語で解説させる。VBA経験者・初学者向けの学習導線（README記載の「登竜門」コンセプト）に直結する機能。まだ未着手・仕様未確定
 - 【将来対応検討】vjaランタイムAPIの拡充候補（優先度低・未着手）:
   - 印刷・帳票機能（vja.io.print/printElementはwindow.print()呼び出しのみで、ページ設定・ヘッダーフッター・複数レコード帳票レイアウトが無い）
