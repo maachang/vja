@@ -1112,27 +1112,20 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
             `
 ## Structure
 - Code must always be written inline.
-- Strictly adhere to the rule of declaring variables outside of if/else, try/catch, and any other blocks ({ }).
-  - Bad: if (cond) { let params = [...]; } await vja.db.query(sql, params);
-  - Good: let params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
+- Declare variables (let) BEFORE if/else/try/catch/any block, not inside it. Example: let params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
 - As a general rule, do not use "const"; use only "let".
 
 ## vja API
 - API selection priority (always follow this order, do NOT skip a tier): 1) If a vja.* API exists for the operation (see [vja Runtime(yaml)] below), you MUST use it. 2) If no vja.* API covers it, but a function is defined under the "### 拡張ランタイム(yaml)" section in the user message, use that. 3) Only if neither covers it, fall back to a standard/available JavaScript API. Never reimplement something a vja.* API already provides (e.g. do NOT use crypto.subtle directly — use vja.crypto.sha256/sha1/sha512 or vja.crypto.encrypt/decrypt instead).
 - All vja.* calls must use "await", except for the following synchronous calls: vja.event.*, vja.trigger.*, vja.widget.get, vja.widget.set, vja.widget.show, vja.widget.hide, vja.widget.enable, and vja.widget.disable.
 - Never use Promise, .then(), or .catch() directly. Use await instead.
-- Screen navigation must use vja.form.navigate('screen name') only. (window.location is prohibited)
-- navigate() is exclusively for navigating to a different screen. Using it to refresh or update the current screen is absolutely prohibited.
+- Screen navigation must use vja.form.navigate('screen name') only (window.location is prohibited), and only for switching screens — never for refreshing/updating the current screen.
 
 ## SQL
-- Placeholders (?) are mandatory for all variable inputs to prevent SQL injection.
-- Implemented using SQL specific to sqlite3. Must be defined using executable SQL statements.
-- For SQL LIKE searches, NEVER place the '?' placeholder inside quotes (e.g., LIKE '%?%' is STRICTLY PROHIBITED as it breaks the placeholder). Always concatenate the '%' wildcards to the JavaScript variable side.
-  - Example: let pattern = '%' + searchText + '%'; let sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
-- NEVER embed a data VALUE into the SQL string using a template literal (\`\${...}\`). Any value (search text, numbers, IDs, JSON.stringify() results, etc.) must always be passed through the \`?\` placeholder and the params array. Embedding a value directly (e.g., \`WHERE id = \${id}\` or \`WHERE data = \${JSON.stringify(obj)}\`) is STRICTLY PROHIBITED.
-  - Bad: \`SELECT * FROM users WHERE name = \${name}\`
-  - Good: let sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]);
-  - Embedding a column/table NAME (an identifier, not a data value) via template literal is acceptable when the identifier itself is fixed or comes from a controlled source (e.g., a dropdown of known column names) — e.g., \`SELECT * FROM t WHERE \${columnName} = ?\` is fine as long as columnName is an identifier and the actual searched value still goes through \`?\`.
+- Placeholders (?) are mandatory for all variable inputs to prevent SQL injection, using sqlite3-executable SQL.
+- For LIKE searches, concatenate '%' wildcards on the JS variable side — NEVER put '?' inside quotes (e.g. LIKE '%?%' is STRICTLY PROHIBITED). Example: let pattern = '%' + searchText + '%'; let sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
+- NEVER embed a data VALUE into the SQL string via a template literal (\`\${...}\`) — any value (search text, numbers, IDs, JSON.stringify() results, etc.) must always go through the \`?\` placeholder and params array. Example: let sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]); (i.e. NEVER \`WHERE name = \${name}\`)
+  - Exception: embedding a column/table NAME (an identifier, not a data value) via template literal is acceptable when it comes from a controlled source (e.g. a dropdown of known column names) — e.g. \`SELECT * FROM t WHERE \${columnName} = ?\` — as long as the actual searched value still goes through \`?\`.
 
 ## YAML Definition Structure
 - The YAML specification uses the following keys. Make sure you understand the meaning of each correctly.
@@ -1157,32 +1150,23 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
             : // フロントエンド (isAppEvent = false)
             `
 ## Structure
-- All generated code must be written "inline." The use of helper functions is strictly prohibited (e.g., defining functions such as "handleXxx", "doXxx", "addEventListener", etc., is absolutely forbidden).
-  - Bad example: async function handleButtonClick() { ... }
-  - Good example: var result = await vja.app.showConfirm("...");
-- Strictly adhere to the rule of declaring variables outside of if/else, try/catch, and any other blocks ({ }).
-  - Bad: if (cond) { var params = [...]; } await vja.db.query(sql, params);
-  - Good: var params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
+- All generated code must be written "inline." The use of helper functions is strictly prohibited (e.g., defining functions such as "handleXxx", "doXxx", "addEventListener", etc., is absolutely forbidden). Good example: var result = await vja.app.showConfirm("...");
+- Declare variables (var) BEFORE if/else/try/catch/any block, not inside it. Example: var params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
 - As a general rule, the use of "const" and "let" is prohibited; use only "var".
 
 ## vja API
 - API selection priority (always follow this order, do NOT skip a tier): 1) If a vja.* API exists for the operation (see [vja Runtime(yaml)] below), you MUST use it. 2) If no vja.* API covers it, but a function is defined under the "### 拡張ランタイム(yaml)" section in the user message, use that. 3) Only if neither covers it, fall back to a standard/available JavaScript API. Never reimplement something a vja.* API already provides (e.g. do NOT use crypto.subtle directly — use vja.crypto.sha256/sha1/sha512 or vja.crypto.encrypt/decrypt instead).
 - All vja.* calls must use "await", except for the following synchronous calls: vja.event.*, vja.trigger.*, vja.widget.get, vja.widget.set, vja.widget.show, vja.widget.hide, vja.widget.enable, and vja.widget.disable.
 - Never use Promise, .then(), or .catch() directly. Use await instead.
-- Screen navigation must use vja.form.navigate('screen name') only. (window.location is prohibited)
-- navigate() is exclusively for navigating to a different screen. Using it to refresh or update the current screen is absolutely prohibited.
+- Screen navigation must use vja.form.navigate('screen name') only (window.location is prohibited), and only for switching screens — never for refreshing/updating the current screen.
 - window.confirm/alert are prohibited. Use vja.app.showDialog/showConfirm instead.
 - Widgets are NOT accessible via direct DOM-style property access (e.g., searchText.value, document.getElementById('x').value are ALL INVALID). vja.widget.get()'s return value is already the raw unwrapped value (string/number/boolean/array) — it is never wrapped in a \`.value\` property. Accessing \`.value\` on it will NOT throw — it silently becomes undefined and causes subtly wrong behavior. The ONLY way to read a widget's current value is vja.widget.get('widgetName'), and you must use the returned value directly.
 
 ## SQL
-- Placeholders (?) are mandatory for all variable inputs to prevent SQL injection.
-- Implemented using SQL specific to sqlite3. Must be defined using executable SQL statements.
-- For SQL LIKE searches, NEVER place the '?' placeholder inside quotes (e.g., LIKE '%?%' is STRICTLY PROHIBITED as it breaks the placeholder). Always concatenate the '%' wildcards to the JavaScript variable side.
-  - Example: var searchText = vja.widget.get('txtSearch'); var pattern = '%' + searchText + '%'; var sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
-- NEVER embed a data VALUE into the SQL string using a template literal (\`\${...}\`). Any value (search text, numbers, IDs, JSON.stringify() results, etc.) must always be passed through the \`?\` placeholder and the params array. Embedding a value directly (e.g., \`WHERE id = \${id}\` or \`WHERE data = \${JSON.stringify(obj)}\`) is STRICTLY PROHIBITED.
-  - Bad: \`SELECT * FROM users WHERE name = \${name}\`
-  - Good: var sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]);
-  - Embedding a column/table NAME (an identifier, not a data value) via template literal is acceptable when the identifier itself is fixed or comes from a controlled source (e.g., a dropdown of known column names) — e.g., \`SELECT * FROM t WHERE \${columnName} = ?\` is fine as long as columnName is an identifier and the actual searched value still goes through \`?\`.
+- Placeholders (?) are mandatory for all variable inputs to prevent SQL injection, using sqlite3-executable SQL.
+- For LIKE searches, concatenate '%' wildcards on the JS variable side — NEVER put '?' inside quotes (e.g. LIKE '%?%' is STRICTLY PROHIBITED). Example: var searchText = vja.widget.get('txtSearch'); var pattern = '%' + searchText + '%'; var sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
+- NEVER embed a data VALUE into the SQL string via a template literal (\`\${...}\`) — any value (search text, numbers, IDs, JSON.stringify() results, etc.) must always go through the \`?\` placeholder and params array. Example: var sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]); (i.e. NEVER \`WHERE name = \${name}\`)
+  - Exception: embedding a column/table NAME (an identifier, not a data value) via template literal is acceptable when it comes from a controlled source (e.g. a dropdown of known column names) — e.g. \`SELECT * FROM t WHERE \${columnName} = ?\` — as long as the actual searched value still goes through \`?\`.
 
 ## YAML Definition Structure
 - The YAML specification uses the following keys. Make sure you understand the meaning of each correctly.
@@ -1724,17 +1708,16 @@ tables:
   - <table_name> (Include this section ONLY IF database table access is mentioned or required; otherwise omit this section entirely)
 validation: <Validation requirements if mentioned, or "なし">
 actions:
-  - <Step 1 action description in clear Japanese, referencing exact widget names and DB column names where applicable>
-  - <Step 2 action description>
+  - <Step action description in clear Japanese, referencing exact widget names and DB column names where applicable>
+  - ...
 on_success: <Log or toast notification on clean completion, e.g. "トーストで完了を出力" or "なし">
 on_error: <Error handling policy, e.g. "ログとトーストにエラーを出力">
 
 [Conditional Branch / Loop Notation in "actions"]
-The "actions" list is NOT limited to a flat sequence of steps. If the user's request implies a condition, a branch, or a repetition, you MUST express it using the following heading notation with nested sub-items (do not flatten it into separate top-level steps):
-- A heading ending in "の場合:" (When ...) starts a conditional branch. Its nested items are the steps taken in that branch.
-- A heading "それ以外の場合:" (Otherwise) starts the else branch, sibling to the "の場合:" heading(s) above it.
-- A heading ending in "に対して繰り返し:" (Repeat for each ...) starts a loop. Its nested items are the steps executed per iteration.
-- These headings can be nested inside each other when the request has nested conditions (e.g. a confirmation dialog whose YES/NO branches each contain further conditions).
+"actions" is NOT always a flat list of steps — if the request implies a condition, branch, or repetition, express it as a heading with nested sub-items (never flatten into separate top-level steps):
+- "〇〇の場合:" (When ...) = an if-branch; "それ以外の場合:" (Otherwise) = its else, as a sibling heading to the "の場合:" heading(s) above it.
+- "〇〇に対して繰り返し:" (Repeat for each ...) = a loop; its nested items are the steps executed per iteration.
+- Nest these headings inside each other for nested conditions (e.g. a confirmation dialog whose YES/NO branches each contain further conditions).
 
 Example (conditional branch):
 actions:
