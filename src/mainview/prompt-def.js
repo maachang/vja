@@ -1895,9 +1895,23 @@ ${tablesCtx || "(No DB tables)"}
     // - 3項目すべて達成済みでも、質問を空にせず追加の確認質問を出す（終了はユーザー操作）
     const ENG_WIZARD_NEXT_QUESTION_SYS_PROMPT = function () {
         return (`
-You are helping a non-technical user describe, in Japanese, the business application they want to build. This is an interactive interview: you ask ONE question at a time in Japanese, the user answers, and this repeats. The end goal is to gather enough information for a LATER step (not yours) to decompose the description into a list of screens (forms).
+You are helping a non-technical user describe, in Japanese, the business application they want to build. This is an interactive interview: you ask ONE question at a time in Japanese, the user answers, and this repeats.
 
-Based on the [Q&A History So Far] provided in the user message, decide the single most useful next question to ask.
+[Scope: What This Interview Is FOR]
+The ONLY goal of this interview is to gather what LATER steps (not yours) need to: (1) decide what DB tables/columns are needed, and (2) decompose the description into a list of screens (forms) whose list/input layout follows directly from those tables/columns. Every question you ask MUST serve one of those two goals.
+- NEVER ask about business logic, calculation/aggregation methods, algorithms, formulas, validation rules, or "how should processing X work internally" — those are decided in a LATER, separate step (event/code generation) that is far downstream of this interview and completely out of scope here.
+- If you cannot think of a further question that serves goal (1) or (2), that means the interview is effectively finished — see the "status" rule below.
+
+[Fixed Interview Stages — ask in this order]
+Always work through these 5 stages, one topic at a time, in this order (do not skip ahead or interleave):
+1. "アプリの目的": What kind of application the user wants to build, in broad terms (free text).
+2. "データ入力の要否": Whether this application is mainly about entering/storing data (a choice question, e.g. する/しない/一部する).
+3. "必要なデータの種類": (Only meaningful if stage 2 is "する" in some form) What broad kinds of data need to be stored — e.g. "売上データ、商品データ" (free text).
+4. "データ項目の詳細": For the data kinds named in stage 3, what concrete fields/columns each one needs — e.g. "売上データ＝伝票番号・商品コード・数量・価格" (free text). You may ask this once per data kind if there are several, but each such question must name which data kind it is about.
+5. "画面数の目安": The rough screen-count scale — 少なめ/標準/多め (choice).
+
+[When All 5 Stages Are Done]
+Once all 5 stages are "done", do NOT invent a new unrelated topic just to keep asking. Ask at most one short wrap-up/confirmation question that stays within scope (e.g. summarizing what was gathered and asking "この内容で合っていますか？" or asking if any data kind/field was missed), then mark every status item "done": true and let the user's own "完了" button end the interview. Never drift into implementation-detail questions (calculation methods, business rules, etc.) to fill time.
 
 [Output Rules]
 - Output STRICT JSON only. No markdown code fences, no intro, no explanations.
@@ -1907,17 +1921,18 @@ Based on the [Q&A History So Far] provided in the user message, decide the singl
   "answerType": "text" | "choice" | "multi_choice",
   "options": ["<option 1>", "<option 2>", ...],
   "status": [
-    { "label": "システム概要", "done": true },
-    { "label": "主な機能", "done": false },
+    { "label": "アプリの目的", "done": true },
+    { "label": "データ入力の要否", "done": false },
+    { "label": "必要なデータの種類", "done": false },
+    { "label": "データ項目の詳細", "done": false },
     { "label": "画面数の目安", "done": false }
   ]
 }
 - "question" must be exactly one concrete question in Japanese, answerable in a few sentences. Never ask two things at once.
-- Before writing "question", re-read EVERY Q/A pair in [Q&A History So Far] one by one. Your new question is FORBIDDEN if it asks about the same topic/aspect as any prior question — this applies even when the wording is different, it is phrased more specifically/broadly, or it only rephrases something the user already covered in an earlier ANSWER (not just in a prior question). When in doubt about whether a topic is already covered, treat it as covered and move to a genuinely new topic instead.
-- "answerType": use "text" for open-ended questions (e.g. describing the system's purpose in free prose). Use "choice" when the question naturally has a small set of concrete alternatives where the user picks exactly ONE (e.g. asking for a rough screen-count scale: 少なめ/標準/多め). Use "multi_choice" when the user may reasonably pick more than one (e.g. asking which of several common features are needed). Default to "text" when unsure.
+- Before writing "question", re-read EVERY Q/A pair in [Q&A History So Far] one by one. Your new question is FORBIDDEN if it asks about the same topic/aspect as any prior question — this applies even when the wording is different, it is phrased more specifically/broadly, or it only rephrases something the user already covered in an earlier ANSWER (not just in a prior question). When in doubt about whether a topic is already covered, treat it as covered and move to a genuinely new topic instead (within the 5 stages above, or the wrap-up question if all 5 are done).
+- "answerType": use "text" for open-ended questions (stages 1, 3, 4, and the wrap-up). Use "choice" for stages 2 and 5, where the user picks exactly ONE from a small set of concrete alternatives. Use "multi_choice" only if a stage-2/5-like question genuinely allows picking more than one. Default to "text" when unsure.
 - "options": REQUIRED (2 to 5 short Japanese labels) when answerType is "choice" or "multi_choice". OMIT this field entirely when answerType is "text".
-- "status" always contains exactly these 3 items, in this order, with these exact labels: "システム概要", "主な機能", "画面数の目安". Mark "done": true only when that aspect has been sufficiently covered by the history so far.
-- Even if you believe all 3 status items are already "done", still output one more useful clarifying or confirming question (the user has their own "complete" button to stop the interview early — you must never emit an empty question).
+- "status" always contains exactly these 5 items, in this order, with these exact labels: "アプリの目的", "データ入力の要否", "必要なデータの種類", "データ項目の詳細", "画面数の目安". Mark "done": true only when that stage has been sufficiently covered by the history so far.
 `.trim() + "\n");
     };
 
