@@ -873,7 +873,18 @@ async function wizardConfirmAndGenerate() {
         if (ok) successCount++;
     }
 
-    getProjectData().wizardProgress = null; // ウィザード完了。再開用の進行状況は不要になったため削除
+    // ウィザード完了。「続きから再開」用の進行状況は不要になったため削除するが、
+    // Q&A履歴・テーブル候補・画面構成計画は、後から「なぜこの画面構成になったか」を
+    // 調査できるよう完了記録として別途残す（2026-09-12実装）。
+    getProjectData().wizardProgress = null;
+    getProjectData().wizardHistory = {
+        completedAt: new Date().toISOString(),
+        qaHistory: WIZARD_STATE.qaHistory,
+        tableCandidates: WIZARD_STATE.tableCandidates,
+        formPlan: WIZARD_STATE.formPlan,
+        formSize: WIZARD_STATE.formSize,
+        systemModelHint: WIZARD_STATE.systemModelHint,
+    };
 
     // pushUndo()内のcommitFormDesignDraft()は、プロジェクト直下の一時変数
     // getProjectData().formDesignDraft（YAMLエディタと連動する値）を現在の

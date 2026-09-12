@@ -270,6 +270,7 @@ function snapshot() {
         aiPresets: p.aiPresets || [],
         currentAiPresetId: p.currentAiPresetId || "",
         wizardProgress: p.wizardProgress || null,
+        wizardHistory: p.wizardHistory || null,
     };
 }
 // 現在の状態を undoStack に積む。redoStack はクリアする。
@@ -318,6 +319,8 @@ function applyProjectData(d) {
     getProjectData().currentAiPresetId = d.currentAiPresetId || "";
     // ウィザードが完了前に中断された場合の進行状況（あれば「続きから再開」を提案する）
     getProjectData().wizardProgress = d.wizardProgress || null;
+    // ウィザード完了時のQ&A履歴・画面構成計画の記録（再開には使わない、後からの調査用）
+    getProjectData().wizardHistory = d.wizardHistory || null;
     getDesignerState().snapOn = d.snapOn !== undefined ? d.snapOn : true;
     getDesignerState().showGrid = d.showGrid !== undefined ? d.showGrid : false;
     // editorConfigはvja設定ファイルで管理するためプロジェクトからは読み込まない

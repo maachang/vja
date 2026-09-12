@@ -1846,6 +1846,7 @@ Leaving "fields" or "actions" empty is a strong claim — only do it when the re
 
 [What Goes In "fields"]
 Anything the user can view, select, or edit on this screen — including a filter/narrowing condition that's only mentioned as part of an action's description (e.g. "優先度で絞り込む" → add a "優先度" field). If the request names no concrete field but references a table whose columns are visible in [Available Database Tables Context] below, derive fields from those columns instead of leaving "fields" empty.
+- **If the request mentions showing a list/browse of records** (e.g. "一覧", "一覧表示", "検索結果", "履歴を表示"), you MUST include exactly one field with widget type "datagrid" representing that list (in addition to, not instead of, the individual input fields used for creating/editing one record). Do not represent "一覧" merely by choosing a layout_pattern with a display area — the "datagrid" field itself must also be present in "fields", otherwise nothing will actually render the list.
 
 [What Goes In "actions"]
 One short label per pressable button (e.g. "追加", "検索"), never a full sentence. If a sentence names a button and also describes its effect (e.g. "追加ボタンを押すとタスクを追加する"), keep the short button label in "actions" and drop only the trailing effect description — do not drop the whole item.
@@ -2062,15 +2063,23 @@ The user has chosen a "${formSizeLabel || "小"}" (${formW || 640}x${formH || 42
   "docDraft": "<a Japanese free-text paragraph describing what widgets/inputs/buttons this screen should have, written in the same natural style a user would type when requesting a screen design — this becomes the input to a LATER screen-layout-generation step>"
 }
 - "docDraft" MUST be concrete, not vague. If this screen relates to a table in [Confirmed Database Tables], explicitly name the relevant columns (translated to natural Japanese labels, e.g. due_date → 期限) as the fields this screen shows/edits — do NOT write a vague summary like "タスクの詳細情報を表示する" alone; instead write "タスク名・優先度・期限・ステータスを表示する" naming the actual columns. This concreteness is required because a later AI step derives screen fields from this text and performs poorly on vague descriptions.
-- Respect the requested screen-count scale if the history mentions one (少なめ/標準/多め). When not mentioned, default to a small, coherent set of screens that covers what was described (typically 2-5).
+- Respect the requested screen-count scale if the history mentions one (少なめ/標準/多め). This scale controls how much to consolidate WITHIN the floor described below (e.g. whether to add extra convenience screens) — it NEVER means fewer screens than the floor, and it NEVER means dropping a table or a requested capability (list/create/edit/delete). When not mentioned, default to a small, coherent set of screens that covers what was described (typically 2-5, but never below the floor below).
 - Do not invent major features that were never mentioned in the history.
 - If a login/authentication flow was mentioned or implied, include it as its own screen.
+- Every table in [Confirmed Database Tables] MUST be referenced by (used in) at least one screen's docDraft. Never silently drop a confirmed table from the plan.
+
+[Floor: Minimum Screens Per Management Unit]
+If the request describes managing a kind of data with "一覧/list", together with any of "新規登録/create", "編集/edit", or "削除/delete", that management unit needs AT LEAST 2 screens, and these 2 are NEVER merged into 1 regardless of the 少なめ/標準/多め scale or the "Avoid Over-Splitting" guidance below:
+1. A **list screen** (search/browse; the entry point for create/edit/delete).
+2. An **input screen** (create AND edit combined into one form, per the consolidation rule below).
+("削除" alone does not need a 3rd screen — see below.) If the history describes N separate management units (e.g. "売上管理" and "商品マスター管理"), each unit independently needs its own list+input pair — do not collapse multiple management units' pairs into a single shared screen, and do not reduce a unit to only 1 screen.
 
 [Avoid Over-Splitting: Consolidate the Common List → Detail/Edit → Delete Pattern]
-A common request shape is "show a list, click a row to see details, then edit or delete it." Do NOT mechanically create one screen per verb mentioned (詳細/編集/削除など). Instead:
+A common request shape is "show a list, click a row to see details, then edit or delete it." Do NOT mechanically create one screen per verb mentioned (詳細/編集/削除など) BEYOND the 2-screen floor above. Specifically:
 - "詳細表示"(view detail) and "編集"(edit) of the SAME entity are almost always the SAME screen — a single form that displays the record's fields in editable inputs with an "編集"/"保存" button. Do NOT create two separate near-identical screens (e.g. "TaskDetailForm" and "TaskEditForm" showing the same fields) — merge them into one (e.g. "TaskDetailForm" alone, its docDraft mentioning both viewing and editing).
 - "削除"(delete) of a single record normally does NOT need its own screen. It is a confirmation dialog (a Yes/No confirm shown from the list or detail screen) that, on confirmation, deletes the record and returns to the list — this belongs to a LATER event-processing step, not a separate screen in this list. Only give delete its own screen if the request describes something beyond a simple single-record confirm (e.g. a dedicated bulk-delete screen with checkboxes, or an audit/trash-bin screen).
 - Similarly, do not split what is really ONE entity's several attributes into multiple single-purpose screens (e.g. a separate "priority-setting screen", "deadline-setting screen", and "status-update screen" for the same "task" entity) — these belong together in the ONE detail/edit screen for that entity, edited as normal fields with a single save action.
+- This consolidation rule reduces screens down to the 2-screen floor (list + input) — it must never be used to justify merging the list screen itself away, or merging two different management units together.
 
 [Confirmed Database Tables]
 ${tablesCtx || "(No DB tables)"}
