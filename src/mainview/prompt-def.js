@@ -1891,8 +1891,16 @@ ${tablesCtx || "(No DB tables)"}
     //   表現が違っても再度聞くの禁止（迷ったら「既に聞いた」とみなす）
     // - answerType: 自由記述はtext、単一選択はchoice、複数選択可はmulti_choice
     // - optionsはchoice/multi_choiceの時のみ必須（2〜5個の短い日本語ラベル）
-    // - statusは「システム概要/主な機能/画面数の目安」の3項目固定、達成済みならdone:true
-    // - 3項目すべて達成済みでも、質問を空にせず追加の確認質問を出す（終了はユーザー操作）
+    // - statusは「アプリの目的/データ入力の要否/必要なデータの種類/データ項目の詳細」の
+    //   4項目固定、達成済みならdone:true（2026-09-12改訂: 旧「システム概要/主な機能/
+    //   画面数の目安」の3項目から、画面・DB設計に直結する具体的な4段階へ再構成。
+    //   「画面数の目安（少なめ/標準/多め）」は、後段の下限ルール＋過剰分割禁止ルールで
+    //   構造的に決まるべきものであり、曖昧なユーザー選択で上書きする余地を残すと
+    //   かえって画面が欠落する原因になるため廃止した）
+    // - 聞いてよい範囲は画面構成・DB設計に関する情報のみ。集計方法・計算ロジック等の
+    //   実装詳細（後工程のイベント処理で決めるべき内容）は聞かない
+    // - 4項目すべて達成済みでも、質問を空にせず確認質問を1つだけ出す（新規話題は発明しない。
+    //   終了はユーザー操作）
     const ENG_WIZARD_NEXT_QUESTION_SYS_PROMPT = function () {
         return (`
 You are helping a non-technical user describe, in Japanese, the business application they want to build. This is an interactive interview: you ask ONE question at a time in Japanese, the user answers, and this repeats.
@@ -1903,15 +1911,15 @@ The ONLY goal of this interview is to gather what LATER steps (not yours) need t
 - If you cannot think of a further question that serves goal (1) or (2), that means the interview is effectively finished — see the "status" rule below.
 
 [Fixed Interview Stages — ask in this order]
-Always work through these 5 stages, one topic at a time, in this order (do not skip ahead or interleave):
+Always work through these 4 stages, one topic at a time, in this order (do not skip ahead or interleave):
 1. "アプリの目的": What kind of application the user wants to build, in broad terms (free text).
 2. "データ入力の要否": Whether this application is mainly about entering/storing data (a choice question, e.g. する/しない/一部する).
 3. "必要なデータの種類": (Only meaningful if stage 2 is "する" in some form) What broad kinds of data need to be stored — e.g. "売上データ、商品データ" (free text).
 4. "データ項目の詳細": For the data kinds named in stage 3, what concrete fields/columns each one needs — e.g. "売上データ＝伝票番号・商品コード・数量・価格" (free text). You may ask this once per data kind if there are several, but each such question must name which data kind it is about.
-5. "画面数の目安": The rough screen-count scale — 少なめ/標準/多め (choice).
+There is no "how many screens do you want" stage — the number of screens is decided structurally by a LATER step (at least a list screen and an input screen per distinct kind of managed data, never more than that without a concrete reason), not by a vague user-chosen scale. Never ask the user to choose a screen-count preference (少なめ/標準/多め or similar).
 
-[When All 5 Stages Are Done]
-Once all 5 stages are "done", do NOT invent a new unrelated topic just to keep asking. Ask at most one short wrap-up/confirmation question that stays within scope (e.g. summarizing what was gathered and asking "この内容で合っていますか？" or asking if any data kind/field was missed), then mark every status item "done": true and let the user's own "完了" button end the interview. Never drift into implementation-detail questions (calculation methods, business rules, etc.) to fill time.
+[When All 4 Stages Are Done]
+Once all 4 stages are "done", do NOT invent a new unrelated topic just to keep asking. Ask at most one short wrap-up/confirmation question that stays within scope (e.g. summarizing what was gathered and asking "この内容で合っていますか？" or asking if any data kind/field was missed), then mark every status item "done": true and let the user's own "完了" button end the interview. Never drift into implementation-detail questions (calculation methods, business rules, etc.) to fill time.
 
 [Output Rules]
 - Output STRICT JSON only. No markdown code fences, no intro, no explanations.
@@ -1924,15 +1932,14 @@ Once all 5 stages are "done", do NOT invent a new unrelated topic just to keep a
     { "label": "アプリの目的", "done": true },
     { "label": "データ入力の要否", "done": false },
     { "label": "必要なデータの種類", "done": false },
-    { "label": "データ項目の詳細", "done": false },
-    { "label": "画面数の目安", "done": false }
+    { "label": "データ項目の詳細", "done": false }
   ]
 }
 - "question" must be exactly one concrete question in Japanese, answerable in a few sentences. Never ask two things at once.
-- Before writing "question", re-read EVERY Q/A pair in [Q&A History So Far] one by one. Your new question is FORBIDDEN if it asks about the same topic/aspect as any prior question — this applies even when the wording is different, it is phrased more specifically/broadly, or it only rephrases something the user already covered in an earlier ANSWER (not just in a prior question). When in doubt about whether a topic is already covered, treat it as covered and move to a genuinely new topic instead (within the 5 stages above, or the wrap-up question if all 5 are done).
-- "answerType": use "text" for open-ended questions (stages 1, 3, 4, and the wrap-up). Use "choice" for stages 2 and 5, where the user picks exactly ONE from a small set of concrete alternatives. Use "multi_choice" only if a stage-2/5-like question genuinely allows picking more than one. Default to "text" when unsure.
+- Before writing "question", re-read EVERY Q/A pair in [Q&A History So Far] one by one. Your new question is FORBIDDEN if it asks about the same topic/aspect as any prior question — this applies even when the wording is different, it is phrased more specifically/broadly, or it only rephrases something the user already covered in an earlier ANSWER (not just in a prior question). When in doubt about whether a topic is already covered, treat it as covered and move to a genuinely new topic instead (within the 4 stages above, or the wrap-up question if all 4 are done).
+- "answerType": use "text" for open-ended questions (stages 1, 3, 4, and the wrap-up). Use "choice" for stage 2, where the user picks exactly ONE from a small set of concrete alternatives. Use "multi_choice" only if a stage-2-like question genuinely allows picking more than one. Default to "text" when unsure.
 - "options": REQUIRED (2 to 5 short Japanese labels) when answerType is "choice" or "multi_choice". OMIT this field entirely when answerType is "text".
-- "status" always contains exactly these 5 items, in this order, with these exact labels: "アプリの目的", "データ入力の要否", "必要なデータの種類", "データ項目の詳細", "画面数の目安". Mark "done": true only when that stage has been sufficiently covered by the history so far.
+- "status" always contains exactly these 4 items, in this order, with these exact labels: "アプリの目的", "データ入力の要否", "必要なデータの種類", "データ項目の詳細". Mark "done": true only when that stage has been sufficiently covered by the history so far.
 `.trim() + "\n");
     };
 
@@ -2038,8 +2045,12 @@ You are an expert VJA (Visual JavaScript for AI) application architect. Based on
     // 「タイトル・優先度・期限・ステータスを表示」のように）。これは実際にAI
     // (OpenAI gpt-5.6-luna)での実測検証で、項目名が明示されない依頼文だと画面デザイン
     // YAMLドラフト生成でfieldsが空になりやすいことが確認されたための対策。
-    // 履歴で画面数の目安（少なめ/標準/多め）に言及があれば従う、なければ2〜5画面程度。
-    // 履歴にない機能を勝手に発明しない。ログイン機能が言及/暗示されていれば専用画面を作る。
+    // 画面数はユーザーが指定する目安（少なめ/標準/多め）ではなく、下限ルール（管理単位ごとに
+    // 一覧+入力の最低2画面）と過剰分割禁止ルールという構造的な基準だけで決まる（2026-09-12改訂:
+    // Q&A側の「画面数の目安」ステージ廃止に伴い、本プロンプト側の「目安があれば従う」という
+    // 記述も削除。あいまいな目安に従わせると下限を割ったり逆に不要な画面を増やしたりする
+    // 原因になっていた）。履歴にない機能を勝手に発明しない。ログイン機能が言及/暗示されて
+    // いれば専用画面を作る。
     // ※2026-08-10追記: 「一覧→行クリックで詳細→編集・削除」という定型パターンに対し、
     // 「詳細」「編集」を別々の画面として機械的に分割しないよう指示（同じ項目を表示する
     // 詳細画面と編集画面はほぼ常に同一画面のはず→1つに統合させる）。「削除」も単純な
@@ -2078,13 +2089,13 @@ The user has chosen a "${formSizeLabel || "小"}" (${formW || 640}x${formH || 42
   "docDraft": "<a Japanese free-text paragraph describing what widgets/inputs/buttons this screen should have, written in the same natural style a user would type when requesting a screen design — this becomes the input to a LATER screen-layout-generation step>"
 }
 - "docDraft" MUST be concrete, not vague. If this screen relates to a table in [Confirmed Database Tables], explicitly name the relevant columns (translated to natural Japanese labels, e.g. due_date → 期限) as the fields this screen shows/edits — do NOT write a vague summary like "タスクの詳細情報を表示する" alone; instead write "タスク名・優先度・期限・ステータスを表示する" naming the actual columns. This concreteness is required because a later AI step derives screen fields from this text and performs poorly on vague descriptions.
-- Respect the requested screen-count scale if the history mentions one (少なめ/標準/多め). This scale controls how much to consolidate WITHIN the floor described below (e.g. whether to add extra convenience screens) — it NEVER means fewer screens than the floor, and it NEVER means dropping a table or a requested capability (list/create/edit/delete). When not mentioned, default to a small, coherent set of screens that covers what was described (typically 2-5, but never below the floor below).
+- The number of screens is decided ONLY by the [Floor: Minimum Screens Per Management Unit] rule below and the [Avoid Over-Splitting] rule — there is no user-chosen screen-count scale (少なめ/標準/多め) to consult or follow. Never reduce screens below the floor, and never add screens beyond what the floor + the entities described actually require.
 - Do not invent major features that were never mentioned in the history.
 - If a login/authentication flow was mentioned or implied, include it as its own screen.
 - Every table in [Confirmed Database Tables] MUST be referenced by (used in) at least one screen's docDraft. Never silently drop a confirmed table from the plan.
 
 [Floor: Minimum Screens Per Management Unit]
-If the request describes managing a kind of data with "一覧/list", together with any of "新規登録/create", "編集/edit", or "削除/delete", that management unit needs AT LEAST 2 screens, and these 2 are NEVER merged into 1 regardless of the 少なめ/標準/多め scale or the "Avoid Over-Splitting" guidance below:
+If the request describes managing a kind of data with "一覧/list", together with any of "新規登録/create", "編集/edit", or "削除/delete", that management unit needs AT LEAST 2 screens, and these 2 are NEVER merged into 1 (regardless of the "Avoid Over-Splitting" guidance below):
 1. A **list screen** (search/browse; the entry point for create/edit/delete).
 2. An **input screen** (create AND edit combined into one form, per the consolidation rule below).
 ("削除" alone does not need a 3rd screen — see below.) If the history describes N separate management units (e.g. "売上管理" and "商品マスター管理"), each unit independently needs its own list+input pair — do not collapse multiple management units' pairs into a single shared screen, and do not reduce a unit to only 1 screen.
