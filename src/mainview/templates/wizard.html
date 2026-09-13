@@ -37,34 +37,15 @@
 </div>
 </script>
 
-<script type="text/vja-tpl" id="wz-tpl-qa-status-badge">
-<span style="font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid var(--border);<%= style %>"><%= checkmark %><%= label %></span>
-</script>
-
-<script type="text/vja-tpl" id="wz-tpl-qa-status-wrap">
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><%- badges %></div>
-</script>
-
-<script type="text/vja-tpl" id="wz-tpl-qa-option-btn">
-<button class="tb-btn" style="text-align:left;padding:6px 10px" <%- attr %>><%= no %>. <%= label %></button>
-</script>
-
-<script type="text/vja-tpl" id="wz-tpl-qa-options-wrap">
-<div style="display:flex;flex-direction:column;gap:6px"><%- buttons %></div>
-<div class="infobox" style="font-size:11px"><%= hint %></div>
-</script>
-
-<script type="text/vja-tpl" id="wz-tpl-qa-body">
+<script type="text/vja-tpl" id="wz-tpl-overview-body">
 <div class="mbody" style="gap:10px">
 <%- stepIndicator %>
-<%- statusHtml %>
-<div class="infobox"><%= question %></div>
-<%- optionsHtml %>
-<textarea id="wiz-qa-answer" class="pv-textarea" style="height:80px;font-size:13px" placeholder="<%= placeholder %>"><%= answer %></textarea>
+<div class="infobox">作りたいアプリの概要ややりたいことを、自由に日本語で書いてください（例:「日別の売上伝票を登録し、閉店後に締め処理で売上履歴へ集計・保存したい」）。この内容は後工程（画面構成の生成）の参考情報として使われます。データ項目・テーブルは次のステップ以降で「テーブル管理」から直接作成します。</div>
+<textarea id="wiz-overview-text" class="pv-textarea" style="height:160px;font-size:13px" placeholder="アプリの概要ややりたいことを自由に書いてください"><%= overview %></textarea>
 </div>
 <div class="mfoot">
-<button <%- attrBack %> <%= backDisabled %>>← 戻る</button>
-<button <%- attrComplete %>>完了</button>
+<button <%- attrCancel %>>キャンセル</button>
+<button <%- attrBack %>>← 戻る</button>
 <button class="pri" <%- attrNext %>>次へ →</button>
 </div>
 </script>
@@ -92,48 +73,12 @@
 </div>
 </script>
 
-<script type="text/vja-tpl" id="wz-tpl-table-cand-item">
-<label style="display:flex;align-items:center;gap:8px;padding:4px 0">
-<input type="checkbox" <%= checked %> <%- attr %>>
-<span><b><%= name %></b> — <%= description %></span>
-</label>
-</script>
-
-<script type="text/vja-tpl" id="wz-tpl-table-cand-body">
-<div class="mbody" style="gap:10px">
-<%- stepIndicator %>
-<div class="infobox">このアプリで使いそうなテーブルの候補です。不要なものはチェックを外してください。</div>
-<%- tablesHtml %>
-</div>
-<div class="mfoot">
-<button <%- attrCancel %>>キャンセル</button>
-<button <%- attrBack %>>← 戻る</button>
-<button class="pri" <%- attrNext %>>次へ →</button>
-</div>
-</script>
-
-<script type="text/vja-tpl" id="wz-tpl-col-preview-tag">
-<span style="display:inline-block;font-size:11px;padding:2px 6px;margin:2px;border-radius:8px;background:var(--bg2);border:1px solid var(--border)"><%= name %><%= pkMark %>: <%= type %></span>
-</script>
-
-<script type="text/vja-tpl" id="wz-tpl-col-review-row">
-<div class="rp-tbl-row"><div class="rp-tbl-header">
-<span class="rp-tbl-name"><b><%= name %></b> — <%= description %></span>
-<button style="font-size:11px;padding:2px 8px" <%- attrEdit %>>✏️ 編集</button>
-</div><div style="padding:4px 0"><%- colsPreview %></div></div>
-</script>
-
-<script type="text/vja-tpl" id="wz-tpl-col-review-body">
-<div class="mbody" style="gap:10px">
-<%- stepIndicator %>
-<div class="infobox">AIが生成したテーブルのカラム構成です。「✏️ 編集」から修正できます。よければ「次へ」を押してください。</div>
-<%- tablesHtml %>
-</div>
-<div class="mfoot">
-<button <%- attrCancel %>>キャンセル</button>
-<button <%- attrBack %>>← 戻る</button>
-<button class="pri" <%- attrNext %>>次へ →</button>
-</div>
+<script type="text/vja-tpl" id="wz-tpl-tables-nav-btns">
+<span style="display:flex;gap:6px;align-items:center">
+<span style="font-size:11px;color:var(--text3);margin-right:4px">🧙 ウィザード（テーブル管理）</span>
+<button style="font-size:11px;padding:4px 10px" <%- attrBack %>>← 戻る</button>
+<button class="pri" style="font-size:11px;padding:4px 10px" <%- attrNext %>>次へ →</button>
+</span>
 </script>
 
 <script type="text/vja-tpl" id="wz-tpl-form-review-row">

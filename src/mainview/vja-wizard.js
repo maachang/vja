@@ -7,16 +7,17 @@
    【提供するもの】
      - actWizard()（ファイルメニューからの起動導線）
      - 前提チェック（新規プロジェクト作成確認 → AI接続設定確認 → プロジェクト設定確認）
-       に続けて、以下7ステップのウィザード本体（WIZARD_STEPS / WIZARD_STATE.step、
+       に続けて、以下6ステップのウィザード本体（WIZARD_STEPS / WIZARD_STATE.step、
        1始まり）を進める。ステップ番号は各ステップ名と1:1で対応させること
        （後から間に挿入した場合、以降の番号を全て振り直す必要がある）。
        1. 画面サイズ（大中小）選択
-       2. Q&A（自然言語でのヒアリング、AIが1問ずつ動的生成）
+       2. アプリ概要（自由記述。AIには聞かせず、ユーザーがそのまま記入するだけ）
        3. システムモデル選択（8パターンからユーザーが直接1つ選ぶ。もしくはスキップ）
-       4. テーブル候補（Q&A履歴からAIが抽出、ユーザーが取捨選択）
-       5. カラム確認（選択済みテーブルのカラム構成をAIが生成、確認・編集）
-       6. 画面構成（Q&A履歴＋確定テーブルからAIが画面一覧に分解、確認）
-       7. 生成（フォーム雛形作成→画面ごとにYAMLドラフト→レイアウト一括生成）
+       4. テーブル管理（vjaに既存の「テーブル管理」モーダルをそのまま開き、
+          ユーザー自身がテーブル・カラムを直接作成する）
+       5. 画面構成（確定テーブルからコード側で機械的に画面数・テーブル割当を確定し、
+          AIには各画面の日本語文言だけを埋めさせる。確認モーダル表示）
+       6. 生成（フォーム雛形作成→画面ごとにYAMLドラフト→レイアウト一括生成）
    【AIメモ】
      - AI接続設定/プロジェクト設定モーダルは、保存完了時にWIZARD_STATEの
        該当コールバックを呼んでウィザードへ処理を戻す（aiCfgConfirm/
@@ -26,10 +27,21 @@
        何も起きない。
      - 2026-09-13: 各ステップの見出しコメントに「ウィザード①」「ウィザード②」の
        ような丸数字の通し番号を振っていたが、機能追加のたびに番号が振り直されずに
-       増改築された結果、②③④⑤等が複数箇所で衝突し矛盾していた（例:
-       「④画面サイズ選択」と「テーブル候補抽出（②③④）」が同じ数字を指すなど）。
-       WIZARD_STATE.stepという実体のある番号と紛らわしいため、丸数字の通し番号は
-       全廃し、ステップ名を直接書く形に統一した。
+       増改築された結果、②③④⑤等が複数箇所で衝突し矛盾していた。WIZARD_STATE.step
+       という実体のある番号と紛らわしいため、丸数字の通し番号は全廃し、ステップ名を
+       直接書く形に統一した。
+     - 2026-09-13（続報3）: 当初の「Q&A（AIが1問ずつ動的に質問を生成）→テーブル候補
+       抽出（AI）→カラム確認（AI生成）」という3ステップを丸ごと廃止し、「アプリ概要
+       （自由記述）→システムモデル選択→テーブル管理（既存UIをそのまま使う）」に
+       置き換えた。理由: 動的Q&Aは「4段階完了後は新しい話題を発明するな」
+       「業務ロジック・処理手順は聞くな」という禁止文言をプロンプトに明記していても、
+       実際には話題を使い切ったAIが業務ロジックの質問（例:「締め処理にはどのような
+       手順が含まれていますか？」）を発明してしまう事例が実機で確認された。また
+       「商品マスターの登録もしたいが、その内容が動的Q&Aの流れに出てこない」という
+       抜け漏れも起きた。テーブル・カラムの作成はvjaに既にある「テーブル管理」
+       モーダル（カラムの「✨ AI生成」ボタンも既存のまま使える）を直接使わせる方が、
+       AIに新規の仕組みを作らせるより確実という判断（詳細はCLAUDE.md「ウィザードの
+       既知バグ修正」節の続報3参照）。
    このファイルは vja-defs.js / vja-modal.js / vja-save.js /
    vja-table-validation.js / vja-app-config.js / vja-yaml-editor.js に依存する。
 ═══════════════════════════════════════════════════════════════ */
@@ -37,17 +49,13 @@
 // ウィザードの前提チェック（AI接続設定・プロジェクト設定）から、保存完了後に
 // ウィザードの次ステップへ処理を戻すためのコールバックを保持する一時状態。
 // ウィザード経由でない通常の保存では常にnullのままなので影響しない。
-// qaHistory/qaIndex/qaStatusはウィザード本体（Q&A）の状態。
 const WIZARD_STATE = {
     resumeAfterAiConfig: null,
     resumeAfterProjectInfo: null,
-    resumeAfterTableEdit: null, // ウィザード内「✏️ 編集」からテーブル編集モーダルを開いた際、保存/一覧に戻る操作で呼び戻すコールバック
+    resumeAfterTableEdit: null, // 2026-09-13時点で設定箇所は無い（テーブル管理ステップが既存UIをそのまま使うため不要になった）。将来ウィザード内から個別テーブル編集への遷移を作る場合のために残置。
     _resumeDiscardCb: null, // wizardOfferResume()で「破棄する」を選んだ後に続けたい処理（省略可）
-    qaHistory: [], // [{ question, answer, answerType, options }]
-    qaIndex: 0,
-    qaStatus: [], // [{ label, done }]
+    appOverview: "", // アプリ概要ステップで記入された自由記述テキスト
     formPlan: [], // [{ formName, formTitle, description, docDraft }]
-    tableCandidates: [], // [{ name, description, selected }]
     step: 1, // 現在のステップ番号（ステップインジケーター表示用）
     formSize: null, // { key: 'small'|'medium'|'large', label, w, h } 画面サイズ選択ステップの結果
     systemModelHint: null, // ユーザーがシステムモデル選択ステップで選んだ骨格（src/wizard-system-models/の
@@ -56,15 +64,16 @@ const WIZARD_STATE = {
                            // 差し込みも省略する。
     _systemModelItems: [], // システムモデル選択ステップで表示する一覧（[{ id, summary }]）。再開時は都度取得し直す。
     _systemModelExpandedId: null, // システムモデル選択ステップで詳細を展開中の項目id（1件のみ・アコーディオン方式）
+    _inTableStep: false, // テーブル管理ステップ表示中フラグ。trueの間、renderTableManagerModal()に
+                         // ウィザード用の「← 戻る/次へ →」ボタンを追加表示させる（vja-table-validation.js参照）。
 };
 
 // ステップインジケーターに表示するステップ一覧。
 const WIZARD_STEPS = [
     "画面サイズ",
-    "Q&A",
+    "アプリ概要",
     "システムモデル",
-    "テーブル候補",
-    "カラム確認",
+    "テーブル管理",
     "画面構成",
     "生成",
 ];
@@ -110,10 +119,7 @@ function _wizardSaveProgress() {
     getProjectData().wizardProgress = {
         done: false,
         step: WIZARD_STATE.step,
-        qaHistory: WIZARD_STATE.qaHistory,
-        qaIndex: WIZARD_STATE.qaIndex,
-        qaStatus: WIZARD_STATE.qaStatus,
-        tableCandidates: WIZARD_STATE.tableCandidates,
+        appOverview: WIZARD_STATE.appOverview,
         formPlan: WIZARD_STATE.formPlan,
         formSize: WIZARD_STATE.formSize,
         systemModelHint: WIZARD_STATE.systemModelHint,
@@ -153,48 +159,20 @@ function wizardResumeFromProgress() {
     const wp = getProjectData().wizardProgress;
     closeModal();
     if (!wp) return;
-    WIZARD_STATE.qaHistory = wp.qaHistory || [];
-    WIZARD_STATE.qaIndex = wp.qaIndex || 0;
-    WIZARD_STATE.qaStatus = wp.qaStatus || [];
-    WIZARD_STATE.tableCandidates = wp.tableCandidates || [];
+    WIZARD_STATE.appOverview = wp.appOverview || "";
     WIZARD_STATE.formPlan = wp.formPlan || [];
     WIZARD_STATE.formSize = wp.formSize || null;
     WIZARD_STATE.systemModelHint = wp.systemModelHint || null;
     WIZARD_STATE.step = wp.step || 1;
+    WIZARD_STATE._inTableStep = false;
     switch (WIZARD_STATE.step) {
-        case 2: _wizardRenderQaModal(); break;
+        case 2: _wizardRenderOverviewModal(); break;
         case 3: wizardShowSystemModelStep(); break;
-        case 4: _wizardRenderTableCandidatesModal(); break;
-        case 5: _wizardRenderColumnsReviewModal(); break;
-        case 6: _wizardRenderFormReviewModal(); break;
+        case 4: WIZARD_STATE._inTableStep = true; renderTableManagerModal(); break;
+        case 5: _wizardRenderFormReviewModal(); break;
         default: _wizardRenderFormSizeModal(); break;
     }
 }
-
-// 「← 戻る」（システムモデル選択ステップへ）: テーブル候補から戻る際に使う
-function wizardGoBackToSystemModel() {
-    closeModal();
-    WIZARD_STATE.step = 3;
-    _wizardRenderSystemModelModal();
-}
-
-// 「← 戻る」（テーブル候補ステップへ）: カラム確認から戻る際に使う
-function wizardGoBackToTableCandidates() {
-    closeModal();
-    WIZARD_STATE.step = 4;
-    _wizardRenderTableCandidatesModal();
-}
-
-// 「← 戻る」（カラム確認ステップへ）: 画面構成から戻る際に使う
-function wizardGoBackToColumnsReview() {
-    closeModal();
-    WIZARD_STATE.step = 5;
-    _wizardRenderColumnsReviewModal();
-}
-
-// この件数を超えたら「完了で進めることもできます」とトーストで軽く促す目安値
-// （ブロックはしない。質問数が本当に必要なプロジェクトもあるため上限としては強制しない）
-const WIZARD_QA_SUGGEST_COMPLETE_AT = 6
 
 // ファイルメニュー「ウィザードでプロジェクト作成…」から呼ばれる起点。
 function actWizard() {
@@ -309,256 +287,57 @@ function wizardPickFormSize(key) {
     if (found) WIZARD_STATE.formSize = found;
 }
 
-// 「次へ」: 画面サイズを確定し、Q&Aステップへ進む
+// 「次へ」: 画面サイズを確定し、アプリ概要ステップへ進む
 function wizardConfirmFormSize() {
     if (!WIZARD_STATE.formSize) {
         // 未選択のまま「次へ」を押した場合は既定（小）を採用する
         const options = _wizardCalcFormSizeOptions();
         WIZARD_STATE.formSize = options.find((o) => o.key === "small") || options[0];
     }
-    wizardStepBody();
+    wizardStartOverviewStep();
 }
 
-// ステップ2開始。Q&Aの状態を初期化し、AIに最初の質問を生成させる。
-function wizardStepBody() {
-    WIZARD_STATE.qaHistory = [];
-    WIZARD_STATE.qaIndex = 0;
-    WIZARD_STATE.qaStatus = [];
+/* ═══════════════════════════════════════════
+  アプリ概要（ウィザード本体 ステップ2）
+═══════════════════════════════════════════ */
+
+// ステップ2開始。自由記述のアプリ概要を記入してもらう（AIは使わない）。
+function wizardStartOverviewStep() {
     WIZARD_STATE.step = 2;
-    wizardQaFetchNext();
+    _wizardRenderOverviewModal();
 }
 
-// Q&A履歴を「Q1: ...\nA1: ...」形式のテキストに整形する（AIプロンプト用）
-function _wizardBuildQaHistoryCtx() {
-    return WIZARD_STATE.qaHistory
-        .map((qa, i) => "Q" + (i + 1) + ": " + qa.question + "\nA" + (i + 1) + ": " + (qa.answer || "(未回答)"))
-        .join("\n");
-}
-
-// AI出力テキストをJSONオブジェクトとしてパースする（既存のparseFormDesignJsonと同様の方式）。
-// 1. まずそのままJSON.parseを試みる。2. 失敗時は最初の"{"〜最後の"}"を抜き出して再試行する。
-function _wizardParseQuestionJson(text) {
-    const tryParse = (s) => {
-        try {
-            const v = JSON.parse(s);
-            return (v && typeof v === "object" && !Array.isArray(v)) ? v : null;
-        } catch (e) {
-            return null;
-        }
-    };
-    const direct = tryParse(text);
-    if (direct) return direct;
-    const s = text.indexOf("{");
-    const e = text.lastIndexOf("}");
-    if (s !== -1 && e !== -1 && e > s) {
-        const extracted = tryParse(text.slice(s, e + 1));
-        if (extracted) return extracted;
-    }
-    return null;
-}
-
-// statusを合成する: 一度done:trueになったラベルは、後続の応答がdone:falseを
-// 返しても後戻りさせない（2026-09-13追加）。弱いローカルLLMが履歴が長くなった
-// 後半で進行状況を見失い、既に完了済みのはずの段階を未完了として出力し直す
-// （＝話題が最初の質問に逆戻りする）事例が実際に確認されたため、AIの申告を
-// そのまま信じず、これまでの最良の状態（一度trueになったものはtrueのまま）を
-// 引き継ぐ形でガードする。
-function _wizardMergeQaStatus(prevStatus, nextStatus) {
-    const next = Array.isArray(nextStatus) ? nextStatus : [];
-    if (!Array.isArray(prevStatus) || prevStatus.length === 0) return next;
-    const prevDoneByLabel = new Map(prevStatus.map((s) => [s.label, !!s.done]));
-    return next.map((s) => ({
-        label: s.label,
-        done: !!s.done || !!prevDoneByLabel.get(s.label),
-    }));
-}
-
-// AIに次の質問を生成させ、履歴に追加してQ&Aモーダルを表示する。
-async function wizardQaFetchNext() {
-    const sysPrompt = _PROMPT_DEF.WIZARD_NEXT_QUESTION_SYS_PROMPT();
-    const userPrompt = _PROMPT_DEF.WIZARD_NEXT_QUESTION_USER_PROMPT(_wizardBuildQaHistoryCtx());
-    const askedQuestions = new Set(WIZARD_STATE.qaHistory.map((qa) => qa.question.trim()));
-
-    await runAiGenerate({
-        systemPrompt: sysPrompt,
-        userPrompt: userPrompt,
-        loadingMsg: "次の質問を考えています…",
-        onSuccess: async (raw) => {
-            const parsed = _wizardParseQuestionJson(raw);
-            if (!parsed || !parsed.question) {
-                showToast("質問の生成に失敗しました。もう一度お試しください");
-                _wizardRenderQaModal();
-                return;
-            }
-            // 既に聞いた質問をそのまま繰り返した場合（＝話題が逆戻りした場合）は、
-            // 壊れた質問を履歴に積まず、ユーザーへその旨を伝えて現在の質問のまま留める。
-            // 「完了」ボタンでいつでも次へ進めるため、ブロックはしない。
-            if (askedQuestions.has(parsed.question.trim())) {
-                showToast("AIが既に聞いた質問を繰り返しました。「完了」で次へ進むか、内容を補足してもう一度お試しください");
-                _wizardRenderQaModal();
-                return;
-            }
-            WIZARD_STATE.qaHistory.push({
-                question: parsed.question,
-                answer: "",
-                answerType: (parsed.answerType === "choice" || parsed.answerType === "multi_choice") ? parsed.answerType : "text",
-                options: Array.isArray(parsed.options) ? parsed.options : [],
-            });
-            WIZARD_STATE.qaIndex = WIZARD_STATE.qaHistory.length - 1;
-            WIZARD_STATE.qaStatus = _wizardMergeQaStatus(WIZARD_STATE.qaStatus, parsed.status);
-            _wizardRenderQaModal();
-        },
-        onCancel: async () => { _wizardRenderQaModal(); },
-        onError: async () => {
-            showToast("質問の生成に失敗しました。もう一度お試しください");
-            _wizardRenderQaModal();
-        },
-    });
-}
-
-// Q&Aモーダルを描画する。qaHistoryが空（初回AI呼び出し前）の場合は何もしない
-// （runAiGenerateのローディングモーダルがそのまま表示され続ける）。
-function _wizardRenderQaModal() {
-    if (WIZARD_STATE.qaHistory.length === 0) return;
+// アプリ概要入力モーダルを表示する
+function _wizardRenderOverviewModal() {
     _wizardSaveProgress();
-    const idx = WIZARD_STATE.qaIndex;
-    const qa = WIZARD_STATE.qaHistory[idx];
-    const isFirst = idx === 0;
-
-    const statusHtml = WIZARD_STATE.qaStatus.length > 0
-        ? render("wz-tpl-qa-status-wrap", {
-            badges: WIZARD_STATE.qaStatus.map((s) => render("wz-tpl-qa-status-badge", {
-                style: s.done ? "background:var(--accent2, #2a6);color:#fff" : "background:var(--bg2);color:var(--text3)",
-                checkmark: s.done ? "✓ " : "",
-                label: s.label,
-            })).join(""),
-        })
-        : "";
-
-    const hasOptions = Array.isArray(qa.options) && qa.options.length > 0;
-    const isMulti = qa.answerType === "multi_choice";
-    const optionsHtml = hasOptions
-        ? render("wz-tpl-qa-options-wrap", {
-            buttons: qa.options.map((opt, i) => render("wz-tpl-qa-option-btn", {
-                attr: evtAttr("onmousedown", "wizardQaPickOption(" + i + ")"),
-                no: i + 1, label: opt,
-            })).join(""),
-            hint: isMulti ? "複数選択可。ボタンで選ぶか、番号をカンマ区切りで入力してください（例: 1,3）" : "ボタンで選ぶか、番号を入力してください（例: 2）",
-        })
-        : "";
-
     showModal(
-        mhdrHTML("🧙 ウィザード（" + (idx + 1) + "問目）") +
-        render("wz-tpl-qa-body", {
+        mhdrHTML("🧙 ウィザード（アプリ概要）") +
+        render("wz-tpl-overview-body", {
             stepIndicator: _wizardRenderStepIndicator(),
-            statusHtml,
-            question: qa.question,
-            optionsHtml,
-            placeholder: hasOptions ? "番号または自由入力" : "自由に入力してください",
-            answer: qa.answer || "",
-            attrBack: evtAttr("onmousedown", "wizardQaBack()"),
-            backDisabled: isFirst ? "disabled" : "",
-            attrComplete: evtAttr("onmousedown", "wizardQaComplete()"),
-            attrNext: evtAttr("onmousedown", "wizardQaNext()"),
+            overview: WIZARD_STATE.appOverview || "",
+            attrCancel: evtAttr("onmousedown", "closeModal()"),
+            attrBack: evtAttr("onmousedown", "wizardBackToFormSizeFromOverview()"),
+            attrNext: evtAttr("onmousedown", "wizardConfirmOverview()"),
         })
     );
-    setTimeout(() => $("wiz-qa-answer")?.focus(), 0);
+    setTimeout(() => $("wiz-overview-text")?.focus(), 0);
 }
 
-// 選択肢ボタン押下時: 単一選択(choice)は選んだ項目に置き換え、
-// 複数選択(multi_choice)は既に選ばれていれば外し、無ければ追記するトグル動作。
-function wizardQaPickOption(optIndex) {
-    const qa = WIZARD_STATE.qaHistory[WIZARD_STATE.qaIndex];
-    const label = qa.options[optIndex];
-    const ta = $("wiz-qa-answer");
-    if (!ta || label === undefined) return;
-    if (qa.answerType !== "multi_choice") {
-        ta.value = label;
-        return;
-    }
-    const picked = ta.value.split("、").map((s) => s.trim()).filter(Boolean);
-    const i = picked.indexOf(label);
-    if (i >= 0) picked.splice(i, 1);
-    else picked.push(label);
-    ta.value = picked.join("、");
+// 「← 戻る」（画面サイズ選択ステップへ）: アプリ概要から戻る際に使う
+function wizardBackToFormSizeFromOverview() {
+    const ta = $("wiz-overview-text");
+    if (ta) WIZARD_STATE.appOverview = ta.value;
+    closeModal();
+    WIZARD_STATE.step = 1;
+    _wizardRenderFormSizeModal();
 }
 
-// 回答欄の値が「番号（カンマ/読点区切り、複数可）」だけの場合、選択肢の
-// テキストに変換する（Claudeの選択肢回答のような、番号入力での回答を許容するため）。
-// 「番号＋追加の自由記述」（例: "３で、ここで補足説明"）の場合は、先頭の番号だけを
-// ラベルに変換し、残りの自由記述と組み合わせる（番号部分が持つ意味をAIに失わせないため）。
-// 番号がどこにも見つからない場合はそのまま自由記述として扱う。
-function _wizardResolveAnswerText(qa, rawValue) {
-    const value = (rawValue || "").trim();
-    if (!Array.isArray(qa.options) || qa.options.length === 0 || !value) return value;
-    // 日本語入力モードのまま数字で回答すると全角（０-９，，）になりやすいため、
-    // 判定前に半角へ正規化する（全角数字０-９ → 半角0-9、全角カンマ， → 半角,）
-    const normalized = value
-        .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
-        .replace(/，/g, ",");
-    const resolveTokens = (tokenStr) => {
-        const tokens = tokenStr.split(/[、,]/).map((s) => s.trim()).filter(Boolean);
-        if (tokens.length === 0 || !tokens.every((t) => /^\d+$/.test(t))) return null;
-        const labels = tokens
-            .map((t) => qa.options[parseInt(t, 10) - 1])
-            .filter((label) => label !== undefined);
-        return labels.length > 0 ? labels.join("、") : null;
-    };
-
-    // ケース1: 回答全体が番号（区切り可）だけの場合
-    const wholeLabel = resolveTokens(normalized);
-    if (wholeLabel) return wholeLabel;
-
-    // ケース2: 先頭が番号（区切り可）で、その後に自由記述が続く場合
-    const m = normalized.match(/^([\d,、]+)([^\d,、].*)$/s);
-    if (m) {
-        const headLabel = resolveTokens(m[1]);
-        if (headLabel) {
-            const rest = m[2].replace(/^(で、|で)/, "").trim();
-            return rest ? headLabel + "。" + rest : headLabel;
-        }
-    }
-
-    return value;
-}
-
-// 現在の回答欄の値をqaHistoryへ保存する（選択肢問題は番号入力をテキストへ解釈する）
-function _wizardCommitCurrentAnswer() {
-    const ta = $("wiz-qa-answer");
-    if (!ta) return;
-    const qa = WIZARD_STATE.qaHistory[WIZARD_STATE.qaIndex];
-    qa.answer = _wizardResolveAnswerText(qa, ta.value);
-}
-
-// 「戻る」: AI呼び出しなしで前の質問を再表示する
-function wizardQaBack() {
-    _wizardCommitCurrentAnswer();
-    if (WIZARD_STATE.qaIndex > 0) WIZARD_STATE.qaIndex--;
-    _wizardRenderQaModal();
-}
-
-// 「次へ」: キャッシュ済みの次ステップがあればAI呼び出しなしで移動、
-// 先頭（最新）にいる場合のみAIに新しい質問を生成させる
-function wizardQaNext() {
-    _wizardCommitCurrentAnswer();
-    const atFrontier = WIZARD_STATE.qaIndex === WIZARD_STATE.qaHistory.length - 1;
-    if (!atFrontier) {
-        WIZARD_STATE.qaIndex++;
-        _wizardRenderQaModal();
-        return;
-    }
-    if (WIZARD_STATE.qaHistory.length >= WIZARD_QA_SUGGEST_COMPLETE_AT) {
-        showToast("質問数が多くなっています。「完了」で次へ進むこともできます");
-    }
-    wizardQaFetchNext();
-}
-
-// 「完了」: 常時押せる。Q&Aを終了しシステムモデル選択ステップへ進む
-// （2026-08-10: 以前はここからフォーム分解→テーブル候補の順だったが、画面の
-//   docDraftを具体的にする（＝テーブルのカラムを先に確定させる）ため、
-//   テーブル候補抽出→カラム確定→フォーム分解の順に変更した）
-function wizardQaComplete() {
-    _wizardCommitCurrentAnswer();
+// 「次へ」: アプリ概要を確定し、システムモデル選択ステップへ進む
+function wizardConfirmOverview() {
+    const ta = $("wiz-overview-text");
+    const value = (ta ? ta.value : WIZARD_STATE.appOverview || "").trim();
+    if (!value) { showVjaAlert("アプリの概要ややりたいことを入力してください"); return; }
+    WIZARD_STATE.appOverview = value;
     wizardShowSystemModelStep();
 }
 
@@ -582,7 +361,7 @@ async function wizardShowSystemModelStep() {
     WIZARD_STATE._systemModelItems = (listRes && listRes.ok) ? (listRes.items || []) : [];
     if (WIZARD_STATE._systemModelItems.length === 0) {
         WIZARD_STATE.systemModelHint = null;
-        wizardExtractTableCandidates();
+        wizardShowTablesStep();
         return;
     }
     _wizardRenderSystemModelModal();
@@ -630,7 +409,7 @@ function _wizardRenderSystemModelModal() {
             stepIndicator: _wizardRenderStepIndicator(),
             itemsHtml,
             attrCancel: evtAttr("onmousedown", "closeModal()"),
-            attrBack: evtAttr("onmousedown", "wizardGoBackToQa()"),
+            attrBack: evtAttr("onmousedown", "wizardGoBackToOverview()"),
             attrSkip: evtAttr("onmousedown", "wizardSkipSystemModel()"),
         })
     );
@@ -644,14 +423,21 @@ function wizardToggleSystemModelDetail(id, event) {
     _wizardRenderSystemModelModal();
 }
 
-// パターンを1つ選択: 詳細mdを取得してsystemModelHintへ保持し、テーブル候補抽出へ進む
+// 「← 戻る」（アプリ概要ステップへ）: システムモデル選択から戻る際に使う
+function wizardGoBackToOverview() {
+    closeModal();
+    WIZARD_STATE.step = 2;
+    _wizardRenderOverviewModal();
+}
+
+// パターンを1つ選択: 詳細mdを取得してsystemModelHintへ保持し、テーブル管理ステップへ進む
 async function wizardPickSystemModel(id) {
     closeModal();
     WIZARD_STATE.systemModelHint = null;
     WIZARD_STATE._systemModelExpandedId = null;
     const detailRes = await window.vja.wizard.getSystemModelDetail(id);
     if (detailRes && detailRes.ok) WIZARD_STATE.systemModelHint = detailRes.detail;
-    wizardExtractTableCandidates();
+    wizardShowTablesStep();
 }
 
 // 「わからない/どれにも当てはまらない」: ヒント無しのまま次へ進む
@@ -659,11 +445,52 @@ function wizardSkipSystemModel() {
     closeModal();
     WIZARD_STATE.systemModelHint = null;
     WIZARD_STATE._systemModelExpandedId = null;
-    wizardExtractTableCandidates();
+    wizardShowTablesStep();
 }
 
 /* ═══════════════════════════════════════════
-  テーブル候補抽出・カラム確定・フォーム分解（ウィザード本体 ステップ4〜6）
+  テーブル管理（ウィザード本体 ステップ4）
+═══════════════════════════════════════════ */
+
+// 2026-09-13（続報3）: 以前はAIにQ&A履歴からテーブル候補を提案させ、カラム構成も
+// AIに一括生成させていたが、実際にはユーザーが作りたいデータ（例:「商品マスター」）が
+// 動的Q&Aの流れに出てこないまま先に進んでしまう抜け漏れが起きた。vjaには既に
+// 「テーブル管理」モーダル（カラムの「✨ AI生成」ボタンも既存のまま使える）がある
+// ため、ウィザードから直接それを開き、ユーザー自身にテーブルを作ってもらう方式に
+// 変更した。renderTableManagerModal()側（vja-table-validation.js）が
+// WIZARD_STATE._inTableStepを見て「← 戻る/次へ →」ボタンを追加表示する。
+
+// テーブル管理ステップ開始
+function wizardShowTablesStep() {
+    WIZARD_STATE.step = 4;
+    WIZARD_STATE._inTableStep = true;
+    _wizardSaveProgress();
+    renderTableManagerModal();
+}
+
+// 「← 戻る」（システムモデル選択ステップへ）: テーブル管理から戻る際に使う
+function wizardGoBackToSystemModelFromTables() {
+    closeModal();
+    WIZARD_STATE._inTableStep = false;
+    WIZARD_STATE.step = 3;
+    _wizardRenderSystemModelModal();
+}
+
+// 「次へ」: テーブルが1件も無ければ確認の上、画面構成ステップへ進む
+async function wizardProceedFromTables() {
+    const tables = getProjectData().tables || [];
+    if (tables.length === 0) {
+        const ok = await vja.app.showConfirm("テーブルが1つも登録されていません。テーブル無しのまま次へ進みますか？");
+        if (!ok) return;
+    }
+    closeModal();
+    WIZARD_STATE._inTableStep = false;
+    WIZARD_STATE.step = 5;
+    await wizardDecomposeForms();
+}
+
+/* ═══════════════════════════════════════════
+  画面構成（ウィザード本体 ステップ5）
 ═══════════════════════════════════════════ */
 
 // AI出力テキストをJSON配列としてパースする（既存のparseFormDesignJsonと同方式）
@@ -685,202 +512,6 @@ function _wizardParseJsonArray(text) {
         if (extracted) return extracted;
     }
     return null;
-}
-
-// Q&A履歴からAIにテーブル候補を抽出させ、選択モーダルを表示する
-// （フォーム一覧はまだ存在しないため、Q&A履歴のみを材料にする）
-// 2026-09-13: systemModelHintの受け渡しを撤去した（理由はWIZARD_DECOMPOSE_FORMS_SYS_PROMPT
-// のAIメモを参照。テーブル候補はQ&A履歴のみで判断する狭いタスクに留める）。
-async function wizardExtractTableCandidates() {
-    const historyCtx = _wizardBuildQaHistoryCtx();
-    const sysPrompt = _PROMPT_DEF.WIZARD_TABLE_CANDIDATES_SYS_PROMPT();
-    const userPrompt = _PROMPT_DEF.WIZARD_TABLE_CANDIDATES_USER_PROMPT(historyCtx);
-
-    let tables = null;
-    await runAiGenerate({
-        systemPrompt: sysPrompt,
-        userPrompt: userPrompt,
-        loadingMsg: "必要そうなテーブルを検討しています…",
-        onSuccess: async (raw) => { tables = _wizardParseJsonArray(raw); },
-        onCancel: async () => { },
-        onError: async () => { },
-    });
-
-    // テーブル候補抽出に失敗しても、テーブルが無いケースと同様に扱い続行する
-    WIZARD_STATE.tableCandidates = (tables || []).map((t) => ({ name: t.name, description: t.description, selected: true }));
-    WIZARD_STATE.step = 4;
-    _wizardRenderTableCandidatesModal();
-}
-
-// テーブル候補の選択モーダルを表示する
-function _wizardRenderTableCandidatesModal() {
-    _wizardSaveProgress();
-    const tablesHtml = WIZARD_STATE.tableCandidates.length > 0
-        ? WIZARD_STATE.tableCandidates.map((t, i) => render("wz-tpl-table-cand-item", {
-            checked: t.selected ? "checked" : "",
-            attr: evtAttr("onchange", "wizardToggleTableCandidate(" + i + ")"),
-            name: t.name,
-            description: t.description || "",
-        })).join("")
-        : "<div class='infobox' style='font-size:11px'>DBテーブルは不要と判断されました</div>";
-
-    showModal(
-        mhdrHTML("🧙 ウィザード（テーブル候補）") +
-        render("wz-tpl-table-cand-body", {
-            stepIndicator: _wizardRenderStepIndicator(),
-            tablesHtml,
-            attrCancel: evtAttr("onmousedown", "closeModal()"),
-            attrBack: evtAttr("onmousedown", "wizardGoBackToSystemModel()"),
-            attrNext: evtAttr("onmousedown", "wizardProceedToColumnGen()"),
-        })
-    );
-}
-
-// 「← 戻る」（Q&Aステップへ）: システムモデル選択から戻る際に使う
-function wizardGoBackToQa() {
-    closeModal();
-    WIZARD_STATE.step = 2;
-    _wizardRenderQaModal();
-}
-
-function wizardToggleTableCandidate(i) {
-    WIZARD_STATE.tableCandidates[i].selected = !WIZARD_STATE.tableCandidates[i].selected;
-}
-
-// 選択されたテーブルを仮登録（名前・説明のみ、カラムはこの直後にAIで生成する）する
-function _wizardCommitSelectedTables() {
-    const existingNames = new Set(getProjectData().tables.map((t) => t.name));
-    WIZARD_STATE.tableCandidates
-        .filter((t) => t.selected && t.name && !existingNames.has(t.name))
-        .forEach((t) => {
-            getProjectData().tables.push({
-                name: t.name,
-                description: t.description || "",
-                columns: [],
-                updatedAt: new Date().toISOString(),
-            });
-        });
-}
-
-// 「次へ」: 選択されたテーブルを仮登録し、各テーブルのカラム構成をAIで一括生成する
-// （戻ってやり直した場合、既にテーブルが確定済みのことがあるため、その場合は
-//   「削除して作り直す」か「そのまま次へ進む」かを確認する）
-async function wizardProceedToColumnGen() {
-    closeModal();
-
-    const existingTables = getProjectData().tables || [];
-    if (existingTables.length > 0) {
-        const ok = await vja.app.showConfirm(
-            "既にテーブル（" + existingTables.map((t) => t.name).join("、") + "）が存在します。\n" +
-            "削除してテーブル候補から作り直しますか？\n\n" +
-            "「OK」で全て削除して作り直します。「キャンセル」で今のテーブルをそのまま使って次へ進みます。"
-        );
-        if (ok) {
-            getProjectData().tables = [];
-        } else {
-            WIZARD_STATE.step = 5;
-            _wizardRenderColumnsReviewModal();
-            return;
-        }
-    }
-
-    _wizardCommitSelectedTables();
-    WIZARD_STATE.step = 5;
-
-    const targetNames = new Set(
-        WIZARD_STATE.tableCandidates.filter((t) => t.selected && t.name).map((t) => t.name)
-    );
-    const targetTables = getProjectData().tables.filter((t) => targetNames.has(t.name));
-    if (targetTables.length === 0) {
-        _wizardRenderColumnsReviewModal();
-        return;
-    }
-
-    const historyCtx = _wizardBuildQaHistoryCtx();
-    const total = targetTables.length;
-    for (let i = 0; i < total; i++) {
-        const t = targetTables[i];
-        showToast("テーブル" + (i + 1) + "/" + total + ": " + t.name + " のカラム構成を生成中…");
-        const sysPrompt = _PROMPT_DEF.TABLE_SCHEMA_GEN_SYS_PROMPT({ tableName: t.name, description: t.description });
-        const userPrompt = _PROMPT_DEF.TABLE_SCHEMA_GEN_USER_PROMPT(historyCtx);
-
-        let cols = null;
-        await runAiGenerate({
-            systemPrompt: sysPrompt,
-            userPrompt: userPrompt,
-            loadingMsg: "テーブル構成を生成中…（" + (i + 1) + "/" + total + "）",
-            onSuccess: async (raw) => { cols = _wizardParseJsonArray(raw); },
-            onCancel: async () => { },
-            onError: async () => { },
-        });
-        const sanitized = sanitizeAiTableColumns(cols);
-        if (sanitized.length > 0) {
-            t.columns = sanitized;
-            t.updatedAt = new Date().toISOString();
-        }
-    }
-
-    _wizardRenderColumnsReviewModal();
-}
-
-// 生成されたカラム構成の確認モーダルを表示する。
-// 詳細な編集は既存の「テーブル管理」モーダル（openTableEdit）を再利用する。
-function _wizardRenderColumnsReviewModal() {
-    _wizardSaveProgress();
-    const allTables = getProjectData().tables || [];
-    const targetNames = new Set(
-        WIZARD_STATE.tableCandidates.filter((t) => t.selected && t.name).map((t) => t.name)
-    );
-    // 選択済みテーブル候補に一致するものが無い場合（既存テーブルをそのまま使う選択をした場合等）は、
-    // プロジェクトの全テーブルを表示対象にする
-    const matched = allTables.filter((t) => targetNames.has(t.name));
-    const targetTables = matched.length > 0 ? matched : allTables;
-
-    const tablesHtml = targetTables.length > 0
-        ? targetTables.map((t) => {
-            const idx = allTables.indexOf(t);
-            const colsPreview = (t.columns || []).length > 0
-                ? (t.columns || []).map((c) => render("wz-tpl-col-preview-tag", {
-                    name: c.name,
-                    pkMark: c.pk ? " 🔑" : "",
-                    type: c.type,
-                })).join("")
-                : "<span style='font-size:11px;color:var(--text3)'>（カラム生成に失敗しました。編集ボタンから作成してください）</span>";
-            return render("wz-tpl-col-review-row", {
-                name: t.name,
-                description: t.description || "",
-                attrEdit: evtAttr("onmousedown", "wizardEditTableColumns(" + idx + ")"),
-                colsPreview,
-            });
-        }).join("")
-        : "<div class='infobox' style='font-size:11px'>テーブルはありません</div>";
-
-    showModal(
-        mhdrHTML("🧙 ウィザード（カラム確認）") +
-        render("wz-tpl-col-review-body", {
-            stepIndicator: _wizardRenderStepIndicator(),
-            tablesHtml,
-            attrCancel: evtAttr("onmousedown", "closeModal()"),
-            attrBack: evtAttr("onmousedown", "wizardGoBackToTableCandidates()"),
-            attrNext: evtAttr("onmousedown", "wizardProceedToFormDecompose()"),
-        })
-    );
-}
-
-// 「✏️ 編集」: 既存のテーブル編集モーダルを開く。保存/一覧に戻る操作の完了時、
-// AI接続設定等と同じ「resumeAfterXxx」フック方式でウィザードのカラム確認モーダルへ戻す
-// （フックの実体は vja-table-validation.js の tblSave()/openTableManager() 側に追加済み）。
-function wizardEditTableColumns(idx) {
-    if (idx < 0) return;
-    WIZARD_STATE.resumeAfterTableEdit = _wizardRenderColumnsReviewModal;
-    openTableEdit(idx);
-}
-
-// 「次へ」（カラム確認から）: フォーム分解ステップへ進む
-async function wizardProceedToFormDecompose() {
-    closeModal();
-    WIZARD_STATE.step = 6;
-    await wizardDecomposeForms();
 }
 
 // テーブル名（snake_case等）をPascalCase識別子へ変換する（英数字・アンダースコア・
@@ -913,21 +544,20 @@ function _wizardBuildScreenSkeletonText(skeleton) {
     ).join("\n");
 }
 
-// Q&A履歴＋確定済みテーブル（カラム込み）からAIにフォーム一覧を分解させ、確認モーダルを表示する。
+// アプリ概要＋確定済みテーブル（カラム込み）からAIにフォーム一覧を分解させ、確認モーダルを表示する。
 // 2026-09-13設計変更: 画面数・どのテーブルを使うかという構造判断はAIに委ねず、
 // _wizardBuildScreenSkeleton()でコード側が機械的に確定する。AIの仕事は各スロットの
 // 日本語文言（formTitle/description/docDraft）を埋めることだけに縮小した
 // （詳細はENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPTのAIメモ参照）。
 async function wizardDecomposeForms() {
-    const historyCtx = _wizardBuildQaHistoryCtx();
     const tables = getProjectData().tables || [];
     const tablesCtx = buildTablesCtxText(tables);
     const skeleton = _wizardBuildScreenSkeleton(tables);
     const screenSkeletonText = skeleton.length > 0
         ? _wizardBuildScreenSkeletonText(skeleton)
-        : "(確定済みテーブルが無いため、固定スロットはありません。[Q&A History]から必要な画面のみを判断してください)";
+        : "(確定済みテーブルが無いため、固定スロットはありません。[Application Overview]から必要な画面のみを判断してください)";
     const sysPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_SYS_PROMPT({ tablesCtx, screenSkeletonText, systemModelHint: WIZARD_STATE.systemModelHint });
-    const userPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_USER_PROMPT(historyCtx);
+    const userPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_USER_PROMPT(WIZARD_STATE.appOverview);
 
     let forms = null;
     await runAiGenerate({
@@ -948,12 +578,22 @@ async function wizardDecomposeForms() {
         showToast(missing.length > 0
             ? "画面構成の生成結果に確定テーブルの画面（" + missing.map((s) => s.formName).join("、") + "）が含まれていません。もう一度お試しください"
             : "画面構成の生成に失敗しました。もう一度お試しください");
-        WIZARD_STATE.step = 5; // カラム確認モーダルへ戻すため、ステップインジケーターも合わせて戻す
-        _wizardRenderColumnsReviewModal();
+        // テーブル管理ステップへ戻す（ステップインジケーターも合わせて戻す）
+        WIZARD_STATE.step = 4;
+        WIZARD_STATE._inTableStep = true;
+        renderTableManagerModal();
         return;
     }
     WIZARD_STATE.formPlan = forms;
     _wizardRenderFormReviewModal();
+}
+
+// 「← 戻る」（テーブル管理ステップへ）: 画面構成確認から戻る際に使う
+function wizardGoBackToTablesFromFormReview() {
+    closeModal();
+    WIZARD_STATE.step = 4;
+    WIZARD_STATE._inTableStep = true;
+    renderTableManagerModal();
 }
 
 // フォーム一覧の確認モーダルを表示する（ウィザード最後の確認画面）
@@ -972,21 +612,21 @@ function _wizardRenderFormReviewModal() {
             stepIndicator: _wizardRenderStepIndicator(),
             formsHtml,
             attrCancel: evtAttr("onmousedown", "closeModal()"),
-            attrBack: evtAttr("onmousedown", "wizardGoBackToColumnsReview()"),
+            attrBack: evtAttr("onmousedown", "wizardGoBackToTablesFromFormReview()"),
             attrGenerate: evtAttr("onmousedown", "wizardConfirmAndGenerate()"),
         })
     );
 }
 
 /* ═══════════════════════════════════════════
-  一括生成（ウィザード本体 ステップ7）
+  一括生成（ウィザード本体 ステップ6）
 ═══════════════════════════════════════════ */
 
 // 「生成開始」: フォームを作成して画面デザイン一括生成を開始する
-// （テーブルはステップ4〜5で既に確定済みのため、ここでは何もしない）
+// （テーブルはステップ4で既に確定済みのため、ここでは何もしない）
 async function wizardConfirmAndGenerate() {
     closeModal();
-    WIZARD_STATE.step = 7;
+    WIZARD_STATE.step = 6;
 
     const size = WIZARD_STATE.formSize;
     getProjectData().forms = WIZARD_STATE.formPlan.map((f) => {
@@ -1029,13 +669,12 @@ async function wizardConfirmAndGenerate() {
     }
 
     // ウィザード完了。「続きから再開」用の進行状況は不要になったため削除するが、
-    // Q&A履歴・テーブル候補・画面構成計画は、後から「なぜこの画面構成になったか」を
+    // アプリ概要・画面構成計画は、後から「なぜこの画面構成になったか」を
     // 調査できるよう完了記録として別途残す（2026-09-12実装）。
     getProjectData().wizardProgress = null;
     getProjectData().wizardHistory = {
         completedAt: new Date().toISOString(),
-        qaHistory: WIZARD_STATE.qaHistory,
-        tableCandidates: WIZARD_STATE.tableCandidates,
+        appOverview: WIZARD_STATE.appOverview,
         formPlan: WIZARD_STATE.formPlan,
         formSize: WIZARD_STATE.formSize,
         systemModelHint: WIZARD_STATE.systemModelHint,
@@ -1109,13 +748,12 @@ async function _wizardGenerateFormLayout(yamlText) {
 }
 
 Object.assign(window, {
-    actWizard, wizardStartNewProject, wizardCheckAiConfig, wizardCheckProjectInfo, wizardStepBody,
+    actWizard, wizardStartNewProject, wizardCheckAiConfig, wizardCheckProjectInfo,
     wizardCheckFormSize, wizardPickFormSize, wizardConfirmFormSize,
-    wizardQaBack, wizardQaNext, wizardQaComplete, wizardQaPickOption,
-    wizardExtractTableCandidates, wizardToggleTableCandidate, wizardProceedToColumnGen,
-    wizardEditTableColumns, wizardProceedToFormDecompose, wizardDecomposeForms, wizardConfirmAndGenerate,
+    wizardStartOverviewStep, wizardBackToFormSizeFromOverview, wizardConfirmOverview,
+    wizardGoBackToOverview, wizardPickSystemModel, wizardSkipSystemModel, wizardToggleSystemModelDetail,
+    wizardShowTablesStep, wizardGoBackToSystemModelFromTables, wizardProceedFromTables,
+    wizardGoBackToTablesFromFormReview, wizardDecomposeForms, wizardConfirmAndGenerate,
     wizardOfferResume, wizardDiscardProgress, wizardResumeFromProgress,
-    wizardGoBackToQa, wizardGoBackToSystemModel, wizardGoBackToTableCandidates, wizardGoBackToColumnsReview,
-    wizardPickSystemModel, wizardSkipSystemModel, wizardToggleSystemModelDetail,
     WIZARD_STATE,
 });

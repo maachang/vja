@@ -249,7 +249,10 @@ function pvSelPick(id, val, dispOrEvent, e) {
 function openTableManager() {
     // ウィザードの「✏️ 編集」からテーブル編集モーダルに入っている場合、
     // 「← 一覧に戻る」操作はウィザードのカラム確認モーダルへ戻す
-    // （AI接続設定/プロジェクト設定と同じresumeAfterXxxフック方式、wizardEditTableColumns参照）
+    // （AI接続設定/プロジェクト設定と同じresumeAfterXxxフック方式）。
+    // 2026-09-13時点でこのフックの設定箇所は無い（ウィザードの「テーブル管理」ステップは
+    // renderTableManagerModal()自体をそのまま使うため）。将来ウィザード内から個別テーブル
+    // 編集への遷移を作る場合のために残置。
     if (typeof WIZARD_STATE !== "undefined" && WIZARD_STATE.resumeAfterTableEdit) {
         const resume = WIZARD_STATE.resumeAfterTableEdit;
         WIZARD_STATE.resumeAfterTableEdit = null;
@@ -259,7 +262,18 @@ function openTableManager() {
     renderTableManagerModal();
 }
 
+// ウィザードの「テーブル管理」ステップ（WIZARD_STATE._inTableStep）表示中は、
+// テーブル管理モーダルのヘッダーに「← 戻る/次へ →」ボタンを追加表示する
+// （vja-wizard.jsのwizardShowTablesStep()参照。add/edit/delete後の再描画でも
+//  毎回このチェックを通るため、常にボタンが表示され続ける）。
 function renderTableManagerModal() {
+    const inWizard = typeof WIZARD_STATE !== "undefined" && WIZARD_STATE._inTableStep;
+    const extraHeaderBtn = inWizard
+        ? render("wz-tpl-tables-nav-btns", {
+            attrBack: evtAttr("onmousedown", "wizardGoBackToSystemModelFromTables()"),
+            attrNext: evtAttr("onmousedown", "wizardProceedFromTables()"),
+        })
+        : "";
     renderListManagerModal({
         title: "🗄 テーブル管理",
         items: getProjectData().tables,
@@ -268,6 +282,7 @@ function renderTableManagerModal() {
         countLabel: (n) => "SQLiteテーブル定義（全" + n + "件）",
         addAction: "openTableEdit(-1)",
         addLabel: "＋ テーブル追加",
+        extraHeaderBtn,
         headerHtml: "<th style='width:36px'>No</th><th>テーブル名</th><th style='width:72px;text-align:center'>カラム数</th><th style='width:90px;text-align:center'>インデックス数</th><th style='width:80px;text-align:center'>編集</th><th style='width:80px;text-align:center'>削除</th>",
         rowHtmlFn: (t, i) => render("tv-tpl-table-row", {
             no: i + 1,
@@ -1055,6 +1070,7 @@ function renderListManagerModal(opts) {
         countLabel: opts.countLabel(items.length),
         attrAdd: evtAttr("onmousedown", opts.addAction),
         addLabel: opts.addLabel,
+        extraHeaderBtn: opts.extraHeaderBtn || "", // ウィザードの「テーブル管理」ステップ等、呼び出し元固有のナビボタンを追加表示する場合に使う（省略可）
         headerHtml: opts.headerHtml,
         rows,
         attrClose: evtAttr("onmousedown", "closeModal()"),

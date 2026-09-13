@@ -1865,6 +1865,28 @@ tables:
 actions:
   - 追加
 
+[Few-Shot Example 2a: List-ONLY screen (no create/edit/delete mentioned) — "一覧" STILL REQUIRES a "datagrid" field]
+Input request: "商品コード・商品名・カテゴリの一覧を表示する。検索機能を備える。" (with a referenced table "products" whose columns are code, name, category)
+Correct output:
+layout_pattern: 5
+fields:
+  - 商品一覧: datagrid
+  - 検索条件: inputtype text
+tables:
+  - products
+actions:
+  - 検索
+Wrong output (do NOT do this — no create/edit/delete was mentioned, but that does NOT mean "no datagrid"; a pure list/search screen has NOTHING to show without a datagrid field, and listing individual per-record fields like this instead of a datagrid gives the screen no way to display multiple records at once):
+layout_pattern: 5
+fields:
+  - 商品コード: inputtype text
+  - 商品名: inputtype text
+  - カテゴリ: inputtype text
+tables:
+  - products
+actions:
+  - 検索
+
 [Few-Shot Example 2: List + input screen — "一覧" REQUIRES a "datagrid" field]
 Input request: "商品マスターの一覧を表示し、必要に応じて新規商品の登録や既存商品の変更・削除を行う画面。" (with a referenced table "products" whose columns are code, name, category)
 Correct output:
@@ -1908,78 +1930,15 @@ ${tablesCtx || "(No DB tables)"}
     o.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT = ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT;
     o.FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT = ENG_FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT;
 
-    // [プロンプト]プロジェクト新規作成ウィザード: それまでのQ&A履歴から次の1問を動的に生成する
-    //
-    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
-    // 非技術者ユーザーに日本語で1問ずつ質問していく対話形式のウィザード。
-    // 出力はJSON（question/answerType/options/status）のみ、マークダウン禁止。
-    // - questionは1つの話題だけを聞く1問。過去の質問・回答で既に触れた話題は
-    //   表現が違っても再度聞くの禁止（迷ったら「既に聞いた」とみなす）
-    // - answerType: 自由記述はtext、単一選択はchoice、複数選択可はmulti_choice
-    // - optionsはchoice/multi_choiceの時のみ必須（2〜5個の短い日本語ラベル）
-    // - statusは「アプリの目的/データ入力の要否/必要なデータの種類/データ項目の詳細」の
-    //   4項目固定、達成済みならdone:true（2026-09-12改訂: 旧「システム概要/主な機能/
-    //   画面数の目安」の3項目から、画面・DB設計に直結する具体的な4段階へ再構成。
-    //   「画面数の目安（少なめ/標準/多め）」は、後段の下限ルール＋過剰分割禁止ルールで
-    //   構造的に決まるべきものであり、曖昧なユーザー選択で上書きする余地を残すと
-    //   かえって画面が欠落する原因になるため廃止した）
-    // - 聞いてよい範囲は画面構成・DB設計に関する情報のみ。集計方法・計算ロジック等の
-    //   実装詳細（後工程のイベント処理で決めるべき内容）は聞かない
-    // - 4項目すべて達成済みでも、質問を空にせず確認質問を1つだけ出す（新規話題は発明しない。
-    //   終了はユーザー操作）
-    const ENG_WIZARD_NEXT_QUESTION_SYS_PROMPT = function () {
-        return (`
-You are helping a non-technical user describe, in Japanese, the business application they want to build. This is an interactive interview: you ask ONE question at a time in Japanese, the user answers, and this repeats.
-
-[Scope: What This Interview Is FOR]
-The ONLY goal of this interview is to gather what LATER steps (not yours) need to: (1) decide what DB tables/columns are needed, and (2) decompose the description into a list of screens (forms) whose list/input layout follows directly from those tables/columns. Every question you ask MUST serve one of those two goals.
-- NEVER ask about business logic, calculation/aggregation methods, algorithms, formulas, validation rules, or "how should processing X work internally" — those are decided in a LATER, separate step (event/code generation) that is far downstream of this interview and completely out of scope here.
-- If you cannot think of a further question that serves goal (1) or (2), that means the interview is effectively finished — see the "status" rule below.
-
-[Fixed Interview Stages — ask in this order]
-Always work through these 4 stages, one topic at a time, in this order (do not skip ahead or interleave):
-1. "アプリの目的": What kind of application the user wants to build, in broad terms (free text).
-2. "データ入力の要否": Whether this application is mainly about entering/storing data (a choice question, e.g. する/しない/一部する).
-3. "必要なデータの種類": (Only meaningful if stage 2 is "する" in some form) What broad kinds of data need to be stored — e.g. "売上データ、商品データ" (free text).
-4. "データ項目の詳細": For the data kinds named in stage 3, what concrete fields/columns each one needs — e.g. "売上データ＝伝票番号・商品コード・数量・価格" (free text). You may ask this once per data kind if there are several, but each such question must name which data kind it is about.
-There is no "how many screens do you want" stage — the number of screens is decided structurally by a LATER step (at least a list screen and an input screen per distinct kind of managed data, never more than that without a concrete reason), not by a vague user-chosen scale. Never ask the user to choose a screen-count preference (少なめ/標準/多め or similar).
-
-[When All 4 Stages Are Done]
-Once all 4 stages are "done", do NOT invent a new unrelated topic just to keep asking. Ask at most one short wrap-up/confirmation question that stays within scope (e.g. summarizing what was gathered and asking "この内容で合っていますか？" or asking if any data kind/field was missed), then mark every status item "done": true and let the user's own "完了" button end the interview. Never drift into implementation-detail questions (calculation methods, business rules, etc.) to fill time.
-
-[Output Rules]
-- Output STRICT JSON only. No markdown code fences, no intro, no explanations.
-- JSON shape:
-{
-  "question": "<the single next question, written in natural, polite Japanese, asking about ONE topic only>",
-  "answerType": "text" | "choice" | "multi_choice",
-  "options": ["<option 1>", "<option 2>", ...],
-  "status": [
-    { "label": "アプリの目的", "done": true },
-    { "label": "データ入力の要否", "done": false },
-    { "label": "必要なデータの種類", "done": false },
-    { "label": "データ項目の詳細", "done": false }
-  ]
-}
-- "question" must be exactly one concrete question in Japanese, answerable in a few sentences. Never ask two things at once.
-- Before writing "question", re-read EVERY Q/A pair in [Q&A History So Far] one by one. Your new question is FORBIDDEN if it asks about the same topic/aspect as any prior question — this applies even when the wording is different, it is phrased more specifically/broadly, or it only rephrases something the user already covered in an earlier ANSWER (not just in a prior question). When in doubt about whether a topic is already covered, treat it as covered and move to a genuinely new topic instead (within the 4 stages above, or the wrap-up question if all 4 are done).
-- "answerType": use "text" for open-ended questions (stages 1, 3, 4, and the wrap-up). Use "choice" for stage 2, where the user picks exactly ONE from a small set of concrete alternatives. Use "multi_choice" only if a stage-2-like question genuinely allows picking more than one. Default to "text" when unsure.
-- "options": REQUIRED (2 to 5 short Japanese labels) when answerType is "choice" or "multi_choice". OMIT this field entirely when answerType is "text".
-- "status" always contains exactly these 4 items, in this order, with these exact labels: "アプリの目的", "データ入力の要否", "必要なデータの種類", "データ項目の詳細". Mark "done": true only when that stage has been sufficiently covered by the history so far.
-`.trim() + "\n");
-    };
-
-    // [日本語対訳メモ]（AIには送られない）これまでのQ&A履歴＋「システム指示通りに次の質問とstatusを生成せよ」の指示。
-    const ENG_WIZARD_NEXT_QUESTION_USER_PROMPT = function (historyCtx) {
-        return (
-            "[Q&A History So Far]\n" +
-            (historyCtx || "(まだ質問していません。これが最初の質問です)") +
-            "\n\nGenerate the next question and status as specified in the system prompt."
-        );
-    };
-
-    o.WIZARD_NEXT_QUESTION_SYS_PROMPT = ENG_WIZARD_NEXT_QUESTION_SYS_PROMPT;
-    o.WIZARD_NEXT_QUESTION_USER_PROMPT = ENG_WIZARD_NEXT_QUESTION_USER_PROMPT;
+    // 2026-09-13（続報3）: 以前ここには「Q&A履歴から次の1問を動的に生成するプロンプト」
+    // (ENG_WIZARD_NEXT_QUESTION_SYS_PROMPT/USER_PROMPT) があったが、実機で「4段階完了後は
+    // 新規話題を発明するな」「業務ロジック・処理手順は聞くな」という禁止文言があるにも
+    // かかわらず、AIが業務ロジックの質問（例:「締め処理にはどのような手順が含まれて
+    // いますか？」）を発明してしまう事例が確認された。また、動的Q&Aの流れに乗らない
+    // データ種別（例: 「商品マスター」）が抜け落ちる問題も起きた。「質問をAIに作らせる」
+    // こと自体をやめ、ウィザードステップ2を「アプリ概要（自由記述、AIは使わない）」に
+    // 置き換えた（vja-wizard.jsのwizardStartOverviewStep()参照）。このプロンプトは
+    // 丸ごと廃止した。
 
     // 2026-09-13: システムモデル骨格の選択を、AIによる番号自動選択から
     // ウィザード内の専用ステップでのユーザー直接選択（vja-wizard.jsの
@@ -1993,50 +1952,13 @@ Once all 4 stages are "done", do NOT invent a new unrelated topic just to keep a
     // アプリの性質を把握しているため、AIに推測させるより直接選ばせる方が
     // 確実（詳細は CLAUDE.md「ウィザードの既知バグ修正」節を参照）。
 
-    // [プロンプト]プロジェクト新規作成ウィザード: Q&A履歴から必要そうなDBテーブル候補を切り出す
-    // （2026-08-10: フォーム分解より前に実行する順序に変更。フォーム一覧はまだ存在しない
-    //   ため、Q&A履歴のみから候補を抽出する）
-    //
-    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
-    // Q&A履歴から、必要になりそうなSQLiteテーブル候補をJSON配列で提案させる。
-    // 各要素はname(英語snake_case、配列内で一意)/description(1文の日本語説明)のみ。
-    // カラム定義は含めない（次のステップでAIが生成し、ユーザーが確認する）。
-    // 履歴から明確に必要と分かるものだけ提案し、無関係なテーブルは発明しない。
-    // テーブルが不要なら空配列[]を返す。
-    const ENG_WIZARD_TABLE_CANDIDATES_SYS_PROMPT = function () {
-        return (`
-You are an expert VJA (Visual JavaScript for AI) application architect. Based on the [Q&A History] provided in the user message (a Japanese interview describing a business application the user wants to build), suggest candidate SQLite database tables that this application will likely need.
-
-[Output Rules]
-- Output STRICT JSON only (a JSON array). No markdown code fences, no intro, no explanations.
-- Array item shape:
-{
-  "name": "<English snake_case or lowercase table name, e.g. users, products — must be unique across the array>",
-  "description": "<one-sentence Japanese description of what this table stores>"
-}
-- Only suggest tables that are clearly implied by the history (e.g. a mention of user login implies a "users" table). Do not invent unrelated tables.
-- Avoid creating multiple tables for what is really a single entity's attributes (e.g. do NOT create separate "priorities"/"deadlines"/"statuses" tables when they are just columns of a single "tasks" table) — this causes confusion in later steps. Prefer one well-designed table per real-world entity.
-- Do NOT include column definitions — only table name and description. Columns will be designed in the next step.
-- If no database table appears to be needed at all, output an empty array [].
-`.trim() + "\n");
-    };
-
-    // [日本語対訳メモ]（AIには送られない）Q&A履歴のみから「システム指示通りに候補テーブルの
-    // JSON配列を生成せよ」の指示。
-    // 2026-09-13: systemModelHintの受け渡しを撤去した。テーブル候補はQ&A履歴だけから
-    // 機械的に判断できる狭いタスクであり、骨格ヒント（システムモデル選択）を混ぜる必要が
-    // 無い。むしろヒントの例示テーブル名がQ&A実データより優先されてしまう混線の起点に
-    // なりうるため、ここでは渡さない方針にした（vjaの「狭い範囲でローカルLLMを使う」
-    // 方針への回帰。詳細はCLAUDE.md「ウィザードの既知バグ修正」節参照）。
-    const ENG_WIZARD_TABLE_CANDIDATES_USER_PROMPT = function (historyCtx) {
-        return (
-            "[Q&A History]\n" + historyCtx + "\n\n" +
-            "Generate the JSON array of candidate tables as specified in the system prompt."
-        );
-    };
-
-    o.WIZARD_TABLE_CANDIDATES_SYS_PROMPT = ENG_WIZARD_TABLE_CANDIDATES_SYS_PROMPT;
-    o.WIZARD_TABLE_CANDIDATES_USER_PROMPT = ENG_WIZARD_TABLE_CANDIDATES_USER_PROMPT;
+    // 2026-09-13（続報3）: 以前ここには「Q&A履歴からDBテーブル候補をAIに提案させる
+    // プロンプト」(ENG_WIZARD_TABLE_CANDIDATES_SYS_PROMPT/USER_PROMPT) があったが、
+    // 動的Q&A自体を廃止した（アプリ概要ステップに置き換えた）のに伴い不要になった。
+    // テーブル・カラムの作成は、vjaに既にある「テーブル管理」モーダル（カラムの
+    // 「✨ AI生成」ボタンも既存のまま使える）をウィザードから直接開いてユーザー自身に
+    // 作ってもらう方式に変更した（vja-wizard.jsのwizardShowTablesStep()参照）。
+    // このプロンプトは丸ごと廃止した。
 
     // [プロンプト]プロジェクト新規作成ウィザード: 確定済みDBテーブル(カラム込み)から
     // 「1テーブル=一覧画面+入力画面」の画面スロットをコード側（_wizardBuildScreenSkeleton、
@@ -2090,7 +2012,7 @@ Your ONLY job is: for each slot above, in the SAME order, output one JSON array 
   "docDraft": "<a Japanese free-text paragraph describing what widgets/inputs/buttons this screen should have, written in the same natural style a user would type when requesting a screen design — this becomes the input to a LATER screen-layout-generation step>"
 }
 - "docDraft" MUST be concrete, not vague. Explicitly name the relevant columns of this slot's table (translated to natural Japanese labels, e.g. due_date → 期限) as the fields this screen shows/edits — do NOT write a vague summary like "タスクの詳細情報を表示する" alone; instead write "タスク名・優先度・期限・ステータスを表示する" naming the actual columns. This concreteness is required because a later AI step derives screen fields from this text and performs poorly on vague descriptions.
-- The list slot's docDraft should describe search/browse of that table's records (entry point for create/edit/delete). The input slot's docDraft should describe a single combined create-and-edit form for that table (do not describe it as two separate detail/edit screens — it is one screen).
+- The list slot's "docDraft" STRING ITSELF (not just "formTitle" or "description") MUST start with or contain the exact word "一覧" (e.g. docDraft = "商品コード・商品名・カテゴリの一覧を表示する。検索機能を備える。") — a LATER AI step reads ONLY the "docDraft" field text to decide whether to add a real list-display widget, and it looks for this exact word "一覧" inside "docDraft"; having "一覧" only in "formTitle"/"description" does NOT count and produces a screen with no way to browse records. The input slot's docDraft should describe a single combined create-and-edit form for that table (do not describe it as two separate detail/edit screens — it is one screen, and its docDraft must NOT contain the word "一覧").
 - "削除"(delete) of a single record does NOT get its own screen — it is a confirmation dialog reachable from the list/input screen, handled later in event processing. Mention this briefly in the list or input slot's docDraft only if relevant; never add a dedicated delete screen.
 ${systemModelHint ? `
 [Terminology Reference — wording only, does NOT change slot count/table assignment above]
@@ -2100,17 +2022,19 @@ ${systemModelHint}
 ` : ""}
 
 [Additional Non-Table Screens — optional, append AFTER the fixed slots]
-You may append AT MOST a few extra screens after the fixed slots, but ONLY for functionality explicitly mentioned in [Q&A History] that is not simply a list/input of one of the tables above (e.g. a login screen). Do not add a screen for anything already covered by a fixed slot.
+You may append AT MOST a few extra screens after the fixed slots, but ONLY for functionality explicitly mentioned in [Application Overview] that is not simply a list/input of one of the tables above (e.g. a login screen). Do not add a screen for anything already covered by a fixed slot.
 
 [Confirmed Database Tables]
 ${tablesCtx || "(No DB tables)"}
 `.trim() + "\n");
     };
 
-    // [日本語対訳メモ]（AIには送られない）Q&A履歴＋「システム指示通りにフォーム一覧のJSON配列を生成せよ」の指示。
-    const ENG_WIZARD_DECOMPOSE_FORMS_USER_PROMPT = function (historyCtx) {
+    // [日本語対訳メモ]（AIには送られない）アプリ概要（自由記述）＋「システム指示通りにフォーム一覧のJSON配列を生成せよ」の指示。
+    // 2026-09-13（続報3）: 動的Q&A履歴の代わりに、ウィザードのアプリ概要ステップ
+    // （自由記述、AI不使用）で記入されたテキストをそのまま渡す。
+    const ENG_WIZARD_DECOMPOSE_FORMS_USER_PROMPT = function (overviewText) {
         return (
-            "[Q&A History]\n" + historyCtx + "\n\n" +
+            "[Application Overview]\n" + (overviewText || "(未入力)") + "\n\n" +
             "Generate the JSON array of forms as specified in the system prompt."
         );
     };
