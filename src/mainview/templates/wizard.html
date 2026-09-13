@@ -69,6 +69,27 @@
 </div>
 </script>
 
+<script type="text/vja-tpl" id="wz-tpl-sysmodel-item">
+<button class="tb-btn" style="text-align:left;padding:8px 10px;display:block;width:100%" <%- attr %>>
+<div><b><%= title %></b></div>
+<% if (example) { %><div style="font-size:11px;color:var(--text3)">例: <%= example %></div><% } %>
+<% if (good) { %><div style="font-size:11px;margin-top:2px"><%= good %></div><% } %>
+</button>
+</script>
+
+<script type="text/vja-tpl" id="wz-tpl-sysmodel-body">
+<div class="mbody" style="gap:10px">
+<%- stepIndicator %>
+<div class="infobox">このアプリの構造にもっとも近いものを選んでください。テーブル構成・画面構成の骨格として後工程のAI生成に活用されます（迷ったら「わからない/スキップ」でも構いません）。</div>
+<div style="display:flex;flex-direction:column;gap:8px"><%- itemsHtml %></div>
+</div>
+<div class="mfoot">
+<button <%- attrCancel %>>キャンセル</button>
+<button <%- attrBack %>>← 戻る</button>
+<button <%- attrSkip %>>わからない/スキップ →</button>
+</div>
+</script>
+
 <script type="text/vja-tpl" id="wz-tpl-table-cand-item">
 <label style="display:flex;align-items:center;gap:8px;padding:4px 0">
 <input type="checkbox" <%= checked %> <%- attr %>>

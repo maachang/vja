@@ -1851,7 +1851,7 @@ Anything the user can view, select, or edit on this screen — including a filte
 [What Goes In "actions"]
 One short label per pressable button (e.g. "追加", "検索"), never a full sentence. If a sentence names a button and also describes its effect (e.g. "追加ボタンを押すとタスクを追加する"), keep the short button label in "actions" and drop only the trailing effect description — do not drop the whole item.
 
-[Few-Shot Example]
+[Few-Shot Example 1: Input-only screen (no list mentioned)]
 Input request: "タスクの詳細情報を入力できるフォームを用意。追加ボタンを押すとタスクを追加。" (with a referenced table "tasks" whose columns are title, priority, due_date, status)
 Correct output:
 layout_pattern: 3
@@ -1864,6 +1864,32 @@ tables:
   - tasks
 actions:
   - 追加
+
+[Few-Shot Example 2: List + input screen — "一覧" REQUIRES a "datagrid" field]
+Input request: "商品マスターの一覧を表示し、必要に応じて新規商品の登録や既存商品の変更・削除を行う画面。" (with a referenced table "products" whose columns are code, name, category)
+Correct output:
+layout_pattern: 2
+fields:
+  - 商品一覧: datagrid
+  - 商品コード: inputtype text
+  - 商品名: inputtype text
+  - カテゴリ: selectBox
+tables:
+  - products
+actions:
+  - 登録
+  - 削除
+Wrong output (do NOT do this — this omits the "datagrid" field even though "一覧" was explicitly requested, leaving nothing to actually display the list):
+layout_pattern: 2
+fields:
+  - 商品コード: inputtype text
+  - 商品名: inputtype text
+  - カテゴリ: selectBox
+tables:
+  - products
+actions:
+  - 登録
+  - 削除
 
 [Available Database Tables Context]
 ${tablesCtx || "(No DB tables)"}
@@ -1955,37 +1981,17 @@ Once all 4 stages are "done", do NOT invent a new unrelated topic just to keep a
     o.WIZARD_NEXT_QUESTION_SYS_PROMPT = ENG_WIZARD_NEXT_QUESTION_SYS_PROMPT;
     o.WIZARD_NEXT_QUESTION_USER_PROMPT = ENG_WIZARD_NEXT_QUESTION_USER_PROMPT;
 
-    // [プロンプト]プロジェクト新規作成ウィザード: Q&A履歴から、最も近い「システムモデル」
-    // （src/wizard-system-models/の骨格パターン）を番号で1つ選ばせる。
-    // ローカルLLMはID文字列を自由記述させると架空の名前を混ぜて出力する傾向があるため、
-    // 既存の番号選択方式（レイアウトイメージ選択等）を踏襲し、回答は番号のみに限定する。
-    //
-    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
-    // Q&A履歴と、番号付きのシステムモデル要約一覧（名称/想定システムタイプ例/
-    // 向いているケース/向いていないケース）を渡し、最も適合する番号を1つだけ
-    // 数字で答えさせる。番号以外の文字（説明・記号等）は一切出力させない。
-    const ENG_WIZARD_SYSTEM_MODEL_SYS_PROMPT = function () {
-        return (`
-You are an expert VJA (Visual JavaScript for AI) application architect. Based on the [Q&A History] describing a business application the user wants to build, and the [System Model Candidates] list (numbered structural skeletons this tool can use as a scaffold), choose the ONE candidate that best matches the described application.
-
-[Output Rules]
-- Output ONLY the number of the chosen candidate (e.g. "3"). No other characters, words, punctuation, markdown, or explanation of any kind.
-- Choose exactly one number that appears in [System Model Candidates].
-- Use the "向いているケース" (good fit) and "向いていないケース" (bad fit) notes under each candidate to decide. Prefer the candidate whose "向いているケース" most closely matches the history, and avoid one whose "向いていないケース" matches instead.
-- If multiple candidates seem plausible, choose the single closest match rather than refusing to answer.
-`.trim() + "\n");
-    };
-
-    const ENG_WIZARD_SYSTEM_MODEL_USER_PROMPT = function (historyCtx, modelListCtx) {
-        return (
-            "[Q&A History]\n" + historyCtx + "\n\n" +
-            "[System Model Candidates]\n" + modelListCtx + "\n\n" +
-            "Output only the number of the best-matching candidate, as specified in the system prompt."
-        );
-    };
-
-    o.WIZARD_SYSTEM_MODEL_SYS_PROMPT = ENG_WIZARD_SYSTEM_MODEL_SYS_PROMPT;
-    o.WIZARD_SYSTEM_MODEL_USER_PROMPT = ENG_WIZARD_SYSTEM_MODEL_USER_PROMPT;
+    // 2026-09-13: システムモデル骨格の選択を、AIによる番号自動選択から
+    // ウィザード内の専用ステップでのユーザー直接選択（vja-wizard.jsの
+    // _wizardRenderSystemModelModal()）に変更したため、ここにあった
+    // ENG_WIZARD_SYSTEM_MODEL_SYS_PROMPT/USER_PROMPT（Q&A履歴から番号を
+    // 選ばせるプロンプト）は削除した。理由: 温度0の弱いローカルLLMに
+    // 「向いていないケース」を踏まえた除外判断をさせるには荷が重く、実際に
+    // 「1件ごとの伝票としての完結性が重要」という明確な除外条件に合致する
+    // ケースで、キーワード表面一致に引きずられて誤った骨格（在庫・数量推移
+    // 管理系）を選んでしまう事例が確認された。ユーザー自身は自分の作りたい
+    // アプリの性質を把握しているため、AIに推測させるより直接選ばせる方が
+    // 確実（詳細は CLAUDE.md「ウィザードの既知バグ修正」節を参照）。
 
     // [プロンプト]プロジェクト新規作成ウィザード: Q&A履歴から必要そうなDBテーブル候補を切り出す
     // （2026-08-10: フォーム分解より前に実行する順序に変更。フォーム一覧はまだ存在しない
