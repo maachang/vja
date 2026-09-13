@@ -161,6 +161,7 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
   3. 生成された `📋 YAML`タブの内容を必要に応じて手直しした上で、**`🤖 画面反映`ボタン**（`formDesignAiGenerate()`、既存のレイアウト自動生成プロンプト & 整列エンジンを利用）を押すと、実際のウィジェット配置に反映される
   - つまり「自然言語での指示 → AIによるYAMLドラフト化 → そのYAMLを土台に実装（画面レイアウト）へ進む」という導線であり、YAMLをいきなり手書きする必要はない
   - `formDesignDraft`/`formDesignDocDraft`は各フォーム（`getProjectData().forms[idx]`）ごとに保持され、他フォームの内容が混入しないよう`syncCurForm()`/`commitFormDesignDraft()`で同期・書き戻しされる
+  - **`参照テーブル:`（YAML中の`tables:`）は必須項目**（2026-09-13明記）: 以前は「関係があれば含める」という任意扱いの文言だったため、フィールドはテーブルのカラムから正しく導出されているのに`tables:`が空のまま生成されるケースがあった。`tables:`が無いと、後工程（画面レイアウト生成・実際のウィジェット配置）で「その画面がどのテーブルを読み書きする入力画面なのか、単なるテーブル一覧表示なのか」の区別があいまいになる。`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`に`[What Goes In "tables"]`節を追加し、「fieldsのいずれかがテーブルのカラムに由来する場合、tablesにそのテーブル名を含めるのは必須（省略可能な飾りではない）」と明記した
   - プロンプト定義: `prompt-def.js` の `ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT` / `ENG_FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT`
 
 # イベントYAMLドラフト自動生成機能 (Text to YAML)

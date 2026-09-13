@@ -1832,7 +1832,7 @@ fields:
   - <Field Name>: <Widget type (e.g. inputtype with text/number/date, selectBox, datagrid, text, image, checkbox, label, textarea, groupbox, tabs)>
 
 tables:
-  - <table_name> (Include if database table integration is mentioned or relevant)
+  - <table_name> (see [What Goes In "tables"] below — REQUIRED, not optional, whenever a database table is actually involved)
 
 actions:
   - <Button text or action name> (e.g. 検索ボタン, 保存ボタン, キャンセル)
@@ -1847,6 +1847,11 @@ Leaving "fields" or "actions" empty is a strong claim — only do it when the re
 [What Goes In "fields"]
 Anything the user can view, select, or edit on this screen — including a filter/narrowing condition that's only mentioned as part of an action's description (e.g. "優先度で絞り込む" → add a "優先度" field). If the request names no concrete field but references a table whose columns are visible in [Available Database Tables Context] below, derive fields from those columns instead of leaving "fields" empty.
 - **If the request mentions showing a list/browse of records** (e.g. "一覧", "一覧表示", "検索結果", "履歴を表示"), you MUST include exactly one field with widget type "datagrid" representing that list (in addition to, not instead of, the individual input fields used for creating/editing one record). Do not represent "一覧" merely by choosing a layout_pattern with a display area — the "datagrid" field itself must also be present in "fields", otherwise nothing will actually render the list.
+
+[What Goes In "tables" — REQUIRED whenever applicable, never treat this as optional]
+Whenever any "fields" entry was derived from (or clearly corresponds to) a column of a table listed in [Available Database Tables Context] — whether that field is a plain input, a selectBox, or the datagrid representing a list of that table's records — "tables" MUST include that table's name. This is not a cosmetic/optional annotation: a LATER step uses "tables" to decide which table each field/widget actually reads from and writes to, and whether a screen is a single-record input form or a multi-record list view. Omitting "tables" when a table was actually used makes this distinction ambiguous downstream, even if "fields"/"description" already look correct.
+- If the request or docDraft names a table directly (e.g. "daily_salesテーブル"), include it.
+- If no table is referenced or relevant at all (e.g. a pure static confirmation dialog with no data), leave "tables" as an empty list — do not invent a table that has no relation to this screen.
 
 [What Goes In "actions"]
 One short label per pressable button (e.g. "追加", "検索"), never a full sentence. If a sentence names a button and also describes its effect (e.g. "追加ボタンを押すとタスクを追加する"), keep the short button label in "actions" and drop only the trailing effect description — do not drop the whole item.
