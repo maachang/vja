@@ -362,6 +362,7 @@ function renderTableEditModal() {
             attrName: evtAttr("oninput", "TABLE_MODAL.edit.name=this.value"),
             description: tbl.description || "",
             attrDesc: evtAttr("oninput", "TABLE_MODAL.edit.description=this.value"),
+            attrAiGenName: evtAttr("onmousedown", "tblAiGenerateName()"),
             attrAiGen: evtAttr("onmousedown", "tblAiGenerateSchema()"),
             masterCsvArea: renderMasterCsvArea(tbl),
             colCount: cols.length,
@@ -707,6 +708,54 @@ function sanitizeAiTableColumns(cols) {
         }
     });
     return sanitized;
+}
+
+// 「説明（任意）」欄の内容からテーブル名を1つ生成する（2026-09-13追加）。
+// テーブル名は他の画面・YAML定義から参照される重要なキーのため、既に名前が
+// 入力済みの場合は上書き確認を挟む。
+async function tblAiGenerateName() {
+    if (!getProjectData().aiConfig.enabled) {
+        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
+            closeModal();
+            openAiConfig();
+        }
+        return;
+    }
+
+    tblSyncFromDOM();
+    const tbl = TABLE_MODAL.edit;
+    if (!tbl) return;
+    const description = (tbl.description || "").trim();
+    if (!description) {
+        showToast("説明（任意）欄にテーブルの内容を記入してください");
+        $("tbl-desc-in")?.focus();
+        return;
+    }
+    if (tbl.name.trim()) {
+        const ok = await vja.app.showConfirm("既にテーブル名「" + tbl.name + "」が入力されています。\nAIが生成する名前で上書きしますか？");
+        if (!ok) return;
+    }
+
+    const sysPrompt = _PROMPT_DEF.TABLE_NAME_GEN_SYS_PROMPT();
+    const userPrompt = _PROMPT_DEF.TABLE_NAME_GEN_USER_PROMPT(description);
+
+    await runAiGenerate({
+        systemPrompt: sysPrompt,
+        userPrompt: userPrompt,
+        loadingMsg: "テーブル名を生成中…",
+        onSuccess: async (generated) => {
+            const name = String(generated || "").trim().split(/\s+/)[0].replace(/[^a-z0-9_]/gi, "").toLowerCase();
+            if (!name) {
+                showToast("テーブル名の生成に失敗しました");
+                return;
+            }
+            TABLE_MODAL.edit.name = name;
+            renderTableEditModal();
+            showToast("✨ AIがテーブル名を生成しました: " + name);
+        },
+        onCancel: async () => {},
+        onError: async () => {},
+    });
 }
 
 async function tblAiGenerateSchema() {
@@ -1222,7 +1271,7 @@ Object.assign(window, {
     tblDownloadMasterCsv, tblDeleteMasterCsv,
     defaultValueForType, validateDefaultValue,
     tblColUpdate, tblColUpdatePk, tblColAdd, tblColInsert, tblColDelete,
-    tblSyncFromDOM, tblShowDdl, generateDDL, tblTypeOpen, tblTypeSelect, tblSave, tblAiGenerateSchema,
+    tblSyncFromDOM, tblShowDdl, generateDDL, tblTypeOpen, tblTypeSelect, tblSave, tblAiGenerateSchema, tblAiGenerateName,
     sanitizeAiTableColumns,
     // バリデーション編集
     openValidationEditor, renderValidationListModal, openValidationEdit,

@@ -103,7 +103,10 @@
 <div class="tbl-name-row"><label>テーブル名</label>
 <input id="tbl-name-in" value="<%= name %>" placeholder="例: users" <%- attrName %>></div>
 <div class="tbl-desc-row"><label>説明（任意）</label>
-<textarea id="tbl-desc-in" <%- attrDesc %>><%= description %></textarea></div>
+<div style="display:flex;gap:6px;align-items:flex-start;flex:1">
+<textarea id="tbl-desc-in" style="flex:1" <%- attrDesc %>><%= description %></textarea>
+<button class="yaml-ai-btn" style="white-space:nowrap" <%- attrAiGenName %>>✨ テーブル名生成</button>
+</div></div>
 <div class="tbl-desc-row"><label>✨ AI生成</label>
 <div style="display:flex;gap:6px;align-items:flex-start;flex:1">
 <input id="tbl-ai-req-in" placeholder="どんなテーブルにしたいか自由に記述（任意。テーブル名・説明があれば自動で考慮します）" style="flex:1">

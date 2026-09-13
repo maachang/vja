@@ -2042,6 +2042,38 @@ ${tablesCtx || "(No DB tables)"}
     o.WIZARD_DECOMPOSE_FORMS_SYS_PROMPT = ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT;
     o.WIZARD_DECOMPOSE_FORMS_USER_PROMPT = ENG_WIZARD_DECOMPOSE_FORMS_USER_PROMPT;
 
+    // [プロンプト]テーブル管理: 「説明（任意）」欄の自由記述から、SQLiteテーブル名（英語snake_case）を1つ提案する
+    //
+    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
+    // テーブル編集モーダルの「✨ テーブル名生成」ボタン用（2026-09-13追加）。カラム構成生成
+    // （ENG_TABLE_SCHEMA_GEN_SYS_PROMPT）とは別の、テーブル名1つだけを出力させる狭いタスク。
+    // 出力は英語snake_case（例: daily_sales）1個のみ、説明文以外の情報は使わない。
+    const ENG_TABLE_NAME_GEN_SYS_PROMPT = function () {
+        return (`
+You are an expert AI assistant for VJA (Visual JavaScript for AI), helping a user name a SQLite table.
+Your task is to convert the user's Japanese natural language description of what this table stores into a single short SQLite table name.
+
+[Output Format — STRICT]
+Output ONLY the table name itself, nothing else. No quotes, no markdown, no explanation, no trailing punctuation.
+
+[Rules]
+- The name MUST be snake_case, using only lowercase ASCII letters, digits, and underscores (no spaces, no Japanese characters, no romaji with capital letters).
+- Prefer a plural or collection-like noun that reflects what the table stores (e.g. a description about "日別の売上データ" → "daily_sales", a description about "品名マスター" → "items").
+- Output exactly one name. Do not output multiple candidates or alternatives.
+`.trim() + "\n");
+    };
+
+    // [日本語対訳メモ]（AIには送られない）「説明（任意）」欄の内容＋「テーブル名を1つだけ出力せよ」の指示。
+    const ENG_TABLE_NAME_GEN_USER_PROMPT = function (description) {
+        return (
+            "[Table Description]\n" + (description || "(not specified)") + "\n\n" +
+            "Generate the single table name as specified in the system prompt."
+        );
+    };
+
+    o.TABLE_NAME_GEN_SYS_PROMPT = ENG_TABLE_NAME_GEN_SYS_PROMPT;
+    o.TABLE_NAME_GEN_USER_PROMPT = ENG_TABLE_NAME_GEN_USER_PROMPT;
+
     // [プロンプト]テーブル管理: 自然言語の依頼文からSQLiteテーブルのカラム構成（雛形）を生成
     //
     // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
