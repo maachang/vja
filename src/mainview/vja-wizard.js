@@ -659,11 +659,15 @@ async function wizardConfirmAndGenerate() {
         // 値と同期させておくことで、この上書きを無害化する。
         getProjectData().formDesignDraft = f.formDesignDraft || "";
         getProjectData().formDesignDocDraft = f.formDesignDocDraft || "";
+        getProjectData().formLayoutPattern = f.formLayoutPattern || ""; // 同上（レイアウトタブの選択状態も同じ同期が必要）
         showToast("フォーム" + (i + 1) + "/" + total + ": " + f.cfg.title + " を生成中…");
-        const yaml = await _wizardGenerateFormYaml(f.formDesignDocDraft);
-        if (!yaml) continue; // 失敗した場合はこのフォームは空のまま次へ進む
+        const genResult = await _wizardGenerateFormYaml(f.formDesignDocDraft);
+        if (!genResult) continue; // 失敗した場合はこのフォームは空のまま次へ進む
+        const { yaml, layoutPatternId } = genResult;
         f.formDesignDraft = yaml;
+        f.formLayoutPattern = layoutPatternId;
         getProjectData().formDesignDraft = yaml; // 同期を保つ（次のswitchForm()呼び出しで消されないように）
+        getProjectData().formLayoutPattern = layoutPatternId;
         const ok = await _wizardGenerateFormLayout(yaml);
         if (ok) successCount++;
     }
@@ -690,6 +694,7 @@ async function wizardConfirmAndGenerate() {
     if (curForm) {
         getProjectData().formDesignDraft = curForm.formDesignDraft || "";
         getProjectData().formDesignDocDraft = curForm.formDesignDocDraft || "";
+        getProjectData().formLayoutPattern = curForm.formLayoutPattern || "";
     }
 
     refreshAll();
@@ -698,7 +703,12 @@ async function wizardConfirmAndGenerate() {
     showVjaAlert("画面生成が終わりました。テーブル・画面の内容は、メニューの「テーブル管理」やデザイナー上でいつでも調整できます。");
 }
 
-// 1フォーム分の「画面デザインYAMLドラフト → YAML」生成（DOM非依存版）
+// 1フォーム分の「画面デザインYAMLドラフト → YAML」生成（DOM非依存版）。
+// 戻り値は { yaml, layoutPatternId }。
+// 2026-09-13追加: "layout_pattern: <番号>" 行の抽出処理が漏れていたため追加した
+// （既存UI手動操作版のformDesignTextToYamlGenerate()、vja-yaml-editor.js参照。
+//  同じロジックをここにも実装しないと、AIが生成したlayout_pattern値がどこにも
+//  保存されず、「🖼 レイアウト」タブが常に「なし」のままになる不具合になる）。
 async function _wizardGenerateFormYaml(docDraft) {
     const allTablesFull = getProjectData().tables || [];
     const targetTablesForCtx = narrowTablesByRequest(docDraft || "", allTablesFull);
@@ -713,7 +723,14 @@ async function _wizardGenerateFormYaml(docDraft) {
         loadingMsg: "画面YAMLドラフトを生成中…",
         onSuccess: async (cleanYaml) => {
             const stripped0 = cleanYaml.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
-            result = convertFormDesignEngKeysToJp(stripped0);
+            const stripped1 = convertFormDesignEngKeysToJp(stripped0);
+
+            const layoutNumMatch = stripped1.match(/^\s*layout_pattern\s*:\s*"?(\d+)"?\s*$/m);
+            const layoutNum = layoutNumMatch ? parseInt(layoutNumMatch[1], 10) : 0;
+            const layoutPatternList = getFormLayoutPatterns();
+            const matchedPattern = layoutNum >= 1 && layoutNum <= layoutPatternList.length ? layoutPatternList[layoutNum - 1] : null;
+            const yaml = stripped1.replace(/^\s*layout_pattern\s*:.*\n?/m, "").trim();
+            result = { yaml, layoutPatternId: matchedPattern ? matchedPattern.id : "" };
         },
         onCancel: async () => { },
         onError: async () => { },

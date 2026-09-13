@@ -282,6 +282,13 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 - **実LLM(192.168.0.235)での検証**: project2相当のアプリ概要・確定テーブルで画面構成分解を再実行し、4画面（欠落なし）・docDraftへの「一覧」語の混入・後工程でのdatagrid生成を確認した
 - **未検証**: 実機（`bun run dev`）でのウィザード全体（UI操作込み）の再テストはこの変更ではまだ行っていない
 
+## 続報4（2026-09-13）: 「🖼 レイアウト」タブが常に「なし」になる不具合（AI/モデルの問題ではない）
+
+続報3の対応後、project2で実機（`bun run dev`）再テストしたところ、生成された全フォームで「🖼 レイアウト」タブの選択状態（`formLayoutPattern`）が常に空（なし）になっていた。ユーザーから「これはdeepseek-coder-v2の問題か」と問われたが、実データを確認した結果、AI生成結果自体には`layout_pattern: 5`等の値が正しく含まれており、モデルの問題ではなかった。
+
+- **原因**: `layout_pattern:`行をYAML本文から抜き出し`getProjectData().formLayoutPattern`へ反映する処理は、既存のUI手動操作版（`vja-yaml-editor.js`の`formDesignTextToYamlGenerate()`）にしか実装されておらず、ウィザード専用のDOM非依存版関数`_wizardGenerateFormYaml()`（`vja-wizard.js`）にはこの抽出処理が無かった（ウィザード実装当初からの単純な実装漏れ）。さらに`wizardConfirmAndGenerate()`のフォーム一括生成ループでも、`formDesignDraft`/`formDesignDocDraft`は各フォームへ同期させていたが`formLayoutPattern`だけ同期させる処理が漏れていた。
+- **対応**: `_wizardGenerateFormYaml()`の戻り値を`{ yaml, layoutPatternId }`に変更し、既存UI版と同じ`layout_pattern:`抽出ロジックを追加。`wizardConfirmAndGenerate()`のループ内・ループ後の同期処理にも`formLayoutPattern`を追加した（`formDesignDraft`/`formDesignDocDraft`と全く同じ同期パターン）。
+
 # AI雛形生成機能 総覧（2026-08-08時点でカバーする主要対象）
 
 vjaの中核コンセプトである「AIに雛形を作ってもらい、それを土台に人間が仕上げる」という導線が、アプリ開発に必要な主要な構成要素すべてに行き渡った状態（2026-08-08時点）。各詳細は本ファイル内の対応する節を参照。
