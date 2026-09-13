@@ -3985,15 +3985,43 @@ function parseFormDesignYaml(text) {
     return { desc, tables };
 }
 
+// AI（フォームデザイン）出力のx/y/w/hに、計算式（例: "x": 768 - 20 - 85）が
+// そのまま出力されてしまうケースを機械的に是正する。ENG_FORM_DESIGN_SYS_PROMPT側で
+// 「計算結果の整数のみ出力せよ、式を書くな」と複数箇所で明記しているにもかかわらず、
+// ローカルLLMが右寄せボタン等のx計算で式をそのままJSONに書いてしまう事例が
+// 2026-09-08に一度確認・修正済み（Few-Shot強化）だったが、2026-09-13に別の
+// ローカルLLM（deepseek-coder-v2）で同種の再発が確認された。プロンプト文言の
+// 強化だけに頼ると際限なく「もぐら叩き」になるため、ここでコード側の機械的な
+// 安全網を追加する: x/y/w/hの値部分が単純な数値でない場合、数字・空白・
+// 四則演算子・丸カッコのみで構成されているか検証した上で（英字や記号が
+// 混ざる文字列値等を誤って評価しないための安全策）計算し、結果の整数に
+// 置き換えてからJSON.parseする。
+function _fixArithmeticInFormDesignJson(text) {
+    return String(text || "").replace(/("(?:x|y|w|h)"\s*:\s*)([^,}\]]+)/g, (whole, prefix, valuePart) => {
+        const trimmed = valuePart.trim();
+        if (/^-?\d+(\.\d+)?$/.test(trimmed)) return whole; // 既にプレーンな数値ならそのまま
+        if (!/^[\d\s+\-*/().]+$/.test(trimmed)) return whole; // 数式以外の文字が混ざる値（文字列等）はそのまま
+        try {
+            const computed = Function("\"use strict\"; return (" + trimmed + ")")();
+            if (typeof computed === "number" && Number.isFinite(computed)) {
+                return prefix + Math.round(computed);
+            }
+        } catch (e) { /* 評価失敗時は元の文字列のまま返し、後続のJSON.parseで通常通り失敗させる */ }
+        return whole;
+    });
+}
+
 // AI（フォームデザイン）出力テキストを配列としてパースする。
 // 1. まずそのままJSON.parseを試みる
 // 2. 失敗した場合、AIが前後に説明文を付けてしまうケースを救うため、
 //    最初の "[" ～ 最後の "]" を抜き出して再度パースを試みる
-// 成功時はウィジェット配列を、失敗時（配列でない場合含む）はnullを返す。
+// どちらの試行でも、_fixArithmeticInFormDesignJson()で計算式を先に整数へ
+// 是正してからパースする。成功時はウィジェット配列を、失敗時
+// （配列でない場合含む）はnullを返す。
 function parseFormDesignJson(text) {
     const tryParse = (s) => {
         try {
-            const v = JSON.parse(s);
+            const v = JSON.parse(_fixArithmeticInFormDesignJson(s));
             return Array.isArray(v) ? v : null;
         } catch (e) {
             return null;
