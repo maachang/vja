@@ -2018,16 +2018,19 @@ You are an expert VJA (Visual JavaScript for AI) application architect. Based on
 - Avoid creating multiple tables for what is really a single entity's attributes (e.g. do NOT create separate "priorities"/"deadlines"/"statuses" tables when they are just columns of a single "tasks" table) — this causes confusion in later steps. Prefer one well-designed table per real-world entity.
 - Do NOT include column definitions — only table name and description. Columns will be designed in the next step.
 - If no database table appears to be needed at all, output an empty array [].
-- If [Recommended System Model Skeleton] is provided, treat its "テーブル構成の型" as a structural reference for what kind of tables (and how many) this type of application typically needs — but still base the actual table names/descriptions on what the [Q&A History] specifically describes. Do NOT invent tables that only appear in the skeleton example but are not implied by the history.
 `.trim() + "\n");
     };
 
-    // [日本語対訳メモ]（AIには送られない）Q&A履歴＋（あれば）システムモデル骨格＋
-    // 「システム指示通りに候補テーブルのJSON配列を生成せよ」の指示。
-    const ENG_WIZARD_TABLE_CANDIDATES_USER_PROMPT = function (historyCtx, systemModelHint) {
+    // [日本語対訳メモ]（AIには送られない）Q&A履歴のみから「システム指示通りに候補テーブルの
+    // JSON配列を生成せよ」の指示。
+    // 2026-09-13: systemModelHintの受け渡しを撤去した。テーブル候補はQ&A履歴だけから
+    // 機械的に判断できる狭いタスクであり、骨格ヒント（システムモデル選択）を混ぜる必要が
+    // 無い。むしろヒントの例示テーブル名がQ&A実データより優先されてしまう混線の起点に
+    // なりうるため、ここでは渡さない方針にした（vjaの「狭い範囲でローカルLLMを使う」
+    // 方針への回帰。詳細はCLAUDE.md「ウィザードの既知バグ修正」節参照）。
+    const ENG_WIZARD_TABLE_CANDIDATES_USER_PROMPT = function (historyCtx) {
         return (
             "[Q&A History]\n" + historyCtx + "\n\n" +
-            (systemModelHint ? "[Recommended System Model Skeleton]\n" + systemModelHint + "\n\n" : "") +
             "Generate the JSON array of candidate tables as specified in the system prompt."
         );
     };
@@ -2035,83 +2038,69 @@ You are an expert VJA (Visual JavaScript for AI) application architect. Based on
     o.WIZARD_TABLE_CANDIDATES_SYS_PROMPT = ENG_WIZARD_TABLE_CANDIDATES_SYS_PROMPT;
     o.WIZARD_TABLE_CANDIDATES_USER_PROMPT = ENG_WIZARD_TABLE_CANDIDATES_USER_PROMPT;
 
-    // [プロンプト]プロジェクト新規作成ウィザード: Q&A履歴＋確定済みDBテーブル(カラム込み)から
-    // 必要なフォーム一覧に分解する
-    // （2026-08-10: テーブルのカラム確定より後に実行する順序に変更。確定済みのカラム情報を
-    //   docDraftに具体的に反映させることで、後段の画面デザインYAMLドラフト生成の精度を上げる）
+    // [プロンプト]プロジェクト新規作成ウィザード: 確定済みDBテーブル(カラム込み)から
+    // 「1テーブル=一覧画面+入力画面」の画面スロットをコード側（_wizardBuildScreenSkeleton、
+    // vja-wizard.js）で機械的に確定し、AIにはそのスロットの内容（formTitle/description/
+    // docDraft）を日本語で埋めさせるだけの狭いタスクに限定する。
     //
-    // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
-    // Q&A履歴＋確定済みテーブル（カラム込み）から、必要な画面（フォーム）一覧をJSON配列で
-    // 分解生成させるプロンプト。各要素: formName(英語PascalCase+Form接尾辞、ASCII限定、
-    // 配列内で一意)/formTitle(日本語表示名)/description(1文の日本語説明)/
-    // docDraft(その画面に必要な入力欄・ボタン等を自然文で書いた日本語段落。
-    // 後段の画面デザインYAMLドラフト生成の入力として使われる)。
-    // ※docDraftは、関連テーブルのカラムが分かっている場合、カラム名を日本語ラベルに
+    // 2026-09-13設計変更（重要・場当たり的な継ぎ足しの経緯があるため詳しく残す）:
+    // 従来（〜2026-09-13）は「画面がいくつ必要か」「どのテーブルを使うか」という構造判断
+    // 自体をAI1回の呼び出しに丸投げしていた（Floor/Avoid Over-Splittingという長大な
+    // ルール文＋systemModelHintの全文差し込みで誘導する方式）。この設計は、vja本来の
+    // 「狭い範囲でローカルLLMを使う」方針（CLAUDE.md「LLM利用方針」参照）から外れており、
+    // ローカルLLMのモデル差で挙動が大きく揺れる根本原因になっていた。実例: project2
+    // （daily_sales/itemsの2テーブル確定）で、ユーザーが手動選択した「在庫・数量推移管理系」
+    // ヒントの画面骨格例（品目一覧/入出庫登録）をAIがそのまま採用し、確定テーブルを
+    // 一切参照しない無関係な2画面で打ち切られた。
+    // 対応: 「テーブルごとに一覧画面+入力画面を1組作る」という構造決定はAIの裁量から
+    // 完全に外し、コード側で機械的に確定する（_wizardBuildScreenSkeleton）。AIの仕事は
+    // 各スロットのformTitle/description/docDraftを日本語で埋めることだけに縮小した。
+    // これにより：
+    //   - システムモデル選択（ステップ3）はもう画面「数」を左右しない。ユーザーが選択制で
+    //     確定した骨格は、画面の言い回し・用語（例:「入出庫」という言葉遣い）の参考程度に
+    //     留め、テーブル選択・画面数を上書きする権限は持たせない。
+    //   - Q&Aで暗示されるログイン等「テーブルに紐づかない」画面のみ、AIが確定スロットの
+    //     後に追加してよい（勝手な機能追加ではなく、Q&Aに明記された場合のみ）。
+    // 生成後、_wizardBuildScreenSkeleton()が確定した全スロットのformNameが結果に
+    // 含まれているかをコード側（wizardDecomposeForms）で機械的に検証し、欠けていれば
+    // 失敗として再生成を促す。
+    //
+    // docDraftは、関連テーブルのカラムが分かっている場合、カラム名を日本語ラベルに
     // 変換した上で具体的に書き込むよう指示する（曖昧な「詳細情報を表示」ではなく
     // 「タイトル・優先度・期限・ステータスを表示」のように）。これは実際にAI
     // (OpenAI gpt-5.6-luna)での実測検証で、項目名が明示されない依頼文だと画面デザイン
-    // YAMLドラフト生成でfieldsが空になりやすいことが確認されたための対策。
-    // 画面数はユーザーが指定する目安（少なめ/標準/多め）ではなく、下限ルール（管理単位ごとに
-    // 一覧+入力の最低2画面）と過剰分割禁止ルールという構造的な基準だけで決まる（2026-09-12改訂:
-    // Q&A側の「画面数の目安」ステージ廃止に伴い、本プロンプト側の「目安があれば従う」という
-    // 記述も削除。あいまいな目安に従わせると下限を割ったり逆に不要な画面を増やしたりする
-    // 原因になっていた）。履歴にない機能を勝手に発明しない。ログイン機能が言及/暗示されて
-    // いれば専用画面を作る。
-    // ※2026-08-10追記: 「一覧→行クリックで詳細→編集・削除」という定型パターンに対し、
-    // 「詳細」「編集」を別々の画面として機械的に分割しないよう指示（同じ項目を表示する
-    // 詳細画面と編集画面はほぼ常に同一画面のはず→1つに統合させる）。「削除」も単純な
-    // 1件削除なら専用画面を作らず、確認ダイアログ＋一覧へ戻る（イベント処理側の責務）で
-    // 済ませるよう指示。同一エンティティの属性ごとに個別の設定画面を作る（優先度設定画面・
-    // 期限設定画面…）ことも避け、詳細・編集画面1つにまとめるよう指示。実際にウィザードで
-    // TaskDetailForm/TaskEditForm（内容が重複）やTaskDeleteForm（確認ダイアログで済む内容）
-    // が個別画面として生成されてしまった実例に基づく対応。
-    // ※2026-08-11追記: ウィザードで選択した画面サイズ（大中小）をformW/formH/
-    // formSizeLabelとして渡し、「小さい画面サイズなら項目を詰め込みすぎず画面を
-    // 分割する」ことを意識させる（ただし上記の「過剰分割を避ける」指示を上書きしない
-    // ことを明記し、単なる詰め込み防止のみに限定）。
-    const ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT = function ({ tablesCtx, formW, formH, formSizeLabel, systemModelHint }) {
+    // YAMLドラフト生成でfieldsが空になりやすいことが確認されたための対策（この検証結果
+    // 自体は現行方式でも変わらず有効なため維持）。
+    const ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT = function ({ tablesCtx, screenSkeletonText, systemModelHint }) {
         return (`
-You are an expert VJA (Visual JavaScript for AI) application architect. Based on the [Q&A History] and [Confirmed Database Tables] provided in the user message (a Japanese interview describing a business application the user wants to build, plus the DB tables/columns already finalized for it), decompose the application into a list of screens (forms).
-${systemModelHint ? `
-[Recommended System Model Skeleton]
-This application was judged to be closest to the following structural pattern. Use its "画面構成の骨格" (screen structure) as your primary guide for how to group fields into screens and how many screens to create — it is written specifically to prevent over-splitting screens that a human developer would normally keep together. Still base concrete field names/screen titles on the actual [Q&A History] and [Confirmed Database Tables], not on the example table/column names shown in the skeleton.
+You are writing Japanese screen descriptions for a VJA (Visual JavaScript for AI) application, given a FIXED list of required screens that has ALREADY been decided by the system (not by you).
 
-${systemModelHint}
-` : ""}
+[Fixed Screen Slots — DO NOT change the count, table assignment, or formName of these]
+${screenSkeletonText}
 
-[Target Screen Size]
-The user has chosen a "${formSizeLabel || "小"}" (${formW || 640}x${formH || 420}px) screen size for every generated form. Keep this in mind when deciding how much a single screen should try to show:
-- A smaller screen size holds noticeably fewer fields/widgets comfortably. When an entity has many attributes (many DB columns) or a screen's docDraft would otherwise list a long, dense set of fields, prefer splitting that entity's fields across multiple purpose-specific screens (e.g. separate "basic info" and "detailed info" tabs/screens) rather than cramming everything into one screen.
-- A larger screen size can comfortably hold more fields on a single screen, so there is less need to split for that reason alone.
-- This size-based splitting guidance is about avoiding an overcrowded single screen — it does NOT override the "Avoid Over-Splitting" rule below (do not split a screen into multiple screens for reasons unrelated to available space, such as one screen per verb).
+Your ONLY job is: for each slot above, in the SAME order, output one JSON array item with that EXACT "formName" copied verbatim, plus a Japanese "formTitle"/"description"/"docDraft" for it. You must NOT merge, drop, reorder, rename, or add to these slots' table assignment — the screen count and which table each slot belongs to is already final.
 
 [Output Rules]
 - Output STRICT JSON only (a JSON array). No markdown code fences, no intro, no explanations.
 - Array item shape:
 {
-  "formName": "<English PascalCase identifier ending in \"Form\", e.g. LoginForm, RegUserForm, CustomerListForm — must be unique across the array, ASCII letters/digits only>",
+  "formName": "<copied verbatim from the matching slot above>",
   "formTitle": "<short Japanese display title for this screen, e.g. ログイン>",
   "description": "<one-sentence Japanese description of this screen's purpose>",
   "docDraft": "<a Japanese free-text paragraph describing what widgets/inputs/buttons this screen should have, written in the same natural style a user would type when requesting a screen design — this becomes the input to a LATER screen-layout-generation step>"
 }
-- "docDraft" MUST be concrete, not vague. If this screen relates to a table in [Confirmed Database Tables], explicitly name the relevant columns (translated to natural Japanese labels, e.g. due_date → 期限) as the fields this screen shows/edits — do NOT write a vague summary like "タスクの詳細情報を表示する" alone; instead write "タスク名・優先度・期限・ステータスを表示する" naming the actual columns. This concreteness is required because a later AI step derives screen fields from this text and performs poorly on vague descriptions.
-- The number of screens is decided ONLY by the [Floor: Minimum Screens Per Management Unit] rule below and the [Avoid Over-Splitting] rule — there is no user-chosen screen-count scale (少なめ/標準/多め) to consult or follow. Never reduce screens below the floor, and never add screens beyond what the floor + the entities described actually require.
-- Do not invent major features that were never mentioned in the history.
-- If a login/authentication flow was mentioned or implied, include it as its own screen.
-- Every table in [Confirmed Database Tables] MUST be referenced by (used in) at least one screen's docDraft. Never silently drop a confirmed table from the plan.
+- "docDraft" MUST be concrete, not vague. Explicitly name the relevant columns of this slot's table (translated to natural Japanese labels, e.g. due_date → 期限) as the fields this screen shows/edits — do NOT write a vague summary like "タスクの詳細情報を表示する" alone; instead write "タスク名・優先度・期限・ステータスを表示する" naming the actual columns. This concreteness is required because a later AI step derives screen fields from this text and performs poorly on vague descriptions.
+- The list slot's docDraft should describe search/browse of that table's records (entry point for create/edit/delete). The input slot's docDraft should describe a single combined create-and-edit form for that table (do not describe it as two separate detail/edit screens — it is one screen).
+- "削除"(delete) of a single record does NOT get its own screen — it is a confirmation dialog reachable from the list/input screen, handled later in event processing. Mention this briefly in the list or input slot's docDraft only if relevant; never add a dedicated delete screen.
+${systemModelHint ? `
+[Terminology Reference — wording only, does NOT change slot count/table assignment above]
+This application was judged closest to the following structural pattern. Use ONLY its wording/terminology conventions (e.g. how it phrases a status field) when writing docDraft for the fixed slots above. It must NOT be used to add, remove, merge, or rename any screen slot, and its example table/column names must NOT appear in your output — only the actual [Confirmed Database Tables] below may be used. Do NOT mention any field, value, or attribute from this skeleton's example (e.g. a "current stock quantity") in a slot's docDraft unless that exact column actually exists in [Confirmed Database Tables] for that slot's table.
 
-[Floor: Minimum Screens Per Management Unit]
-If the request describes managing a kind of data with "一覧/list", together with any of "新規登録/create", "編集/edit", or "削除/delete", that management unit needs AT LEAST 2 screens, and these 2 are NEVER merged into 1 (regardless of the "Avoid Over-Splitting" guidance below):
-1. A **list screen** (search/browse; the entry point for create/edit/delete).
-2. An **input screen** (create AND edit combined into one form, per the consolidation rule below).
-("削除" alone does not need a 3rd screen — see below.) If the history describes N separate management units (e.g. "売上管理" and "商品マスター管理"), each unit independently needs its own list+input pair — do not collapse multiple management units' pairs into a single shared screen, and do not reduce a unit to only 1 screen.
+${systemModelHint}
+` : ""}
 
-[Avoid Over-Splitting: Consolidate the Common List → Detail/Edit → Delete Pattern]
-A common request shape is "show a list, click a row to see details, then edit or delete it." Do NOT mechanically create one screen per verb mentioned (詳細/編集/削除など) BEYOND the 2-screen floor above. Specifically:
-- "詳細表示"(view detail) and "編集"(edit) of the SAME entity are almost always the SAME screen — a single form that displays the record's fields in editable inputs with an "編集"/"保存" button. Do NOT create two separate near-identical screens (e.g. "TaskDetailForm" and "TaskEditForm" showing the same fields) — merge them into one (e.g. "TaskDetailForm" alone, its docDraft mentioning both viewing and editing).
-- "削除"(delete) of a single record normally does NOT need its own screen. It is a confirmation dialog (a Yes/No confirm shown from the list or detail screen) that, on confirmation, deletes the record and returns to the list — this belongs to a LATER event-processing step, not a separate screen in this list. Only give delete its own screen if the request describes something beyond a simple single-record confirm (e.g. a dedicated bulk-delete screen with checkboxes, or an audit/trash-bin screen).
-- Similarly, do not split what is really ONE entity's several attributes into multiple single-purpose screens (e.g. a separate "priority-setting screen", "deadline-setting screen", and "status-update screen" for the same "task" entity) — these belong together in the ONE detail/edit screen for that entity, edited as normal fields with a single save action.
-- This consolidation rule reduces screens down to the 2-screen floor (list + input) — it must never be used to justify merging the list screen itself away, or merging two different management units together.
+[Additional Non-Table Screens — optional, append AFTER the fixed slots]
+You may append AT MOST a few extra screens after the fixed slots, but ONLY for functionality explicitly mentioned in [Q&A History] that is not simply a list/input of one of the tables above (e.g. a login screen). Do not add a screen for anything already covered by a fixed slot.
 
 [Confirmed Database Tables]
 ${tablesCtx || "(No DB tables)"}

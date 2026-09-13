@@ -70,11 +70,13 @@
 </script>
 
 <script type="text/vja-tpl" id="wz-tpl-sysmodel-item">
-<button class="tb-btn" style="text-align:left;padding:8px 10px;display:block;width:100%" <%- attr %>>
-<div><b><%= title %></b></div>
-<% if (example) { %><div style="font-size:11px;color:var(--text3)">例: <%= example %></div><% } %>
-<% if (good) { %><div style="font-size:11px;margin-top:2px"><%= good %></div><% } %>
-</button>
+<div class="tb-btn" style="text-align:left;padding:8px 10px;width:100%;cursor:pointer" <%- attrSelect %>>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+<div><b><%= title %></b><% if (example) { %><span style="font-size:11px;color:var(--text3);margin-left:8px">例: <%= example %></span><% } %></div>
+<% if (good) { %><span style="font-size:11px;color:var(--text3);white-space:nowrap" <%- attrToggle %>><%= toggleLabel %></span><% } %>
+</div>
+<% if (good && expanded) { %><div style="font-size:11px;margin-top:6px;padding-top:4px;border-top:1px solid var(--border)"><%= good %></div><% } %>
+</div>
 </script>
 
 <script type="text/vja-tpl" id="wz-tpl-sysmodel-body">

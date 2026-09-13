@@ -55,6 +55,7 @@ const WIZARD_STATE = {
                            // 「わからない/スキップ」を選んだ場合はnullのままとし、以降のプロンプトへの
                            // 差し込みも省略する。
     _systemModelItems: [], // システムモデル選択ステップで表示する一覧（[{ id, summary }]）。再開時は都度取得し直す。
+    _systemModelExpandedId: null, // システムモデル選択ステップで詳細を展開中の項目id（1件のみ・アコーディオン方式）
 };
 
 // ステップインジケーターに表示するステップ一覧。
@@ -602,16 +603,24 @@ function _wizardParseSystemModelSummary(md) {
 }
 
 // システムモデル選択モーダルを表示する（フラットな一覧から1つを選ぶ、または「わからない/スキップ」）
+// 一覧は「大項目（名称+想定システムタイプ例）」のみを表示し、「向いているケース」（詳細）は
+// アコーディオン方式（同時に1件のみ展開。他を開くと自動的に閉じる）で必要な時だけ表示する。
+// これは8件全部を常時全文表示すると文字が重なり見づらくなる問題への対策（2026-09-13指摘）。
 function _wizardRenderSystemModelModal() {
     _wizardSaveProgress();
     const items = WIZARD_STATE._systemModelItems || [];
+    const expandedId = WIZARD_STATE._systemModelExpandedId;
     const itemsHtml = items.map((it) => {
         const { title, example, good } = _wizardParseSystemModelSummary(it.summary);
+        const expanded = it.id === expandedId;
         return render("wz-tpl-sysmodel-item", {
             title: title || it.id,
             example: example || "",
             good: good ? good.replace(/^-\s*/gm, "").replace(/\n/g, "、") : "",
-            attr: evtAttr("onmousedown", "wizardPickSystemModel('" + it.id + "')"),
+            expanded,
+            toggleLabel: expanded ? "▲ 閉じる" : "▼ 詳細",
+            attrSelect: evtAttr("onmousedown", "wizardPickSystemModel('" + it.id + "')"),
+            attrToggle: evtAttr("onmousedown", "wizardToggleSystemModelDetail('" + it.id + "',event)"),
         });
     }).join("");
 
@@ -627,10 +636,19 @@ function _wizardRenderSystemModelModal() {
     );
 }
 
+// 「向いているケース」詳細の開閉トグル（アコーディオン方式・同時に1件のみ展開）。
+// 選択確定（wizardPickSystemModel）とは別操作のため、行全体のクリックへ伝播しないようstopPropagationする。
+function wizardToggleSystemModelDetail(id, event) {
+    if (event) event.stopPropagation();
+    WIZARD_STATE._systemModelExpandedId = (WIZARD_STATE._systemModelExpandedId === id) ? null : id;
+    _wizardRenderSystemModelModal();
+}
+
 // パターンを1つ選択: 詳細mdを取得してsystemModelHintへ保持し、テーブル候補抽出へ進む
 async function wizardPickSystemModel(id) {
     closeModal();
     WIZARD_STATE.systemModelHint = null;
+    WIZARD_STATE._systemModelExpandedId = null;
     const detailRes = await window.vja.wizard.getSystemModelDetail(id);
     if (detailRes && detailRes.ok) WIZARD_STATE.systemModelHint = detailRes.detail;
     wizardExtractTableCandidates();
@@ -640,6 +658,7 @@ async function wizardPickSystemModel(id) {
 function wizardSkipSystemModel() {
     closeModal();
     WIZARD_STATE.systemModelHint = null;
+    WIZARD_STATE._systemModelExpandedId = null;
     wizardExtractTableCandidates();
 }
 
@@ -670,10 +689,12 @@ function _wizardParseJsonArray(text) {
 
 // Q&A履歴からAIにテーブル候補を抽出させ、選択モーダルを表示する
 // （フォーム一覧はまだ存在しないため、Q&A履歴のみを材料にする）
+// 2026-09-13: systemModelHintの受け渡しを撤去した（理由はWIZARD_DECOMPOSE_FORMS_SYS_PROMPT
+// のAIメモを参照。テーブル候補はQ&A履歴のみで判断する狭いタスクに留める）。
 async function wizardExtractTableCandidates() {
     const historyCtx = _wizardBuildQaHistoryCtx();
     const sysPrompt = _PROMPT_DEF.WIZARD_TABLE_CANDIDATES_SYS_PROMPT();
-    const userPrompt = _PROMPT_DEF.WIZARD_TABLE_CANDIDATES_USER_PROMPT(historyCtx, WIZARD_STATE.systemModelHint);
+    const userPrompt = _PROMPT_DEF.WIZARD_TABLE_CANDIDATES_USER_PROMPT(historyCtx);
 
     let tables = null;
     await runAiGenerate({
@@ -862,14 +883,50 @@ async function wizardProceedToFormDecompose() {
     await wizardDecomposeForms();
 }
 
+// テーブル名（snake_case等）をPascalCase識別子へ変換する（英数字・アンダースコア・
+// ハイフン・空白区切りを単語境界とみなす）
+function _wizardTableNameToPascal(name) {
+    return String(name || "")
+        .split(/[_\-\s]+/)
+        .filter(Boolean)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join("") || "Table";
+}
+
+// 確定済みテーブル一覧から「1テーブル=一覧画面+入力画面」の画面スロットを機械的に
+// 確定する（AIには渡さず、コード側で確定する。理由はprompt-def.jsのAIメモ参照）。
+function _wizardBuildScreenSkeleton(tables) {
+    const skeleton = [];
+    (tables || []).forEach((t) => {
+        const pascal = _wizardTableNameToPascal(t.name);
+        skeleton.push({ formName: pascal + "ListForm", table: t.name, kind: "list" });
+        skeleton.push({ formName: pascal + "Form", table: t.name, kind: "input" });
+    });
+    return skeleton;
+}
+
+// 画面スロット一覧をプロンプト差し込み用のテキストに整形する
+function _wizardBuildScreenSkeletonText(skeleton) {
+    return skeleton.map((s, i) => (i + 1) + '. formName="' + s.formName + '" — ' +
+        (s.kind === "list" ? "list screen" : "input (create+edit) screen") +
+        ' for table "' + s.table + '"'
+    ).join("\n");
+}
+
 // Q&A履歴＋確定済みテーブル（カラム込み）からAIにフォーム一覧を分解させ、確認モーダルを表示する。
-// 選択済みの画面サイズ（formSize）も渡し、サイズが小さいほど1画面に項目を
-// 詰め込みすぎないよう画面数の分割を意識させる。
+// 2026-09-13設計変更: 画面数・どのテーブルを使うかという構造判断はAIに委ねず、
+// _wizardBuildScreenSkeleton()でコード側が機械的に確定する。AIの仕事は各スロットの
+// 日本語文言（formTitle/description/docDraft）を埋めることだけに縮小した
+// （詳細はENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPTのAIメモ参照）。
 async function wizardDecomposeForms() {
     const historyCtx = _wizardBuildQaHistoryCtx();
-    const tablesCtx = buildTablesCtxText(getProjectData().tables || []);
-    const size = WIZARD_STATE.formSize || { label: "小", w: 640, h: 420 };
-    const sysPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_SYS_PROMPT({ tablesCtx, formW: size.w, formH: size.h, formSizeLabel: size.label, systemModelHint: WIZARD_STATE.systemModelHint });
+    const tables = getProjectData().tables || [];
+    const tablesCtx = buildTablesCtxText(tables);
+    const skeleton = _wizardBuildScreenSkeleton(tables);
+    const screenSkeletonText = skeleton.length > 0
+        ? _wizardBuildScreenSkeletonText(skeleton)
+        : "(確定済みテーブルが無いため、固定スロットはありません。[Q&A History]から必要な画面のみを判断してください)";
+    const sysPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_SYS_PROMPT({ tablesCtx, screenSkeletonText, systemModelHint: WIZARD_STATE.systemModelHint });
     const userPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_USER_PROMPT(historyCtx);
 
     let forms = null;
@@ -882,8 +939,15 @@ async function wizardDecomposeForms() {
         onError: async () => { },
     });
 
-    if (!forms || forms.length === 0) {
-        showToast("画面構成の生成に失敗しました。もう一度お試しください");
+    // 機械的検証: 確定済みスロットのformNameが全て結果に含まれているかを確認する。
+    // AIの言い換え作業で欠落・改変された場合は失敗として扱い、やり直しを促す
+    // （プロンプト文言だけに頼らず、コード側で強制する）。
+    const returnedNames = new Set((forms || []).map((f) => f.formName));
+    const missing = skeleton.filter((s) => !returnedNames.has(s.formName));
+    if (!forms || forms.length === 0 || missing.length > 0) {
+        showToast(missing.length > 0
+            ? "画面構成の生成結果に確定テーブルの画面（" + missing.map((s) => s.formName).join("、") + "）が含まれていません。もう一度お試しください"
+            : "画面構成の生成に失敗しました。もう一度お試しください");
         WIZARD_STATE.step = 5; // カラム確認モーダルへ戻すため、ステップインジケーターも合わせて戻す
         _wizardRenderColumnsReviewModal();
         return;
@@ -1052,6 +1116,6 @@ Object.assign(window, {
     wizardEditTableColumns, wizardProceedToFormDecompose, wizardDecomposeForms, wizardConfirmAndGenerate,
     wizardOfferResume, wizardDiscardProgress, wizardResumeFromProgress,
     wizardGoBackToQa, wizardGoBackToSystemModel, wizardGoBackToTableCandidates, wizardGoBackToColumnsReview,
-    wizardPickSystemModel, wizardSkipSystemModel,
+    wizardPickSystemModel, wizardSkipSystemModel, wizardToggleSystemModelDetail,
     WIZARD_STATE,
 });
