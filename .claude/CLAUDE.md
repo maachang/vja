@@ -291,6 +291,18 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 - **原因**: `layout_pattern:`行をYAML本文から抜き出し`getProjectData().formLayoutPattern`へ反映する処理は、既存のUI手動操作版（`vja-yaml-editor.js`の`formDesignTextToYamlGenerate()`）にしか実装されておらず、ウィザード専用のDOM非依存版関数`_wizardGenerateFormYaml()`（`vja-wizard.js`）にはこの抽出処理が無かった（ウィザード実装当初からの単純な実装漏れ）。さらに`wizardConfirmAndGenerate()`のフォーム一括生成ループでも、`formDesignDraft`/`formDesignDocDraft`は各フォームへ同期させていたが`formLayoutPattern`だけ同期させる処理が漏れていた。
 - **対応**: `_wizardGenerateFormYaml()`の戻り値を`{ yaml, layoutPatternId }`に変更し、既存UI版と同じ`layout_pattern:`抽出ロジックを追加。`wizardConfirmAndGenerate()`のループ内・ループ後の同期処理にも`formLayoutPattern`を追加した（`formDesignDraft`/`formDesignDocDraft`と全く同じ同期パターン）。
 
+## 続報5（2026-09-14）: メニュー画面の自動生成（VB6アプリ的な導線の雛形）
+
+project2をウィザードで作成→YAMLドラフト見直し→画面生成→手直しして整えた結果をユーザーが「理想形」として提示。比較して判明した改善点のうち、まず「管理単位（テーブル）が複数ある場合の起点となるメニュー画面が無い」点に対応した（画面ごとのサイズ差別化・履歴系テーブルの「一覧+詳細閲覧」化は将来検討、今回は対象外）。
+
+- **対応**: `_wizardBuildScreenSkeleton()`（`vja-wizard.js`）で、確定テーブルが2つ以上ある場合、`kind: "menu"`の`MenuForm`スロットを先頭に機械的に追加する（1テーブルのみの場合はメニューを挟む意味が薄いため追加しない）。`ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`（`prompt-def.js`）に、
+  - 一覧スロットのdocDraftには必ず「新規登録」ボタンを含めること
+  - 入力スロットのdocDraftには必ず「戻る」ボタンを含めること
+  - `menu`スロットのdocDraftは入力欄・datagrid無しで、各テーブルの一覧画面と同じ日本語表記のボタンのみで構成すること（Few-Shot例で「正しい例（各画面名のボタン）」と「誤った例（新規登録/戻る/終了という汎用CRUD語で、実際にはどの画面にも遷移できない）」を対比提示。当初モデルは後者を出力しがちだったため追加）
+  という指示を追加した
+- ボタンクリック時の実際の画面遷移処理（イベントコード）自体はこのステップでは生成しない。あくまで雛形として遷移用ボタンウィジェットが配置されるところまでで、実装はイベント処理側で後から人間が行う前提（ユーザー自身「整形は人の手でやれば良い、雛形が欲しい」との方針）
+- 実LLM(192.168.0.235)で3テーブル構成（daily_receipts/sales_history/items）を検証。MenuFormが各テーブルの一覧画面へのボタン＋終了ボタンで正しく生成され、後工程のYAML化でもfields無し・tables無し・4アクションのみの画面として正しく変換されることを確認した
+
 # AI雛形生成機能 総覧（2026-08-08時点でカバーする主要対象）
 
 vjaの中核コンセプトである「AIに雛形を作ってもらい、それを土台に人間が仕上げる」という導線が、アプリ開発に必要な主要な構成要素すべてに行き渡った状態（2026-08-08時点）。各詳細は本ファイル内の対応する節を参照。

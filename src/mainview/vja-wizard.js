@@ -526,6 +526,10 @@ function _wizardTableNameToPascal(name) {
 
 // 確定済みテーブル一覧から「1テーブル=一覧画面+入力画面」の画面スロットを機械的に
 // 確定する（AIには渡さず、コード側で確定する。理由はprompt-def.jsのAIメモ参照）。
+// 2026-09-14追加: 管理単位（テーブル）が2つ以上ある場合、VB6アプリでよくある
+// 「起点となるメニュー画面（各一覧画面への遷移ボタンのみ）」スロットを先頭に
+// 機械的に1つ追加する。画面数が1つしかない場合はメニューを挟む意味が薄いため
+// 追加しない。
 function _wizardBuildScreenSkeleton(tables) {
     const skeleton = [];
     (tables || []).forEach((t) => {
@@ -533,15 +537,24 @@ function _wizardBuildScreenSkeleton(tables) {
         skeleton.push({ formName: pascal + "ListForm", table: t.name, kind: "list" });
         skeleton.push({ formName: pascal + "Form", table: t.name, kind: "input" });
     });
+    if ((tables || []).length >= 2) {
+        skeleton.unshift({ formName: "MenuForm", table: null, kind: "menu", tables: (tables || []).map((t) => t.name) });
+    }
     return skeleton;
 }
 
 // 画面スロット一覧をプロンプト差し込み用のテキストに整形する
 function _wizardBuildScreenSkeletonText(skeleton) {
-    return skeleton.map((s, i) => (i + 1) + '. formName="' + s.formName + '" — ' +
-        (s.kind === "list" ? "list screen" : "input (create+edit) screen") +
-        ' for table "' + s.table + '"'
-    ).join("\n");
+    return skeleton.map((s, i) => {
+        if (s.kind === "menu") {
+            return (i + 1) + '. formName="' + s.formName + '" — menu/navigation screen (no table, no input fields). ' +
+                'It needs exactly one navigation button per table below, linking to that table\'s list screen slot (reuse the SAME Japanese wording you use for that slot\'s formTitle elsewhere in this output): ' +
+                s.tables.map((n) => '"' + n + '"').join(", ");
+        }
+        return (i + 1) + '. formName="' + s.formName + '" — ' +
+            (s.kind === "list" ? "list screen" : "input (create+edit) screen") +
+            ' for table "' + s.table + '"';
+    }).join("\n");
 }
 
 // アプリ概要＋確定済みテーブル（カラム込み）からAIにフォーム一覧を分解させ、確認モーダルを表示する。
