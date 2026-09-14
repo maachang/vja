@@ -111,11 +111,72 @@
         return FORM_LAYOUT_PATTERNS.find((p) => p.id === id) || null;
     }
 
+    // pattern.boxes（0-100の割合値、role名=入力/表示/ボタン）を、実フォームサイズ
+    // (formW, formH)に対する絶対px座標のバウンディングボックスへ変換する。
+    // labelが空のboxは「直前に出現した非空labelの続き（値欄側）」とみなし、
+    // その領域へ併合する（例: stackedInputBottomButtonsパターンの
+    // [{label:"入力", w:20}, {label:"", w:74}] は、ラベル欄+値欄で1つの
+    // 「入力」行を表しているため、union bounding boxとしては1つの幅広い領域になる）。
+    function _buildLayoutRegionsFromPattern(pattern, formW, formH) {
+        const regions = {};
+        let lastLabel = null;
+        (pattern.boxes || []).forEach((b) => {
+            const px = {
+                x1: (b.x / 100) * formW, y1: (b.y / 100) * formH,
+                x2: ((b.x + b.w) / 100) * formW, y2: ((b.y + b.h) / 100) * formH,
+            };
+            const label = b.label || lastLabel;
+            if (!label) return;
+            if (!regions[label]) {
+                regions[label] = px;
+            } else {
+                regions[label].x1 = Math.min(regions[label].x1, px.x1);
+                regions[label].y1 = Math.min(regions[label].y1, px.y1);
+                regions[label].x2 = Math.max(regions[label].x2, px.x2);
+                regions[label].y2 = Math.max(regions[label].y2, px.y2);
+            }
+            if (b.label) lastLabel = b.label;
+        });
+        return regions;
+    }
+
+    // 選択中のレイアウトパターンを、AIへ渡す「厳格な配置エリア（px座標）」の
+    // プロンプト断片へ変換する。従来は「配置構造を言葉で説明した1文」を
+    // addPromptに足すだけで、AIの解釈に配置の正確さが左右されていた
+    // （2026-09-14: ユーザーから「設定しても反映が微妙」との指摘）。
+    // pattern.boxesは元々SVGダイアグラム描画用の座標データだが、これを
+    // 実フォームサイズのpx座標バウンディングボックスに変換し、「役割ごとの
+    // ウィジェットは必ずこの矩形内に収めよ」という具体的な数値制約として
+    // 渡すことで、AIの解釈に頼らず配置を強制する。
+    // patternIdが未選択、または該当パターンが見つからない場合は空文字を返す。
+    function buildLayoutRegionsPromptText(patternId, formW, formH) {
+        const pattern = getFormLayoutPatternById(patternId);
+        if (!pattern) return "";
+        const regions = _buildLayoutRegionsFromPattern(pattern, formW, formH);
+        const roleDesc = {
+            "入力": "input-role widgets (labels + their inputtype/selectBox/checkbox/etc., i.e. everything EXCEPT buttons and display areas)",
+            "表示": "display-role widgets (datagrid, read-only summary/list areas)",
+            "ボタン": "button-role widgets",
+        };
+        const lines = Object.keys(regions).map((label) => {
+            const r = regions[label];
+            return "- " + (roleDesc[label] || label) + ": x=" + Math.round(r.x1) + "-" + Math.round(r.x2) +
+                ", y=" + Math.round(r.y1) + "-" + Math.round(r.y2) +
+                " (STRICT bounding box — every widget of this role MUST be placed fully inside these bounds, not merely near them)";
+        });
+        if (lines.length === 0) return "";
+        return "\n\n[Strict Layout Regions — user-selected layout image, MUST be followed exactly]\n" +
+            "The user selected the layout image \"" + pattern.label + "\" (" + pattern.desc + "). It has been converted into the following strict pixel regions for THIS form's actual size (" + formW + "x" + formH + "px). Place each widget according to its role into the matching region below:\n" +
+            lines.join("\n") +
+            "\n[IMPORTANT] These regions define WHERE each role of widget goes — they do NOT define WHICH widgets to create. Widget types/count still come only from the YAML's 入力項目/参照テーブル/アクション項目 as usual. If a region above has no matching widgets to place (e.g. no button was requested), simply ignore that region. Widgets must still obey the form's overall width/height bounds and the no-overlap rule even when placed inside these regions.";
+    }
+
     // グローバル展開
     Object.assign(window, {
         FORM_LAYOUT_PATTERNS,
         buildLayoutPatternDiagramSvg,
         getFormLayoutPatterns,
         getFormLayoutPatternById,
+        buildLayoutRegionsPromptText,
     });
 })();

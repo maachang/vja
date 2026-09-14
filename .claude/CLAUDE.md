@@ -163,6 +163,7 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
   - `formDesignDraft`/`formDesignDocDraft`は各フォーム（`getProjectData().forms[idx]`）ごとに保持され、他フォームの内容が混入しないよう`syncCurForm()`/`commitFormDesignDraft()`で同期・書き戻しされる
   - **`参照テーブル:`（YAML中の`tables:`）は必須項目**（2026-09-13明記）: 以前は「関係があれば含める」という任意扱いの文言だったため、フィールドはテーブルのカラムから正しく導出されているのに`tables:`が空のまま生成されるケースがあった。`tables:`が無いと、後工程（画面レイアウト生成・実際のウィジェット配置）で「その画面がどのテーブルを読み書きする入力画面なのか、単なるテーブル一覧表示なのか」の区別があいまいになる。`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`に`[What Goes In "tables"]`節を追加し、「fieldsのいずれかがテーブルのカラムに由来する場合、tablesにそのテーブル名を含めるのは必須（省略可能な飾りではない）」と明記した
   - プロンプト定義: `prompt-def.js` の `ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT` / `ENG_FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT`
+- **「🖼 レイアウト」タブ（レイアウトイメージ選択）を厳格なpx座標制約として反映**（2026-09-14）: 従来、選択したレイアウトパターン（`form-layout-patterns.js`の`FORM_LAYOUT_PATTERNS`）は「配置構造を言葉で説明した1文」をAIへの補足指示に足すだけで、実際の反映精度がAIの解釈に左右され「設定しても反映が微妙」という指摘があった。各パターンが元々持つ`boxes`（SVGダイアグラム描画用の0-100割合座標、役割=入力/表示/ボタン）を、`buildLayoutRegionsPromptText(patternId, formW, formH)`（`form-layout-patterns.js`）でフォーム実サイズのpx座標バウンディングボックスへ変換し、「この役割のウィジェットは必ずこの矩形内に収めよ」という具体的な数値制約として渡すよう変更した（UI手動操作版`formDesignAiGenerate()`・ウィザード版`_wizardGenerateFormLayout()`の両方に適用。ウィザード側は従来この指示自体を一切渡していなかった実装漏れもあわせて修正）。実LLM(192.168.0.235)で検証し、全ウィジェットが指定領域内に正確に収まることを確認済み
 
 # イベントYAMLドラフト自動生成機能 (Text to YAML)
 

@@ -4082,11 +4082,14 @@ async function formDesignAiGenerate() {
 
     // 選択中のレイアウトイメージがあれば、YAMLテキストには含めず、
     // AIへの補足指示としてのみ追加する（"🖼 レイアウト"タブでの選択）。
-    const layoutPattern = getFormLayoutPatternById(getProjectData().formLayoutPattern);
-    const layoutHint = layoutPattern
-        ? "\n\n【画面レイアウトイメージ】ユーザーが選択した以下の配置構造（入力/表示/ボタンエリアの位置関係）に近い形でウィジェットを配置すること: " + layoutPattern.desc +
-          "\n※これは大まかな配置構造の指定であり、ウィジェットの種類・有無を指定するものではない。実際にどんなウィジェット（datagrid等を含む）を配置するかは、あくまで上記の入力項目・参照テーブルの記載内容のみに従うこと。YAMLに記載の無いウィジェットを、このレイアウトイメージのために新たに追加してはならない。"
-        : "";
+    // 2026-09-14: 従来は「配置構造を言葉で説明した1文」を渡すだけで、実際の
+    // 反映精度がAIの解釈に左右され「設定しても微妙」という指摘があったため、
+    // buildLayoutRegionsPromptText()でpx座標の厳格な配置エリアへ変換して渡すよう変更した。
+    const layoutHint = buildLayoutRegionsPromptText(
+        getProjectData().formLayoutPattern,
+        getProjectData().formCfg.w,
+        getProjectData().formCfg.h
+    );
     const addPrompt = ($("fd-prompt-in")?.value || "") + layoutHint;
     const btn = $("fd-gen-btn");
     if (btn) btn.disabled = true;

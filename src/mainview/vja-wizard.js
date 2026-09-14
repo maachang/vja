@@ -681,7 +681,7 @@ async function wizardConfirmAndGenerate() {
         f.formLayoutPattern = layoutPatternId;
         getProjectData().formDesignDraft = yaml; // 同期を保つ（次のswitchForm()呼び出しで消されないように）
         getProjectData().formLayoutPattern = layoutPatternId;
-        const ok = await _wizardGenerateFormLayout(yaml);
+        const ok = await _wizardGenerateFormLayout(yaml, layoutPatternId);
         if (ok) successCount++;
     }
 
@@ -752,16 +752,19 @@ async function _wizardGenerateFormYaml(docDraft) {
 }
 
 // 1フォーム分の「YAML → 画面レイアウト（ウィジェット配置）」生成（DOM非依存版）
-async function _wizardGenerateFormLayout(yamlText) {
+// 2026-09-14: layoutPatternIdを引数に追加し、UI手動操作版（formDesignAiGenerate()、
+// vja-yaml-editor.js）と同じ「🖼 レイアウト」の厳格な配置エリア指示を渡すようにした
+// （従来は空文字のまま渡しており、ウィザード経由の生成ではlayout_pattern選択の効果が
+// 一切反映されていなかった）。
+async function _wizardGenerateFormLayout(yamlText, layoutPatternId) {
     const { tables } = parseFormDesignYaml(yamlText);
     const targetTables = getProjectData().tables.filter((t) => tables.includes(t.name));
     const tablesCtx = buildTablesCtxText(targetTables);
-    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_SYS_PROMPT({
-        formW: getProjectData().formCfg.w,
-        formH: getProjectData().formCfg.h,
-        tablesCtx,
-    });
-    const userPrompt = _PROMPT_DEF.FORM_DESIGN_USER_PROMPT(yamlText, "");
+    const formW = getProjectData().formCfg.w;
+    const formH = getProjectData().formCfg.h;
+    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_SYS_PROMPT({ formW, formH, tablesCtx });
+    const layoutHint = buildLayoutRegionsPromptText(layoutPatternId, formW, formH);
+    const userPrompt = _PROMPT_DEF.FORM_DESIGN_USER_PROMPT(yamlText, layoutHint);
 
     let items = null;
     await runAiGenerate({
