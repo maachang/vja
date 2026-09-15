@@ -110,6 +110,19 @@
 `
         },
         {
+            id: "menu",
+            label: "🗂️ メニュー画面",
+            layoutPatternId: "stackedButtonsOnly",
+            yaml: `# メニュー画面定義
+説明: 各業務画面へ遷移するためのボタンのみを配置する起点画面
+
+アクション項目:
+  - 画面Aを開くボタン
+  - 画面Bを開くボタン
+  - 終了ボタン
+`
+        },
+        {
             id: "dashboard",
             label: "📊 ダッシュボード・集計画面",
             layoutPatternId: "topInputMidMultiDisplayBottomDisplay",
