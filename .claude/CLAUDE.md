@@ -120,21 +120,24 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
   - 画面関連: `vja_add_widget`/`vja_delete_widget`/`vja_get_widgets`/`vja_select_widget`/`vja_get_props_html`（後者2つはプロパティパネル・イベントタブの描画結果HTMLを取得し、画面を目視しなくても構造検証できるようにするためのもの）
   - YAML関連: `vja_save_yaml`/`vja_delete_yaml`/`vja_get_overrides`/`vja_format_js`（Prettier整形機能の検証用、`formatJsCode()`を直接呼び出す）
   - Validate関連: `vja_get_validations`/`vja_save_validation`/`vja_delete_validation`/`vja_get_tables`/`vja_save_table`/`vja_delete_table`/`vja_generate_ddl`
-  - ウィザードAI関連（2026-09-18実装）: `vja_wizard_set_ai_mock`/`vja_wizard_decompose_forms`/`vja_wizard_generate_form_yaml`/`vja_wizard_generate_form_layout`。詳細は下記「ウィザードAI呼び出しの自動テスト化」節参照
+  - AI生成フロー関連（2026-09-18実装）: `vja_wizard_set_ai_mock`/`vja_wizard_decompose_forms`/`vja_wizard_generate_form_yaml`/`vja_wizard_generate_form_layout`/`vja_table_ai_generate_schema`/`vja_validation_ai_generate_rules`。詳細は下記「AI生成フローの自動テスト化」節参照
 - `VJA_TEST_MODE`未設定時はテスト用HTTPサーバー自体が起動しないため、通常起動には影響しない
 - テスト用ハンドラは、確認ダイアログやDOM読み取りを伴う既存のUI関数（`deleteYaml`/`validSave`/`tblSave`等）は自動化に不向きなため使わず、データ検証・操作ロジックのみを`src/mainview/bridge.ts`側に直接再実装している（`_testAddWidget`等）
 - 2026-08-01時点でPhase 1（画面関連・YAML関連）・Phase 2（Validate関連: バリデーション定義・テーブル/カラム定義・DDL生成）まで実装済み
 - 以下1点は「現状テストで必要ない」との理由で対応見送り（詳細は`.claudeWork/mcp-webview-test-idea.md`参照）
   - 保存・オープン・実行・コンパイルフロー全体の自動テスト化（ネイティブファイルダイアログが絡み、バイパス用の専用ルート設計が必要になる）
-- AI生成フローの自動テスト化は、当初「ローカルLLM前提・生成結果が非決定的なため判定基準の設計自体が未確定」として見送っていたが、2026-09-18にウィザードのAI呼び出し部分（`wizardDecomposeForms`等）に限り、AI応答をモックする方式で解消し実装済み（下記節参照）。それ以外のAI生成フロー（`yamlAiGenerate`等）は引き続き未対応
+- AI生成フローの自動テスト化は、当初「ローカルLLM前提・生成結果が非決定的なため判定基準の設計自体が未確定」として見送っていたが、2026-09-18にAI応答をモックする方式で解消し、一部関数に実装済み（下記節参照）
 
-## ウィザードAI呼び出しの自動テスト化（2026-09-18実装）
+## AI生成フローの自動テスト化（2026-09-18実装）
 
 - **狙い**: 従来「AI生成結果が非決定的で判定基準が未確定」として見送っていたAI生成フローの自動テスト化を、AI応答自体をモックすることで実現。実AIの生成品質評価ではなく、「固定のAI応答に対しパース・反映ロジックが正しく動くか」を検証する回帰テストとして構成した
-- **モック機構**: `runAiGenerate()`（`vja-modal.js`）の冒頭で`window.__vjaTestAiMockQueue`（配列）を確認し、モック応答が積まれていればFIFOで1件消費して実際の`window.vja.fetch`呼び出しをスキップする。キューが空なら従来通り実AI APIを呼ぶため、通常起動時（`VJA_TEST_MODE`未設定時含む）には一切影響しない
-- **テスト対象関数**: `wizardDecomposeForms()`（画面構成分解）、`wizardGenerateFormYaml()`（画面デザインYAMLドラフト生成、旧`_wizardGenerateFormYaml`から命名規約に沿ってリネーム・グローバル展開）、`wizardGenerateFormLayout()`（YAML→ウィジェット配置JSON生成、旧`_wizardGenerateFormLayout`から同様にリネーム）
-- **テストハンドラ**（`bridge.ts`）: `_testSetAiMockQueue`/`_testWizardDecomposeForms`/`_testWizardGenerateFormYaml`/`_testWizardGenerateFormLayout`。`_testWizardDecomposeForms`の`tables`省略時は既存の`getProjectData().tables`をそのまま使う（独断の初期値補完はしていない）
+- **モック機構**: `runAiGenerate()`（`vja-modal.js`、AI生成の全関数が経由する共通実行関数）の冒頭で`window.__vjaTestAiMockQueue`（配列）を確認し、モック応答が積まれていればFIFOで1件消費して実際の`window.vja.fetch`呼び出しをスキップする。キューが空なら従来通り実AI APIを呼ぶため、通常起動時（`VJA_TEST_MODE`未設定時含む）には一切影響しない。このフックは`runAiGenerate()`共通部にあるため、対応済みの関数以外にも理論上は効くが、テストハンドラ（`bridge.ts`の`_testXxx`）が無い関数はMCP経由では呼び出せない
+- **テストハンドラ追加済みの関数（`bridge.ts`）**:
+  - `_testSetAiMockQueue({responses})`: モック応答キューをセット（他の全テストハンドラの前提として必須）
+  - ウィザード系: `_testWizardDecomposeForms`/`_testWizardGenerateFormYaml`/`_testWizardGenerateFormLayout`（対象関数は`wizardDecomposeForms()`/`wizardGenerateFormYaml()`/`wizardGenerateFormLayout()`。後二者は旧`_wizardGenerateFormYaml`/`_wizardGenerateFormLayout`から命名規約に沿ってリネーム・グローバル展開）
+  - テーブル/バリデーション系: `_testTblAiGenerateSchema`/`_testValidAiGenerateRules`（対象関数は`tblAiGenerateSchema()`/`validAiGenerateRules()`、`vja-table-validation.js`）。両関数は編集中データがDOM要素ではなく`TABLE_MODAL.edit`/`VALID_MODAL.edit`というJSオブジェクトに集約されているため、元関数を直接呼ばずテストハンドラ側で同等ロジック（プロンプト生成→`runAiGenerate`→JSON.parse→サニタイズ）を再現する設計にした。`_testValidAiGenerateRules`は元関数にある「UI編集用にrulesを最低3件までpaddingする」処理は意図的に含めていない（テストの関心事はAI生成結果のパース・サニタイズ検証であり、UI表示用の空行埋めではないため）
 - **利用時の注意**: `wizardDecomposeForms()`は成功時に確認モーダルを描画する副作用が残っている（テストでは無視して良い）。`wizardGenerateFormLayout()`は実際にウィジェットを配置するため、テスト時は事前に状態をクリーンにしておくこと
+- **未対応の関数**（`yamlAiGenerate`/`formDesignAiGenerate`/`formDesignTextToYamlGenerate`/`textToYamlGenerate`/`manualRetryAiFix`/`extRtGenDoc`）: いずれもDOM読み書き（textarea・ボタン状態制御・モーダル再描画・ウィジェット全削除＋`fullRedraw()`等）がロジック本体に密結合しており、テストハンドラ追加には「ロジック部分をDOM操作から分離する」設計変更（実質リファクタ）が前提になる。特に`yamlAiGenerate`（内部リトライ・複数反映先分岐）と`formDesignAiGenerate`（ウィジェット全削除＋画面再描画）は既存動作を壊すリスクが大きく未着手
 - MCPクライアント経由の実疎通テストは実装時点では未実施（ビルド/起動が通ることと`bun test`の通過のみ確認済み）
 
 ## 実行手順
@@ -348,7 +351,7 @@ vjaの中核コンセプトである「AIに雛形を作ってもらい、それ
 - 【AI生成の既知の混同要因】対応済み（2026-09-07）。prompt-def.js内で「テーブル」という言葉が、DBのテーブル（vja.db.*）とdatagridタグのウィジェット（vja.widget.set/setTableData等）の両方を指して使われており、ローカルLLMがYAML定義中の「テーブル」という語からどちらの操作か混同し、意図しない実装（ウィジェット側を触るべき所でDB操作をしようとする等）をするケースが確認されていた。datagridウィジェット側を指す箇所（8箇所）を「データグリッド」に統一する用語の書き分けで対応済み。DBテーブルを指す箇所（`利用テーブル:`等）は変更していない。
 - 既存プロジェクトの後方互換性（旧検証:記法のマイグレーション）は「今は自分しか使っていない」との理由で対応見送り
 - YAML/JSのロールバック機能は対応済み（2026-09-11実装。詳細は「イベントYAML/JSロールバック機能（スナップショット履歴）」節を参照）
-- 【AI生成フローの自動テスト化】ウィザード部分は対応済み（2026-09-18実装。詳細は「ウィザードAI呼び出しの自動テスト化」節を参照）。ウィザード以外のAI生成フロー（`yamlAiGenerate`等、画面デザイン/イベントYAML/テーブル/バリデーションの各AI生成）は同じモック方式を横展開すれば実現できる見込みだが未着手
+- 【AI生成フローの自動テスト化】ウィザード（`wizardDecomposeForms`等）・テーブルスキーマ生成（`tblAiGenerateSchema`）・バリデーションルール生成（`validAiGenerateRules`）は対応済み（2026-09-18実装。詳細は「AI生成フローの自動テスト化」節を参照）。残り（`yamlAiGenerate`/`formDesignAiGenerate`/`formDesignTextToYamlGenerate`/`textToYamlGenerate`/`manualRetryAiFix`/`extRtGenDoc`）はDOM読み書きがロジック本体に密結合しており、テストハンドラ追加にはDOM操作とロジックを分離するリファクタが前提になるため未着手
 - 【将来対応検討】生成コードの日本語解説機能: AIがイベント処理コードを生成した後、続けて「このコードは何をしているか」を日本語で解説させる。VBA経験者・初学者向けの学習導線（README記載の「登竜門」コンセプト）に直結する機能。まだ未着手・仕様未確定
 - 【将来対応検討】vjaランタイムAPIの拡充候補（優先度低・未着手）:
   - 印刷・帳票機能（vja.io.print/printElementはwindow.print()呼び出しのみで、ページ設定・ヘッダーフッター・複数レコード帳票レイアウトが無い）
