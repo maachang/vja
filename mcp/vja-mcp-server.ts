@@ -297,5 +297,49 @@ server.registerTool(
     async (args) => toToolResult(await callVja("testGenerateDdl", args)),
 );
 
+// ── ウィザードAI呼び出し関連（AI応答をモック化してテストする） ────────
+server.registerTool(
+    "vja_wizard_set_ai_mock",
+    {
+        description: "ウィザードのAI呼び出し（wizardDecomposeForms等）を実AI無しでテストするため、モック応答をFIFOキューに積む（1呼び出しにつき先頭を1つ消費。空なら通常通り実AIを呼ぶ）",
+        inputSchema: { responses: z.array(z.string()).describe("AI応答として順番に返す文字列（生成済みJSON/YAML文字列そのもの）") },
+    },
+    async (args) => toToolResult(await callVja("testSetAiMockQueue", args)),
+);
+
+server.registerTool(
+    "vja_wizard_decompose_forms",
+    {
+        description: "ウィザードの画面構成分解（wizardDecomposeForms）を呼び出し、結果のformPlanを返す。事前にvja_wizard_set_ai_mockでモック応答（画面構成JSON配列の文字列）を積んでおくこと",
+        inputSchema: {
+            appOverview: z.string().describe("アプリ概要ステップの自由記述テキスト"),
+            tables: z.array(z.any()).optional().describe("確定済みテーブル一覧（省略時は現在のプロジェクトデータのtablesを使う）"),
+            systemModelHint: z.string().nullable().optional().describe("システムモデル選択ステップで選んだ骨格ヒント（省略時はnull）"),
+        },
+    },
+    async (args) => toToolResult(await callVja("testWizardDecomposeForms", args)),
+);
+
+server.registerTool(
+    "vja_wizard_generate_form_yaml",
+    {
+        description: "ウィザードの1フォーム分「画面デザインYAMLドラフト→YAML」生成（wizardGenerateFormYaml、DOM非依存版）を呼び出す。事前にvja_wizard_set_ai_mockでモック応答（YAML文字列）を積んでおくこと",
+        inputSchema: { docDraft: z.string().describe("画面デザインYAMLドラフト（依頼文）") },
+    },
+    async (args) => toToolResult(await callVja("testWizardGenerateFormYaml", args)),
+);
+
+server.registerTool(
+    "vja_wizard_generate_form_layout",
+    {
+        description: "ウィザードの1フォーム分「YAML→画面レイアウト（ウィジェット配置）」生成（wizardGenerateFormLayout、DOM非依存版）を呼び出す。事前にvja_wizard_set_ai_mockでモック応答（ウィジェット配置JSON文字列）を積んでおくこと",
+        inputSchema: {
+            yamlText: z.string().describe("画面デザインYAML"),
+            layoutPatternId: z.string().optional().describe("「🖼 レイアウト」タブで選択したレイアウトパターンid（省略可）"),
+        },
+    },
+    async (args) => toToolResult(await callVja("testWizardGenerateFormLayout", args)),
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);

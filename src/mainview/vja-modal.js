@@ -86,6 +86,21 @@ function cancelAiGenerate() {
 // - onError: エラー時のコールバック（省略可）
 async function runAiGenerate(options) {
     const { systemPrompt, userPrompt, onSuccess, onCancel, onError, loadingMsg, temperatureOverride } = options;
+    // テスト自動化用フック: VJA_TEST_MODEでwindow.__vjaTestAiMockQueue（配列）に
+    // モック応答が積まれている場合、実際のAI API呼び出しをスキップしてそれを使う。
+    // FIFOで1回の呼び出しにつき先頭を1つ取り出す。キューが空なら従来通り実APIを叩く
+    // （通常起動時はこのキュー自体をセットしないため無害）。
+    if (Array.isArray(window.__vjaTestAiMockQueue) && window.__vjaTestAiMockQueue.length > 0) {
+        const generated = window.__vjaTestAiMockQueue.shift();
+        window.vja?.log?.debug?.("[AI][MOCK] mocked response used. remain=" + window.__vjaTestAiMockQueue.length);
+        try {
+            if (onSuccess) await onSuccess(generated);
+        } catch (e) {
+            window.vja?.log?.error?.("[AI][MOCK] onSuccess failed: " + e.message);
+            if (onError) await onError(e);
+        }
+        return;
+    }
     const hasApiKey = !!getProjectData().aiConfig.apiKey;
     const isRouterOn = !!getProjectData().aiConfig.routerMode;
     const endpoint = hasApiKey ? "https://api.openai.com" : getProjectData().aiConfig.endpoint;

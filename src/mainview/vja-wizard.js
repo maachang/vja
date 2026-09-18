@@ -674,14 +674,14 @@ async function wizardConfirmAndGenerate() {
         getProjectData().formDesignDocDraft = f.formDesignDocDraft || "";
         getProjectData().formLayoutPattern = f.formLayoutPattern || ""; // 同上（レイアウトタブの選択状態も同じ同期が必要）
         showToast("フォーム" + (i + 1) + "/" + total + ": " + f.cfg.title + " を生成中…");
-        const genResult = await _wizardGenerateFormYaml(f.formDesignDocDraft);
+        const genResult = await wizardGenerateFormYaml(f.formDesignDocDraft);
         if (!genResult) continue; // 失敗した場合はこのフォームは空のまま次へ進む
         const { yaml, layoutPatternId } = genResult;
         f.formDesignDraft = yaml;
         f.formLayoutPattern = layoutPatternId;
         getProjectData().formDesignDraft = yaml; // 同期を保つ（次のswitchForm()呼び出しで消されないように）
         getProjectData().formLayoutPattern = layoutPatternId;
-        const ok = await _wizardGenerateFormLayout(yaml, layoutPatternId);
+        const ok = await wizardGenerateFormLayout(yaml, layoutPatternId);
         if (ok) successCount++;
     }
 
@@ -722,7 +722,7 @@ async function wizardConfirmAndGenerate() {
 // （既存UI手動操作版のformDesignTextToYamlGenerate()、vja-yaml-editor.js参照。
 //  同じロジックをここにも実装しないと、AIが生成したlayout_pattern値がどこにも
 //  保存されず、「🖼 レイアウト」タブが常に「なし」のままになる不具合になる）。
-async function _wizardGenerateFormYaml(docDraft) {
+async function wizardGenerateFormYaml(docDraft) {
     const allTablesFull = getProjectData().tables || [];
     const targetTablesForCtx = narrowTablesByRequest(docDraft || "", allTablesFull);
     const tablesCtx = buildTablesCtxText(targetTablesForCtx);
@@ -756,7 +756,7 @@ async function _wizardGenerateFormYaml(docDraft) {
 // vja-yaml-editor.js）と同じ「🖼 レイアウト」の厳格な配置エリア指示を渡すようにした
 // （従来は空文字のまま渡しており、ウィザード経由の生成ではlayout_pattern選択の効果が
 // 一切反映されていなかった）。
-async function _wizardGenerateFormLayout(yamlText, layoutPatternId) {
+async function wizardGenerateFormLayout(yamlText, layoutPatternId) {
     const { tables } = parseFormDesignYaml(yamlText);
     const targetTables = getProjectData().tables.filter((t) => tables.includes(t.name));
     const tablesCtx = buildTablesCtxText(targetTables);
@@ -788,5 +788,9 @@ Object.assign(window, {
     wizardShowTablesStep, wizardGoBackToSystemModelFromTables, wizardProceedFromTables,
     wizardGoBackToTablesFromFormReview, wizardDecomposeForms, wizardConfirmAndGenerate,
     wizardOfferResume, wizardDiscardProgress, wizardResumeFromProgress,
+    // ウィザードAI呼び出し部分の自動テスト用（bridge.tsのtestWizardXxxハンドラから呼ばれる）。
+    // 元は_wizardGenerateFormYaml/_wizardGenerateFormLayoutという同ファイル限定名だったが、
+    // bridge.tsから呼び出す必要が生じたため、CLAUDE.mdの規約に従い`_`を外してグローバル展開した。
+    wizardGenerateFormYaml, wizardGenerateFormLayout,
     WIZARD_STATE,
 });

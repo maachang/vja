@@ -370,6 +370,24 @@ export type VjaRPCType = {
                 };
                 response: { ok: boolean; ddl?: string; error?: string };
             };
+
+            // ── ウィザードAI呼び出し関連（AI応答をモック化してテストする） ──
+            testSetAiMockQueue: {
+                params: { responses: string[] };
+                response: { ok: boolean; error?: string };
+            };
+            testWizardDecomposeForms: {
+                params: { appOverview: string; tables?: any[]; systemModelHint?: string | null };
+                response: { ok: boolean; formPlan?: any[]; error?: string };
+            };
+            testWizardGenerateFormYaml: {
+                params: { docDraft: string };
+                response: { ok: boolean; yaml?: string; layoutPatternId?: string; error?: string };
+            };
+            testWizardGenerateFormLayout: {
+                params: { yamlText: string; layoutPatternId?: string };
+                response: { ok: boolean; widgets?: any[]; error?: string };
+            };
         };
         messages: {
             // ── プロジェクト停止結果（詳細はbun.messagesのコメント参照） ──

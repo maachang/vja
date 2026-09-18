@@ -332,6 +332,61 @@ const _testGenerateDdl = (p: { name: string; description?: string; columns: any[
     }
 };
 
+// ── ウィザードAI呼び出し関連（AI応答をモック化してテストする） ──────
+// runAiGenerate()（vja-modal.js）は window.__vjaTestAiMockQueue に応答が
+// 積まれている場合、実際のAI API呼び出しをスキップしてそれを1つずつ消費する。
+// これを利用し、ウィザードのAI呼び出し部分（wizardDecomposeForms等）を
+// 実AI無しで自動テストできるようにする。
+const _testSetAiMockQueue = (p: { responses: string[] }) => {
+    try {
+        (window as any).__vjaTestAiMockQueue = Array.isArray(p.responses) ? [...p.responses] : [];
+        return { ok: true };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+// wizardDecomposeForms()の動作確認用。アプリ概要・確定テーブル・システムモデル
+// ヒントをWIZARD_STATE/getProjectData()へ注入した上で呼び出し、結果の
+// formPlan（WIZARD_STATE.formPlan）を返す。事前にtestSetAiMockQueueで
+// モック応答（画面構成分解結果のJSON文字列）を積んでおく必要がある。
+const _testWizardDecomposeForms = async (p: { appOverview: string; tables?: any[]; systemModelHint?: string | null }) => {
+    const g = window as any;
+    try {
+        if (Array.isArray(p.tables)) g.getProjectData().tables = p.tables;
+        g.WIZARD_STATE.appOverview = p.appOverview || "";
+        g.WIZARD_STATE.systemModelHint = p.systemModelHint ?? null;
+        await g.wizardDecomposeForms();
+        return { ok: true, formPlan: g.WIZARD_STATE.formPlan };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+// wizardGenerateFormYaml()（DOM非依存版、画面デザインYAMLドラフト→YAML生成）の
+// 動作確認用。事前にtestSetAiMockQueueでモック応答（YAML文字列）を積んでおく必要がある。
+const _testWizardGenerateFormYaml = async (p: { docDraft: string }) => {
+    const g = window as any;
+    try {
+        const result = await g.wizardGenerateFormYaml(p.docDraft);
+        if (!result) return { ok: false, error: "生成に失敗しました" };
+        return { ok: true, yaml: result.yaml, layoutPatternId: result.layoutPatternId };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+// wizardGenerateFormLayout()（DOM非依存版、YAML→画面レイアウト生成）の動作確認用。
+// 事前にtestSetAiMockQueueでモック応答（ウィジェット配置JSON文字列）を積んでおく必要がある。
+// 成功時は反映結果として現在フォームのウィジェット一覧を返す。
+const _testWizardGenerateFormLayout = async (p: { yamlText: string; layoutPatternId?: string }) => {
+    const g = window as any;
+    try {
+        const ok = await g.wizardGenerateFormLayout(p.yamlText, p.layoutPatternId || "");
+        if (!ok) return { ok: false, error: "生成に失敗しました" };
+        return { ok: true, widgets: g.getProjectData().widgets };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+
 const rpc = Electroview.defineRPC({
     maxRequestTime: Infinity,
     handlers: {
@@ -359,6 +414,10 @@ const rpc = Electroview.defineRPC({
             testSaveTable: _testSaveTable,
             testDeleteTable: _testDeleteTable,
             testGenerateDdl: _testGenerateDdl,
+            testSetAiMockQueue: _testSetAiMockQueue,
+            testWizardDecomposeForms: _testWizardDecomposeForms,
+            testWizardGenerateFormYaml: _testWizardGenerateFormYaml,
+            testWizardGenerateFormLayout: _testWizardGenerateFormLayout,
         },
         messages: {
             loadScriptResult: (v: any) => { /* フロント側で処理 */ },

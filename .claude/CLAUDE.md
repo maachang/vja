@@ -120,12 +120,22 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
   - 画面関連: `vja_add_widget`/`vja_delete_widget`/`vja_get_widgets`/`vja_select_widget`/`vja_get_props_html`（後者2つはプロパティパネル・イベントタブの描画結果HTMLを取得し、画面を目視しなくても構造検証できるようにするためのもの）
   - YAML関連: `vja_save_yaml`/`vja_delete_yaml`/`vja_get_overrides`/`vja_format_js`（Prettier整形機能の検証用、`formatJsCode()`を直接呼び出す）
   - Validate関連: `vja_get_validations`/`vja_save_validation`/`vja_delete_validation`/`vja_get_tables`/`vja_save_table`/`vja_delete_table`/`vja_generate_ddl`
+  - ウィザードAI関連（2026-09-18実装）: `vja_wizard_set_ai_mock`/`vja_wizard_decompose_forms`/`vja_wizard_generate_form_yaml`/`vja_wizard_generate_form_layout`。詳細は下記「ウィザードAI呼び出しの自動テスト化」節参照
 - `VJA_TEST_MODE`未設定時はテスト用HTTPサーバー自体が起動しないため、通常起動には影響しない
 - テスト用ハンドラは、確認ダイアログやDOM読み取りを伴う既存のUI関数（`deleteYaml`/`validSave`/`tblSave`等）は自動化に不向きなため使わず、データ検証・操作ロジックのみを`src/mainview/bridge.ts`側に直接再実装している（`_testAddWidget`等）
 - 2026-08-01時点でPhase 1（画面関連・YAML関連）・Phase 2（Validate関連: バリデーション定義・テーブル/カラム定義・DDL生成）まで実装済み
-- 以下2点は「現状テストで必要ない」との理由で対応見送り（詳細は`.claudeWork/mcp-webview-test-idea.md`参照）
+- 以下1点は「現状テストで必要ない」との理由で対応見送り（詳細は`.claudeWork/mcp-webview-test-idea.md`参照）
   - 保存・オープン・実行・コンパイルフロー全体の自動テスト化（ネイティブファイルダイアログが絡み、バイパス用の専用ルート設計が必要になる）
-  - AI生成フロー（`yamlAiGenerate`）の自動テスト化（ローカルLLM前提・生成結果が非決定的なため判定基準の設計自体が未確定）
+- AI生成フローの自動テスト化は、当初「ローカルLLM前提・生成結果が非決定的なため判定基準の設計自体が未確定」として見送っていたが、2026-09-18にウィザードのAI呼び出し部分（`wizardDecomposeForms`等）に限り、AI応答をモックする方式で解消し実装済み（下記節参照）。それ以外のAI生成フロー（`yamlAiGenerate`等）は引き続き未対応
+
+## ウィザードAI呼び出しの自動テスト化（2026-09-18実装）
+
+- **狙い**: 従来「AI生成結果が非決定的で判定基準が未確定」として見送っていたAI生成フローの自動テスト化を、AI応答自体をモックすることで実現。実AIの生成品質評価ではなく、「固定のAI応答に対しパース・反映ロジックが正しく動くか」を検証する回帰テストとして構成した
+- **モック機構**: `runAiGenerate()`（`vja-modal.js`）の冒頭で`window.__vjaTestAiMockQueue`（配列）を確認し、モック応答が積まれていればFIFOで1件消費して実際の`window.vja.fetch`呼び出しをスキップする。キューが空なら従来通り実AI APIを呼ぶため、通常起動時（`VJA_TEST_MODE`未設定時含む）には一切影響しない
+- **テスト対象関数**: `wizardDecomposeForms()`（画面構成分解）、`wizardGenerateFormYaml()`（画面デザインYAMLドラフト生成、旧`_wizardGenerateFormYaml`から命名規約に沿ってリネーム・グローバル展開）、`wizardGenerateFormLayout()`（YAML→ウィジェット配置JSON生成、旧`_wizardGenerateFormLayout`から同様にリネーム）
+- **テストハンドラ**（`bridge.ts`）: `_testSetAiMockQueue`/`_testWizardDecomposeForms`/`_testWizardGenerateFormYaml`/`_testWizardGenerateFormLayout`。`_testWizardDecomposeForms`の`tables`省略時は既存の`getProjectData().tables`をそのまま使う（独断の初期値補完はしていない）
+- **利用時の注意**: `wizardDecomposeForms()`は成功時に確認モーダルを描画する副作用が残っている（テストでは無視して良い）。`wizardGenerateFormLayout()`は実際にウィジェットを配置するため、テスト時は事前に状態をクリーンにしておくこと
+- MCPクライアント経由の実疎通テストは実装時点では未実施（ビルド/起動が通ることと`bun test`の通過のみ確認済み）
 
 ## 実行手順
 
