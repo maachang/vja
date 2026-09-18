@@ -1613,6 +1613,7 @@ if (process.env.VJA_TEST_MODE === "1") {
         "testSaveYaml", "testDeleteYaml", "testGetOverrides",
         "testGetValidations", "testSaveValidation", "testDeleteValidation",
         "testGetTables", "testSaveTable", "testDeleteTable", "testGenerateDdl",
+        "testSetAiMockQueue", "testWizardDecomposeForms", "testWizardGenerateFormYaml", "testWizardGenerateFormLayout",
     ] as const;
     const testPort = Number(process.env.VJA_TEST_PORT || "4570");
     Bun.serve({
