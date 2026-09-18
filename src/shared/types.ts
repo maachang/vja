@@ -388,6 +388,14 @@ export type VjaRPCType = {
                 params: { yamlText: string; layoutPatternId?: string };
                 response: { ok: boolean; widgets?: any[]; error?: string };
             };
+            testTblAiGenerateSchema: {
+                params: { tableName?: string; description?: string; requestText: string };
+                response: { ok: boolean; columns?: TableColumnDef[]; error?: string };
+            };
+            testValidAiGenerateRules: {
+                params: { name?: string; description?: string; requestText: string; widgetNames?: string[] };
+                response: { ok: boolean; rules?: any[]; error?: string };
+            };
         };
         messages: {
             // ── プロジェクト停止結果（詳細はbun.messagesのコメント参照） ──

@@ -387,6 +387,82 @@ const _testWizardGenerateFormLayout = async (p: { yamlText: string; layoutPatter
     }
 };
 
+// tblAiGenerateSchema()（テーブルスキーマAI生成）の動作確認用。DOM(依頼文textarea)・
+// TABLE_MODAL.edit・確認ダイアログを介さず、同等のロジック（プロンプト生成→
+// runAiGenerate→JSON.parse→sanitizeAiTableColumns）を直接再現する。
+// 事前にtestSetAiMockQueueでモック応答（columns配列のJSON文字列）を積んでおく必要がある。
+const _testTblAiGenerateSchema = async (p: { tableName?: string; description?: string; requestText: string }) => {
+    const g = window as any;
+    try {
+        const sysPrompt = g._PROMPT_DEF.TABLE_SCHEMA_GEN_SYS_PROMPT({ tableName: p.tableName || "", description: p.description || "" });
+        const userPrompt = g._PROMPT_DEF.TABLE_SCHEMA_GEN_USER_PROMPT(p.requestText || "");
+        let result: any = null;
+        await g.runAiGenerate({
+            systemPrompt: sysPrompt,
+            userPrompt: userPrompt,
+            loadingMsg: "テーブル構成を生成中…",
+            onSuccess: async (generated: string) => {
+                const cols = JSON.parse(generated);
+                if (!Array.isArray(cols) || cols.length === 0) throw new Error("empty");
+                result = g.sanitizeAiTableColumns(cols);
+            },
+            onCancel: async () => {},
+            onError: async () => {},
+        });
+        if (!result || result.length === 0) return { ok: false, error: "AI生成結果の解析に失敗、またはカラムがありませんでした" };
+        return { ok: true, columns: result };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+// validAiGenerateRules()（バリデーションルールAI生成）の動作確認用。DOM(依頼文textarea)・
+// VALID_MODAL.edit・確認ダイアログを介さず、同等のロジックを直接再現する。
+// widgetNames未指定時は現在フォームの入力系ウィジェット名一覧をそのまま使う。
+// 事前にtestSetAiMockQueueでモック応答（rules配列のJSON文字列）を積んでおく必要がある。
+const _testValidAiGenerateRules = async (p: { name?: string; description?: string; requestText: string; widgetNames?: string[] }) => {
+    const g = window as any;
+    try {
+        const INPUT_TAGS = ["inputtype", "textarea", "checkbox", "radiobutton", "selectBox", "listbox", "slider"];
+        const widgetNames: string[] = Array.isArray(p.widgetNames) ? p.widgetNames : (g.getProjectData().forms[g.getProjectData().curFormIdx]?.widgets || [])
+            .filter((w: any) => INPUT_TAGS.includes(w.tag))
+            .map((w: any) => w.name)
+            .filter(Boolean);
+        if (widgetNames.length === 0) return { ok: false, error: "フォームに入力系ウィジェットがありません（AI生成の対象がありません）" };
+
+        const sysPrompt = g._PROMPT_DEF.VALIDATION_SCHEMA_GEN_SYS_PROMPT({
+            name: p.name || "", description: p.description || "", widgetsCtx: widgetNames.join("\n"),
+        });
+        const userPrompt = g._PROMPT_DEF.VALIDATION_SCHEMA_GEN_USER_PROMPT(p.requestText || "");
+        let result: any = null;
+        await g.runAiGenerate({
+            systemPrompt: sysPrompt,
+            userPrompt: userPrompt,
+            loadingMsg: "バリデーションルールを生成中…",
+            onSuccess: async (generated: string) => {
+                const rules = JSON.parse(generated);
+                if (!Array.isArray(rules)) throw new Error("not array");
+                result = rules
+                    .filter((r: any) => widgetNames.includes(r.name))
+                    .map((r: any) => ({
+                        name: r.name,
+                        type: g.VALIDATION_TYPES.some((t: any) => t.value === r.type) ? r.type : "required",
+                        not: !!r.not,
+                        arg1: r.arg1 != null ? String(r.arg1) : "",
+                        arg2: r.arg2 != null ? String(r.arg2) : "",
+                        arg3: r.arg3 != null ? String(r.arg3) : "",
+                        message: r.message != null ? String(r.message) : "",
+                    }));
+            },
+            onCancel: async () => {},
+            onError: async () => {},
+        });
+        if (!result || result.length === 0) return { ok: false, error: "AI生成結果の解析に失敗、または有効なルールがありませんでした" };
+        return { ok: true, rules: result };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+
 const rpc = Electroview.defineRPC({
     maxRequestTime: Infinity,
     handlers: {
@@ -418,6 +494,8 @@ const rpc = Electroview.defineRPC({
             testWizardDecomposeForms: _testWizardDecomposeForms,
             testWizardGenerateFormYaml: _testWizardGenerateFormYaml,
             testWizardGenerateFormLayout: _testWizardGenerateFormLayout,
+            testTblAiGenerateSchema: _testTblAiGenerateSchema,
+            testValidAiGenerateRules: _testValidAiGenerateRules,
         },
         messages: {
             loadScriptResult: (v: any) => { /* フロント側で処理 */ },

@@ -341,5 +341,33 @@ server.registerTool(
     async (args) => toToolResult(await callVja("testWizardGenerateFormLayout", args)),
 );
 
+// ── テーブルスキーマ/バリデーションルールのAI生成関連（AI応答をモック化してテストする） ──
+server.registerTool(
+    "vja_table_ai_generate_schema",
+    {
+        description: "テーブルスキーマAI生成（tblAiGenerateSchema、DOM非依存版）を呼び出し、生成されたカラム定義配列を返す。事前にvja_wizard_set_ai_mockでモック応答（カラム定義JSON配列の文字列）を積んでおくこと",
+        inputSchema: {
+            tableName: z.string().optional().describe("テーブル名（任意）"),
+            description: z.string().optional().describe("説明（任意）"),
+            requestText: z.string().describe("依頼文（自由記述）"),
+        },
+    },
+    async (args) => toToolResult(await callVja("testTblAiGenerateSchema", args)),
+);
+
+server.registerTool(
+    "vja_validation_ai_generate_rules",
+    {
+        description: "バリデーションルールAI生成（validAiGenerateRules、DOM非依存版）を呼び出し、生成されたルール定義配列を返す。widgetNames省略時は現在フォームの入力系ウィジェット名一覧を使う。事前にvja_wizard_set_ai_mockでモック応答（ルール定義JSON配列の文字列）を積んでおくこと",
+        inputSchema: {
+            name: z.string().optional().describe("定義名（任意）"),
+            description: z.string().optional().describe("説明（任意）"),
+            requestText: z.string().describe("依頼文（自由記述）"),
+            widgetNames: z.array(z.string()).optional().describe("対象ウィジェット名一覧（省略時は現在フォームの入力系ウィジェット名一覧）"),
+        },
+    },
+    async (args) => toToolResult(await callVja("testValidAiGenerateRules", args)),
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);
