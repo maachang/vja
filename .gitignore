@@ -11,3 +11,7 @@ artifacts
 docs/memo
 
 .claudeWork
+
+# テスト用ローカルLLM接続設定（個人環境依存のため各自のマシンにのみ置く。
+# テンプレートは mcp/fixtures/test-llm.local.json.example を参照）
+mcp/fixtures/test-llm.local.json
