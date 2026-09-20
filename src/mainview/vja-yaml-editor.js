@@ -2436,31 +2436,31 @@ async function manualMockCheck(isAppEvent, evName, wtag, wid) {
 // 警告バナーの「もう一度AIに修正を依頼」ボタン用。
 // プロンプトはキャッシュを使い回さず、呼ばれるたびに_buildGenPromptContext()で
 // 現在の状態から組み立て直す（生成後に設定を変えていても最新の内容が使われる）。
-async function manualRetryAiFix(wid, evName, isAppEvent, isFormEvent) {
+// 手動修正依頼（manualRetryAiFix）のロジック本体（DOM非依存）。
+// 自動テスト用（bridge.tsのtestManualRetryAiFixハンドラ）に、DOM読み書き
+// （js-taへの読み書き・タブ切替・モーダル再描画）と分離してある。
+// _buildGenPromptContext()自体は$("yaml-ta")/$("ai-prompt-in")を読むため、
+// 意味のあるコンテキストで検証したい場合は事前にopenYaml等でエディタを開いておく必要がある
+// （テスト用: wizardGenerateFormYaml等と同様、この間接的なDOM依存はテスト時も許容する）。
+// 戻り値: { alreadyOk, normalizedCode, code, revalidated? }（revalidatedはAI修正を実行した場合のみ）。
+async function retryAiFix(wid, evName, isAppEvent, isFormEvent, currentCode) {
     const { sysPrompt, userPrompt, validationName, wtag } = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent);
-    const jsTa = $("js-ta");
-    let currentCode = _stripValidationWrapper(jsTa?.value || "", validationName);
-    const strippedCurrentCode = _fixMissingAwaits(_stripWidgetValueAccess(currentCode), isAppEvent);
-    if (strippedCurrentCode !== currentCode) {
-        currentCode = strippedCurrentCode;
-        if (jsTa) {
-            jsTa.value = currentCode;
-            jsHlUpdate();
-            editorUpdateGutter("js-ta", "js-gutter");
-        }
+    let code = _stripValidationWrapper(currentCode || "", validationName);
+    code = _fixMissingAwaits(_stripWidgetValueAccess(code), isAppEvent);
+
+    let validation = validateGeneratedJs(code, isAppEvent, evName, wtag, wid);
+    validation = await _augmentWithMockCheck(validation, code, isAppEvent, evName, wtag, wid);
+    const normalizedCode = validation.code || code;
+    if (validation.ok) {
+        return { alreadyOk: true, normalizedCode, code: normalizedCode };
     }
-    let validation = validateGeneratedJs(currentCode, isAppEvent, evName, wtag, wid);
-    validation = await _augmentWithMockCheck(validation, currentCode, isAppEvent, evName, wtag, wid);
-    if (validation.code && validation.code !== currentCode && jsTa) {
-        jsTa.value = validation.code;
-        jsHlUpdate();
-        editorUpdateGutter("js-ta", "js-gutter");
-    }
-    if (validation.ok) { dismissAiValidationBanner(); return; }
+
     window.vja?.log?.debug?.("[AI検証] 手動での修正依頼を実行します。検出内容: " + _formatValidationIssuesForLog(validation));
     // 自動修正リトライ時と同様、ウィジェット一覧の絞り込みを解除して再構築する。
     const wideCtx = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, false);
-    const fixUserPrompt = _buildAiFixPrompt(wideCtx.userPrompt, currentCode, validation);
+    const fixUserPrompt = _buildAiFixPrompt(wideCtx.userPrompt, normalizedCode, validation);
+
+    let result = null;
     await runAiGenerate({
         systemPrompt: sysPrompt,
         userPrompt: fixUserPrompt,
@@ -2486,31 +2486,48 @@ async function manualRetryAiFix(wid, evName, isAppEvent, isFormEvent) {
                 codeForEditor = "// 検証チェック処理(自動追加).\n" +
                     `if (!await vja.validate.run(${JSON.stringify(validationName)})) return;\n\n${codeForEditor}`;
             }
-            // runAiGenerate() 実行中に modal-root がローディング表示へ差し替えられ、
-            // 完了時に closeModal() されるため、YAMLエディタのモーダル自体が
-            // 一旦消えている。ここで開き直してから反映する必要がある。
-            if (isFormEvent) {
-                openFormYaml(evName);
-            } else if (isAppEvent) {
-                openAppEvents(evName);
-            } else {
-                const w2 = getWidget(wid);
-                if (!w2) return;
-                openYaml(wid, evName);
-            }
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-                const newJsTa = $("js-ta");
-                if (newJsTa) newJsTa.value = codeForEditor;
-                yamlTabSwitch("js");
-                jsHlUpdate();
-                editorUpdateGutter("js-ta", "js-gutter");
-                showAiValidationWarningBanner(revalidated, wid, evName, isAppEvent, isFormEvent);
-                if (revalidated.ok) showToast("✅ 修正が完了しました");
-            }));
+            result = { alreadyOk: false, normalizedCode, code: codeForEditor, revalidated };
         },
         onCancel: async () => { },
         onError: async () => { },
     });
+    return result;
+}
+
+async function manualRetryAiFix(wid, evName, isAppEvent, isFormEvent) {
+    const jsTa = $("js-ta");
+    const currentCode = jsTa?.value || "";
+    const result = await retryAiFix(wid, evName, isAppEvent, isFormEvent, currentCode);
+    if (!result) return;
+
+    if (result.normalizedCode !== currentCode && jsTa) {
+        jsTa.value = result.normalizedCode;
+        jsHlUpdate();
+        editorUpdateGutter("js-ta", "js-gutter");
+    }
+    if (result.alreadyOk) { dismissAiValidationBanner(); return; }
+
+    // runAiGenerate() 実行中に modal-root がローディング表示へ差し替えられ、
+    // 完了時に closeModal() されるため、YAMLエディタのモーダル自体が
+    // 一旦消えている。ここで開き直してから反映する必要がある。
+    if (isFormEvent) {
+        openFormYaml(evName);
+    } else if (isAppEvent) {
+        openAppEvents(evName);
+    } else {
+        const w2 = getWidget(wid);
+        if (!w2) return;
+        openYaml(wid, evName);
+    }
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        const newJsTa = $("js-ta");
+        if (newJsTa) newJsTa.value = result.code;
+        yamlTabSwitch("js");
+        jsHlUpdate();
+        editorUpdateGutter("js-ta", "js-gutter");
+        showAiValidationWarningBanner(result.revalidated, wid, evName, isAppEvent, isFormEvent);
+        if (result.revalidated.ok) showToast("✅ 修正が完了しました");
+    }));
 }
 
 // validateGeneratedJs()の結果に、モック実行スモークテストの結果を
@@ -4785,7 +4802,7 @@ Object.assign(window, {
     narrowTablesByRequest, buildTablesCtxText, deriveMissingFormDesignTables,
     validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
     openAiValidationDetailModal,
-    dismissAiValidationBanner, manualRetryAiFix, manualMockCheck,
+    dismissAiValidationBanner, manualRetryAiFix, retryAiFix, manualMockCheck,
     openMockOverrideEditor, saveMockOverrides, mockEditorAddRow, mockEditorOnTypeChange,
     yamlSetApiOpt,
     yamlSetTableOpt, yamlSetValidationOpt, applyTableYamlSync,
