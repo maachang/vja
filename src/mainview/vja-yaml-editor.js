@@ -4159,25 +4159,45 @@ function openAiRawOutputModal(rawText) {
     );
 }
 
-async function formDesignAiGenerate() {
-    if (getProjectData().widgets.length > 0) {
-        const ok = await vja.app.showConfirm(
-            "AI生成を実行すると、現在のフォームの\n" +
-            "全ウィジェットが削除されます。\n" +
-            "設定済みのイベント処理（コード）も\n" +
-            "全て失われます。\n" +
-            "（Ctrl+Zで元に戻すことは可能です）\n\n" +
-            "続行しますか？"
-        );
-        if (!ok) return;
-    }
-    const ta = $("ta-fd");
-    const rawText = ta?.value || "";
-    const { desc, tables } = parseFormDesignYaml(rawText);
-    const curForm = getProjectData().forms[getProjectData().curFormIdx];
-
-    const targetTables = getProjectData().tables.filter((t) => tables.includes(t.name));
+// 画面レイアウト生成（YAML→ウィジェット配置JSON）のAI呼び出し部分のみを
+// 切り出した共有ロジック（DOM非依存）。formDesignAiGenerate()（UI手動操作版）
+// とwizardGenerateFormLayout()（ウィザード版、vja-wizard.js）で共通利用する
+// （元々ほぼ同一の実装が2箇所に重複していたため、2026-09-21にこちらへ統合した）。
+// 戻り値: AI生成結果の生テキスト（失敗/キャンセル時はnull）。パース
+// （parseFormDesignJson）は呼び出し側の責務とする（呼び出し元ごとに
+// パース失敗時の扱い＝UI表示の有無が異なるため）。
+async function generateFormLayoutRaw(designText, extraPrompt, allTables) {
+    const { tables } = parseFormDesignYaml(designText);
+    const targetTables = (allTables || []).filter((t) => tables.includes(t.name));
     const tablesCtx = buildTablesCtxText(targetTables);
+    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_SYS_PROMPT({
+        formW: getProjectData().formCfg.w,
+        formH: getProjectData().formCfg.h,
+        tablesCtx,
+    });
+    const userPrompt = _PROMPT_DEF.FORM_DESIGN_USER_PROMPT(designText, extraPrompt);
+
+    let result = null;
+    await runAiGenerate({
+        systemPrompt: sysPrompt,
+        userPrompt: userPrompt,
+        loadingMsg: "画面デザインを生成中…",
+        onSuccess: async (generated) => { result = generated; },
+        onCancel: async () => { },
+        onError: async () => { },
+    });
+    return result;
+}
+
+// formDesignAiGenerate()（画面デザインAI生成、既存ウィジェットの全削除＋反映）の
+// ロジック本体（DOM非依存）。自動テスト用（bridge.tsのtestFormDesignAiGenerateハンドラ）に、
+// DOM読み書き（確認ダイアログ・テキストエリア読取・ボタン活性制御・モーダル閉じる）と
+// 分離してある。既存ウィジェットの全削除＋pushUndo()＋fullRedraw()という破壊的操作を
+// 含むため、呼び出し前に対象フォームの状態が意図通りか十分注意すること。
+// 戻り値: { ok: true, widgets } | { ok: false, reason: "parse_failed", raw } | { ok: false, reason: "cancelled_or_error" }
+async function generateFormDesignAiLayout(rawText, addPromptExtra) {
+    const { desc } = parseFormDesignYaml(rawText);
+    const curForm = getProjectData().forms[getProjectData().curFormIdx];
 
     // 「説明:」が空の場合のみ、その行をフォームの説明で置き換える。
     // それ以外の内容は選別・再構築せず、書かれたテキストをそのままAIへ渡す。
@@ -4201,50 +4221,61 @@ async function formDesignAiGenerate() {
         getProjectData().formCfg.w,
         getProjectData().formCfg.h
     );
-    const addPrompt = ($("fd-prompt-in")?.value || "") + layoutHint;
+    const extraPrompt = (addPromptExtra || "") + layoutHint;
+
+    // AI生成前に依頼テキストを下書き保存
+    getProjectData().formDesignDraft = rawText;
+
+    const generated = await generateFormLayoutRaw(designText, extraPrompt, getProjectData().tables || []);
+    if (generated === null) return { ok: false, reason: "cancelled_or_error" };
+
+    const items = parseFormDesignJson(generated);
+    if (!items) {
+        window.vja?.log?.warn?.("[FormDesignAi] JSON parse failed. raw=" + generated.slice(0, 300));
+        return { ok: false, reason: "parse_failed", raw: generated };
+    }
+
+    // 既存ウィジェットを全削除してからAI結果を配置する
+    // （削除前の状態をpushUndo()で退避＝Ctrl+Zで復元可能）
+    if (getProjectData().widgets.length > 0) {
+        pushUndo();
+        getProjectData().widgets = [];
+        getProjectData().forms[getProjectData().curFormIdx].widgets = getProjectData().widgets;
+        getDesignerState().selIds = [];
+        const po = $("prop-obj");
+        if (po) po.textContent = getProjectData().formCfg.title;
+        fullRedraw();
+    }
+    applyAiFormDesign(items);
+    return { ok: true, widgets: getProjectData().widgets };
+}
+
+async function formDesignAiGenerate() {
+    if (getProjectData().widgets.length > 0) {
+        const ok = await vja.app.showConfirm(
+            "AI生成を実行すると、現在のフォームの\n" +
+            "全ウィジェットが削除されます。\n" +
+            "設定済みのイベント処理（コード）も\n" +
+            "全て失われます。\n" +
+            "（Ctrl+Zで元に戻すことは可能です）\n\n" +
+            "続行しますか？"
+        );
+        if (!ok) return;
+    }
+    const ta = $("ta-fd");
+    const rawText = ta?.value || "";
+    const addPrompt = $("fd-prompt-in")?.value || "";
     const btn = $("fd-gen-btn");
     if (btn) btn.disabled = true;
 
-    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_SYS_PROMPT({
-        formW: getProjectData().formCfg.w,
-        formH: getProjectData().formCfg.h,
-        tablesCtx,
-    });
-    const userPrompt = _PROMPT_DEF.FORM_DESIGN_USER_PROMPT(designText, addPrompt);
+    const result = await generateFormDesignAiLayout(rawText, addPrompt);
 
-    // AI生成前に依頼テキストを下書き保存（モーダルは閉じない）
-    getProjectData().formDesignDraft = rawText;
-
-    await runAiGenerate({
-        systemPrompt: sysPrompt,
-        userPrompt: userPrompt,
-        loadingMsg: "画面デザインを生成中…",
-        onSuccess: async (generated) => {
-            const items2 = parseFormDesignJson(generated);
-            if (!items2) {
-                showToast("AI出力の解析に失敗しました（JSON形式ではありません）", 5000);
-                window.vja?.log?.warn?.("[FormDesignAi] JSON parse failed. raw=" + generated.slice(0, 300));
-                openAiRawOutputModal(generated);
-                if (btn) btn.disabled = false;
-                return;
-            }
-            // 既存ウィジェットを全削除してからAI結果を配置する
-            // （削除前の状態をpushUndo()で退避＝Ctrl+Zで復元可能）
-            if (getProjectData().widgets.length > 0) {
-                pushUndo();
-                getProjectData().widgets = [];
-                getProjectData().forms[getProjectData().curFormIdx].widgets = getProjectData().widgets;
-                getDesignerState().selIds = [];
-                const po = $("prop-obj");
-                if (po) po.textContent = getProjectData().formCfg.title;
-                fullRedraw();
-            }
-            applyAiFormDesign(items2);
-            closeModal();
-        },
-        onCancel: async () => { },
-        onError: async () => { },
-    });
+    if (result.ok) {
+        closeModal();
+    } else if (result.reason === "parse_failed") {
+        showToast("AI出力の解析に失敗しました（JSON形式ではありません）", 5000);
+        openAiRawOutputModal(result.raw);
+    }
     if (btn) btn.disabled = false;
 }
 
@@ -4831,7 +4862,7 @@ Object.assign(window, {
     buildYamlEditorHTML, initYamlEditorModal,
     openAiConfig, aiCfgModelListHtml, aiCfgToggleRouter, aiCfgToggleEnabled,
     aiCfgFetchModels, aiCfgConfirm, aiCfgCancel, aiCfgSelectPreset, aiCfgSaveAsPreset, aiCfgDoSaveAsPreset, aiCfgDeletePreset,
-    editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, insertFormDesignTemplate, openFormDesignTemplateModal, confirmApplyFormDesignTemplate, textToYamlGenerate, generateTextToYaml, formDesignTextToYamlGenerate, formDesignAiGenerate, saveFormDesignDraft,
+    editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, insertFormDesignTemplate, openFormDesignTemplateModal, confirmApplyFormDesignTemplate, textToYamlGenerate, generateTextToYaml, formDesignTextToYamlGenerate, formDesignAiGenerate, generateFormLayoutRaw, generateFormDesignAiLayout, saveFormDesignDraft,
     buildFormLayoutPickerHtml, selectFormLayoutPattern,
     parseFormDesignJson, parseFormDesignYaml, convertFormDesignEngKeysToJp, openAiRawOutputModal,
     narrowTablesByRequest, buildTablesCtxText, deriveMissingFormDesignTables, generateFormDesignYaml,

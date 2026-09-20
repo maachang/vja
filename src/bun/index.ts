@@ -1614,7 +1614,7 @@ if (process.env.VJA_TEST_MODE === "1") {
         "testGetValidations", "testSaveValidation", "testDeleteValidation",
         "testGetTables", "testSaveTable", "testDeleteTable", "testGenerateDdl",
         "testSetAiMockQueue", "testSetAiConfig", "testWizardDecomposeForms", "testWizardGenerateFormYaml", "testWizardGenerateFormLayout",
-        "testTblAiGenerateSchema", "testValidAiGenerateRules", "testExtRtGenDoc", "testTextToYamlGenerate", "testManualRetryAiFix", "testFormDesignTextToYamlGenerate", "testYamlAiGenerate",
+        "testTblAiGenerateSchema", "testValidAiGenerateRules", "testExtRtGenDoc", "testTextToYamlGenerate", "testManualRetryAiFix", "testFormDesignTextToYamlGenerate", "testYamlAiGenerate", "testFormDesignAiGenerate",
     ] as const;
     const testPort = Number(process.env.VJA_TEST_PORT || "4570");
     Bun.serve({

@@ -537,6 +537,20 @@ const _testYamlAiGenerate = async (p: { wid: number | string; evName: string; is
         return { ok: false, error: e.message };
     }
 };
+// formDesignAiGenerate()（画面デザインAI生成、既存ウィジェット全削除＋反映）の
+// 動作確認用。DOM(確認ダイアログ・textarea・ボタン活性制御)を介さず、DOM非依存版の
+// generateFormDesignAiLayout()を直接呼び出す。既存ウィジェットの全削除という
+// 破壊的操作を実際に行うため、テスト対象フォームの状態に注意すること。
+// 事前にtestSetAiMockQueueでモック応答（ウィジェット配置JSON文字列）を積んでおく必要がある。
+const _testFormDesignAiGenerate = async (p: { rawText: string; addPrompt?: string }) => {
+    const g = window as any;
+    try {
+        const result = await g.generateFormDesignAiLayout(p.rawText || "", p.addPrompt || "");
+        return { ok: result.ok, ...result };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
 // textToYamlGenerate()（イベントYAMLドラフト自動生成）の動作確認用。DOM(textarea)・
 // 確認ダイアログを介さず、DOM非依存版のgenerateTextToYaml()を直接呼び出す。
 // wid: ウィジェットID、"form"（フォームイベント）、"appev"（アプリイベント）のいずれか。
@@ -592,6 +606,7 @@ const rpc = Electroview.defineRPC({
             testManualRetryAiFix: _testManualRetryAiFix,
             testFormDesignTextToYamlGenerate: _testFormDesignTextToYamlGenerate,
             testYamlAiGenerate: _testYamlAiGenerate,
+            testFormDesignAiGenerate: _testFormDesignAiGenerate,
         },
         messages: {
             loadScriptResult: (v: any) => { /* フロント側で処理 */ },

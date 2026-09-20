@@ -730,24 +730,12 @@ async function wizardGenerateFormYaml(docDraft) {
 // （従来は空文字のまま渡しており、ウィザード経由の生成ではlayout_pattern選択の効果が
 // 一切反映されていなかった）。
 async function wizardGenerateFormLayout(yamlText, layoutPatternId) {
-    const { tables } = parseFormDesignYaml(yamlText);
-    const targetTables = getProjectData().tables.filter((t) => tables.includes(t.name));
-    const tablesCtx = buildTablesCtxText(targetTables);
     const formW = getProjectData().formCfg.w;
     const formH = getProjectData().formCfg.h;
-    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_SYS_PROMPT({ formW, formH, tablesCtx });
     const layoutHint = buildLayoutRegionsPromptText(layoutPatternId, formW, formH);
-    const userPrompt = _PROMPT_DEF.FORM_DESIGN_USER_PROMPT(yamlText, layoutHint);
-
-    let items = null;
-    await runAiGenerate({
-        systemPrompt: sysPrompt,
-        userPrompt: userPrompt,
-        loadingMsg: "画面レイアウトを生成中…",
-        onSuccess: async (generated) => { items = parseFormDesignJson(generated); },
-        onCancel: async () => { },
-        onError: async () => { },
-    });
+    const generated = await generateFormLayoutRaw(yamlText, layoutHint, getProjectData().tables || []);
+    if (generated === null) return false;
+    const items = parseFormDesignJson(generated);
     if (!items) return false;
     applyAiFormDesign(items);
     return true;
