@@ -1825,6 +1825,7 @@ description: "<Brief Japanese summary of the screen purpose>"
 layout_pattern: <number>
 [STRICT RULE for layout_pattern] The value MUST be a single digit number, chosen from the numbered list below, that best matches the request's overall input/display/button placement. If none of them clearly fits (or the request gives no layout hint), output 0. Output ONLY the number itself (e.g. "3"), never the description text.
 [Selection Guide] First decide: does this screen need ANY list/table/read-only display area (e.g. search results, a data grid, summary figures, a record list)? If NO — e.g. a login screen, a simple settings/registration form with only input fields and buttons and nothing to browse or view — you MUST pick a pattern whose description says it has no display area (currently only one such pattern below). Only if the screen DOES need a display/list area should you pick one of the patterns that includes one, based on where that area should sit (bottom-full-width, side, multiple small tiles, etc).
+[IMPORTANT] The word "編集する"/"変更する" (edit/modify a single existing record) does NOT by itself mean a display/list area is needed. A screen that only lets the user edit the one record it was opened for (input fields + Save/Back buttons, no browsing of other records) still has NO display area, even though the docDraft text uses "編集"/"変更". Only pick a "has display area" pattern when the request explicitly needs to browse, search, or view multiple records or read-only summary data — not merely because a single record is being edited.
 Available layout patterns (number: structural description — these describe ONLY the rough placement of input/display/button areas, NOT which widget types to use):
 ${layoutPatternOptions}
 
@@ -1869,6 +1870,23 @@ tables:
   - tasks
 actions:
   - 追加
+
+[Few-Shot Example 1b: Edit-only screen for a SINGLE record (no browsing/list mentioned) — "編集" does NOT require a display area]
+Input request: "伝票番号・商品コード・数量・金額の詳細情報を入力または編集する。戻るボタンで一覧画面に戻る。保存ボタンでデータを保存する。" (with a referenced table "sales_data" whose columns are slip_no, item_code, qty, amount)
+Correct output (still the no-display-area pattern, exactly like Example 1 — "編集" here just means this one record's fields are editable, not that the screen displays/browses multiple records):
+layout_pattern: 3
+fields:
+  - 伝票番号: inputtype text
+  - 商品コード: inputtype text
+  - 数量: inputtype number
+  - 金額: inputtype number
+tables:
+  - sales_data
+actions:
+  - 戻る
+  - 保存
+Wrong output (do NOT do this — picking a "has display area" pattern just because the word "編集" appears; there is nothing here to browse or view besides the single record's own input fields):
+layout_pattern: 1
 
 [Few-Shot Example 2a: List-ONLY screen (no create/edit/delete mentioned) — "一覧" STILL REQUIRES a "datagrid" field]
 Input request: "商品コード・商品名・カテゴリの一覧を表示する。検索機能を備える。" (with a referenced table "products" whose columns are code, name, category)
