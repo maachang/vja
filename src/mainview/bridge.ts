@@ -345,6 +345,21 @@ const _testSetAiMockQueue = (p: { responses: string[] }) => {
         return { ok: false, error: e.message };
     }
 };
+// 実AI（ローカルLLM等）へ実際に接続してテストする場合に、AI接続設定
+// （getProjectData().aiConfig）を差し替えるためのテスト用ハンドラ。
+const _testSetAiConfig = (p: { endpoint?: string; model?: string; apiKey?: string; temperature?: number | string }) => {
+    const g = window as any;
+    try {
+        const ac = g.getProjectData().aiConfig;
+        if (p.endpoint !== undefined) ac.endpoint = p.endpoint;
+        if (p.model !== undefined) ac.model = p.model;
+        if (p.apiKey !== undefined) ac.apiKey = p.apiKey;
+        if (p.temperature !== undefined) ac.temperature = p.temperature;
+        return { ok: true, aiConfig: ac };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
 // wizardDecomposeForms()の動作確認用。アプリ概要・確定テーブル・システムモデル
 // ヒントをWIZARD_STATE/getProjectData()へ注入した上で呼び出し、結果の
 // formPlan（WIZARD_STATE.formPlan）を返す。事前にtestSetAiMockQueueで
@@ -491,6 +506,7 @@ const rpc = Electroview.defineRPC({
             testDeleteTable: _testDeleteTable,
             testGenerateDdl: _testGenerateDdl,
             testSetAiMockQueue: _testSetAiMockQueue,
+            testSetAiConfig: _testSetAiConfig,
             testWizardDecomposeForms: _testWizardDecomposeForms,
             testWizardGenerateFormYaml: _testWizardGenerateFormYaml,
             testWizardGenerateFormLayout: _testWizardGenerateFormLayout,

@@ -742,7 +742,14 @@ async function wizardGenerateFormYaml(docDraft) {
             const layoutNum = layoutNumMatch ? parseInt(layoutNumMatch[1], 10) : 0;
             const layoutPatternList = getFormLayoutPatterns();
             const matchedPattern = layoutNum >= 1 && layoutNum <= layoutPatternList.length ? layoutPatternList[layoutNum - 1] : null;
-            const yaml = stripped1.replace(/^\s*layout_pattern\s*:.*\n?/m, "").trim();
+            let yaml = stripped1.replace(/^\s*layout_pattern\s*:.*\n?/m, "").trim();
+
+            // 「参照テーブル:」欠落の機械的補完（詳細はvja-yaml-editor.jsのderiveMissingFormDesignTables()のAIメモ参照）
+            const derivedTables = deriveMissingFormDesignTables(yaml, allTablesFull);
+            if (derivedTables.length > 0) {
+                yaml += "\n参照テーブル:\n" + derivedTables.map((n) => "  - " + n).join("\n");
+            }
+
             result = { yaml, layoutPatternId: matchedPattern ? matchedPattern.id : "" };
         },
         onCancel: async () => { },

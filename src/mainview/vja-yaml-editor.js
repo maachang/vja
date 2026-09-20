@@ -3324,7 +3324,13 @@ async function formDesignTextToYamlGenerate() {
             const layoutPatternList = getFormLayoutPatterns();
             const matchedPattern = layoutNum >= 1 && layoutNum <= layoutPatternList.length ? layoutPatternList[layoutNum - 1] : null;
             getProjectData().formLayoutPattern = matchedPattern ? matchedPattern.id : "";
-            const stripped = stripped1.replace(/^\s*layout_pattern\s*:.*\n?/m, "").trim();
+            let stripped = stripped1.replace(/^\s*layout_pattern\s*:.*\n?/m, "").trim();
+
+            // 「参照テーブル:」欠落の機械的補完（詳細はderiveMissingFormDesignTables()のAIメモ参照）
+            const derivedTables = deriveMissingFormDesignTables(stripped, allTablesFull);
+            if (derivedTables.length > 0) {
+                stripped += "\n参照テーブル:\n" + derivedTables.map((n) => "  - " + n).join("\n");
+            }
 
             getProjectData().formDesignDraft = stripped;
             getProjectData().formDesignDocDraft = inputText;
@@ -3983,6 +3989,44 @@ function parseFormDesignYaml(text) {
         });
     }
     return { desc, tables };
+}
+
+// 「入力項目:」の各フィールド名がテーブルの列名(name/labelJa)と一致する場合、
+// 「参照テーブル:」が完全に欠落していても機械的に補完する。
+// Why: ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPTには「fieldsがテーブル由来なら
+// tablesに含めるのは必須」という明記とFew-Shot例が既にあるが、依頼文がボタン動作の
+// 説明中心（例:「〜を入力する。『戻る』ボタンで一覧に戻り、『保存』ボタンで保存する」）
+// だと、temperature=0（サンプリングの揺らぎを排除した状態）でも100%再現する形で
+// 「参照テーブル:」セクション自体が丸ごと欠落する不具合が2026-09-20の実LLM検証
+// (qwen2.5-coder-7b)で確認された。プロンプト文言の強化だけに頼ると際限ない
+// もぐら叩きになるため（CLAUDE.md「プロンプト文言だけでは再発する」参照）、
+// _fixArithmeticInFormDesignJson()と同じ方針でコード側の機械的な安全網を追加する。
+// 戻り値: 補完すべきテーブル名の配列（既に「参照テーブル:」が1件でもあれば空配列＝何もしない）。
+// 他ファイル（vja-wizard.js）からも呼び出すため、CLAUDE.mdの規約に従い`_`無しの名前で
+// グローバル展開する（`_`始まりはファイル内限定の意味のため）。
+function deriveMissingFormDesignTables(yamlText, allTables) {
+    const { tables: existingTables } = parseFormDesignYaml(yamlText);
+    if (existingTables.length > 0) return [];
+    const fieldsM = yamlText.match(/入力項目\s*:\s*\n([\s\S]*?)(?:\n\S|\n\n|$)/);
+    if (!fieldsM) return [];
+    const fieldLabels = [];
+    fieldsM[1].split("\n").forEach((l) => {
+        const m = l.match(/^\s*-\s*([^:]+):/);
+        if (m) fieldLabels.push(m[1].trim());
+    });
+    if (fieldLabels.length === 0) return [];
+    // 単純な「1列でも一致したら候補」だと、sales_data/sales_historyのように
+    // 列名が重なる複数テーブルが同時にヒットしてしまう（実際に2026-09-20の
+    // 検証で確認）。fields全件を包含し、かつ余分な列が最も少ない（＝形が
+    // 最も近い）テーブルを優先することで、この誤爆を減らす。
+    const scored = (allTables || []).map((t) => {
+        const cols = t.columns || [];
+        const matchedCount = fieldLabels.filter((label) => cols.some((c) => c.name === label || c.labelJa === label)).length;
+        return { name: t.name, matchedCount, extraCount: cols.length - matchedCount };
+    }).filter((s) => s.matchedCount === fieldLabels.length); // fields全件をカバーするテーブルのみ候補にする
+    if (scored.length === 0) return [];
+    const minExtra = Math.min(...scored.map((s) => s.extraCount));
+    return scored.filter((s) => s.extraCount === minExtra).map((s) => s.name);
 }
 
 // AI（フォームデザイン）出力のx/y/w/hに、計算式（例: "x": 768 - 20 - 85）が
@@ -4723,7 +4767,7 @@ Object.assign(window, {
     editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, insertFormDesignTemplate, openFormDesignTemplateModal, confirmApplyFormDesignTemplate, textToYamlGenerate, formDesignTextToYamlGenerate, formDesignAiGenerate, saveFormDesignDraft,
     buildFormLayoutPickerHtml, selectFormLayoutPattern,
     parseFormDesignJson, parseFormDesignYaml, convertFormDesignEngKeysToJp, openAiRawOutputModal,
-    narrowTablesByRequest, buildTablesCtxText,
+    narrowTablesByRequest, buildTablesCtxText, deriveMissingFormDesignTables,
     validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
     openAiValidationDetailModal,
     dismissAiValidationBanner, manualRetryAiFix, manualMockCheck,
