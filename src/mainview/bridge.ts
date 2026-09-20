@@ -337,6 +337,18 @@ const _testGenerateDdl = (p: { name: string; description?: string; columns: any[
 // 積まれている場合、実際のAI API呼び出しをスキップしてそれを1つずつ消費する。
 // これを利用し、ウィザードのAI呼び出し部分（wizardDecomposeForms等）を
 // 実AI無しで自動テストできるようにする。
+// 実際の.vjaprojファイルの内容（JSON）をそのままプロジェクトデータへ反映するための
+// テスト用ハンドラ。ユーザー報告の不具合再現用に、実プロジェクトのウィジェット構成・
+// テーブル定義・AI接続設定を丸ごと再現したい場合に使う（open()相当）。
+const _testApplyProjectData = (p: { data: any }) => {
+    const g = window as any;
+    try {
+        g.loadProjectData(JSON.stringify(p.data));
+        return { ok: true };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
 const _testSetAiMockQueue = (p: { responses: string[] }) => {
     try {
         (window as any).__vjaTestAiMockQueue = Array.isArray(p.responses) ? [...p.responses] : [];
@@ -594,6 +606,7 @@ const rpc = Electroview.defineRPC({
             testSaveTable: _testSaveTable,
             testDeleteTable: _testDeleteTable,
             testGenerateDdl: _testGenerateDdl,
+            testApplyProjectData: _testApplyProjectData,
             testSetAiMockQueue: _testSetAiMockQueue,
             testSetAiConfig: _testSetAiConfig,
             testWizardDecomposeForms: _testWizardDecomposeForms,
