@@ -2618,9 +2618,17 @@ function narrowTablesByRequest(text, allTables) {
 // ※定数側には「未知の定数キー検出」バリデーションが無いため、絞り込みで必要な
 //   定数が漏れても自動検知はできない（マッチ0件時は全件表示にフォールバックする
 //   ことで、大外しは防いでいる）。
-function _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowContext = true) {
+// domOverride: { yamlCur, addPrompt } を渡すと、$("yaml-ta")/$("ai-prompt-in")を
+// 読まずにこの値を使う。runAiGenerate()はAPIリクエスト中に#modal-root（YAMLエディタの
+// モーダルもここに含まれる）をローディング表示へ差し替えるため、生成中（AI応答を
+// 受け取ったonSuccessコールバック内、自動修正リトライ時のコンテキスト再構築等）に
+// このDOM要素を読もうとすると、既に存在しない＝空文字列になってしまう
+// （2026-09-21、yamlAiGenerateのリファクタで顕在化したuserPrompt欠落バグの原因）。
+// DOM読み取りが安全なタイミング（モーダルがまだ生きている、showLoadingModal呼び出し前）
+// で一度だけ読み取り、以降の呼び出しにはdomOverrideとして渡すことでこれを回避する。
+function _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowContext = true, domOverride = null) {
     const w = (isAppEvent || isFormEvent) ? null : getWidget(wid);
-    const yamlCur = $("yaml-ta")?.value || "";
+    const yamlCur = domOverride ? (domOverride.yamlCur || "") : ($("yaml-ta")?.value || "");
 
     // ── ⓪ 検証（バリデーション）定義の取得 ──
     // 以前はYAML本文の「検証:」行から正規表現で抽出していたが、
@@ -2629,7 +2637,7 @@ function _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowCont
     const validationName = _getValidationOverride(wid, evName) || null;
     const yamlForAi = yamlCur;
 
-    const addPrompt = $("ai-prompt-in")?.value || "";
+    const addPrompt = domOverride ? (domOverride.addPrompt || "") : ($("ai-prompt-in")?.value || "");
     const curForm = getProjectData().forms[getProjectData().curFormIdx];
 
     const scanText = yamlCur + "\n" + addPrompt;
@@ -2788,10 +2796,14 @@ function _unwrapAiFunctionWrapper(code) {
 // 含む（元の実装と同一）。データモデル（イベントJS）への書き込み・
 // モーダル描画（openFormYaml/openAppEvents/openYaml）の呼び出しは、
 // 他の対応済み関数と同様、テスト時の副作用として許容する設計にした。
+// domOverride: 呼び出し元（yamlAiGenerate）が、モーダルを破壊するrunAiGenerate()の
+// showLoadingModal()呼び出しより前に取得した{yamlCur, addPrompt}。省略時は
+// $("yaml-ta")等から直接読む（テストハンドラ等、モーダルの生死を気にしなくてよい
+// 呼び出し元向け）。
 // 戻り値: { finalCode, validation }（失敗時はnull）。
-async function generateEventJs(wid, evName, isAppEvent, isFormEvent, temperatureOverride) {
+async function generateEventJs(wid, evName, isAppEvent, isFormEvent, temperatureOverride, domOverride = null) {
     const w = (isAppEvent || isFormEvent) ? null : getWidget(wid);
-    const { sysPrompt, userPrompt, validationName } = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent);
+    const { sysPrompt, userPrompt, validationName } = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, true, domOverride);
 
     let result = null;
     await runAiGenerate({
@@ -2820,7 +2832,7 @@ async function generateEventJs(wid, evName, isAppEvent, isFormEvent, temperature
                 // 自動修正リトライ時は、ウィジェット一覧の絞り込みを解除した
                 // userPromptを使う（絞り込みが原因で未知のウィジェット名を
                 // 参照してしまった可能性の救済策。narrowContext=falseで再構築）。
-                const wideCtx = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, false);
+                const wideCtx = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, false, domOverride);
                 const fixUserPrompt = _buildAiFixPrompt(wideCtx.userPrompt, unwrapped, validation);
                 let retryCode = null;
                 await runAiGenerate({
@@ -2915,6 +2927,10 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
         showToast("YAML本文が空です。先に📋YAMLタブに内容を入力してください", 5000);
         return;
     }
+    // この後のrunAiGenerate()（内部でshowLoadingModal()を呼び#modal-rootを
+    // ローディング表示へ差し替える＝YAMLエディタのDOMがここで消える）より前に、
+    // 必要なDOM値を確保しておく（詳細はgenerateEventJs()のAIメモ参照）。
+    const domOverride = { yamlCur: yamlTaEl.value, addPrompt: $("ai-prompt-in")?.value || "" };
 
     const btn = $("ai-gen-btn");
     const randomBtn = $("ai-gen-random-btn");
@@ -2942,7 +2958,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
     if (status) status.textContent = "⏳ コンテキスト収集中…";
     showLoadingModal("AI生成中…");
 
-    const result = await generateEventJs(wid, evName, isAppEvent, isFormEvent, temperatureOverride);
+    const result = await generateEventJs(wid, evName, isAppEvent, isFormEvent, temperatureOverride, domOverride);
     if (result?.ok) {
         const { finalCode, validation } = result;
         requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -3066,13 +3082,16 @@ function _convertTextToYamlEngKeysToJp(yamlText) {
 // データモデル（イベントYAML/依頼文）への書き込みまでを行う（モーダル描画である
 // openFormYaml/openAppEvents/openYamlの呼び出しは、wizardDecomposeForms()等の
 // 既存の自動テスト対応関数と同様、テスト時の副作用として許容する）。
+// domOverride: 呼び出し元（textToYamlGenerate）が、モーダルを破壊するrunAiGenerate()の
+// showLoadingModal()呼び出しより前に取得した{yamlCur, addPrompt}（詳細はgenerateEventJs()の
+// AIメモ参照）。省略時は$("yaml-ta")等から直接読む。
 // 戻り値: 生成されたYAML文字列（失敗時はnull）。
-async function generateTextToYaml(wid, evName, inputText) {
+async function generateTextToYaml(wid, evName, inputText, domOverride = null) {
     const isAppEvent = (wid === "appev");
     const isFormEvent = (wid === "form");
     // YAMLドラフト生成時は依頼文にウィジェット名が出てこないケースが多いため、
     // 絞り込みを行わず常にフォーム全体のウィジェット一覧をAIへ渡す
-    const { allWidgetsCtx, tablesCtx } = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, false);
+    const { allWidgetsCtx, tablesCtx } = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, false, domOverride);
 
     const sysPrompt = _PROMPT_DEF.TEXT_TO_YAML_SYS_PROMPT({ widgetsCtx: allWidgetsCtx, tablesCtx: tablesCtx });
     const userPrompt = _PROMPT_DEF.TEXT_TO_YAML_USER_PROMPT(inputText);
@@ -3151,9 +3170,14 @@ async function textToYamlGenerate(wid, evName) {
         if (!ok) return;
     }
 
+    // この後のrunAiGenerate()（内部でshowLoadingModal()を呼び#modal-rootを
+    // ローディング表示へ差し替える＝YAMLエディタのDOMがここで消える）より前に、
+    // 必要なDOM値を確保しておく（詳細はgenerateEventJs()のAIメモ参照）。
+    const domOverride = { yamlCur: yamlTaCur?.value || "", addPrompt: $("ai-prompt-in")?.value || "" };
+
     showLoadingModal("YAMLドラフト作成中…");
 
-    const stripped = await generateTextToYaml(wid, evName, inputText);
+    const stripped = await generateTextToYaml(wid, evName, inputText, domOverride);
     if (stripped === null) return;
 
     requestAnimationFrame(() => requestAnimationFrame(() => {
