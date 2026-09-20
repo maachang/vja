@@ -2772,60 +2772,34 @@ function _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowCont
     return { sysPrompt, userPrompt, validationName, wtag: w?.tag };
 }
 
-async function yamlAiGenerate(wid, evName, temperatureOverride) {
-    const isAppEvent = (wid === "appev");
-    const isFormEvent = (wid === "form");
+// async function handleXxx() { ... } のラッパーを自動除去
+// 3Bモデル等が関数ラッパーを生成してしまう場合の後処理
+function _unwrapAiFunctionWrapper(code) {
+    return code.replace(
+        /^\s*async\s+function\s+\w+\s*\([^)]*\)\s*\{([\s\S]*)\}\s*$/,
+        (_, inner) => inner.trim()
+    );
+}
+
+// イベントJS自動生成（yamlAiGenerate）のロジック本体（DOM非依存）。
+// 自動テスト用（bridge.tsのtestYamlAiGenerateハンドラ）に、DOM読み書き
+// （ボタン活性制御・ステータステキスト・タブ切替・モーダル再描画）と
+// 分離してある。1回検証NGなら自動修正リトライを1回だけ行う内部ロジックも
+// 含む（元の実装と同一）。データモデル（イベントJS）への書き込み・
+// モーダル描画（openFormYaml/openAppEvents/openYaml）の呼び出しは、
+// 他の対応済み関数と同様、テスト時の副作用として許容する設計にした。
+// 戻り値: { finalCode, validation }（失敗時はnull）。
+async function generateEventJs(wid, evName, isAppEvent, isFormEvent, temperatureOverride) {
     const w = (isAppEvent || isFormEvent) ? null : getWidget(wid);
-    if (!isAppEvent && !isFormEvent && !w) return;
-    if (!getProjectData().aiConfig.enabled) {
-        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
-            closeModal();
-            openAiConfig();
-        }
-        return;
-    }
+    const { sysPrompt, userPrompt, validationName } = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent);
 
-    const { sysPrompt, userPrompt, validationName, wtag } = _buildGenPromptContext(wid, evName, isAppEvent, isFormEvent);
-    const btn = $("ai-gen-btn");
-    const randomBtn = $("ai-gen-random-btn");
-    const status = $("ai-status");
-    const aiStartTime = Date.now(); // AI実行開始時刻を記録
-
-    // AI生成操作の前に現在のエディタ内容（依頼・YAML・JS）を即時保存
-    await saveYamlData(wid, evName);
-
-    // 確認ダイアログ
-    const jsTaCur = $("js-ta")?.value || "";
-    const jsTaHasCode = jsTaCur.split("\n")
-        .some(l => l.trim() && !l.trim().startsWith("//"));
-    const confirmMsg = jsTaHasCode
-        ? "JavaScriptタブに既存のコードがあります。\nAI生成で上書きしますか？\n※実行前に現在の内容を保存します。"
-        : "JavaScriptコードを生成しますか？\n※実行前に現在の内容を保存します。";
-    if (!(await vja.app.showConfirm(confirmMsg))) {
-        if (btn) btn.disabled = false;
-        if (randomBtn) randomBtn.disabled = false;
-        if (status) status.textContent = "";
-        return;
-    }
-    if (btn) btn.disabled = true;
-    if (randomBtn) randomBtn.disabled = true;
-    if (status) status.textContent = "⏳ コンテキスト収集中…";
-    showLoadingModal("AI生成中…");
-
+    let result = null;
     await runAiGenerate({
         systemPrompt: sysPrompt,
         userPrompt: userPrompt,
         temperatureOverride: temperatureOverride,
         onSuccess: async (clean) => {
-            // async function handleXxx() { ... } のラッパーを自動除去
-            // 3Bモデル等が関数ラッパーを生成してしまう場合の後処理
-            const _unwrap = (code) => {
-                return code.replace(
-                    /^\s*async\s+function\s+\w+\s*\([^)]*\)\s*\{([\s\S]*)\}\s*$/,
-                    (_, inner) => inner.trim()
-                );
-            };
-            let unwrapped = _fixMissingAwaits(_stripWidgetValueAccess(_unwrap(clean)), isAppEvent);
+            let unwrapped = _fixMissingAwaits(_stripWidgetValueAccess(_unwrapAiFunctionWrapper(clean)), isAppEvent);
             // 1行べた書き・インデント不揃いを、検証（行番号ベース）の前に整形しておく
             unwrapped = await formatJsCode(unwrapped);
 
@@ -2843,7 +2817,6 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
             if (!validation.ok) {
                 const issueLog = _formatValidationIssuesForLog(validation);
                 window.vja?.log?.debug?.("[AI検証] 自動修正リトライを実行します。検出内容: " + issueLog);
-                if (status) status.textContent = "⏳ 検出した問題を自動修正中…";
                 // 自動修正リトライ時は、ウィジェット一覧の絞り込みを解除した
                 // userPromptを使う（絞り込みが原因で未知のウィジェット名を
                 // 参照してしまった可能性の救済策。narrowContext=falseで再構築）。
@@ -2856,7 +2829,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                     loadingMsg: "検出した問題を自動修正中…",
                     temperatureOverride: temperatureOverride,
                     onSuccess: async (fixed) => {
-                        retryCode = await formatJsCode(_fixMissingAwaits(_stripWidgetValueAccess(_unwrap(fixed)), isAppEvent));
+                        retryCode = await formatJsCode(_fixMissingAwaits(_stripWidgetValueAccess(_unwrapAiFunctionWrapper(fixed)), isAppEvent));
                     },
                     onCancel: async () => { },
                     onError: async () => { },
@@ -2910,29 +2883,76 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
                 w2.jsCode[evName] = finalCode;
                 openYaml(wid, evName);
             }
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-                const jsTa = $("js-ta");
-                if (jsTa) jsTa.value = finalCode;
-                if (typeof saveYamlData === "function") saveYamlData(wid, evName);
-                yamlTabSwitch("js");
-                jsHlUpdate();
-                editorUpdateGutter("js-ta", "js-gutter");
-                if (status) status.textContent = "✅ 生成完了 (JavaScriptタブを確認)";
-                const elapsed = Math.round((Date.now() - aiStartTime) / 1000);
-                showToast("✅ AI生成完了（" + elapsed + "秒）", 5000);
-                if (!validation.ok) {
-                    _trackLearnedFixRecurrence(wid, evName, _formatValidationIssuesForLog(validation));
-                    showAiValidationWarningBanner(validation, wid, evName, isAppEvent, isFormEvent);
-                }
-            }));
+            if (!validation.ok) {
+                _trackLearnedFixRecurrence(wid, evName, _formatValidationIssuesForLog(validation));
+            }
+            result = { ok: true, finalCode, validation };
         },
-        onCancel: async () => {
-            if (status) status.textContent = "";
-        },
-        onError: async () => {
-            if (status) status.textContent = "❌ 生成エラー";
-        },
+        onCancel: async () => { result = { ok: false, reason: "cancel" }; },
+        onError: async () => { result = { ok: false, reason: "error" }; },
     });
+    return result;
+}
+
+async function yamlAiGenerate(wid, evName, temperatureOverride) {
+    const isAppEvent = (wid === "appev");
+    const isFormEvent = (wid === "form");
+    const w = (isAppEvent || isFormEvent) ? null : getWidget(wid);
+    if (!isAppEvent && !isFormEvent && !w) return;
+    if (!getProjectData().aiConfig.enabled) {
+        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
+            closeModal();
+            openAiConfig();
+        }
+        return;
+    }
+
+    const btn = $("ai-gen-btn");
+    const randomBtn = $("ai-gen-random-btn");
+    const status = $("ai-status");
+    const aiStartTime = Date.now(); // AI実行開始時刻を記録
+
+    // AI生成操作の前に現在のエディタ内容（依頼・YAML・JS）を即時保存
+    await saveYamlData(wid, evName);
+
+    // 確認ダイアログ
+    const jsTaCur = $("js-ta")?.value || "";
+    const jsTaHasCode = jsTaCur.split("\n")
+        .some(l => l.trim() && !l.trim().startsWith("//"));
+    const confirmMsg = jsTaHasCode
+        ? "JavaScriptタブに既存のコードがあります。\nAI生成で上書きしますか？\n※実行前に現在の内容を保存します。"
+        : "JavaScriptコードを生成しますか？\n※実行前に現在の内容を保存します。";
+    if (!(await vja.app.showConfirm(confirmMsg))) {
+        if (btn) btn.disabled = false;
+        if (randomBtn) randomBtn.disabled = false;
+        if (status) status.textContent = "";
+        return;
+    }
+    if (btn) btn.disabled = true;
+    if (randomBtn) randomBtn.disabled = true;
+    if (status) status.textContent = "⏳ コンテキスト収集中…";
+    showLoadingModal("AI生成中…");
+
+    const result = await generateEventJs(wid, evName, isAppEvent, isFormEvent, temperatureOverride);
+    if (result?.ok) {
+        const { finalCode, validation } = result;
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            const jsTa = $("js-ta");
+            if (jsTa) jsTa.value = finalCode;
+            if (typeof saveYamlData === "function") saveYamlData(wid, evName);
+            yamlTabSwitch("js");
+            jsHlUpdate();
+            editorUpdateGutter("js-ta", "js-gutter");
+            if (status) status.textContent = "✅ 生成完了 (JavaScriptタブを確認)";
+            const elapsed = Math.round((Date.now() - aiStartTime) / 1000);
+            showToast("✅ AI生成完了（" + elapsed + "秒）", 5000);
+            if (!validation.ok) {
+                showAiValidationWarningBanner(validation, wid, evName, isAppEvent, isFormEvent);
+            }
+        }));
+    } else if (status) {
+        status.textContent = result?.reason === "error" ? "❌ 生成エラー" : "";
+    }
     if (btn) btn.disabled = false;
     if (randomBtn) randomBtn.disabled = false;
 }
@@ -4806,7 +4826,7 @@ function addManualLearnedFix() {
 Object.assign(window, {
     parseApiRefNav, openApiRef, openYaml,
     yamlBuildRightPanel, yamlBuildFormDesignRightPanel, yamlRpSection, yamlToggleRpSection, yamlToggleTblCols,
-    yamlInitRpanelEvents, yamlInitResize, yamlInsert, yamlAiGenerate,
+    yamlInitRpanelEvents, yamlInitResize, yamlInsert, yamlAiGenerate, generateEventJs,
     editorKeyHandler, editorMouseDownHandler2, editorDblClickHandler, editorHlUpdate,
     buildYamlEditorHTML, initYamlEditorModal,
     openAiConfig, aiCfgModelListHtml, aiCfgToggleRouter, aiCfgToggleEnabled,

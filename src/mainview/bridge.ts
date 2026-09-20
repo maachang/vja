@@ -519,6 +519,24 @@ const _testFormDesignTextToYamlGenerate = async (p: { inputText: string }) => {
         return { ok: false, error: e.message };
     }
 };
+// yamlAiGenerate()（イベントJS自動生成）の動作確認用。DOM(ボタン活性制御・
+// ステータステキスト・タブ切替・モーダル再描画)を介さず、DOM非依存版の
+// generateEventJs()を直接呼び出す。1回検証NGなら自動修正リトライを1回だけ
+// 行う（元の実装と同一）。対象イベントのYAMLは事前にtestSaveYaml等で
+// データモデルへ保存しておくこと（$("yaml-ta")経由では読まないため、
+// _buildGenPromptContext内の絞り込みはYAML未設定時と同様のフォールバックになる）。
+// 検証NG時のリトライも含めAI呼び出しが複数回起きるため、モック使用時は
+// testSetAiMockQueueに必要な件数（通常1〜2件）を積んでおくこと。
+const _testYamlAiGenerate = async (p: { wid: number | string; evName: string; isAppEvent?: boolean; isFormEvent?: boolean; temperatureOverride?: number }) => {
+    const g = window as any;
+    try {
+        const result = await g.generateEventJs(p.wid, p.evName, !!p.isAppEvent, !!p.isFormEvent, p.temperatureOverride);
+        if (!result || !result.ok) return { ok: false, error: result?.reason || "生成に失敗しました" };
+        return { ok: true, finalCode: result.finalCode, validation: result.validation };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
 // textToYamlGenerate()（イベントYAMLドラフト自動生成）の動作確認用。DOM(textarea)・
 // 確認ダイアログを介さず、DOM非依存版のgenerateTextToYaml()を直接呼び出す。
 // wid: ウィジェットID、"form"（フォームイベント）、"appev"（アプリイベント）のいずれか。
@@ -573,6 +591,7 @@ const rpc = Electroview.defineRPC({
             testTextToYamlGenerate: _testTextToYamlGenerate,
             testManualRetryAiFix: _testManualRetryAiFix,
             testFormDesignTextToYamlGenerate: _testFormDesignTextToYamlGenerate,
+            testYamlAiGenerate: _testYamlAiGenerate,
         },
         messages: {
             loadScriptResult: (v: any) => { /* フロント側で処理 */ },
