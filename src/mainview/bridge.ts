@@ -491,6 +491,21 @@ const _testExtRtGenDoc = async (p: { js: string }) => {
         return { ok: false, error: e.message };
     }
 };
+// textToYamlGenerate()（イベントYAMLドラフト自動生成）の動作確認用。DOM(textarea)・
+// 確認ダイアログを介さず、DOM非依存版のgenerateTextToYaml()を直接呼び出す。
+// wid: ウィジェットID、"form"（フォームイベント）、"appev"（アプリイベント）のいずれか。
+// 成功時は生成YAMLに加え、実際にデータモデルへ書き込まれた内容も返す。
+// 事前にtestSetAiMockQueueでモック応答（YAML文字列）を積んでおく必要がある。
+const _testTextToYamlGenerate = async (p: { wid: string | number; evName: string; inputText: string }) => {
+    const g = window as any;
+    try {
+        const yaml = await g.generateTextToYaml(p.wid, p.evName, p.inputText || "");
+        if (yaml === null) return { ok: false, error: "生成に失敗しました" };
+        return { ok: true, yaml };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
 
 const rpc = Electroview.defineRPC({
     maxRequestTime: Infinity,
@@ -527,6 +542,7 @@ const rpc = Electroview.defineRPC({
             testTblAiGenerateSchema: _testTblAiGenerateSchema,
             testValidAiGenerateRules: _testValidAiGenerateRules,
             testExtRtGenDoc: _testExtRtGenDoc,
+            testTextToYamlGenerate: _testTextToYamlGenerate,
         },
         messages: {
             loadScriptResult: (v: any) => { /* フロント側で処理 */ },

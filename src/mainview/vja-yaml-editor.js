@@ -3014,37 +3014,14 @@ function _convertTextToYamlEngKeysToJp(yamlText) {
     return result;
 }
 
-async function textToYamlGenerate(wid, evName) {
-    if (!getProjectData().aiConfig.enabled) {
-        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
-            closeModal();
-            openAiConfig();
-        }
-        return;
-    }
-
-    const promptTa = $("prompt-ta");
-    const aiPromptIn = $("ai-prompt-in");
-    const inputText = promptTa?.value?.trim() || aiPromptIn?.value?.trim() || "";
-    if (!inputText) {
-        showToast("「✨ YAMLドラフト」タブまたはAI指示欄にやりたい内容を入力してください");
-        if (promptTa) promptTa.focus();
-        else if (aiPromptIn) aiPromptIn.focus();
-        return;
-    }
-
-    // AI生成操作の前に現在のエディタ内容（依頼・YAML・JS）を即時保存
-    await saveYamlData(wid, evName);
-
-    const yamlTaCur = $("yaml-ta");
-    if (yamlTaCur && yamlTaCur.value.trim().length > 0) {
-        const ok = await vja.app.showConfirm(
-            "YAMLエディタに既存の記述があります。\n" +
-            "AIが作成するYAMLで上書きしますか？"
-        );
-        if (!ok) return;
-    }
-
+// イベントYAMLドラフト自動生成（Text to YAML）のロジック本体（DOM非依存）。
+// 自動テスト用（bridge.tsのtestTextToYamlGenerateハンドラ）に、DOM読み書きと
+// 分離してある。プロンプト生成→AI呼び出し→マークダウン除去・キー変換→
+// データモデル（イベントYAML/依頼文）への書き込みまでを行う（モーダル描画である
+// openFormYaml/openAppEvents/openYamlの呼び出しは、wizardDecomposeForms()等の
+// 既存の自動テスト対応関数と同様、テスト時の副作用として許容する）。
+// 戻り値: 生成されたYAML文字列（失敗時はnull）。
+async function generateTextToYaml(wid, evName, inputText) {
     const isAppEvent = (wid === "appev");
     const isFormEvent = (wid === "form");
     // YAMLドラフト生成時は依頼文にウィジェット名が出てこないケースが多いため、
@@ -3054,8 +3031,7 @@ async function textToYamlGenerate(wid, evName) {
     const sysPrompt = _PROMPT_DEF.TEXT_TO_YAML_SYS_PROMPT({ widgetsCtx: allWidgetsCtx, tablesCtx: tablesCtx });
     const userPrompt = _PROMPT_DEF.TEXT_TO_YAML_USER_PROMPT(inputText);
 
-    showLoadingModal("YAMLドラフト作成中…");
-
+    let result = null;
     await runAiGenerate({
         systemPrompt: sysPrompt,
         userPrompt: userPrompt,
@@ -3090,27 +3066,66 @@ async function textToYamlGenerate(wid, evName) {
                 }
                 openYaml(wid, evName);
             }
-
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-                const newYamlTa = $("yaml-ta");
-                if (newYamlTa) {
-                    newYamlTa.value = stripped;
-                    yamlHlUpdate();
-                    editorUpdateGutter("yaml-ta", "yaml-gutter");
-                }
-                const newPromptTa = $("prompt-ta");
-                if (newPromptTa) {
-                    newPromptTa.value = inputText;
-                    editorUpdateGutter("prompt-ta", "prompt-gutter");
-                }
-                if (typeof saveYamlData === "function") saveYamlData(wid, evName);
-                yamlTabSwitch("yaml");
-                showToast("✨ YAMLドラフトを作成・反映しました（📋 YAMLタブを確認）");
-            }));
+            result = stripped;
         },
         onCancel: async () => {},
         onError: async () => {},
     });
+    return result;
+}
+
+async function textToYamlGenerate(wid, evName) {
+    if (!getProjectData().aiConfig.enabled) {
+        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
+            closeModal();
+            openAiConfig();
+        }
+        return;
+    }
+
+    const promptTa = $("prompt-ta");
+    const aiPromptIn = $("ai-prompt-in");
+    const inputText = promptTa?.value?.trim() || aiPromptIn?.value?.trim() || "";
+    if (!inputText) {
+        showToast("「✨ YAMLドラフト」タブまたはAI指示欄にやりたい内容を入力してください");
+        if (promptTa) promptTa.focus();
+        else if (aiPromptIn) aiPromptIn.focus();
+        return;
+    }
+
+    // AI生成操作の前に現在のエディタ内容（依頼・YAML・JS）を即時保存
+    await saveYamlData(wid, evName);
+
+    const yamlTaCur = $("yaml-ta");
+    if (yamlTaCur && yamlTaCur.value.trim().length > 0) {
+        const ok = await vja.app.showConfirm(
+            "YAMLエディタに既存の記述があります。\n" +
+            "AIが作成するYAMLで上書きしますか？"
+        );
+        if (!ok) return;
+    }
+
+    showLoadingModal("YAMLドラフト作成中…");
+
+    const stripped = await generateTextToYaml(wid, evName, inputText);
+    if (stripped === null) return;
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        const newYamlTa = $("yaml-ta");
+        if (newYamlTa) {
+            newYamlTa.value = stripped;
+            yamlHlUpdate();
+            editorUpdateGutter("yaml-ta", "yaml-gutter");
+        }
+        const newPromptTa = $("prompt-ta");
+        if (newPromptTa) {
+            newPromptTa.value = inputText;
+            editorUpdateGutter("prompt-ta", "prompt-gutter");
+        }
+        if (typeof saveYamlData === "function") saveYamlData(wid, evName);
+        yamlTabSwitch("yaml");
+        showToast("✨ YAMLドラフトを作成・反映しました（📋 YAMLタブを確認）");
+    }));
 }
 
 // 画面レイアウトイメージ選択タブの中身（箱型ダイアグラムのカード一覧）を生成する。
@@ -4764,7 +4779,7 @@ Object.assign(window, {
     buildYamlEditorHTML, initYamlEditorModal,
     openAiConfig, aiCfgModelListHtml, aiCfgToggleRouter, aiCfgToggleEnabled,
     aiCfgFetchModels, aiCfgConfirm, aiCfgCancel, aiCfgSelectPreset, aiCfgSaveAsPreset, aiCfgDoSaveAsPreset, aiCfgDeletePreset,
-    editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, insertFormDesignTemplate, openFormDesignTemplateModal, confirmApplyFormDesignTemplate, textToYamlGenerate, formDesignTextToYamlGenerate, formDesignAiGenerate, saveFormDesignDraft,
+    editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, insertFormDesignTemplate, openFormDesignTemplateModal, confirmApplyFormDesignTemplate, textToYamlGenerate, generateTextToYaml, formDesignTextToYamlGenerate, formDesignAiGenerate, saveFormDesignDraft,
     buildFormLayoutPickerHtml, selectFormLayoutPattern,
     parseFormDesignJson, parseFormDesignYaml, convertFormDesignEngKeysToJp, openAiRawOutputModal,
     narrowTablesByRequest, buildTablesCtxText, deriveMissingFormDesignTables,
