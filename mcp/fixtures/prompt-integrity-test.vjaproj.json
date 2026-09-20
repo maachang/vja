@@ -1,0 +1,73 @@
+{
+  "forms": [
+    {
+      "id": "f0",
+      "cfg": { "name": "TestForm", "title": "TestForm", "w": 800, "h": 500, "description": "AI生成プロンプト整合性テスト用の固定フィクスチャフォーム" },
+      "idCnt": 6,
+      "widgets": [
+        { "id": 1, "name": "testResultGrid", "tag": "datagrid", "x": 20, "y": 80, "w": 600, "h": 300, "z": 0, "props": {}, "events": {}, "jsCode": {}, "docCode": {} },
+        {
+          "id": 2, "name": "testSearchButton", "tag": "button", "x": 20, "y": 20, "w": 100, "h": 30, "z": 1,
+          "props": { "text": "検索" },
+          "events": {
+            "Click": "利用テーブル:\n  - test_items\n説明: testSearchInputとtestSearchSelectに基づいてtest_itemsテーブルからデータを検索しtestResultGridに表示する\n入力チェック: なし\nアクション:\n  - ローディングを表示する\n  - testSearchInputが空でない場合:\n      - testSearchSelectの選択値を取得する\n      - testSearchSelectの値をカラム名として指定し、testSearchInputをLIKE条件として設定してtest_itemsテーブルからSELECTする\n  - それ以外の場合:\n      - 条件なしでtest_itemsテーブルから全件SELECTする\n  - 取得した結果をtestResultGridにバインドする\n正常終了: トーストで完了を出力\nエラー終了: ログとトーストにエラーを出力"
+          },
+          "jsCode": {},
+          "docCode": {}
+        },
+        { "id": 3, "name": "testSearchInput", "tag": "inputtype", "x": 140, "y": 20, "w": 150, "h": 28, "z": 2, "props": { "inputType": "text" }, "events": {}, "jsCode": {}, "docCode": {} },
+        { "id": 4, "name": "testSearchSelect", "tag": "selectBox", "x": 300, "y": 20, "w": 150, "h": 28, "z": 3, "props": { "options": ["name", "category"] }, "events": {}, "jsCode": {}, "docCode": {} }
+      ],
+      "constants": [],
+      "validations": []
+    }
+  ],
+  "curFormIdx": 0,
+  "constants": [],
+  "startFormId": "f0",
+  "aiConfig": {
+    "endpoint": "http://localhost:8080",
+    "apiKey": "",
+    "model": "",
+    "models": [],
+    "enabled": true,
+    "routerMode": false,
+    "thinking": true,
+    "maxTokens": "",
+    "temperature": 0
+  },
+  "cloudInfras": [],
+  "tables": [
+    {
+      "name": "test_items",
+      "description": "プロンプト整合性テスト用のダミーテーブル",
+      "columns": [
+        { "name": "id", "type": "INTEGER", "pk": true },
+        { "name": "name", "labelJa": "名前", "type": "TEXT", "notNull": true },
+        { "name": "category", "labelJa": "分類", "type": "TEXT" }
+      ]
+    }
+  ],
+  "snapOn": true,
+  "showGrid": false,
+  "projectInfo": {
+    "name": "PromptIntegrityTestFixture",
+    "description": "AI生成プロンプトの整合性テスト専用の固定フィクスチャ（実際のユーザープロジェクトファイルへの依存を避けるため用意。個人の環境に依存する内容は含まない）",
+    "version": "1.0.0",
+    "author": "",
+    "company": "",
+    "appEvents": { "onStart": "", "onExit": "", "onStart_yaml": "", "onExit_yaml": "" }
+  },
+  "extRuntime": { "js": "", "doc": "" },
+  "mockOverrides": {},
+  "apiOptOverrides": { "2_Click": [] },
+  "tableOptOverrides": { "2_Click": ["test_items"] },
+  "validationOverrides": {},
+  "mockCheckOverrides": {},
+  "learnedFixes": {},
+  "snapshotHistory": {},
+  "aiPresets": [],
+  "currentAiPresetId": "",
+  "wizardProgress": null,
+  "wizardHistory": null
+}
