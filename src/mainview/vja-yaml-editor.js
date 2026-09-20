@@ -2907,6 +2907,15 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
         return;
     }
 
+    // YAML本文が空のままAI生成を実行すると、依頼内容が丸ごとAIに渡らず
+    // （ENG_YAML_TO_JS_USER_PROMPTは"[The Following YAML]"ブロック自体を省略する）、
+    // 文脈の無い最小限のコードしか生成されない事故につながる。生成前に必ず検知して止める。
+    const yamlTaEl = $("yaml-ta");
+    if (!yamlTaEl?.value?.trim()) {
+        showToast("YAML本文が空です。先に📋YAMLタブに内容を入力してください", 5000);
+        return;
+    }
+
     const btn = $("ai-gen-btn");
     const randomBtn = $("ai-gen-random-btn");
     const status = $("ai-status");
