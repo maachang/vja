@@ -549,6 +549,114 @@ const _testYamlAiGenerate = async (p: { wid: number | string; evName: string; is
         return { ok: false, error: e.message };
     }
 };
+// window.__vjaTestAutoConfirm（showVjaDialogのテスト自動応答フラグ、vja-runtime.js）を
+// 設定する。実際のyamlAiGenerate()等（showConfirm()を経由する本物の呼び出し経路）を
+// 自動テストで丸ごと実行するために使う。valueを省略/nullにすると元の通常動作
+// （実際にダイアログを表示しユーザー操作を待つ）へ戻す。
+const _testSetAutoConfirm = (p: { value: boolean | null }) => {
+    const g = window as any;
+    try {
+        if (p.value === null || p.value === undefined) delete g.__vjaTestAutoConfirm;
+        else g.__vjaTestAutoConfirm = !!p.value;
+        return { ok: true };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+// runAiGenerate()が最後に実際に組み立てて使ったsystemPrompt/userPrompt
+// （window.__vjaLastPrompt、vja-modal.js）を取得する。「実際に送信された内容が
+// 入力を正しく反映しているか」をサイズ・内容の両面から直接検証するために使う
+// （2026-09-21、yamlAiGenerate等でDOM読み取りタイミングの回帰が発生した際の教訓。
+//  詳細はCLAUDE.mdの当該不具合の記録を参照）。
+const _testGetLastPrompt = () => {
+    const g = window as any;
+    return { ok: true, prompt: g.__vjaLastPrompt || null };
+};
+// yamlAiGenerate()本体（showLoadingModal呼び出しを含む実際のボタン操作フロー全体）を
+// 直接実行する。事前にtestSetAutoConfirmで自動応答を有効にしておく必要がある
+// （確認ダイアログが表示されると自動テストが止まってしまうため）。
+// generateEventJs()を直接呼ぶtestYamlAiGenerateとは異なり、こちらは
+// showLoadingModal()等の呼び出し元の副作用も含めて実際の経路を再現するため、
+// 「DOM非依存のコア関数だけをテストして問題ないと判断する」ことの限界を補う。
+const _testYamlAiGenerateFull = async (p: { wid: number | string; evName: string; temperatureOverride?: number }) => {
+    const g = window as any;
+    try {
+        await g.yamlAiGenerate(p.wid, p.evName, p.temperatureOverride);
+        return { ok: true, prompt: g.__vjaLastPrompt || null };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+// yamlAiGenerate()本体（実際のボタン操作フロー全体）を実行し、実際に送信された
+// userPromptが「保存されているYAML本文・現在のウィジェット・利用テーブル」を
+// 正しく反映しているかを、単なるサイズ比較だけでなく複数の角度からまとめて
+// 検証する。事前にtestSetAutoConfirmで自動応答を有効にし、testSetAiMockQueueで
+// モック応答を積んでおく必要がある（詳細はCLAUDE.mdの当該不具合の記録を参照）。
+// 「AIが書いたテストをAIが確認する」こと自体の限界を踏まえ、単一の判定基準
+// （生成が成功したか/サイズが0でないか等）に頼らず、データモデル上の正解
+// （保存済みYAML本文そのもの）との直接突き合わせを主軸に据えている。
+const _testVerifyPromptIntegrity = async (p: { wid: number | string; evName: string; temperatureOverride?: number }) => {
+    const g = window as any;
+    try {
+        await g.yamlAiGenerate(p.wid, p.evName, p.temperatureOverride);
+        const captured = g.__vjaLastPrompt;
+        if (!captured) return { ok: false, error: "生成が実行されませんでした（プロンプトが記録されていません。確認ダイアログ/空チェック等で中断された可能性）" };
+        const { userPrompt, systemLen, userLen } = captured;
+
+        const isAppEvent = p.wid === "appev";
+        const isFormEvent = p.wid === "form";
+        let savedYaml = "";
+        let currentWidgetName: string | null = null;
+        if (isFormEvent) {
+            const f = g.getProjectData().forms[g.getProjectData().curFormIdx];
+            savedYaml = f?.events?.[p.evName] || "";
+        } else if (isAppEvent) {
+            savedYaml = g.getProjectData().projectInfo?.appEvents?.[p.evName + "_yaml"] || "";
+        } else {
+            const w = g.getWidget(p.wid);
+            savedYaml = w?.events?.[p.evName] || "";
+            currentWidgetName = w?.name || null;
+        }
+        const savedYamlTrimmed = savedYaml.trim();
+
+        // 「利用テーブル:」に列挙された各テーブル名を抽出する（_ensureTableOptInitialized等と
+        // 同じ正規表現ロジックを流用）。
+        const tblMatch = savedYamlTrimmed.match(/^[ \t]*利用テーブル[ \t]*:[ \t]*\r?\n((?:[ \t]*-[^\n]*\r?\n?)*)/m);
+        const declaredTables: string[] = [];
+        if (tblMatch) {
+            tblMatch[1].split("\n").forEach((l: string) => {
+                const name = l.replace(/^\s*-\s*/, "").replace(/#.*$/, "").trim();
+                if (name) declaredTables.push(name);
+            });
+        }
+
+        const sectionHeaderCount = (userPrompt.match(/^### /gm) || []).length;
+
+        const checks = {
+            // ① 内容ベース: 保存済みYAML本文がそのまま（一字一句）プロンプトに含まれているか
+            yamlContainedVerbatim: savedYamlTrimmed.length === 0 || userPrompt.includes(savedYamlTrimmed),
+            // ② 内容ベース: 現在編集中のウィジェット名がWidget Listセクションに含まれているか
+            currentWidgetNameInPrompt: !currentWidgetName || userPrompt.includes(currentWidgetName),
+            // ③ 内容ベース: 「利用テーブル:」に列挙された各テーブル名がTable Definitionsに反映されているか
+            declaredTables,
+            allDeclaredTablesInPrompt: declaredTables.every((t) => userPrompt.includes(t)),
+            // ④ 構造ベース: "### "見出しの数（isAppEventの場合はfrontInfo自体が無いため対象外）
+            sectionHeaderCount,
+            sectionHeaderCountOk: isAppEvent || sectionHeaderCount >= 8,
+            // ⑤ サイズベース: userLenは、保存済みYAML本文の文字数を含められるだけの
+            //   余地があるはず（YAML本文が丸ごと欠落していれば、この関係は成立しない）
+            userLenAboveYamlLen: userLen >= savedYamlTrimmed.length,
+            systemLen,
+            userLen,
+            savedYamlLen: savedYamlTrimmed.length,
+        };
+        const allOk = checks.yamlContainedVerbatim && checks.currentWidgetNameInPrompt
+            && checks.allDeclaredTablesInPrompt && checks.sectionHeaderCountOk && checks.userLenAboveYamlLen;
+        return { ok: true, allOk, checks };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
 // formDesignAiGenerate()（画面デザインAI生成、既存ウィジェット全削除＋反映）の
 // 動作確認用。DOM(確認ダイアログ・textarea・ボタン活性制御)を介さず、DOM非依存版の
 // generateFormDesignAiLayout()を直接呼び出す。既存ウィジェットの全削除という
@@ -619,6 +727,10 @@ const rpc = Electroview.defineRPC({
             testManualRetryAiFix: _testManualRetryAiFix,
             testFormDesignTextToYamlGenerate: _testFormDesignTextToYamlGenerate,
             testYamlAiGenerate: _testYamlAiGenerate,
+            testSetAutoConfirm: _testSetAutoConfirm,
+            testGetLastPrompt: _testGetLastPrompt,
+            testYamlAiGenerateFull: _testYamlAiGenerateFull,
+            testVerifyPromptIntegrity: _testVerifyPromptIntegrity,
             testFormDesignAiGenerate: _testFormDesignAiGenerate,
         },
         messages: {

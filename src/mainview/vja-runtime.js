@@ -1359,6 +1359,15 @@ import { parseCsvLine } from "../shared/csv-utils";
     };
 
     global.showVjaDialog = (msg, onOk) => {
+        // テスト自動化用フック: window.__vjaTestAutoConfirmがbooleanで設定されている場合、
+        // 実際のダイアログを表示せず即座にその値でresolveする。yamlAiGenerate等、
+        // showConfirm()を経由する実際のボタン操作フロー全体（showLoadingModal呼び出しを
+        // 含む）を自動テストで再現するために使う（既存のwindow.__vjaTestAiMockQueueと
+        // 同じ設計パターン。通常起動時はこのフラグ自体をセットしないため無害）。
+        if (typeof window.__vjaTestAutoConfirm === "boolean") {
+            if (onOk) onOk(window.__vjaTestAutoConfirm);
+            return;
+        }
         _dialogOkCallback = onOk || null;
         _showDialogRoot(
             "<div class='box'>" +

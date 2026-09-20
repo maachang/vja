@@ -86,6 +86,11 @@ function cancelAiGenerate() {
 // - onError: エラー時のコールバック（省略可）
 async function runAiGenerate(options) {
     const { systemPrompt, userPrompt, onSuccess, onCancel, onError, loadingMsg, temperatureOverride } = options;
+    // テスト自動化用フック: 実際に組み立てられたsystemPrompt/userPromptを、モック/実AI
+    // どちらの経路でも必ず記録する。呼び出し経路（showLoadingModal等のDOM破壊処理を
+    // 経由するかどうか）に関わらず「実際に送信される内容」を検証できるようにするため
+    // （2026-09-21、yamlAiGenerate等でDOM読み取りタイミングの回帰が発生した際の教訓）。
+    window.__vjaLastPrompt = { systemPrompt, userPrompt, systemLen: systemPrompt.length, userLen: userPrompt.length };
     // テスト自動化用フック: VJA_TEST_MODEでwindow.__vjaTestAiMockQueue（配列）に
     // モック応答が積まれている場合、実際のAI API呼び出しをスキップしてそれを使う。
     // FIFOで1回の呼び出しにつき先頭を1つ取り出す。キューが空なら従来通り実APIを叩く
