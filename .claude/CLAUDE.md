@@ -139,6 +139,7 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 - **利用時の注意**: `wizardDecomposeForms()`は成功時に確認モーダルを描画する副作用が残っている（テストでは無視して良い）。`wizardGenerateFormLayout()`は実際にウィジェットを配置するため、テスト時は事前に状態をクリーンにしておくこと
 - **未対応の関数**（`yamlAiGenerate`/`formDesignAiGenerate`/`formDesignTextToYamlGenerate`/`textToYamlGenerate`/`manualRetryAiFix`/`extRtGenDoc`）: いずれもDOM読み書き（textarea・ボタン状態制御・モーダル再描画・ウィジェット全削除＋`fullRedraw()`等）がロジック本体に密結合しており、テストハンドラ追加には「ロジック部分をDOM操作から分離する」設計変更（実質リファクタ）が前提になる。特に`yamlAiGenerate`（内部リトライ・複数反映先分岐）と`formDesignAiGenerate`（ウィジェット全削除＋画面再描画）は既存動作を壊すリスクが大きく未着手
 - MCPクライアント経由の実疎通テストは実装時点では未実施（ビルド/起動が通ることと`bun test`の通過のみ確認済み）
+- **実LLMへの実接続テスト**（2026-09-19〜20実施）: 上記のモック方式とは別に、`_testSetAiConfig({endpoint, model, apiKey, temperature})`（`bridge.ts`）で`aiConfig`を実LLM（例: `http://192.168.0.235:8080`、llama.cpp）へ差し替えた上で、モックキューを積まずに`_testWizardDecomposeForms`等をそのまま呼ぶことで、実際のAI応答に対する動作検証ができる。この方法で`wizardDecomposeForms`/`wizardGenerateFormYaml`/`wizardGenerateFormLayout`のパイプライン全体を実LLM(qwen2.5-coder-7b)で検証し、「画面デザインYAMLの参照テーブル欠落の機械的補完」（本ファイル内、AI生成コードの機械的な後処理の節を参照）の不具合発見・修正確認に使った。**組織のエンタープライズポリシーでMCPサーバー(`vja-test`)自体が`/mcp`に接続できない環境では、HTTPテストサーバー（`bun run mcp`、ポート4570）へ直接curlでリクエストする方式で代替できる**（下記「実行手順」参照）
 
 ## 実行手順
 
@@ -206,6 +207,8 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
   - これに伴い、YAML→JS変換プロンプト（`ENG_YAML_TO_JS_SYS_PROMPT`）内にあった「インデント4スペース」「読みやすさのための改行」という生成時のコード整形指示は、最終的にPrettierで上書きされ無意味なため削除済み（2026-09-11）
   - テスト用API: `testFormatJs`/`vja_format_js`（`formatJsCode()`を直接呼び出し整形結果を確認できる）
 - **画面レイアウトJSONの計算式是正**: 画面デザイン自動生成（`ENG_FORM_DESIGN_SYS_PROMPT`）で、x/y/w/h座標にAIが計算式をそのまま出力してしまう問題（例: `"x": 768 - 20 - 85`）が、プロンプト文言の念押し強化だけでは別のローカルLLMで再発した（2026-09-08にqwen2.5-coder-7bで発生・修正、2026-09-13にdeepseek-coder-v2で再発）。`parseFormDesignJson()`（`vja-yaml-editor.js`）に`_fixArithmeticInFormDesignJson()`を追加し、JSON.parse前にx/y/w/hの値が数式（数字・空白・四則演算子・丸カッコのみ）であれば安全に評価し整数へ機械的に是正するようにした（文字が混ざる値は対象外）。プロンプト文言の強化を重ねる対症療法ではなく、コード側の機械的な後処理で恒久対応する方針とした
+- **画面デザインYAMLの参照テーブル欠落の機械的補完**（2026-09-20実装）: `ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`には「fieldsがテーブル由来ならtablesに含めるのは必須」という明記とFew-Shot例が既にあるが、依頼文がボタン動作の説明中心（例:「〜を入力する。『戻る』ボタンで一覧に戻り、『保存』ボタンで保存する」）だと、`参照テーブル:`セクション自体が丸ごと欠落する不具合が実LLM検証（qwen2.5-coder-7b、temperature=0固定でも3/3再現＝サンプリングの揺らぎではなく決定論的な不具合）で確認された。なお同じ検証で、一覧画面のdatagrid欠落・入力専用画面でのlayout_pattern誤選択も一度観測されたが、これらはtemperature=0では再現しなかったため`aiConfig.temperature`未設定によるサンプリングの揺らぎと判断し、対応不要とした（tablesの欠落だけが温度に関係なく再現する別種の不具合だった）。`vja-yaml-editor.js`に`deriveMissingFormDesignTables(yamlText, allTables)`を追加し、「参照テーブル:」が完全に欠落している場合のみ、「入力項目:」の各フィールド名がテーブルの列名(name/labelJa)と一致するかで該当テーブルを機械的に補完するようにした（`_fixArithmeticInFormDesignJson()`と同じ「コード側の機械的安全網」方針）。列名が重複する複数テーブル（例: `sales_data`/`sales_history`が同じ列を共有）で誤って両方候補になるのを避けるため、「fields全件をカバーし、かつ余分な列が最も少ない（＝形が最も近い）テーブル」を優先するスコアリングにしている。UI手動操作版（`formDesignTextToYamlGenerate()`）・ウィザードDOM非依存版（`wizardGenerateFormYaml()`）の両方に適用済み。AIが既に`参照テーブル:`を1件でも出力しているケースには一切介入しない
+  - 検証用に、実LLM（ローカルLLM）へ実際に接続してAI接続設定（`aiConfig`のendpoint/model/temperature等）を差し替えるテスト用ハンドラ`_testSetAiConfig`/`testSetAiConfig`（`bridge.ts`/`src/bun/index.ts`）を追加した。既存の`_testSetAiMockQueue`（AI応答をモック化する方式）と異なり、こちらはモックを使わず実際のAI APIへ本当に接続して検証したい場合に使う
 
 # AI生成システムプロンプトのトークン圧縮（ローカルLLMのコンテキスト圧迫対策）
 
