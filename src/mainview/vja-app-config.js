@@ -224,6 +224,21 @@ function saveExtRuntime() {
 
 // 拡張ランタイムの JavaScript コードを元に AI向け説明（YAML）を生成する。
 // runAiGenerate を使用し、生成結果を getProjectData().extRuntime.doc にセットして再表示する。
+// 拡張ランタイムJSコード → AI向け説明文（doc）生成のロジック本体（DOM非依存）。
+// 自動テスト用（bridge.tsのtestExtRtGenDocハンドラ）に、DOM読み書きと分離してある。
+// 戻り値: 生成されたdoc文字列（失敗時はnull）。
+async function generateExtRuntimeDoc(js) {
+    let result = null;
+    await runAiGenerate({
+        systemPrompt: _PROMPT_DEF.EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT(),
+        userPrompt: _PROMPT_DEF.EXT_RUNTIME_JS_TO_YAML_USER_PROMPT(js),
+        onSuccess: async (generated) => { result = generated; },
+        onCancel: async () => { },
+        onError: async () => { },
+    });
+    return result;
+}
+
 async function extRtGenDoc() {
     if (!getProjectData().aiConfig.enabled) {
         showToast("AI接続設定が有効になっていません");
@@ -238,25 +253,21 @@ async function extRtGenDoc() {
     if (!(await vja.app.showConfirm(confirmMsg))) return;
     // AI生成前に保存
     saveExtRuntime();
-    await runAiGenerate({
-        systemPrompt: _PROMPT_DEF.EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT(),
-        userPrompt: _PROMPT_DEF.EXT_RUNTIME_JS_TO_YAML_USER_PROMPT(js),
-        onSuccess: async (result) => {
-            getProjectData().extRuntime.doc = result;
-            openExtRuntime();
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-                const taDock = $("ta-extrt-doc");
-                ["extrt-js", "extrt-doc"].forEach(t => {
-                    $("tab-" + t)?.classList.toggle("active", t === "extrt-doc");
-                    $("pane-" + t)?.classList.toggle("active", t === "extrt-doc");
-                });
-                const hlDoc = $("hl-extrt-doc");
-                if (hlDoc) hlDoc.style.height = "";
-                editorHlUpdate("ta-extrt-doc");
-            }));
-            showToast("AI生成完了");
-        },
-    });
+    const result = await generateExtRuntimeDoc(js);
+    if (result === null) return;
+    getProjectData().extRuntime.doc = result;
+    openExtRuntime();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        const taDock = $("ta-extrt-doc");
+        ["extrt-js", "extrt-doc"].forEach(t => {
+            $("tab-" + t)?.classList.toggle("active", t === "extrt-doc");
+            $("pane-" + t)?.classList.toggle("active", t === "extrt-doc");
+        });
+        const hlDoc = $("hl-extrt-doc");
+        if (hlDoc) hlDoc.style.height = "";
+        editorHlUpdate("ta-extrt-doc");
+    }));
+    showToast("AI生成完了");
 }
 
 function openDebugTools() {
@@ -858,7 +869,7 @@ Object.assign(window, {
     openFormConstEditor, renderFormConstModal, formConstAddRow, saveFormConst,
     openAppEvents, saveAppEvent,
     openProjectInfo, piVerStep, saveProjectInfo, piCancel,
-    openExtRuntime, saveExtRuntime, extRtGenDoc,
+    openExtRuntime, saveExtRuntime, extRtGenDoc, generateExtRuntimeDoc,
     openDebugTools,
     // クラウドインフラ設定
     openCloudInfraConfig, renderCloudModal, cloudSelId,

@@ -478,6 +478,20 @@ const _testValidAiGenerateRules = async (p: { name?: string; description?: strin
     }
 };
 
+// extRtGenDoc()（拡張ランタイムJS→AI向け説明文生成）の動作確認用。DOM(textarea)・
+// 確認ダイアログを介さず、DOM非依存版のgenerateExtRuntimeDoc()を直接呼び出す。
+// 事前にtestSetAiMockQueueでモック応答（doc文字列）を積んでおく必要がある。
+const _testExtRtGenDoc = async (p: { js: string }) => {
+    const g = window as any;
+    try {
+        const doc = await g.generateExtRuntimeDoc(p.js || "");
+        if (doc === null) return { ok: false, error: "生成に失敗しました" };
+        return { ok: true, doc };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+
 const rpc = Electroview.defineRPC({
     maxRequestTime: Infinity,
     handlers: {
@@ -512,6 +526,7 @@ const rpc = Electroview.defineRPC({
             testWizardGenerateFormLayout: _testWizardGenerateFormLayout,
             testTblAiGenerateSchema: _testTblAiGenerateSchema,
             testValidAiGenerateRules: _testValidAiGenerateRules,
+            testExtRtGenDoc: _testExtRtGenDoc,
         },
         messages: {
             loadScriptResult: (v: any) => { /* フロント側で処理 */ },
