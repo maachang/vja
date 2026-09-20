@@ -505,6 +505,20 @@ const _testManualRetryAiFix = async (p: { wid: number | string; evName: string; 
         return { ok: false, error: e.message };
     }
 };
+// formDesignTextToYamlGenerate()（画面デザインYAMLドラフト自動生成）の動作確認用。
+// DOM(textarea)・確認ダイアログを介さず、DOM非依存版のgenerateFormDesignYaml()
+// （wizardGenerateFormYaml()と共通のロジック本体）を直接呼び出す。
+// 事前にtestSetAiMockQueueでモック応答（画面デザインYAML文字列）を積んでおく必要がある。
+const _testFormDesignTextToYamlGenerate = async (p: { inputText: string }) => {
+    const g = window as any;
+    try {
+        const result = await g.generateFormDesignYaml(p.inputText || "", g.getProjectData().tables || []);
+        if (!result) return { ok: false, error: "生成に失敗しました" };
+        return { ok: true, yaml: result.yaml, layoutPatternId: result.layoutPatternId };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
 // textToYamlGenerate()（イベントYAMLドラフト自動生成）の動作確認用。DOM(textarea)・
 // 確認ダイアログを介さず、DOM非依存版のgenerateTextToYaml()を直接呼び出す。
 // wid: ウィジェットID、"form"（フォームイベント）、"appev"（アプリイベント）のいずれか。
@@ -558,6 +572,7 @@ const rpc = Electroview.defineRPC({
             testExtRtGenDoc: _testExtRtGenDoc,
             testTextToYamlGenerate: _testTextToYamlGenerate,
             testManualRetryAiFix: _testManualRetryAiFix,
+            testFormDesignTextToYamlGenerate: _testFormDesignTextToYamlGenerate,
         },
         messages: {
             loadScriptResult: (v: any) => { /* フロント側で処理 */ },

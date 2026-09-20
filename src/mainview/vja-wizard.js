@@ -718,44 +718,10 @@ async function wizardConfirmAndGenerate() {
 
 // 1フォーム分の「画面デザインYAMLドラフト → YAML」生成（DOM非依存版）。
 // 戻り値は { yaml, layoutPatternId }。
-// 2026-09-13追加: "layout_pattern: <番号>" 行の抽出処理が漏れていたため追加した
-// （既存UI手動操作版のformDesignTextToYamlGenerate()、vja-yaml-editor.js参照。
-//  同じロジックをここにも実装しないと、AIが生成したlayout_pattern値がどこにも
-//  保存されず、「🖼 レイアウト」タブが常に「なし」のままになる不具合になる）。
+// 実体はvja-yaml-editor.jsのgenerateFormDesignYaml()（UI手動操作版
+// formDesignTextToYamlGenerate()と共通のロジック本体、2026-09-21に統合）。
 async function wizardGenerateFormYaml(docDraft) {
-    const allTablesFull = getProjectData().tables || [];
-    const targetTablesForCtx = narrowTablesByRequest(docDraft || "", allTablesFull);
-    const tablesCtx = buildTablesCtxText(targetTablesForCtx);
-    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT({ tablesCtx });
-    const userPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT(docDraft || "");
-
-    let result = null;
-    await runAiGenerate({
-        systemPrompt: sysPrompt,
-        userPrompt: userPrompt,
-        loadingMsg: "画面YAMLドラフトを生成中…",
-        onSuccess: async (cleanYaml) => {
-            const stripped0 = cleanYaml.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
-            const stripped1 = convertFormDesignEngKeysToJp(stripped0);
-
-            const layoutNumMatch = stripped1.match(/^\s*layout_pattern\s*:\s*"?(\d+)"?\s*$/m);
-            const layoutNum = layoutNumMatch ? parseInt(layoutNumMatch[1], 10) : 0;
-            const layoutPatternList = getFormLayoutPatterns();
-            const matchedPattern = layoutNum >= 1 && layoutNum <= layoutPatternList.length ? layoutPatternList[layoutNum - 1] : null;
-            let yaml = stripped1.replace(/^\s*layout_pattern\s*:.*\n?/m, "").trim();
-
-            // 「参照テーブル:」欠落の機械的補完（詳細はvja-yaml-editor.jsのderiveMissingFormDesignTables()のAIメモ参照）
-            const derivedTables = deriveMissingFormDesignTables(yaml, allTablesFull);
-            if (derivedTables.length > 0) {
-                yaml += "\n参照テーブル:\n" + derivedTables.map((n) => "  - " + n).join("\n");
-            }
-
-            result = { yaml, layoutPatternId: matchedPattern ? matchedPattern.id : "" };
-        },
-        onCancel: async () => { },
-        onError: async () => { },
-    });
-    return result;
+    return await generateFormDesignYaml(docDraft || "", getProjectData().tables || []);
 }
 
 // 1フォーム分の「YAML → 画面レイアウト（ウィジェット配置）」生成（DOM非依存版）

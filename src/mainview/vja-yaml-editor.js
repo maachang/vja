@@ -3289,6 +3289,61 @@ function convertFormDesignEngKeysToJp(yamlText) {
     return result;
 }
 
+// 画面デザインYAMLドラフト生成（Text to YAML）のロジック本体（DOM非依存）。
+// 自動テスト用（bridge.tsのtestFormDesignTextToYamlGenerateハンドラ）に、
+// DOM読み書きと分離してあるほか、ウィザード版wizardGenerateFormYaml()
+// （vja-wizard.js）ともロジックを共通化している（元々ほぼ同一の実装が
+// 2箇所に重複していたため、2026-09-21にこちらへ統合した）。
+// 戻り値: { yaml, layoutPatternId }（失敗時はnull）。
+async function generateFormDesignYaml(inputText, allTables) {
+    // プロジェクトのDBテーブル情報からコンテキスト生成
+    // （イベントJS生成時と同様、依頼文中に名前・カラム名が出現するテーブルのみに
+    //   絞り込む。意味の重複した無関係テーブルまで渡すのを避けるための予防措置。
+    //   ※2026-08-10の実測では、fields空/不足の主因はテーブル数ではなく別要因
+    //   （既存ウィジェットとの重複回避ルール、下記参照）と判明したが、
+    //   無関係テーブルを渡さない方が安全なので絞り込み自体は残す）
+    const targetTablesForCtx = narrowTablesByRequest(inputText, allTables || []);
+    const tablesCtx = buildTablesCtxText(targetTablesForCtx);
+
+    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT({ tablesCtx: tablesCtx });
+    const userPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT(inputText);
+
+    let result = null;
+    await runAiGenerate({
+        systemPrompt: sysPrompt,
+        userPrompt: userPrompt,
+        loadingMsg: "画面YAMLドラフト作成中…",
+        onSuccess: async (cleanYaml) => {
+            const stripped0 = cleanYaml.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+            const stripped1 = convertFormDesignEngKeysToJp(stripped0);
+
+            // "layout_pattern: <番号>" 行は、YAML本文には残さず抽出のみ行い、
+            // "🖼 レイアウト"タブの選択状態（getProjectData().formLayoutPattern）に反映する。
+            // ID文字列(camelCase)をそのまま選ばせるとローカルLLMが複数のIDを
+            // 混ぜ合わせた実在しない文字列を生成することがあったため、番号(1始まり、
+            // 該当なしは0)で選ばせ、ここでgetFormLayoutPatterns()の並び順に対応させる。
+            // ここで初めて出現するキーであり、convertFormDesignEngKeysToJp()の対象キー
+            // （description/layout/columns等）には含まれないため、別途正規表現で処理する。
+            const layoutNumMatch = stripped1.match(/^\s*layout_pattern\s*:\s*"?(\d+)"?\s*$/m);
+            const layoutNum = layoutNumMatch ? parseInt(layoutNumMatch[1], 10) : 0;
+            const layoutPatternList = getFormLayoutPatterns();
+            const matchedPattern = layoutNum >= 1 && layoutNum <= layoutPatternList.length ? layoutPatternList[layoutNum - 1] : null;
+            let yaml = stripped1.replace(/^\s*layout_pattern\s*:.*\n?/m, "").trim();
+
+            // 「参照テーブル:」欠落の機械的補完（詳細はderiveMissingFormDesignTables()のAIメモ参照）
+            const derivedTables = deriveMissingFormDesignTables(yaml, allTables || []);
+            if (derivedTables.length > 0) {
+                yaml += "\n参照テーブル:\n" + derivedTables.map((n) => "  - " + n).join("\n");
+            }
+
+            result = { yaml, layoutPatternId: matchedPattern ? matchedPattern.id : "" };
+        },
+        onCancel: async () => { },
+        onError: async () => { },
+    });
+    return result;
+}
+
 async function formDesignTextToYamlGenerate() {
     if (!getProjectData().aiConfig.enabled) {
         if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
@@ -3321,73 +3376,33 @@ async function formDesignTextToYamlGenerate() {
         if (!ok) return;
     }
 
-    // プロジェクトのDBテーブル情報からコンテキスト生成
-    // （イベントJS生成時と同様、依頼文中に名前・カラム名が出現するテーブルのみに
-    //   絞り込む。意味の重複した無関係テーブルまで渡すのを避けるための予防措置。
-    //   ※2026-08-10の実測では、fields空/不足の主因はテーブル数ではなく別要因
-    //   （既存ウィジェットとの重複回避ルール、下記参照）と判明したが、
-    //   無関係テーブルを渡さない方が安全なので絞り込み自体は残す）
-    const allTablesFull = getProjectData().tables || [];
-    const targetTablesForCtx = narrowTablesByRequest(inputText, allTablesFull);
-    const tablesCtx = buildTablesCtxText(targetTablesForCtx);
-
-    const sysPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT({ tablesCtx: tablesCtx });
-    const userPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT(inputText);
-
     showLoadingModal("画面YAMLドラフト作成中…");
 
-    await runAiGenerate({
-        systemPrompt: sysPrompt,
-        userPrompt: userPrompt,
-        loadingMsg: "画面YAMLドラフト作成中…",
-        onSuccess: async (cleanYaml) => {
-            const stripped0 = cleanYaml.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
-            const stripped1 = convertFormDesignEngKeysToJp(stripped0);
+    const genResult = await generateFormDesignYaml(inputText, getProjectData().tables || []);
+    if (!genResult) return;
+    const { yaml: stripped } = genResult;
 
-            // "layout_pattern: <番号>" 行は、YAML本文には残さず抽出のみ行い、
-            // "🖼 レイアウト"タブの選択状態（getProjectData().formLayoutPattern）に反映する。
-            // ID文字列(camelCase)をそのまま選ばせるとローカルLLMが複数のIDを
-            // 混ぜ合わせた実在しない文字列を生成することがあったため、番号(1始まり、
-            // 該当なしは0)で選ばせ、ここでgetFormLayoutPatterns()の並び順に対応させる。
-            // ここで初めて出現するキーであり、convertFormDesignEngKeysToJp()の対象キー
-            // （description/layout/columns等）には含まれないため、別途正規表現で処理する。
-            const layoutNumMatch = stripped1.match(/^\s*layout_pattern\s*:\s*"?(\d+)"?\s*$/m);
-            const layoutNum = layoutNumMatch ? parseInt(layoutNumMatch[1], 10) : 0;
-            const layoutPatternList = getFormLayoutPatterns();
-            const matchedPattern = layoutNum >= 1 && layoutNum <= layoutPatternList.length ? layoutPatternList[layoutNum - 1] : null;
-            getProjectData().formLayoutPattern = matchedPattern ? matchedPattern.id : "";
-            let stripped = stripped1.replace(/^\s*layout_pattern\s*:.*\n?/m, "").trim();
+    getProjectData().formLayoutPattern = genResult.layoutPatternId || "";
+    getProjectData().formDesignDraft = stripped;
+    getProjectData().formDesignDocDraft = inputText;
 
-            // 「参照テーブル:」欠落の機械的補完（詳細はderiveMissingFormDesignTables()のAIメモ参照）
-            const derivedTables = deriveMissingFormDesignTables(stripped, allTablesFull);
-            if (derivedTables.length > 0) {
-                stripped += "\n参照テーブル:\n" + derivedTables.map((n) => "  - " + n).join("\n");
-            }
+    openFormDesignAi();
 
-            getProjectData().formDesignDraft = stripped;
-            getProjectData().formDesignDocDraft = inputText;
-
-            openFormDesignAi();
-
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-                const taFd = $("ta-fd");
-                if (taFd) {
-                    taFd.value = stripped;
-                    hlUpdate("ta-fd", "hl-fd", yamlTokenize);
-                    editorUpdateGutter("ta-fd", "gutter-fd");
-                }
-                const taDoc = $("ta-fd-doc");
-                if (taDoc) {
-                    taDoc.value = inputText;
-                    editorUpdateGutter("ta-fd-doc", "gutter-fd-doc");
-                }
-                yamlTabSwitch("fd");
-                showToast("✨ 画面デザインYAMLを作成しました（📋 YAMLタブを確認）");
-            }));
-        },
-        onCancel: async () => {},
-        onError: async () => {},
-    });
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        const taFd = $("ta-fd");
+        if (taFd) {
+            taFd.value = stripped;
+            hlUpdate("ta-fd", "hl-fd", yamlTokenize);
+            editorUpdateGutter("ta-fd", "gutter-fd");
+        }
+        const taDoc = $("ta-fd-doc");
+        if (taDoc) {
+            taDoc.value = inputText;
+            editorUpdateGutter("ta-fd-doc", "gutter-fd-doc");
+        }
+        yamlTabSwitch("fd");
+        showToast("✨ 画面デザインYAMLを作成しました（📋 YAMLタブを確認）");
+    }));
 }
 
 // AIプリセットの初期化保証
@@ -4799,7 +4814,7 @@ Object.assign(window, {
     editorSearch, editorReplace, editorReplaceAll, openFormDesignAi, insertFormDesignTemplate, openFormDesignTemplateModal, confirmApplyFormDesignTemplate, textToYamlGenerate, generateTextToYaml, formDesignTextToYamlGenerate, formDesignAiGenerate, saveFormDesignDraft,
     buildFormLayoutPickerHtml, selectFormLayoutPattern,
     parseFormDesignJson, parseFormDesignYaml, convertFormDesignEngKeysToJp, openAiRawOutputModal,
-    narrowTablesByRequest, buildTablesCtxText, deriveMissingFormDesignTables,
+    narrowTablesByRequest, buildTablesCtxText, deriveMissingFormDesignTables, generateFormDesignYaml,
     validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
     openAiValidationDetailModal,
     dismissAiValidationBanner, manualRetryAiFix, retryAiFix, manualMockCheck,
