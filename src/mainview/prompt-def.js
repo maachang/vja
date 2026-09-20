@@ -1538,6 +1538,7 @@ Each object in the array must have the following keys:
 
 - Reference tables: Do not arbitrarily invent column names not in the reference table.
 - Number of buttons: Match the number of action items specified in the request.
+- **Every entry listed under "入力項目:" (fields) MUST produce exactly one corresponding widget in the output — never silently drop one.** This applies regardless of how few fields there are in total. In particular, a "datagrid" entry is easy to drop when the total field count is small (e.g. only 2-3 entries including the datagrid itself), because such a short list can look like a plain input form — but "入力項目:" already decided this screen needs a list, so the datagrid widget is mandatory output, not optional. Count the "入力項目:" entries before finalizing your output and verify each one has a matching widget.
 
 [Few-Shot Example]
 Input YAML Example:
@@ -1580,6 +1581,40 @@ Output JSON Example:
     {"name": "mother", "displayName": "母馬", "width": 25},
     {"name": "sex", "displayName": "性別", "width": 25}
   ], "x": 20, "y": 60, "w": ${formW - 40}, "h": ${Math.max(180, formH - 90)}}
+]
+
+[Few-Shot Example: Minimal field count STILL requires the datagrid widget]
+Input YAML Example:
+---
+説明: 一覧と新規登録機能
+参照テーブル:
+  - items
+入力項目:
+  - 一覧: datagrid
+  - 名前: inputtype text
+  - 金額: inputtype number
+アクション項目:
+  - 新規登録
+---
+Correct Output JSON Example (3 "入力項目:" entries → 3 corresponding widgets, the datagrid is NOT optional just because the field count is small):
+[
+  {"tag": "label", "name": "lblName", "text": "名前", "x": 20, "y": 20, "w": 90, "h": 24},
+  {"tag": "inputtype", "name": "txtName", "text": "", "inputType": "text", "x": 115, "y": 16, "w": 160, "h": 28},
+  {"tag": "label", "name": "lblPrice", "text": "金額", "x": 295, "y": 20, "w": 90, "h": 24},
+  {"tag": "inputtype", "name": "txtPrice", "text": "", "inputType": "number", "x": 390, "y": 16, "w": 160, "h": 28},
+  {"tag": "button", "name": "btnAdd", "text": "新規登録", "x": 570, "y": 16, "w": 85, "h": 28},
+  {"tag": "datagrid", "name": "tblItems", "columns": [
+    {"name": "name", "displayName": "名前", "width": 50},
+    {"name": "price", "displayName": "金額", "width": 50}
+  ], "x": 20, "y": 60, "w": ${formW - 40}, "h": ${Math.max(180, formH - 90)}}
+]
+Wrong output (do NOT do this — dropping the "一覧: datagrid" entry just because there are only 3 fields total; this leaves the screen with no way to actually display a list, contradicting "入力項目:" which explicitly requested one):
+[
+  {"tag": "label", "name": "lblName", "text": "名前", "x": 20, "y": 20, "w": 90, "h": 24},
+  {"tag": "inputtype", "name": "txtName", "text": "", "inputType": "text", "x": 115, "y": 16, "w": 160, "h": 28},
+  {"tag": "label", "name": "lblPrice", "text": "金額", "x": 295, "y": 20, "w": 90, "h": 24},
+  {"tag": "inputtype", "name": "txtPrice", "text": "", "inputType": "number", "x": 390, "y": 16, "w": 160, "h": 28},
+  {"tag": "button", "name": "btnAdd", "text": "新規登録", "x": 570, "y": 16, "w": 85, "h": 28}
 ]
 
 [Few-Shot Example: Multiple Action Buttons]
