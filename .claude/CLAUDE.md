@@ -72,6 +72,7 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 | src/mainview/vja-yaml-editor.js | YAML/JSエディタ・AI生成 |
 | src/mainview/vja-editor-search.js | エディタ内検索・置換（2026-09-21にvja-yaml-editor.jsから分割した1つ目） |
 | src/mainview/vja-learned-fixes-ui.js | 学習ノウハウ管理モーダル（2026-09-21にvja-yaml-editor.jsから分割した2つ目） |
+| src/mainview/vja-ai-config.js | AI接続設定モーダル・プリセット管理（2026-09-21にvja-yaml-editor.jsから分割した3つ目。移動と合わせて`_initAiPresets`の重複定義（死んだコード）も削除） |
 | src/mainview/form-design-templates.js | 画面デザイン依頼（YAML）テンプレート定義一覧・取得共通モジュール |
 | src/mainview/vja-editor-utils.js | エディタ共通ユーティリティ |
 | src/mainview/vja-mock-runtime.js | モック共通ユーティリティ |
@@ -355,7 +356,7 @@ vjaの中核コンセプトである「AIに雛形を作ってもらい、それ
 
 # 未対応・残課題(随時更新)
 
-- 【進行中】`vja-yaml-editor.js`の分割整理（2026-09-21着手）: 当時4915行と他ファイルの2倍以上に肥大化していたため、リスクの低い箇所から1ファイルずつ切り出す方針で分割中。①`vja-editor-search.js`（検索・置換）②`vja-learned-fixes-ui.js`（学習ノウハウ管理モーダル）まで完了。残り: `vja-editor-completion.js`（入力補完・対応括弧ハイライト）、`vja-ai-config.js`（AI接続設定モーダル）、`vja-mock-check.js`（モック実行エンジン・`validateGeneratedJs`）、`vja-form-design-ai.js`（画面デザインAI生成一式）、最後に`vja-ai-gen-core.js`（`_buildGenPromptContext`/`yamlAiGenerate`等、AI生成の中核＝2026-09-21に回帰事故を起こした最もリスクの高い領域のため最後に回す）。副次的に`_initAiPresets`という関数が2箇所に重複定義されている（死んだコード、要調査）ことも判明済み
+- 【進行中】`vja-yaml-editor.js`の分割整理（2026-09-21着手）: 当時4915行と他ファイルの2倍以上に肥大化していたため、リスクの低い箇所から1ファイルずつ切り出す方針で分割中。①`vja-editor-search.js`（検索・置換）②`vja-learned-fixes-ui.js`（学習ノウハウ管理モーダル）③`vja-ai-config.js`（AI接続設定モーダル。移動と合わせて`_initAiPresets`の重複定義（死んだコード）を削除済み）まで完了。残り: `vja-editor-completion.js`（入力補完・対応括弧ハイライト）、`vja-mock-check.js`（モック実行エンジン・`validateGeneratedJs`）、`vja-form-design-ai.js`（画面デザインAI生成一式）、最後に`vja-ai-gen-core.js`（`_buildGenPromptContext`/`yamlAiGenerate`等、AI生成の中核＝2026-09-21に回帰事故を起こした最もリスクの高い領域のため最後に回す）
 - 【対応済み】`yamlAiGenerate`/`textToYamlGenerate`実行時、`$("yaml-ta")`（YAMLエディタ本文）が生成の瞬間に空になり、依頼内容が丸ごとAIに渡らず文脈の無いコードが生成される不具合（2026-09-21発覚・特定・修正済み）
   - **根本原因（コードレベルで確定）**: `runAiGenerate()`（`vja-modal.js`）はAPIリクエスト送信直前に`showLoadingModal()`を呼び、`#modal-root`（YAMLエディタのモーダルも含む）の中身を丸ごとローディング表示へ差し替える。2026-09-20〜21に行った`yamlAiGenerate`/`textToYamlGenerate`のテスト自動化リファクタで、`_buildGenPromptContext()`（`$("yaml-ta")`等のDOMを読む処理）の呼び出しを、誤ってこの`showLoadingModal()`呼び出しより**後**（`generateEventJs`/`generateTextToYaml`の内部）に移動してしまっていたため、生成の瞬間には既にYAMLエディタのDOMが存在せず、`$("yaml-ta")?.value`が`undefined`→空文字列になり、依頼内容（YAML本文）が丸ごとAIに渡らないまま生成される回帰バグとなっていた。これは今回のセッションで発生させた実際の回帰であり、当初「今回のリファクタが原因ではない」と報告したのは誤りだった（原因調査の途中で、DOM非依存のテストハンドラ経由の検証だけに頼っていたため、`showLoadingModal()`を経由する実際のボタン操作フローの回帰を見落としていた）
   - **発見の経緯**: 実際の`.vjaproj`ファイル（`/home/maachang/project/work/wja-test/table-test.vjaproj`）と実LLMログを使い、(1) 正常時(2026-09-19)と異常時(2026-09-21)でuserLenが`2174`→`1632`（同一数値で複数回再現）に減少していることを確認、(2) 実際に送信されたuserPrompt全文を一時的にログ出力し、「[The Following YAML]」ブロックとウィジェット一覧（自分自身以外）が完全に欠落していることを直接確認、(3) `showLoadingModal()`の実装を読み、`#modal-root`を丸ごと差し替えることを確認、という手順で特定した
