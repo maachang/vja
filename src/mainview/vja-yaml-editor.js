@@ -4666,102 +4666,8 @@ async function aiCfgConfirm() {
 // エディタ内検索・置換（editorSearch/editorReplace/editorReplaceAll）は
 // 2026-09-21にvja-editor-search.jsへ切り出した。
 
-/* ═══════════════════════════════════════════
-   学習履歴（AIプロンプト記憶）管理UI
-═══════════════════════════════════════════ */
-function openLearnedFixesModal() {
-    renderLearnedFixesModal();
-}
-
-function renderLearnedFixesModal() {
-    const allFixes = getProjectData().learnedFixes || {};
-    let rowsHtml = "";
-    let count = 0;
-
-    for (const [key, list] of Object.entries(allFixes)) {
-        if (!Array.isArray(list) || list.length === 0) continue;
-        let label = key;
-        if (key === "global") { label = "【共通ルール】"; }
-        else if (key.startsWith("tag_")) { label = `【${key.slice(4)} ウィジェット共通】`; }
-
-        list.forEach(item => {
-            count++;
-            const isPinned = !!item.pinned;
-            rowsHtml += render("ye-tpl-lf-row", {
-                label, summary: item.mistakeSummary,
-                pinBg: isPinned ? "var(--accent)" : "transparent",
-                pinColor: isPinned ? "#fff" : "var(--text)",
-                attrPin: evtAttr("onclick", "togglePinLearnedFixItem('" + key + "','" + item.id + "')"),
-                pinLabel: isPinned ? "📌 固定済" : "📌 固定",
-                attrDel: evtAttr("onclick", "deleteLearnedFixItem('" + key + "','" + item.id + "')"),
-            });
-        });
-    }
-
-    if (count === 0) {
-        rowsHtml = render("ye-tpl-lf-empty", {});
-    }
-
-    const curScope = getEditorContext().lfSelectedScope || "global";
-    const scopeOptions = [
-        { value: "global", label: "プロジェクト共通ルール" },
-        { value: "tag_datagrid", label: "datagrid 共通ルール" },
-        { value: "tag_textbox", label: "textbox 共通ルール" },
-        { value: "tag_button", label: "button 共通ルール" },
-        { value: "tag_combobox", label: "combobox 共通ルール" },
-        { value: "tag_checkbox", label: "checkbox 共通ルール" },
-    ];
-    const scopeSelHtml = makePvSel("lf-new-scope", scopeOptions, curScope, "getEditorContext().lfSelectedScope={value}");
-
-    showModal(
-        mhdrHTML("🧠 学習ノウハウ（AIプロンプト記憶）管理") +
-        render("ye-tpl-lf-body", {
-            scopeSelHtml,
-            attrAdd: evtAttr("onclick", "addManualLearnedFix()"),
-            rowsHtml,
-        }) +
-        mfootHTML([{ label: "閉じる", action: "closeModal()" }])
-    );
-}
-
-function togglePinLearnedFixItem(key, id) {
-    const allFixes = getProjectData().learnedFixes || {};
-    const list = allFixes[key] || [];
-    allFixes[key] = list.map(item => item.id === id ? { ...item, pinned: !item.pinned } : item);
-    pushUndo();
-    renderLearnedFixesModal();
-}
-
-function deleteLearnedFixItem(key, id) {
-    const allFixes = getProjectData().learnedFixes || {};
-    const list = allFixes[key] || [];
-    allFixes[key] = list.filter(item => item.id !== id);
-    pushUndo();
-    renderLearnedFixesModal();
-}
-
-function addManualLearnedFix() {
-    const scope = getEditorContext().lfSelectedScope || "global";
-    const text = $("lf-new-text")?.value?.trim();
-    if (!text) {
-        showToast("ルール内容を入力してください");
-        return;
-    }
-    const allFixes = getProjectData().learnedFixes || {};
-    if (!allFixes[scope]) allFixes[scope] = [];
-    allFixes[scope].push({
-        id: Date.now() + "_" + Math.random().toString(36).slice(2, 7),
-        createdAt: Date.now(),
-        mistakeSummary: text,
-        pinned: true,
-        recurCount: 0,
-        scope: scope === "global" ? "global" : "tag",
-    });
-    getProjectData().learnedFixes = allFixes;
-    pushUndo();
-    showToast("プロジェクトルールを追加しました");
-    renderLearnedFixesModal();
-}
+// 学習ノウハウ管理モーダル（openLearnedFixesModal等）は
+// 2026-09-21にvja-learned-fixes-ui.jsへ切り出した。
 
 /* ═══════════════════════════════════════════
    window へのエクスポート（他ファイルから参照される関数のみ）
@@ -4786,7 +4692,6 @@ Object.assign(window, {
     yamlSetTableOpt, yamlSetValidationOpt, applyTableYamlSync,
     yamlSetMockCheckOpt,
     yamlPinLearnedFix, yamlDeleteLearnedFix,
-    openLearnedFixesModal, renderLearnedFixesModal, togglePinLearnedFixItem, deleteLearnedFixItem, addManualLearnedFix,
     closeCompletionPopup, acceptCompletionAt, clearBracketMatch, updateBracketMatch,purgeOverridesForWid,
     OVERRIDE_MAP_NAMES, purgeOverridesForKey,
     formatJsCode,
