@@ -17,713 +17,37 @@
         return "~".repeat(maxLen + 1);
     };
 
+    // 2026-09-21: プロンプト本文（英語の長文テキスト）を prompt-def.js から
+    // src/mainview/prompts/*.md へ切り出した。目的は「AIプロンプト定義」という
+    // 巨大な文字列リテラルとロジック（条件分岐・コンテキスト組み立て）を分離し、
+    // 人間・AIどちらにとってもプロンプト本文の見通しを良くすること。
+    // vja-templates-loader.js（HTMLテンプレート）と全く同じ設計方針で、
+    // 呼び出し元が同期呼び出し前提のため fetch ではなく同期XHRで読み込む。
+    // electrobun.config.ts の build.copy に src/mainview/prompts を登録済み
+    // （templates/ と同じ理由。webviewは views://mainview/prompts/... 経由で配信）。
+    const _promptTplCache = {};
+    function _loadPromptTpl(name) {
+        if (_promptTplCache[name] !== undefined) return _promptTplCache[name];
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", "prompts/" + name, false);
+        xhr.send(null);
+        const text = (xhr.status === 0 || xhr.status === 200) ? (xhr.responseText || "") : "";
+        if (!text) console.error("[prompt-def] プロンプトテンプレート読み込み失敗:", name, xhr.status);
+        _promptTplCache[name] = text;
+        return text;
+    }
+    // {{変数名}} プレースホルダーを置換する。条件分岐・計算等のロジックは
+    // 持たせない（呼び出し元のJSで計算・整形してから渡すこと）。
+    function _fillTpl(tpl, vars) {
+        return tpl.replace(/\{\{(\w+)\}\}/g, (m, key) => (key in vars ? String(vars[key]) : m));
+    }
+
     // ### [AIP説明で利用]
     // [フロントエンド]利用可能なjavascript関数の説明.
     // 「vja ランタイムの追加・変更・削除がある場合は、反映が必要」
     // AI以外に、js利用者向けのvjaランタイム説明等に利用を想定.
     const VJA_USE_FRONT_JS_INFO =
-        `
-## DB操作 (vja.db.*)
-
-- 関数名: await vja.db.query(sql, params?):
-  - 説明: SQLのSELECT文を実行して結果行を返す
-  - 引数:
-    - sql: string - 実行するSQL文（プレースホルダー ? を使用）
-    - params?: (string|number|boolean|null)[] - プレースホルダーに渡す値の配列（省略可）
-  - 戻り値: "Record<string, any>[] - 結果行の配列（エラー時は例外をスロー）"
-  - 使用例: "const result = await vja.db.query('SELECT * FROM users WHERE id = ?', [1]);"
-  - 使用例説明: usersテーブルからid=1のレコードを取得する
-
-- 関数名: await vja.db.execute(sql, params?):
-  - 説明: SQLのINSERT/UPDATE/DELETE文を実行する
-  - 引数:
-    - sql: string - 実行するSQL文（プレースホルダー ? を使用）
-    - params?: (string|number|boolean|null)[] - プレースホルダーに渡す値の配列（省略可）
-  - 戻り値: "{ changes: number, lastInsertRowid: number } | null - 実行結果。失敗時はnull"
-  - 使用例: "await vja.db.execute('INSERT INTO users (name, age) VALUES (?, ?)', ['山田', 30]);"
-  - 使用例説明: usersテーブルに新しいレコードを挿入する
-
-- 関数名: await vja.db.transaction(statements[]):
-  - 説明: 複数のSQL文をトランザクションとして実行する。複数SQLの実行では、これを利用する事で「高速化」が図れる。
-  - 引数:
-    - statements: "{ sql: string, params?: any[] }[] - 実行するSQL文と引数のペアの配列"
-  - 戻り値: boolean - 全文実行成功でtrue、失敗時はロールバックしてfalse
-  - 使用例: |
-      await vja.db.transaction([
-        { sql: 'INSERT INTO orders (item) VALUES (?)', params: ['商品A'] },
-        { sql: 'UPDATE stock SET qty = qty - 1 WHERE item = ?', params: ['商品A'] }
-      ]);
-  - 使用例説明: 注文登録と在庫更新を1つのトランザクションで実行する
-
-- 関数名: await vja.db.backup(destPath):
-  - 説明: 現在のプロジェクトDBを指定パスへバックアップする
-  - 引数:
-    - destPath: string - バックアップ先のファイルパス（vja.dir.create()等で事前にフォルダを用意しておくこと）
-  - 戻り値: なし（失敗時は例外をスロー）
-  - 使用例: |
-      await vja.dir.create('backups');
-      await vja.db.backup('backups/backup_' + vja.util.today() + '.db');
-  - 使用例説明: backupsフォルダに、今日の日付を付けたバックアップファイルを作成する
-
-- 関数名: await vja.db.restore(srcPath):
-  - 説明: 指定パスのバックアップファイルから現在のプロジェクトDBを復元する（現在のDBは上書きされる）
-  - 引数:
-    - srcPath: string - 復元元のバックアップファイルパス
-  - 戻り値: なし（失敗時は例外をスロー）
-  - 使用例: "await vja.db.restore('backups/backup_2026-01-01.db');"
-  - 使用例説明: 指定したバックアップファイルの内容でDBを復元する
-
-## ウィジェット操作 (vja.widget.*)
-
-- 関数名: vja.widget.get(name):
-- 関数名: vja.widget.getValue(name):
-  - 説明: 指定名のウィジェットの現在値を、既に展開済みの生の値として直接返す（オブジェクトではない。ウィジェットの種類によって戻り値の型は変わるが、いずれの場合も value のようなプロパティで包まれてはいない）
-  - 引数:
-    - name: string - ウィジェット名
-  - 戻り値: "ウィジェットの種類によって以下のいずれかの型がそのまま返る（すべてプリミティブ値または配列であり、プロパティアクセスは不要）:
-      - datagrid（データグリッド）: Record<string, any>[] - 行データの配列
-      - checkbox / radioButton: boolean
-      - progressbar / slider / hscroll / vscroll: number
-      - inputType(number): number
-      - 上記以外（text / textarea / selectBox / listBox / label 等）: string"
-  - 使用例: "const name = vja.widget.getValue('txtName'); const checked = vja.widget.getValue('chkAgree'); const rows = vja.widget.getValue('tableView');"
-  - 使用例説明: txtNameウィジェットの入力値（string）、chkAgreeの状態（boolean）、tableViewの行データ（配列）をそれぞれ取得する
-  - 誤った使用例（絶対にしないこと）: "const v = vja.widget.getValue('txtName'); if (v.value) { ... }"
-  - 誤りの説明: 戻り値は既に生の値そのものであり、DOM要素のようにvalueプロパティで包まれていない。v.valueのようなアクセスは誤り（vが文字列ならv.valueはundefinedになり、実行時エラーにはならず静かに意図と異なる挙動になる）。正しくはvをそのまま使う
-
-- 関数名: vja.widget.set(name, value, options?):
-- 関数名: vja.widget.setValue(name, value, options?):
-  - 説明: 指定名のウィジェットに値をセットする。ウィジェットの種類に応じて自動的に適切な処理を行う
-  - 引数:
-    - name: string - ウィジェット名
-    - value: string|number|boolean|array|object[] - セットする値
-      - テキスト系（text/label等）: string/number
-      - checkbox/radio: boolean
-      - selectBox/listBox（選択）: string（value値を指定）
-      - selectBox/listBox（項目更新）: array（例: ['項目1', '項目2'] または [{label:'表示名', value:'値'}]）
-      - datagrid（データグリッド）: object[]（行データの配列）
-    - options?: object - オプション（datagrid時のみ有効）
-      - startNo?: number - No列の自動採番開始値（省略時は1）
-  - 戻り値: なし
-  - 使用例: "vja.widget.setValue('txtResult', '処理完了');"
-  - 使用例（データグリッド）: "vja.widget.setValue('tblUsers', rows, { startNo: 1 });"
-  - 使用例（選択肢更新）: "vja.widget.setValue('selCategory', ['食品', '電化製品', '衣類']);"
-  - 使用例説明: ウィジェットの種類に応じて値・データ・選択肢をセットする
-
-- 関数名: vja.widget.setItems(name, items[]):
-  - 説明: selectBoxまたはlistBoxのアイテムをセットする
-  - 引数:
-    - name: string - ウィジェット名
-    - "items: string[] | { label: string, value: string }[] - アイテムの配列"
-  - 戻り値: なし
-  - 使用例: "vja.widget.setItems('selCategory', ['食品', '電化製品', '衣類']);"
-  - 使用例説明: カテゴリー選択ボックスにアイテムをセットする
-
-- 関数名: vja.widget.setTableData(name, rows[], options?):
-  - 説明: データグリッドウィジェットにデータをセットする
-  - 引数:
-    - name: string - データグリッドウィジェット名
-    - rows: Record<string, any>[] - 行データの配列
-    - options?: object - オプション（省略可）
-      - startNo?: number - No列の自動採番開始値（省略時は1）。ページング時に使用
-  - 戻り値: なし
-  - 使用例: |
-      vja.widget.setTableData('tblUsers', [
-        { name: '山田', age: 30 },
-        { name: '鈴木', age: 25 }
-      ]);
-  - 使用例（ページング）: |
-      // 101件目から表示する場合
-      vja.widget.setTableData('tblUsers', rows, { startNo: 101 });
-  - 使用例説明: ユーザーデータグリッドに2行のデータをセットする
-
-- 関数名: vja.widget.getAllInputs():
-  - 説明: フォーム内の全入力ウィジェットの値を取得する
-  - 引数: なし
-  - 戻り値: "Record<string, any> - { ウィジェット名: 値 } の形式"
-  - 使用例: "const inputs = vja.widget.getAllInputs();"
-  - 使用例説明: フォーム内の全入力値を一括取得する
-
-  - 関数名: vja.widget.setVisible(name, visible):
-    - 説明: 指定名のウィジェットの表示/非表示を切り替える
-    - 引数:
-      - name: string - ウィジェット名
-      - visible: boolean - trueで表示、falseで非表示
-    - 戻り値: なし
-    - 使用例: "vja.widget.setVisible('btnDelete', isAdmin);"
-    - 使用例説明: isAdminがtrueの場合のみ削除ボタンを表示する
-
-  - 関数名: vja.widget.show(name):
-    - 説明: 指定名のウィジェットを表示する
-  - 関数名: vja.widget.hide(name):
-    - 説明: 指定名のウィジェットを非表示にする
-  - 関数名: vja.widget.enable(name):
-    - 説明: 指定名のウィジェットを有効にする
-  - 関数名: vja.widget.disable(name):
-    - 説明: 指定名のウィジェットを無効にする
-
-  - 関数名: vja.widget.setSuggestions(name, list):
-    - 説明: テキストボックス(inputtype)のサジェスト候補を表示する。対象ウィジェットのプロパティ「SuggestEnabled」がtrueの場合のみ有効（falseの場合は何も起きない）。呼び出し元は必ず対象ウィジェットのSuggestイベント内であること（Suggestイベントは入力の度に自動発火する）
-    - 引数:
-      - name: string - ウィジェット名（Suggestイベントが発火した対象と同じ名前を指定する）
-      - list: (string|{label:string, value:string})[] - サジェスト候補のリスト。プロパティ「SuggestMaxCount」（デフォルト3）を超える件数を渡した場合は先頭からその件数だけが表示される
-    - 戻り値: なし
-    - 使用例: "vja.widget.setSuggestions('txtName', ['山田太郎', '山田花子', '山田次郎']);"
-    - 使用例説明: txtNameのSuggestイベント内で、入力中の文字列に応じたDB検索結果などをサジェスト候補として表示する
-    - 注意: SuggestイベントとTextChangedイベントはどちらも入力の度に発火する。サジェスト候補の生成にはSuggestイベントのみを使うこと（TextChangedと重複定義した場合、両方が独立に実行される）
-
-## 定数 (vja.const.*)
-
-- 関数名: vja.const.get(key, default?):
-  - 説明: 定数を取得する。フォーム定数が優先され、なければグローバル定数を返す
-  - 引数:
-    - key: string - 定数名
-    - default?: any - 定数が存在しない場合のデフォルト値（省略可）
-  - 戻り値: any - 定数値またはデフォルト値
-  - 使用例: "const apiUrl = vja.const.get('API_URL', 'http://localhost:3000');"
-  - 使用例説明: API_URL定数を取得し、未定義の場合はデフォルト値を返す
-
-- 関数名: vja.const.getAll():
-  - 説明: 全定数を取得する（フォーム定数がグローバル定数を上書き）
-  - 引数: なし
-  - 戻り値: "Record<string, any> - { 定数名: 値 } の形式"
-  - 使用例: "const allConst = vja.const.getAll();"
-  - 使用例説明: 全定数をまとめて取得する
-
-## 画面遷移 (vja.form.*)
-
-- 関数名: vja.form.navigate(formName, options?):
-  - 説明: 指定した画面に遷移する。デフォルトで現在の入力値を保存する
-  - 引数:
-    - formName: string - 遷移先のフォーム名
-    - options?: { save?: boolean } - save=falseで入力値を保存しない（省略時はtrue）
-  - 戻り値: なし
-  - 例外: showFormが未定義の場合は警告を出力
-  - 使用例: "vja.form.navigate('Form2');"
-  - 使用例説明: 現在の入力を保存してForm2に遷移する
-
-- 関数名: vja.form.back():
-  - 説明: 前の画面に戻り、入力内容を復元する
-  - 引数: なし
-  - 戻り値: なし
-  - 使用例: "vja.form.back();"
-  - 使用例説明: 前の画面に戻り、その時点の入力値を復元する
-
-- 関数名: vja.form.setParam(key, value):
-  - 説明: 次の画面に渡すパラメータをセットする
-  - 引数:
-    - key: string - パラメータ名
-    - value: any - パラメータ値
-  - 戻り値: なし
-  - 使用例: |
-      vja.form.setParam('userId', 123);
-      vja.form.navigate('Form2');
-  - 使用例説明: userIdパラメータをセットしてForm2に遷移する
-
-- 関数名: vja.form.getParam(key, default?):
-  - 説明: 前の画面から渡されたパラメータを取得する
-  - 引数:
-    - key: string - パラメータ名
-    - default?: any - パラメータが存在しない場合のデフォルト値（省略可）
-  - 戻り値: any - パラメータ値またはデフォルト値
-  - 使用例: "const userId = vja.form.getParam('userId', null);"
-  - 使用例説明: 前の画面からuserIdパラメータを取得する
-
-## セッション (vja.session.*)
-
-- 関数名: await vja.session.set(key, value):
-  - 説明: セッションにキーと値を保存する（永続化）
-  - 引数:
-    - key: string - セッションキー
-    - value: any - 保存する値（JSON変換される）
-  - 戻り値: boolean - 成功時true
-  - 使用例: "await vja.session.set('loginUser', { id: 1, name: '山田' });"
-  - 使用例説明: ログインユーザー情報をセッションに保存する
-
-- 関数名: await vja.session.delete(key):
-  - 説明: セッションから指定キーを削除する
-  - 引数:
-    - key: string - セッションキー
-  - 戻り値: boolean - 成功時true
-  - 使用例: "await vja.session.delete('loginUser');"
-  - 使用例説明: セッションからログインユーザー情報を削除する
-
-- 関数名: await vja.session.clear():
-  - 説明: セッションの全データを削除する
-  - 引数: なし
-  - 戻り値: boolean - 成功時true
-  - 使用例: "await vja.session.clear();"
-  - 使用例説明: セッションを全クリアする
-
-- 関数名: await vja.session.get(key, default?):
-  - 説明: セッションからキーに対応する値を取得する
-  - 引数:
-    - key: string - セッションキー
-    - default?: any - 存在しない場合のデフォルト値（省略可）
-  - 戻り値: any - セッション値またはデフォルト値
-  - 使用例: "const user = await vja.session.get('loginUser', null);"
-  - 使用例説明: セッションからログインユーザー情報を取得する
-
-## バリデーション (vja.validate.*)
-
-- 関数名: vja.validate.run(name):
-  - 説明: GUIで定義したバリデーションルールを実行する。YAMLに「検証: 定義名」と記載すると、AIコード生成時にJSの先頭へ自動挿入される。AIが直接呼び出すことは不要。
-  - 引数:
-    - name: string - バリデーション定義名（GUIのバリデーション管理で設定した名前）
-  - 戻り値: boolean - true=合格 / false=エラー（エラー時はトーストメッセージを表示）
-  - 使用例: "if (!await vja.validate.run('入力チェック')) return;"
-  - 使用例説明: 「入力チェック」定義のバリデーションを実行し、エラーなら処理を中断する
-
-## ユーティリティ (vja.util.*)
-
-- 関数名: vja.util.uuid():
-  - 説明: UUID v4形式の一意な文字列を生成する
-  - 引数: なし
-  - 戻り値: string UUID形式の文字列が返却されます.
-  - 使用例: "const id = vja.util.uuid();"
-  - 使用例説明: 新しいレコードのIDとして使用するUUIDを生成する
-
-- 関数名: vja.util.today():
-  - 説明: 今日の日付をYYYY-MM-DD形式で返す
-  - 引数: なし
-  - 戻り値: string - "YYYY-MM-DD" 形式の文字列
-  - 使用例: "vja.widget.setValue('txtDate', vja.util.today());"
-  - 使用例説明: 日付入力欄に今日の日付をセットする
-
-- 関数名: vja.util.formatDate(date, format?):
-  - 説明: 日付をフォーマットして文字列で返す
-  - 引数:
-    - date: Date|string - 日付文字列及びDateオブジェクト.
-    - "format?: string - フォーマット文字列（デフォルト: 'YYYY-MM-DD'）
-  - 戻り値: string - フォーマットされた日付文字列
-  - 使用例: "const str = vja.util.formatDate(new Date(), 'YYYY年MM月DD日');"
-  - 使用例説明: 今日の日付を「2026年06月11日」形式にフォーマットする
-
-- 関数名: vja.util.formatNumber(n, decimals?):
-  - 説明: 数値を桁区切り付きの文字列にフォーマットする
-  - 引数:
-    - n: number - フォーマットする数値
-    - decimals?: number - 小数点以下の桁数（省略可）
-  - 戻り値: string - フォーマットされた数値文字列
-  - 使用例: "vja.widget.setValue('lblPrice', vja.util.formatNumber(1234567));"
-  - 使用例説明: 価格を「1,234,567」形式で表示する
-
-- 関数名: vja.util.parseDate(str, format?):
-  - 説明: formatDate()で作られた形式の文字列をDateオブジェクトに変換する（逆変換）
-  - 引数:
-    - str: string - 変換する日付文字列
-    - "format?: string - strのフォーマット（デフォルト: 'YYYY-MM-DD'）。formatDate()に渡したものと同じ形式を指定する"
-  - 戻り値: Date|null - 変換できた場合はDate、失敗時はnull
-  - 使用例: "const d = vja.util.parseDate('2026年06月11日', 'YYYY年MM月DD日');"
-  - 使用例説明: 「2026年06月11日」形式の文字列をDateオブジェクトに変換する
-
-- 関数名: vja.util.parseNumber(str):
-  - 説明: formatNumber()で作られたようなカンマ区切りの数値文字列を数値に変換する（逆変換）
-  - 引数:
-    - str: string - 変換する数値文字列（カンマ区切り可）
-  - 戻り値: number|null - 変換できた場合は数値、失敗時はnull
-  - 使用例: "const n = vja.util.parseNumber(vja.widget.getValue('txtPrice'));"
-  - 使用例説明: 「1,234,567」のようなカンマ区切り入力を数値に変換する
-
-- 関数名: await vja.util.copyToClipboard(text):
-  - 説明: テキストをクリップボードにコピーする
-  - 引数:
-    - text: string - コピーするテキスト
-  - 戻り値: boolean - コピー成功でtrue
-  - 使用例: "await vja.util.copyToClipboard(vja.widget.getValue('txtCode'));"
-  - 使用例説明: 入力コードをクリップボードにコピーする
-
-## ファイルI/O (vja.io.*)
-
-- 関数名: await vja.io.openCsv():
-  - 説明: ファイル選択ダイアログでCSVファイルを選択して読み込む
-  - 引数: なし
-  - 戻り値: "Record<string, string>[] | null - CSVの各行をオブジェクトにした配列"
-  - 例外: ファイル選択をキャンセルした場合はnullを返す
-  - 使用例: |
-      const rows = await vja.io.openCsv();
-      if (rows) vja.widget.setTableData('tblData', rows);
-  - 使用例説明: CSVを読み込んでデータグリッドに表示する
-
-- 関数名: await vja.io.openJson():
-  - 説明: ファイル選択ダイアログでJSONファイルを選択して読み込む
-  - 引数: なし
-  - 戻り値: "any | null - パースされたJSONデータ"
-  - 例外: JSON解析失敗時はエラーをスロー
-  - 使用例: |
-      const data = await vja.io.openJson();
-      if (data) vja.widget.setValue('txtData', JSON.stringify(data));
-  - 使用例説明: JSONファイルを読み込んで内容を表示する
-
-- 関数名: vja.io.parseCsv(csvText, hasHeader):
-  - 説明: 既に取得済みのCSV文字列をパースする（ファイル選択ダイアログは開かない）
-  - 引数:
-    - csvText: string - パース対象のCSV文字列
-    - hasHeader: boolean - 省略可（既定true）。trueなら1行目をヘッダーとして扱いオブジェクトのキーにする。falseなら「col1」「col2」...という自動採番のキー名を使う
-  - 戻り値: "Record<string, string>[] - 常に配列オブジェクト形式（vja.widget.setのdatagrid等と同じ形式）"
-  - 使用例: |
-      const res = await vja.http.get('https://example.com/data.csv');
-      const rows = vja.io.parseCsv(res);
-  - 使用例説明: HTTP経由で取得したCSV文字列をその場でパースする
-
-- 関数名: vja.io.toCsv(rows, headers):
-  - 説明: 行データ配列をCSV文字列に変換する（ダウンロードはしない。vja.io.parseCsvと対になるAPI）
-  - 引数:
-    - rows: "Record<string, any>[] | any[][]" - 変換対象の行データ配列（配列オブジェクト形式・配列の配列形式どちらも可）
-    - headers: string[] - 省略可。配列オブジェクト形式の場合、省略時はrows[0]のキーから自動生成される。配列の配列形式の場合、省略するとヘッダー行なしのCSVになる（キーが無く自動生成できないため）
-  - 戻り値: string - CSV文字列
-  - 使用例: |
-      const csv = vja.io.toCsv(rows);
-      await vja.http.post('https://example.com/upload', csv);
-  - 使用例説明: 行データをCSV文字列に変換してHTTPでアップロードする
-
-- 関数名: vja.io.saveCsv(rows, filename):
-  - 説明: データをCSV形式でダウンロードする
-  - 引数:
-    - rows: Record<string, any>[] - 保存する行データの配列
-    - filename: string - ダウンロードするファイル名
-  - 戻り値: なし
-  - 使用例: "vja.io.saveCsv(rows, 'users.csv');"
-  - 使用例説明: ユーザーデータをCSVファイルとしてダウンロードする
-
-- 関数名: vja.io.saveJson(data, filename):
-  - 説明: データをJSON形式でダウンロードする
-  - 引数:
-    - data: any - 保存するデータ
-    - filename: string - ダウンロードするファイル名
-  - 戻り値: なし
-  - 使用例: "vja.io.saveJson({ users: rows }, 'backup.json');"
-  - 使用例説明: データをJSONファイルとしてダウンロードする
-
-## ファイル操作 (vja.file.*)
-
-- 関数名: await vja.file.read(path):
-  - 説明: 指定パスのファイルをテキストとして読み込む
-  - 引数:
-    - path: string - ファイルの絶対パス
-  - 戻り値: string | null - 成功時はファイル内容、失敗時はnull
-
-- 関数名: await vja.file.write(path, content):
-  - 説明: 指定パスにテキストを書き込む（ファイルが存在しない場合は作成）
-  - 引数:
-    - path: string - ファイルの絶対パス
-    - content: string - 書き込む内容
-  - 戻り値: boolean - 成功時true
-
-- 関数名: await vja.file.readBytes(path):
-  - 説明: 指定パスのファイルをバイナリ（Uint8Array）で読み込む
-  - 引数:
-    - path: string - ファイルの絶対パス
-  - 戻り値: Uint8Array | null
-
-- 関数名: await vja.file.writeBytes(path, data):
-  - 説明: バイナリデータを指定パスのファイルに書き込む
-  - 引数:
-    - path: string - ファイルの絶対パス
-    - data: Uint8Array - 書き込むバイナリデータ
-  - 戻り値: boolean - 成功時true
-
-- 関数名: await vja.file.exists(path):
-  - 説明: 指定パスのファイルが存在するか確認する
-  - 引数:
-    - path: string - ファイルの絶対パス
-  - 戻り値: boolean
-
-- 関数名: await vja.file.delete(path):
-  - 説明: 指定パスのファイルを削除する
-  - 引数:
-    - path: string - ファイルの絶対パス
-  - 戻り値: boolean - 成功時true
-
-- 関数名: await vja.file.copy(src, dest):
-  - 説明: ファイルをコピーする
-  - 引数:
-    - src: string - コピー元パス
-    - dest: string - コピー先パス
-  - 戻り値: boolean - 成功時true
-
-## ディレクトリ操作 (vja.dir.*)
-
-- 関数名: await vja.dir.create(path):
-  - 説明: ディレクトリを作成する（再帰的に作成）
-  - 引数:
-    - path: string - 作成するディレクトリパス
-  - 戻り値: boolean - 成功時true
-
-- 関数名: await vja.dir.delete(path):
-  - 説明: ディレクトリを削除する（再帰的に削除）
-  - 引数:
-    - path: string - 削除するディレクトリパス
-  - 戻り値: boolean - 成功時true
-
-- 関数名: await vja.dir.list(path):
-  - 説明: ディレクトリ内のファイル/フォルダ名一覧を取得する
-  - 引数:
-    - path: string - 対象ディレクトリパス
-  - 戻り値: string[]
-
-- 関数名: await vja.dir.exists(path):
-  - 説明: ディレクトリが存在するか確認する
-  - 引数:
-    - path: string - 対象ディレクトリパス
-  - 戻り値: boolean
-
-## イベントトリガー実行 (vja.trigger.*)
-
-指定したウィジェットのイベントを発火させる。
-
-- 重要: 「name」にはウィジェット名の文字列そのもの（例: 'btnSearch'）を指定してください。
-
-- 関数名: vja.trigger.click(name):
-  - 説明: 指定ウィジェットのクリックイベントを発火する
-  - 使用例: "vja.trigger.click('btnSearch');"
-
-- 関数名: vja.trigger.focus(name):
-  - 説明: 指定ウィジェットにフォーカスを当てる
-
-- 関数名: vja.trigger.blur(name):
-  - 説明: 指定ウィジェットのフォーカスを外す
-
-- 関数名: vja.trigger.change(name):
-  - 説明: 指定ウィジェットの値変更イベントを発火する
-
-- 関数名: vja.trigger.mouseDown(name):
-  - 説明: マウス押下イベントを発火する
-
-- 関数名: vja.trigger.mouseUp(name):
-  - 説明: マウス離すイベントを発火する
-
-- 関数名: vja.trigger.mouseEnter(name):
-  - 説明: マウス進入イベントを発火する
-
-- 関数名: vja.trigger.mouseLeave(name):
-  - 説明: マウス離脱イベントを発火する
-
-- 関数名: vja.trigger.scroll(name):
-  - 説明: スクロールイベントを発火する
-
-## イベント情報 (vja.event.*)
-
-get() は全イベントで必ずオブジェクトを返す（nullにはならない）。
-getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ以外では null/false を返す。
-
-- 関数名: vja.event.get():
-  - 説明: イベントデータを取得する（同期関数。awaitや.then()は使用禁止）
-  - 戻り値: object（nullになることはありません。全てのイベントで必ずオブジェクトを返します）
-  - RowClick時: {type:'rowClick', row:行インデックス, column:'カラム名'}
-  - HeaderClick時: {type:'headerClick', column:'カラム名'}
-  - Click時: データグリッドの行クリックなら rowClick、ヘッダークリックなら headerClick の結果を返す。typeで判別して処理を分岐できる
-  - それ以外の全てのイベント（KeyDown/KeyUp/TextChanged/CheckedChanged等）: {type: そのイベント名の先頭文字を小文字にしたもの}（例: KeyDownイベントなら{type:'keyDown'}、TextChangedイベントなら{type:'textChanged'}）
-  - 【重要】ev.type の値は、上記のルール（rowClick/headerClick、またはイベント名の先頭を小文字にしたもの）以外には絶対に存在しません。実際のイベント名から機械的に導ける値以外（推測や創作した値）と比較してはいけません。なお、KeyDown/KeyUpイベントで押されたキーそのものを判定したい場合は、vja.event.get()ではなく vja.event.getKey() / vja.event.isEnter() 等を使用してください（下記参照）。
-  - 使用例（行データ取得）: "const ev = vja.event.get(); const rows = vja.widget.get('tableView'); const rowData = rows[ev.row];"
-  - 使用例（セル単位のデータ取得）: "const ev = vja.event.get(); const rows = vja.widget.get('tableView'); const rowData = rows[ev.row]; const cellValue = rowData[ev.column];"
-  - 使用例説明: RowClickイベントで、クリックした行全体のデータ（rowData）だけでなく、クリックした特定のセルの値（cellValue）が必要な場合は ev.column（クリックされたカラム名）でrowDataから絞り込む
-
-- 関数名: vja.event.getKey():
-  - 説明: 押されたキー名を返す（例: "Enter", "Escape", "ArrowUp"）
-  - 戻り値: string | null
-  - 使用例: "if (vja.event.getKey() === 'Enter') { /* 処理 */ }"
-
-- 関数名: vja.event.getKeyCode():
-  - 説明: 押されたキーコードを返す（例: 13, 27, 38）
-  - 戻り値: number | null
-  - 使用例: "if (vja.event.getKeyCode() === 13) { /* 処理 */ }"
-
-- 関数名: vja.event.isEnter():
-  - 説明: Enterキーが押されたか
-  - 戻り値: boolean
-  - 使用例: "if (vja.event.isEnter()) { /* 処理 */ }"
-
-- 関数名: vja.event.isEscape():
-  - 説明: Escapeキーが押されたか
-  - 戻り値: boolean
-
-- 関数名: vja.event.isShift():
-  - 説明: Shiftキーが押されているか
-  - 戻り値: boolean
-
-- 関数名: vja.event.isCtrl():
-  - 説明: Ctrlキーが押されているか
-  - 戻り値: boolean
-
-## 通知 (vja.notify.*)
-
-- 関数名: vja.notify.toast(message, duration?):
-  - 説明: 画面下部にトースト通知を表示する
-  - 引数:
-    - message: string - 表示するメッセージ
-    - duration?: number - 表示時間ミリ秒（デフォルト: 2500）
-  - 戻り値: なし
-  - 使用例: "vja.notify.toast('保存しました');"
-  - 使用例説明: 保存完了のトースト通知を表示する
-
-## 外部API (vja.http.*)
-
-- 関数名: await vja.fetch(url, options?):
-  - 説明: Bun経由でHTTPリクエストを送信する低レベルAPI（vja.http.*の内部でも使用）
-  - 引数:
-    - url: string - リクエスト先URL
-    - options?: { method?, headers?, body? } - リクエストオプション（省略可）
-  - 戻り値: { ok, status, headers, text(), json() } - fetchライクなレスポンスオブジェクト
-  - 例外: ネットワークエラー時はエラーをスロー
-  - 使用例: "const res = await vja.fetch('https://api.example.com/data', { method: 'GET' }); const data = await res.json();"
-  - 備考: vja.http.* で対応できない場合（独自ヘッダー等）に使用する
-
-- 関数名: await vja.http.get(url, headers?):
-  - 説明: HTTP GETリクエストを送信する
-  - 引数:
-    - url: string - リクエスト先URL
-    - headers?: Record<string, string> - リクエストヘッダー（省略可）
-  - 戻り値: any - レスポンスのJSONオブジェクトまたはテキスト
-  - 例外: HTTPエラー時はエラーをスロー
-  - 使用例: "const data = await vja.http.get('https://api.example.com/users');"
-  - 使用例説明: ユーザー一覧をAPIから取得する
-  - 類似関数:
-    - await vja.http.delete(url, headers?):
-      - 説明: HTTP DELETEリクエストを送信する
-
-- 関数名: await vja.http.post(url, body, headers?):
-  - 説明: HTTP POSTリクエストを送信する
-  - 引数:
-    - url: string - リクエスト先URL
-    - body: object|string - リクエストボディ（オブジェクトはJSON変換される）
-    - headers?: Record<string, string> - リクエストヘッダー（省略可）
-  - 戻り値: any - レスポンスのJSONオブジェクトまたはテキスト
-  - 例外: HTTPエラー時はエラーをスロー
-  - 使用例: "const res = await vja.http.post('https://api.example.com/users', { name: '山田', age: 30 });"
-  - 使用例説明: 新しいユーザーをAPIに登録する
-  - 類似関数:
-    - await vja.http.put(url, body, headers?):
-      - 説明: HTTP PUTリクエストを送信する
-
-## UI (vja.ui.*)
-
-- 関数名: vja.ui.loading(show, message?):
-  - 説明: ローディングオーバーレイを表示/非表示にする。エラー発生対策として try/ finally 機構を入れ、finally で ローディングのOFFを行う必要がある。
-  - 引数:
-    - show: boolean - trueで表示、falseで非表示
-    - message?: string - 表示するメッセージ（デフォルト: 「処理中…」）
-  - 戻り値: なし
-  - 使用例: |
-      vja.ui.loading(true, 'データを取得中...');
-      try {
-        const rows = await vja.db.query('SELECT * FROM users');
-      } finally {
-        vja.ui.loading(false);
-      }
-  - 使用例説明: DB取得中にローディングを表示し try/finally で確実に完了後に非表示にする
-
-## 暗号化 (vja.crypto.*)
-
-- 関数名: await vja.crypto.encrypt(text, key):
-  - 説明: テキストをAES-GCMで暗号化してBase64文字列で返す
-  - 引数:
-    - text: string - 暗号化するテキスト
-    - key: string - 暗号化キー（32文字以内）
-  - 戻り値: string - Base64形式の暗号化文字列
-  - 使用例: "const encrypted = await vja.crypto.encrypt('秘密情報', 'mySecretKey');"
-  - 使用例説明: テキストを暗号化して保存用の文字列を生成する
-
-- 関数名: await vja.crypto.decrypt(b64, key):
-  - 説明: Base64形式の暗号化文字列を復号する
-  - 引数:
-    - b64: string - Base64形式の暗号化文字列
-    - key: string - 復号キー（暗号化時と同じキー）
-  - 戻り値: string - 復号されたテキスト
-  - 例外: キーが異なる場合はエラーをスロー
-  - 使用例: "const text = await vja.crypto.decrypt(encrypted, 'mySecretKey');"
-  - 使用例説明: 暗号化されたテキストを元の内容に復号する
-
-- 関数名: await vja.crypto.sha1(text) / await vja.crypto.sha256(text) / await vja.crypto.sha512(text):
-  - 説明: テキストを一方向ハッシュ化し、16進数文字列で返す（暗号化とは異なり復号は不可能）
-  - 引数:
-    - text: string - ハッシュ化する文字列
-  - 戻り値: string - 16進数文字列のハッシュ値（sha1は40文字、sha256は64文字、sha512は128文字）
-  - 【重要】パスワードそのものの保存目的でこれらの単純ハッシュを使うのは非推奨（ソルト・ストレッチングが無いため）。改ざん検知・重複チェック・簡易フィンガープリント等の用途に使用すること
-  - 【重要】引数は必ず文字列(string)をそのまま渡すこと。TextEncoder().encode(...)等で事前にUint8Array/ArrayBufferへ変換して渡してはならない（このAPIは文字列を直接受け取り、内部でエンコードまで行う設計であり、変換した値を渡すと正しく動作しない）
-  - 【重要】戻り値は最初から16進数文字列（string）であり、ArrayBufferやUint8Arrayではない。Array.from(new Uint8Array(...)).map(b=>b.toString(16))のような変換処理を戻り値に対して行ってはならない
-  - 誤った使用例（絶対にしないこと）: |
-      const encoder = new TextEncoder();
-      const data = encoder.encode('入力テキスト');
-      const digest = await vja.crypto.sha256(data); // NG: 文字列でなくUint8Arrayを渡している
-  - 使用例: "const digest = await vja.crypto.sha256('入力テキスト');"
-  - 使用例説明: テキストのSHA-256ハッシュ値（改ざん検知用など）を取得する
-
-## クラウドインフラ (vja.getCloudInfraCredential)
-
-- 関数名: await vja.getCloudInfraCredential(infra, service?):
-  - 説明: |
-      クラウドインフラのクレデンシャル（認証情報）を取得する。
-      vja側で定義したクレデンシャルが最優先となり、appInput=ONのキーはアプリ側入力ファイル（~/vja/credential.json等）から取得する
-  - 引数:
-    - "infra: string - インフラ名（例: 'AWS', 'GCP (Firebase)', 'Azure (Standard)'）"
-    - "service?: string - サービス名（例: 's3', 'dynamodb'）。省略時はinfraの最初のクレデンシャルを使用"
-  - 戻り値: "Record<string, string> | null - クレデンシャルのキーと値のオブジェクト。取得できない場合はnull"
-  - 使用例: |
-      const cred = await vja.getCloudInfraCredential('AWS', 's3');
-      if (!cred) { vja.notify.toast('クレデンシャルが取得できません'); return; }
-      // cred = { AWS_ACCESS_KEY_ID: 'xxx', AWS_SECRET_ACCESS_KEY: 'yyy', AWS_REGION: 'ap-northeast-1' }
-  - 使用例説明: AWSのS3サービス向けクレデンシャルを取得する
-
-## ログ出力 (vja.log.*)
-
-- 関数名: await vja.log.info(message):
-  - 説明: INFOレベルのログをBun側に記録する
-  - 引数:
-    - message: string - ログメッセージ
-  - 戻り値: なし
-  - 使用例: "await vja.log.info('処理が完了しました');"
-  - 使用例説明: 処理完了をログに記録する
-  - 類似関数:
-    - await vja.log.warn(message):
-      - 説明: WARNレベルのログをBun側に記録する
-    - await vja.log.error(message):
-      - 説明: ERRORレベルのログをBun側に記録する
-
-## ダイアログ出力 (vja.app.*)
-
-- 関数名: await vja.app.showDialog(message):
-  - 説明: アラートダイアログを表示する
-  - 引数:
-    - message: string - 表示するメッセージ
-  - 戻り値: なし
-  - 使用例: "await vja.app.showDialog('処理が完了しました');"
-  - 使用例説明: 完了メッセージをアラートで表示する
-
-- 関数名: await vja.app.showConfirm(message):
-  - 説明: 確認ダイアログを表示する
-  - 引数:
-    - message: string - 表示するメッセージ
-  - 戻り値: boolean - OKを押した場合true、キャンセルの場合false
-  - 使用例: |
-      const ok = await vja.app.showConfirm('削除しますか？');
-      if (!ok) return;
-  - 使用例説明: 削除確認ダイアログを表示し、キャンセル時は処理を中断する
-
-- 関数名: vja.app.closeWindow():
-  - 説明: 実行中のアプリ（フォームウィンドウ）を終了する。タイトルバーの✕ボタンと同じ終了処理
-  - 引数: なし
-  - 戻り値: なし
-  - 使用例: "vja.app.closeWindow();"
-  - 使用例説明: 「終了」ボタン等が押された時にアプリを閉じる
-
-## ログ出力 (console.*)
-
-- 関数名: console.info(message):
-  - 説明: INFOレベルのログをブラウザ側のコンソールに出力する
-  - 引数:
-    - message: any - ログメッセージ
-  - 戻り値: なし
-  - 使用例: "console.info('処理が完了しました');"
-  - 使用例説明: 処理完了をログに出力する
-  - 類似関数:
-    - console.log(message):
-      - 説明: 通常のログを出力する（デバッグ用途）
-    - console.warn(message):
-      - 説明: WARNレベルのログを出力する
-    - console.error(message, error?):
-      - 説明: ERRORレベルのログを出力する。エラー終了時は第2引数にErrorオブジェクト自体も渡すこと（例: console.error(e.message, e);）
-`.trim() + "\n\n\n\n\n\n\n\n\n\n\n";
+        _loadPromptTpl("vja-front-api-full.ja.md").trim() + "\n\n\n\n\n\n\n\n\n\n\n";
 
 
     // ### [systemPromptで利用]
@@ -736,98 +60,25 @@ getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ
     // vja.event.*は任意カテゴリ（event）に分離。ただしKeyDown/KeyUp/RowClick/HeaderClickの
     // 4イベントでは、UI・検証ロジック側でOFFにできない「常時有効」扱いにする
     // （vja-yaml-editor.js の _EVENT_LOCKED_ON_EVENTS を参照）。
-    const VJA_FRONT_API_MANDATORY_ENG = `
-vja.widget.get: { args: [name:string], return: "string|number|boolean|null", desc: "Gets current value from UI Widget. CRITICAL: The returned value is READ-ONLY. Modifying the returned object/array WILL NOT update the UI. To update, you MUST explicitly use vja.widget.set()." }
-vja.widget.set: { args: [name:string, value:any, options?:object], return: "void", desc: "Sets value to UI Widget (text:str, checkbox:bool, select:array, datagrid:object[]). MANDATORY: This is the ONLY way to update UI data. Never mutate objects retrieved from get()." }
-vja.widget.getAllInputs: { args: [], return: "Record<string,any>", desc: "Gets all active UI inputs in a form as {name: value}." }
-vja.widget.setVisible: { args: [name:string, visible:boolean], return: "void", desc: "Toggles UI display (true=show, false=hide)." }
-vja.widget.show: { args: [name:string], return: "void", desc: "Shows the widget. Same argument pattern for vja.widget.hide(name), vja.widget.enable(name), vja.widget.disable(name)." }
-vja.widget.setSuggestions: { args: [name:string, list:(string|{label:string,value:string})[]], return: "void", desc: "Shows suggestion dropdown candidates below an inputtype widget whose SuggestEnabled property is true. MUST be called only from that widget's own Suggest event (fires on every keystroke, same timing as TextChanged). List is capped to the widget's SuggestMaxCount property (default 3)." }
-
-vja.trigger.click: { args: [name:string], return: "void", desc: "Triggers click on widget. name is the widget's NAME STRING (e.g. 'btnSearch'). For other events use same pattern: vja.trigger.focus(name), vja.trigger.blur(name), vja.trigger.change(name), vja.trigger.mouseDown(name), vja.trigger.mouseUp(name), vja.trigger.mouseEnter(name), vja.trigger.mouseLeave(name), vja.trigger.scroll(name)" }
-
-vja.ui.loading: { args: [show:boolean, message?:string], return: "void", desc: "Toggle loading overlay screen. MUST wrap the actual code in try{} finally{ vja.ui.loading(false); } structure to ensure turn off on errors." }
-
-await vja.app.showDialog: { args: [message:string], return: "void", desc: "Shows a message dialog. MUST use await, including inside catch blocks (e.g., catch (e) { console.error(e.message, e); await vja.app.showDialog('...'); }). Forgetting await is a common mistake — do not omit it, even in error handling." }
-await vja.app.showConfirm: { args: [message:string], return: "boolean", desc: "Confirm dialog. OK=true, Cancel=false." }
-vja.app.closeWindow: { args: [], return: "void", desc: "Closes the running app window. Same effect as clicking the titlebar's close (✕) button." }
-
-await vja.crypto.encrypt: { args: [text:string, key:string], return: "string", desc: "Encrypts text, returns a Base64 string. Counterpart: await vja.crypto.decrypt(b64:string, key:string) -> string (throws if key is wrong)." }
-await vja.crypto.sha1: { args: [text:string], return: "string", desc: "One-way hash, NOT reversible. Same argument/return pattern for vja.crypto.sha256(text) and vja.crypto.sha512(text). ARG MUST BE A PLAIN STRING — do NOT pass a TextEncoder-encoded Uint8Array/ArrayBuffer, this API takes and encodes the string internally. RETURN IS ALREADY a lowercase hex string (sha1=40 chars, sha256=64 chars, sha512=128 chars) — do NOT convert the return value with Array.from(new Uint8Array(...)) or similar, that produces wrong output. Not recommended alone for password storage (no salt/stretching); use for tamper detection, dedup keys, simple fingerprints." }
-
-vja.notify.toast: { args: [message:string, duration?:number], return: "void", desc: "Displays a bottom toast notification. Use this for lightweight success/status messages (NOT vja.app.showDialog) when the YAML explicitly says \"トースト\" (toast)." }
-
-console.info: { args: [message:any], return: "void" }
-console.warn: { args: [message:any], return: "void" }
-console.error: { args: [message:any], return: "void" }
-`.trim();
+    const VJA_FRONT_API_MANDATORY_ENG = _loadPromptTpl("vja-front-api-mandatory.eng.md").trim();
 
     // ### [systemPromptで利用]
     // [フロントエンド] 特殊API（vja.db: YAMLの「利用テーブル:」に記載がある場合のみユーザプロンプト側に付与）
-    const VJA_FRONT_API_DB_ENG = `
-await vja.db.query: { args: [sql:string, params?:any[]], return: "Record<string,any>[]", desc: "SQL SELECT. Use ? placeholder." }
-await vja.db.execute: { args: [sql:string, params?:any[]], return: "{changes:number, lastInsertRowid:number}|null", desc: "SQL INSERT/UPDATE/DELETE." }
-await vja.db.transaction: { args: [statements:object[]], return: "boolean", desc: "Multiple SQLs. Rollback and returns false on failure." }
-`.trim();
+    const VJA_FRONT_API_DB_ENG = _loadPromptTpl("vja-front-api-db.eng.md").trim();
 
     // ### [systemPromptで利用]
     // [フロントエンド] 任意API（イベントエディタのチェックボックスでON時のみユーザプロンプト側に付与）
     // キー名は、チェックボックスUI・検証ロジック（無効化カテゴリのAPI使用検出）と共通で使用する識別子.
     const VJA_FRONT_API_OPTIONAL_ENG = {
-        event: `
-vja.event.getKey: { args: [], return: "string|null", desc: "KeyDown/KeyUp event ONLY. Returns key name ('Enter','Escape','ArrowUp' etc). Returns null in other events." }
-vja.event.get: { args: [], return: "object", desc: "MUST NOT use await or .then(). Synchronous function. Call directly: const ev = vja.event.get(); NEVER returns null — always returns an object. RowClick={type:'rowClick',row:rowIndex,column:'colName'}, HeaderClick={type:'headerClick',column:'colName'}, Click=returns rowClick or headerClick result based on clicked area (use ev.type to branch), ALL other events (KeyDown/KeyUp/TextChanged/CheckedChanged/etc.)={type: the event name with its first letter lowercased} (e.g. KeyDown->{type:'keyDown'}, TextChanged->{type:'textChanged'}). IMPORTANT: ev.type can ONLY be 'rowClick', 'headerClick', or the mechanically-derived lowerCamel event name — NEVER invent or guess any other value. To detect which key was pressed, use vja.event.getKey()/isEnter()/isEscape() etc. instead, NOT vja.event.get(). Example(RowClick, row data): const ev=vja.event.get(); const rows=vja.widget.get('tableView'); const rowData=rows[ev.row]; Example(RowClick, specific clicked cell value): const ev=vja.event.get(); const rows=vja.widget.get('tableView'); const rowData=rows[ev.row]; const cellValue=rowData[ev.column]; — use ev.column (the clicked column name) to narrow rowData down to the specific cell when the request is about the clicked cell, not the whole row." }
-vja.event.isEnter: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Enter key." }
-vja.event.isEscape: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Escape key." }
-vja.event.isShift: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Shift key is held." }
-vja.event.isCtrl: { args: [], return: "boolean", desc: "KeyDown/KeyUp ONLY. Returns true if Ctrl key is held." }
-`.trim(),
-        form: `
-vja.form.navigate: { args: [formName:string, options?:object], return: "void", desc: "Navigates to form. options.save defaults to true." }
-vja.form.back: { args: [], return: "void" }
-vja.form.setParam: { args: [key:string, value:any], return: "void", desc: "Sets data parameter to pass to the next screen." }
-vja.form.getParam: { args: [key:string, default?:any], return: "any", desc: "Retrieves parameter passed from previous screen." }
-`.trim(),
-        session: `
-await vja.session.get: { args: [key:string, default?:any], return: "any", desc: "Retrieves persistent session data. MUST use await." }
-await vja.session.set: { args: [key:string, value:any], return: "boolean", desc: "Saves persistent session data (JSON)." }
-await vja.session.delete: { args: [key:string], return: "boolean", desc: "Deletes a session data entry. MUST use await." }
-await vja.session.clear: { args: [], return: "boolean", desc: "Clears all session data. MUST use await." }
-`.trim(),
-        const: `
-vja.const.get: { args: [key:string, default?:any], return: "any", desc: "Retrieves constant value. Form priority, then global." }
-vja.const.getAll: { args: [], return: "Record<string,any>", desc: "Retrieves all active config constants." }
-`.trim(),
-        util: `
-vja.util.today: { args: [], return: "string", desc: "Returns current date in YYYY-MM-DD format." }
-vja.util.formatDate: { args: [date:any, format?:string], return: "string", desc: "Formats Date object or string (default: YYYY-MM-DD)." }
-vja.util.formatNumber: { args: [n:number, decimals?:number], return: "string", desc: "Formats number with thousands separators." }
-`.trim(),
-        file: `
-await vja.file.read: { args: [path:string], return: "string|null", desc: "Reads a text file. Returns null if not found. MUST use await." }
-await vja.file.write: { args: [path:string, content:string], return: "boolean", desc: "Writes text to a file. MUST use await." }
-await vja.file.readBytes: { args: [path:string], return: "Uint8Array|null", desc: "Reads a binary file. Returns null if not found. MUST use await." }
-await vja.file.writeBytes: { args: [path:string, data:Uint8Array], return: "boolean", desc: "Writes binary data to a file. MUST use await." }
-await vja.file.exists: { args: [path:string], return: "boolean", desc: "Checks whether a file exists. Same argument pattern for vja.file.delete(path) [deletes file]. MUST use await." }
-await vja.file.copy: { args: [src:string, dest:string], return: "boolean", desc: "Copies a file. MUST use await." }
-`.trim(),
-        io: `
-await vja.io.openCsv: { args: [], return: "Record<string,string>[]|null", desc: "Reads CSV via dialog. Returns null if canceled." }
-await vja.io.openJson: { args: [], return: "Promise<any|null>", desc: "Reads JSON via dialog. Throws on parse error." }
-vja.io.parseCsv: { args: [csvText:string, hasHeader?:boolean], return: "Record<string,string>[]", desc: "Parses an already-obtained CSV string (NO dialog). Always returns array-of-objects (same shape as datagrid data in vja.widget.set). If hasHeader=false, uses auto-generated keys col1,col2,... instead of header row." }
-vja.io.toCsv: { args: [rows:object[]|any[][], headers?:string[]], return: "string", desc: "Converts row data to a CSV string (does NOT download). Counterpart of vja.io.parseCsv. Accepts EITHER array-of-objects OR array-of-arrays as rows. If rows is array-of-objects and headers omitted, headers are auto-derived from rows[0] keys. If rows is array-of-arrays and headers omitted, the CSV has NO header row (arrays have no keys to derive from)." }
-await vja.io.saveCsv: { args: [csvRows:object[], filename:string], return: "void", desc: "Saves rows as a CSV file via save dialog. MUST use await." }
-await vja.io.saveJson: { args: [data:any, filename:string], return: "void", desc: "Saves data as a JSON file via save dialog. MUST use await." }
-`.trim(),
-        dir: `
-await vja.dir.create: { args: [path:string], return: "boolean", desc: "Creates a directory (including parents). Same argument pattern for vja.dir.delete(path) [deletes directory], vja.dir.exists(path) [checks existence]. MUST use await." }
-await vja.dir.list: { args: [path:string], return: "string[]", desc: "Lists entries in a directory. MUST use await." }
-`.trim(),
-        http: `
-await vja.http.get: { args: [url:string, headers?:object], return: "any", desc: "HTTP GET. (vja.http.delete(url, headers) uses same args)" }
-await vja.http.post: { args: [url:string, body:any, headers?:object], return: "any", desc: "HTTP POST with JSON body. (vja.http.put(url, body, headers) uses same args)" }
-await vja.fetch: { args: [url:string, options?:object], return: "any", desc: "Low-level fetch alternative for custom options." }
-`.trim(),
+        event: _loadPromptTpl("vja-front-api-optional.event.eng.md").trim(),
+        form: _loadPromptTpl("vja-front-api-optional.form.eng.md").trim(),
+        session: _loadPromptTpl("vja-front-api-optional.session.eng.md").trim(),
+        const: _loadPromptTpl("vja-front-api-optional.const.eng.md").trim(),
+        util: _loadPromptTpl("vja-front-api-optional.util.eng.md").trim(),
+        file: _loadPromptTpl("vja-front-api-optional.file.eng.md").trim(),
+        io: _loadPromptTpl("vja-front-api-optional.io.eng.md").trim(),
+        dir: _loadPromptTpl("vja-front-api-optional.dir.eng.md").trim(),
+        http: _loadPromptTpl("vja-front-api-optional.http.eng.md").trim(),
     };
 
     // 任意カテゴリの表示名（チェックボックスUI用）
@@ -996,22 +247,7 @@ await vja.fetch: { args: [url:string, options?:object], return: "any", desc: "Lo
     // [英語版][バックエンド]利用可能なjavascript関数の説明.
     // ※必須条件: 英語版は使用例、使用例説明は不要.
     // 「vja ランタイムの追加・変更・削除がある場合は、反映が必要」
-    const VJA_USE_BACK_JS_INFO_ENG = `
-vja.db.query: { scope: DB_BACK_SELECT, args: [sql:string, params?:any[]], return: "Record<string,any>[]", desc: "SQL SELECT statement. Returns empty array [] on error. Use ? placeholder. NEVER use await." }
-vja.db.execute: { scope: DB_BACK_WRITE, args: [sql:string, params?:any[]], return: "{changes:number, lastInsertRowid:number}|null", desc: "SQL INSERT/UPDATE/DELETE. Returns null on error. NEVER use await." }
-vja.db.clearTable: { scope: DB_BACK_CLEAR, args: [tableName:string], return: "void" }
-await vja.db.importCsv: { scope: DB_BACK_IMPORT, args: [tableName:string, filePath:string], return: "void", desc: "Bulk import CSV file using first row as header. Throws error on failure. MUST use await." }
-await vja.db.importJson: { scope: DB_BACK_IMPORT, args: [tableName:string, filePath:string], return: "void", desc: "Bulk import JSON array file. Throws error on failure. MUST use await." }
-
-vja.session.get: { scope: SESSION_BACK_STORAGE, args: [key:string], return: "string|null" }
-vja.session.set: { scope: SESSION_BACK_STORAGE, args: [key:string, value:string], return: "boolean" }
-vja.session.delete: { scope: SESSION_BACK_STORAGE, args: [key:string], return: "boolean" }
-vja.session.clear: { scope: SESSION_BACK_STORAGE, args: [], return: "boolean" }
-
-vja.log.info: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" }
-vja.log.warn: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" }
-vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" }
-    `.trim();
+    const VJA_USE_BACK_JS_INFO_ENG = _loadPromptTpl("vja-back-api-full.eng.md").trim();
 
     // 英語promptの最後に日本語で表記としてつける文字
     const ENG_TO_LAST_PHRASE_JP = "\nRespond in Japanese.\n";
@@ -1107,110 +343,18 @@ vja.log.error: { scope: LOG_BACK_SYSTEM, args: [message:string], return: "void" 
 
         const codeType = isAppEvent ? "TypeScript" : "JavaScript";
 
-        const rule = isAppEvent
-            ? // バックエンド (isAppEvent = true)
-            `
-## Structure
-- Code must always be written inline.
-- Declare variables (let) BEFORE if/else/try/catch/any block, not inside it. Example: let params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
-- As a general rule, do not use "const"; use only "let".
+        const rule = (isAppEvent
+            ? _loadPromptTpl("yaml-to-js.rule.back.eng.md")
+            : _loadPromptTpl("yaml-to-js.rule.front.eng.md")
+        ).trim();
 
-## vja API
-- API selection priority (always follow this order, do NOT skip a tier): 1) If a vja.* API exists for the operation (see [vja Runtime(yaml)] below), you MUST use it. 2) If no vja.* API covers it, but a function is defined under the "### 拡張ランタイム(yaml)" section in the user message, use that. 3) Only if neither covers it, fall back to a standard/available JavaScript API. Never reimplement something a vja.* API already provides (e.g. do NOT use crypto.subtle directly — use vja.crypto.sha256/sha1/sha512 or vja.crypto.encrypt/decrypt instead).
-- All vja.* calls must use "await", except for the following synchronous calls: vja.event.*, vja.trigger.*, vja.widget.get, vja.widget.set, vja.widget.show, vja.widget.hide, vja.widget.enable, and vja.widget.disable.
-- Never use Promise, .then(), or .catch() directly. Use await instead.
-- Screen navigation must use vja.form.navigate('screen name') only (window.location is prohibited), and only for switching screens — never for refreshing/updating the current screen.
-
-## SQL
-- Placeholders (?) are mandatory for all variable inputs to prevent SQL injection, using sqlite3-executable SQL.
-- For LIKE searches, concatenate '%' wildcards on the JS variable side — NEVER put '?' inside quotes (e.g. LIKE '%?%' is STRICTLY PROHIBITED). Example: let pattern = '%' + searchText + '%'; let sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
-- NEVER embed a data VALUE into the SQL string via a template literal (\`\${...}\`) — any value (search text, numbers, IDs, JSON.stringify() results, etc.) must always go through the \`?\` placeholder and params array. Example: let sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]); (i.e. NEVER \`WHERE name = \${name}\`)
-  - Exception: embedding a column/table NAME (an identifier, not a data value) via template literal is acceptable when it comes from a controlled source (e.g. a dropdown of known column names) — e.g. \`SELECT * FROM t WHERE \${columnName} = ?\` — as long as the actual searched value still goes through \`?\`.
-
-## YAML Definition Structure
-- The YAML specification uses the following keys. Make sure you understand the meaning of each correctly.
-  - イベント (Event): Reference information only. NEVER use it as a basis for implementation.
-  - 説明 (Description): A summary of the processing. It is not a direct implementation instruction.
-  - 利用テーブル (Tables Used): The names of the DB tables referenced.
-  - アクション (Action): The actual processing to implement. This is the ONLY basis for implementation.
-  - 正常終了 (Normal Completion): The state when the processing has completed successfully.
-- When the following heading expressions appear inside "アクション:" (Action), implement them as the corresponding program structure:
-  - Headings of the form "〇〇の場合:" (When 〇〇) / "それ以外の場合:" (Otherwise) must be implemented as an if/else conditional branch.
-  - Headings of the form "〇〇に対して繰り返し:" (Repeat for each 〇〇) must be implemented as a for/forEach loop.
-  - If such headings are further nested beneath one another, implement the corresponding blocks as nested structures accordingly.
-
-## Fidelity to YAML
-- Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.
-- Strictly adhere to the implementation requirements specified in "the YAML specification".
-- The event name (e.g., KeyUp, SelectedIndexChanged) is merely reference information indicating what triggers the code — it is NOT an instruction. NEVER infer or add a "typical" implementation commonly associated with that event name (e.g., assuming SelectedIndexChanged implies "retrieve the selected value and display it"). The implementation must be based solely on what is explicitly specified under "アクション:" (Action).
-
-## Other
-- All comments must be written in Japanese.
-`.trim()
-            : // フロントエンド (isAppEvent = false)
-            `
-## Structure
-- All generated code must be written "inline." The use of helper functions is strictly prohibited (e.g., defining functions such as "handleXxx", "doXxx", "addEventListener", etc., is absolutely forbidden). Good example: var result = await vja.app.showConfirm("...");
-- Declare variables (var) BEFORE if/else/try/catch/any block, not inside it. Example: var params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
-- As a general rule, the use of "const" and "let" is prohibited; use only "var".
-
-## vja API
-- API selection priority (always follow this order, do NOT skip a tier): 1) If a vja.* API exists for the operation (see [vja Runtime(yaml)] below), you MUST use it. 2) If no vja.* API covers it, but a function is defined under the "### 拡張ランタイム(yaml)" section in the user message, use that. 3) Only if neither covers it, fall back to a standard/available JavaScript API. Never reimplement something a vja.* API already provides (e.g. do NOT use crypto.subtle directly — use vja.crypto.sha256/sha1/sha512 or vja.crypto.encrypt/decrypt instead).
-- All vja.* calls must use "await", except for the following synchronous calls: vja.event.*, vja.trigger.*, vja.widget.get, vja.widget.set, vja.widget.show, vja.widget.hide, vja.widget.enable, and vja.widget.disable.
-- Never use Promise, .then(), or .catch() directly. Use await instead.
-- Screen navigation must use vja.form.navigate('screen name') only (window.location is prohibited), and only for switching screens — never for refreshing/updating the current screen.
-- window.confirm/alert are prohibited. Use vja.app.showDialog/showConfirm instead.
-- Widgets are NOT accessible via direct DOM-style property access (e.g., searchText.value, document.getElementById('x').value are ALL INVALID). vja.widget.get()'s return value is already the raw unwrapped value (string/number/boolean/array) — it is never wrapped in a \`.value\` property. Accessing \`.value\` on it will NOT throw — it silently becomes undefined and causes subtly wrong behavior. The ONLY way to read a widget's current value is vja.widget.get('widgetName'), and you must use the returned value directly.
-
-## SQL
-- Placeholders (?) are mandatory for all variable inputs to prevent SQL injection, using sqlite3-executable SQL.
-- For LIKE searches, concatenate '%' wildcards on the JS variable side — NEVER put '?' inside quotes (e.g. LIKE '%?%' is STRICTLY PROHIBITED). Example: var searchText = vja.widget.get('txtSearch'); var pattern = '%' + searchText + '%'; var sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
-- NEVER embed a data VALUE into the SQL string via a template literal (\`\${...}\`) — any value (search text, numbers, IDs, JSON.stringify() results, etc.) must always go through the \`?\` placeholder and params array. Example: var sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]); (i.e. NEVER \`WHERE name = \${name}\`)
-  - Exception: embedding a column/table NAME (an identifier, not a data value) via template literal is acceptable when it comes from a controlled source (e.g. a dropdown of known column names) — e.g. \`SELECT * FROM t WHERE \${columnName} = ?\` — as long as the actual searched value still goes through \`?\`.
-
-## YAML Definition Structure
-- The YAML specification uses the following keys. Make sure you understand the meaning of each correctly.
-  - イベント (Event): Reference information only. NEVER use it as a basis for implementation.
-  - 説明 (Description): A summary of the processing. It is not a direct implementation instruction.
-  - 利用テーブル (Tables Used): The names of the DB tables referenced.
-  - アクション (Action): The actual processing to implement. This is the ONLY basis for implementation.
-  - 正常終了 (Normal Completion): The state when the processing has completed successfully.
-- When the following heading expressions appear inside "アクション:" (Action), implement them as the corresponding program structure:
-  - Headings of the form "〇〇の場合:" (When 〇〇) / "それ以外の場合:" (Otherwise) must be implemented as an if/else conditional branch.
-  - Headings of the form "〇〇に対して繰り返し:" (Repeat for each 〇〇) must be implemented as a for/forEach loop.
-  - If such headings are further nested beneath one another, implement the corresponding blocks as nested structures accordingly.
-
-## Fidelity to YAML
-- Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.
-- When implementing logic to output an error log upon "error termination" (or similar events) using the "message" property of an "Error" object from a "try { } catch (e)" block, you must always set the "Error" object itself as the second argument—specifically, "console.error(e.message, e)".
-- The event name (e.g., KeyUp, SelectedIndexChanged) is merely reference information indicating what triggers the code — it is NOT an instruction. NEVER infer or add a "typical" implementation commonly associated with that event name (e.g., assuming SelectedIndexChanged implies "retrieve the selected value and display it"). The implementation must be based solely on what is explicitly specified under "アクション:" (Action).
-
-## Other
-- All comments must be written in Japanese.
-`.trim();
-
-        return (`
-You are a VJA form designer and event handling code generation AI specializing in Japanese.
-You are a lightning-fast and accurate senior software engineer.
-You generate ${codeType} implementation code based on the YAML specification written by the user.
-
-[AI Output Rules]
----
-${_program_rule(true, isAppEvent)}
----
-
-[Code Generation Rules]
----
-${rule}
----
-
-[vja Runtime(yaml)]
----
-${_safeYamlFence(vjaUseJsInfo)}yaml
-${vjaUseJsInfo}
-${_safeYamlFence(vjaUseJsInfo)}
----
-`.trim() + "\n");
+        return _fillTpl(_loadPromptTpl("yaml-to-js.sys.eng.md"), {
+            codeType,
+            programRule: _program_rule(true, isAppEvent),
+            rule,
+            fence: _safeYamlFence(vjaUseJsInfo),
+            vjaUseJsInfo,
+        }).trim() + "\n";
     };
 
     // yamlのコメントを削除(AIによっては、コメントが逆に影響を及ぼす事になるため)
@@ -1305,50 +449,13 @@ ${_safeYamlFence(vjaUseJsInfo)}
         // Context information for Frontend/Widget events
         const frontInfo = isAppEvent
             ? ""
-            : `
-### Project Information
----
-- Current Form: ${formName}
-${widgetLineEn}- Current Event: ${eventName}
-${eventTypeHintEn}---
-
-### Widget List (${formName})
----
-${allWidgetsCtx}
----
-
-### Form Constants (${formName})
----
-${formConstCtx}
----
-
-### Input Parameters (${formName})
----
-${inputParamsCtx}
----
-
-### Screen List
----
-${formsCtx}
----
-
-### Global Constants
----
-${globalConstCtx}
----
-
-### Table Definitions
----
-${tablesCtx}
----
-${optionalApiDocCtx ? "\n### Additional Available APIs (enabled for this event)\n---\n" + optionalApiDocCtx + "\n---\n" : ""}
-${learnedFixesCtx ? "\n### Project-Specific Notes\n---\n" + learnedFixesCtx + "\n---\n" : ""}
-### Extended Runtime(yaml)
----
-${_safeYamlFence(extRuntimeDoc)}yaml
-${extRuntimeDoc}
-${_safeYamlFence(extRuntimeDoc)}
----`.trim();
+            : _fillTpl(_loadPromptTpl("yaml-to-js.front-info.eng.md"), {
+                formName, widgetLineEn, eventName, eventTypeHintEn,
+                allWidgetsCtx, formConstCtx, inputParamsCtx, formsCtx, globalConstCtx, tablesCtx,
+                optionalApiSection: optionalApiDocCtx ? "\n### Additional Available APIs (enabled for this event)\n---\n" + optionalApiDocCtx + "\n---\n" : "",
+                learnedFixesSection: learnedFixesCtx ? "\n### Project-Specific Notes\n---\n" + learnedFixesCtx + "\n---\n" : "",
+                extFence: _safeYamlFence(extRuntimeDoc), extRuntimeDoc,
+            }).trim();
 
         let instructions = "";
         if (isAppEvent) {
@@ -1393,33 +500,7 @@ ${_safeYamlFence(yamlDef)}
     // example_description）は英語固定、値（説明文）は日本語で書かせる。
     // 出力は生YAMLのみ、コードブロックや前置き・説明文は禁止。
     const ENG_EXT_RUNTIME_JS_TO_YAML_SYS_PROMPT = function () {
-        return `
-You are an expert AI assistant specializing in JavaScript code analysis and developer documentation generation.
-Your task is to analyze the provided JavaScript code, extract all publicly available functions, and generate a documentation in a strict YAML format based on the following schema.
-
-[CRITICAL REQUIREMENT FOR LANGUAGE]
-- The keys of the YAML must be in English as defined below.
-- However, all the values (such as descriptions, explanations, and arguments details) MUST be written in Japanese based on your understanding of the code.
-
-[YAML Schema]
-Strictly follow this structure. If there are multiple functions, repeat the list starting from the top-level "- function:" key.
-
-- function: await functionName(args1, args2, ...) # Include 'await' if the function is asynchronous; omit if synchronous.
-  description: "Brief Japanese explanation of the function's purpose and usage."
-  arguments:
-    - args1: "Type and Japanese description of args1."
-    - args2: "Type and Japanese description of args2."
-  returns: "Return type and Japanese explanation."
-  exception: "Japanese description of potential exceptions or errors thrown. (Omit this entire key if none)"
-  example: |
-    // A simple, realistic JavaScript example of how to use this function
-  example_description: "Brief Japanese explanation corresponding to the usage example."
-
-[Output Format Rules - Strict Adherence Required]
-- Output MUST consist entirely of the raw YAML data only.
-- Do NOT wrap the output in markdown code blocks (e.g., do not use \`\`\`yaml or \`\`\`).
-- Absolutely NO introductory text, NO explanations, and NO concluding remarks. Your response MUST start directly with the very first character of the actual YAML data (the hyphen "-").
-`.trim() + "\n";
+        return _loadPromptTpl("ext-runtime-js-to-yaml.sys.eng.md").trim() + "\n";
     };
 
     // [英語]拡張ランタイム用ユーザプロンプト.
@@ -1428,42 +509,13 @@ Strictly follow this structure. If there are multiple functions, repeat the list
     // 「以下のJavaScriptコードを解析してシステム指示のYAML形式でドキュメント化せよ」
     // という指示＋対象コード本文＋「生YAMLのみ出力、コードブロック禁止」の念押し。
     const ENG_EXT_RUNTIME_JS_TO_YAML_USER_PROMPT = function (js) {
-        // ユーザプロンプト.
-        const instructions = `
-Please analyze the following JavaScript code (VJA extended runtime) and generate its API documentation in the exact YAML format specified in the system rules.
-
-Ensure that the YAML strictly utilizes the predefined English keys (function, description, arguments, returns, exception, example, example_description) while their respective values and explanations are written in Japanese.
-
-[Target JavaScript Code]
----
-\`\`\`javascript
-${js.trim()}
-\`\`\`
----`.trim();
-
-        // Final reinforcement placed at the absolute end to override LLM's default code block habits.
-        const finalEnforcement = `
-[CRITICAL REQUIREMENT]
-- Output MUST consist entirely of the raw YAML data only.
-- Absolutely NO markdown code blocks (do not wrap in \`\`\`yaml or \`\`\`).
-- No introductory text, explanations, or commentary. Start your response directly with the first character of the YAML data (the hyphen "-").`;
-
-        return `${instructions}\n${finalEnforcement.trim()}\n`;
+        return _fillTpl(_loadPromptTpl("ext-runtime-js-to-yaml.user.eng.md"), { jsCode: js.trim() });
     };
 
     // プログラム生成におけるYAMLが存在しない場合にセット
     const DEFAULT_YAML_VALUE = function (eventName, wname) {
         return (
-            `
-# イベント: ${eventName} (${wname})
-
-説明: 
-#利用テーブル: 
-アクション: 
-  - 
-
-正常終了: なし
-`.trim() + "\n\n\n\n\n"
+            _fillTpl(_loadPromptTpl("default-event-yaml.ja.md"), { eventName, wname }).trim() + "\n\n\n\n\n"
         );
     };
 
@@ -1485,160 +537,17 @@ ${js.trim()}
     // 参照テーブルにないカラム名を勝手に作らない。ボタン数は依頼のアクション項目数と一致させる。
     // 以降はFew-Shot例（検索一覧画面1個、複数ボタン1個）。
     const ENG_FORM_DESIGN_SYS_PROMPT = function ({ formW, formH, tablesCtx }) {
-        return (`
-You are an expert business application UI designer specializing in screen layout design for VJA (a form designer for desktop/web business apps).
-Your task is to read a Japanese YAML screen definition (including screen purpose, form layout directives, input fields, and action items), determine appropriate widgets, and output a precise layout JSON array with non-overlapping pixel coordinates (x, y, w, h).
-
-[Layout Directives & High-Priority Rules]
-1. Highest Priority of "フォームレイアウト" (Form Layout Directives):
-   - You MUST strictly follow directives written in "フォームレイアウト" (or formLayout).
-   - Recognize layout parameters:
-     - Columns ("カラム数" / "columns"): 1 | 2 | 3. Divide inputs into clean columns (e.g., 2 columns: Col 1 x=20, Col 2 x=${Math.floor(formW / 2) + 10}).
-     - Label Position ("ラベル位置" / "labelPosition"): "左" (left / label on the left of input, e.g., lbl x=20 w=100, input x=125 w=180, same y) OR "上" (top / label above input, e.g., lbl x=20 y=Y w=180 h=20, input x=20 y=Y+22 w=180 h=26). Default is "left".
-     - Button Alignment ("ボタン位置" / "buttonPosition"): "右下" (bottom-right) | "右" (top-right for search buttons) | "下部中央" (bottom-center).
-       - **When there are multiple action buttons, you MUST compute each button's x from the form's RIGHT EDGE, not from a single fixed x.** The formulas below are given to EXPLAIN the calculation method in words — you must do the arithmetic yourself and write only the final resulting integer in the output JSON. NEVER copy a formula/expression (e.g. "768 - 20 - 85") literally into the "x" field; the output JSON must contain plain integers only, never arithmetic expressions.
-         - rightmost button: x = ${formW} - 20 - w  (compute this to a single integer)
-         - each button to its left: x = (x of the button to its right) - gap - w  (compute this to a single integer)
-         - i.e. for buttons ordered left-to-right [btn_1 .. btn_N], x(btn_i) = ${formW} - 20 - (N - i + 1) * w - (N - i) * gap  (compute this to a single integer)
-         - All buttons share the same y = ${formH - 45} (bottom-right) and h=28~32.
-       - Example for N=3 buttons (w=85, gap=10) in a form of width ${formW}: x(btn_3)=${formW}-20-85, x(btn_2)=x(btn_3)-10-85, x(btn_1)=x(btn_2)-10-85. These are shown as formulas only to explain the method — the actual JSON output must have the computed integer results (see [Few-Shot Example: Multiple Action Buttons] below for the correct output style).
-       - Verify after computing: the leftmost button's x MUST be >= 20 (left margin). If it is not, reduce button width or wrap to a second row instead of overlapping.
-     - Density ("密度" / "density"): "コンパクト" (compact: item height 24px, gapY 28px) | "標準" (normal: item height 28px, gapY 36px).
-
-2. Recognized Screen Layout Patterns:
-   - Search & List Screen (検索・一覧画面):
-     - Search Condition Area (Top): Place labels and inputs in 1 or 2 rows (y: 20~80). Place Search/Clear buttons to the right of inputs or on the right.
-     - Data Grid Area (Bottom): Place a "datagrid" filling the remaining width and height (x: 20, y: searchAreaBottom + 15, w: ${formW - 40}, h: ${formH} - y - 30).
-   - Form & Registration Screen (登録・詳細画面):
-     - Place labels and inputs structured in 1 or 2 clean columns with uniform row gaps (yDelta: 36~40px).
-     - Action buttons (Save, Cancel, Close, etc.) MUST be aligned at the bottom right (y: ${formH - 45}, h: 30) or bottom center. When there are 2 or more buttons, apply the multi-button x formula defined above (rightmost button flush against the right margin, each additional button placed 10px further left) so that buttons never overlap and never exceed the form width.
-
-3. Coordinates & Sizing Guidelines:
-   - Form Bounds: Width = ${formW}px, Height = ${formH}px. All widgets MUST fit within x+w <= ${formW} and y+h <= ${formH}.
-   - Standard Heights: label=22~24px, inputtype/selectBox=26~28px, textarea=60~100px, button=28~32px, datagrid=200~400px.
-   - Strict No-Overlap: No two widgets may intersect or overlap. Leave a minimum 6px gap between widgets.
-
-[Output Format Rules - Strict Adherence Required]
-- Output MUST be a raw JSON array only.
-- Do NOT wrap the JSON in markdown code blocks (e.g., do not use \`\`\`json). Start directly with [ and end with ].
-- Do not include any explanations, introduction, or comments.
-
-[JSON Schema per Element]
-Each object in the array must have the following keys:
-- "tag": "inputtype" | "textarea" | "checkbox" | "radio" | "selectBox" | "listbox" | "button" | "label" | "datagrid" | "qrcode" | "markdown"
-- "name": Unique VB6-style Hungarian notation (e.g., txtUserId, lblUserId, btnSubmit, chkAgree, radMale, cmbCategory, lstItems, txaMemo, tblResult). Unique within array.
-- "text": Caption text for "label", "button", "checkbox", "radio" (required). For "qrcode", the raw text/URL. For "markdown", raw Markdown source. Empty "" for others.
-  - For "button": strip generic type-indicating suffixes such as "ボタン"/"button" from the action item text before using it as the caption (e.g. アクション項目 "検索ボタン" → caption "検索", "ログインボタン" → "ログイン"). The shape of the widget already conveys it is a button, so repeating "ボタン" in the caption is redundant.
-- "inputType": (Required only when tag is "inputtype") "text" | "password" | "number" | "email" | "tel" | "date" | "time" | "url"
-- "placeholder": (Optional) Sample text for "inputtype" or "textarea".
-- "group": (Required only when tag is "radio") Group name.
-- "options": (Required only when tag is "selectBox" or "listbox") Array of options: ["Item1", "Item2"] or [{"label": "馬名", "value": "name"}, ...].
-- "columns": (Required only when tag is "datagrid") Array of column definitions: [{"name": "col_name", "displayName": "表示名", "width": 25}, ...].
-- "x", "y", "w", "h": Integers (pixels). MUST be plain literal integers (e.g. 663) — NEVER arithmetic expressions (e.g. "768 - 20 - 85") or strings. Always compute the final number yourself before writing it.
-
-- Reference tables: Do not arbitrarily invent column names not in the reference table.
-- Number of buttons: Match the number of action items specified in the request.
-- **Every entry listed under "入力項目:" (fields) MUST produce exactly one corresponding widget in the output — never silently drop one.** This applies regardless of how few fields there are in total. In particular, a "datagrid" entry is easy to drop when the total field count is small (e.g. only 2-3 entries including the datagrid itself), because such a short list can look like a plain input form — but "入力項目:" already decided this screen needs a list, so the datagrid widget is mandatory output, not optional. Count the "入力項目:" entries before finalizing your output and verify each one has a matching widget.
-
-[Few-Shot Example]
-Input YAML Example:
----
-説明: horse_info 内容を検索して表示するための画面
-フォームレイアウト: 
-  - パターン: 検索一覧画面
-  - カラム数: 2
-  - ラベル位置: 左
-  - ボタン位置: 右下
-参照テーブル:
-  - horse_info
-入力項目:
-  - 検索ワード: inputtype で text
-  - 検索条件選択項目: selectBox で key=表示名, value=Value
-    - 馬名: name
-    - 父馬: father
-    - 母馬: mother
-    - 性別: sex
-  - 検索結果表示枠: datagrid
-    - horse_info: テーブル項目を表示して、カラム名、表示名を設定する
-アクション項目:
-  - 検索ボタン
----
-Output JSON Example:
-[
-  {"tag": "label", "name": "lblSearchWord", "text": "検索ワード", "x": 20, "y": 20, "w": 90, "h": 24},
-  {"tag": "inputtype", "name": "txtSearchWord", "text": "", "inputType": "text", "placeholder": "検索ワードを入力", "x": 115, "y": 20, "w": 160, "h": 26},
-  {"tag": "label", "name": "lblSearchCol", "text": "検索対象", "x": 295, "y": 20, "w": 75, "h": 24},
-  {"tag": "selectBox", "name": "cmbSearchCol", "options": [
-    {"label": "馬名", "value": "name"},
-    {"label": "父馬", "value": "father"},
-    {"label": "母馬", "value": "mother"},
-    {"label": "性別", "value": "sex"}
-  ], "x": 375, "y": 20, "w": 130, "h": 26},
-  {"tag": "button", "name": "btnSearch", "text": "検索", "x": 515, "y": 20, "w": 85, "h": 26},
-  {"tag": "datagrid", "name": "tblHorseInfo", "columns": [
-    {"name": "name", "displayName": "馬名", "width": 25},
-    {"name": "father", "displayName": "父馬", "width": 25},
-    {"name": "mother", "displayName": "母馬", "width": 25},
-    {"name": "sex", "displayName": "性別", "width": 25}
-  ], "x": 20, "y": 60, "w": ${formW - 40}, "h": ${Math.max(180, formH - 90)}}
-]
-
-[Few-Shot Example: Minimal field count STILL requires the datagrid widget]
-Input YAML Example:
----
-説明: 一覧と新規登録機能
-参照テーブル:
-  - items
-入力項目:
-  - 一覧: datagrid
-  - 名前: inputtype text
-  - 金額: inputtype number
-アクション項目:
-  - 新規登録
----
-Correct Output JSON Example (3 "入力項目:" entries → 3 corresponding widgets, the datagrid is NOT optional just because the field count is small):
-[
-  {"tag": "label", "name": "lblName", "text": "名前", "x": 20, "y": 20, "w": 90, "h": 24},
-  {"tag": "inputtype", "name": "txtName", "text": "", "inputType": "text", "x": 115, "y": 16, "w": 160, "h": 28},
-  {"tag": "label", "name": "lblPrice", "text": "金額", "x": 295, "y": 20, "w": 90, "h": 24},
-  {"tag": "inputtype", "name": "txtPrice", "text": "", "inputType": "number", "x": 390, "y": 16, "w": 160, "h": 28},
-  {"tag": "button", "name": "btnAdd", "text": "新規登録", "x": 570, "y": 16, "w": 85, "h": 28},
-  {"tag": "datagrid", "name": "tblItems", "columns": [
-    {"name": "name", "displayName": "名前", "width": 50},
-    {"name": "price", "displayName": "金額", "width": 50}
-  ], "x": 20, "y": 60, "w": ${formW - 40}, "h": ${Math.max(180, formH - 90)}}
-]
-Wrong output (do NOT do this — dropping the "一覧: datagrid" entry just because there are only 3 fields total; this leaves the screen with no way to actually display a list, contradicting "入力項目:" which explicitly requested one):
-[
-  {"tag": "label", "name": "lblName", "text": "名前", "x": 20, "y": 20, "w": 90, "h": 24},
-  {"tag": "inputtype", "name": "txtName", "text": "", "inputType": "text", "x": 115, "y": 16, "w": 160, "h": 28},
-  {"tag": "label", "name": "lblPrice", "text": "金額", "x": 295, "y": 20, "w": 90, "h": 24},
-  {"tag": "inputtype", "name": "txtPrice", "text": "", "inputType": "number", "x": 390, "y": 16, "w": 160, "h": 28},
-  {"tag": "button", "name": "btnAdd", "text": "新規登録", "x": 570, "y": 16, "w": 85, "h": 28}
-]
-
-[Few-Shot Example: Multiple Action Buttons]
-Input YAML Example (form width ${formW}):
----
-説明: タスクの追加・マスキング・編集を行うための画面
-アクション項目:
-  - 追加ボタン
-  - マスキングボタン
-  - 編集ボタン
----
-Output JSON Example (3 buttons, w=85, gap=10, right margin=20, computed right-to-left from ${formW}):
-[
-  {"tag": "button", "name": "btnAdd", "text": "追加", "x": ${formW - 20 - 85 - 10 - 85 - 10 - 85}, "y": ${formH - 45}, "w": 85, "h": 28},
-  {"tag": "button", "name": "btnMasking", "text": "マスキング", "x": ${formW - 20 - 85 - 10 - 85}, "y": ${formH - 45}, "w": 85, "h": 28},
-  {"tag": "button", "name": "btnEdit", "text": "編集", "x": ${formW - 20 - 85}, "y": ${formH - 45}, "w": 85, "h": 28}
-]
-Note: each button's x is derived from the RIGHT EDGE of the form, not from a fixed left-side offset. Never place multiple buttons at increasing x values without first anchoring the rightmost one to (${formW} - 20 - w).
-
-[Reference Table Definition]
----
-${tablesCtx || "(No reference table specified)"}
----
-`.trim() + "\n");
+        return _fillTpl(_loadPromptTpl("form-design.sys.eng.md"), {
+            formW, formH,
+            col2X: Math.floor(formW / 2) + 10,
+            bottomBtnY: formH - 45,
+            dataGridW: formW - 40,
+            dataGridH: Math.max(180, formH - 90),
+            btn1x: formW - 20 - 85,
+            btn2x: formW - 20 - 85 - 10 - 85,
+            btn3x: formW - 20 - 85 - 10 - 85 - 10 - 85,
+            tablesCtx: tablesCtx || "(No reference table specified)",
+        }).trim() + "\n";
     };
 
     // [英語:プロンプト]画面デザイン自動生成 ユーザープロンプト.
@@ -1647,41 +556,14 @@ ${tablesCtx || "(No reference table specified)"}
     // 「以下のYAML画面デザイン依頼に基づき配置JSON配列を生成せよ」という指示＋
     // 依頼YAML本文＋（あれば）追加指示＋「生JSON配列のみ出力」の念押し。
     const ENG_FORM_DESIGN_USER_PROMPT = function (designText, addPrompt) {
-        return (
-            "Based on the following screen design request written in YAML, generate the layout JSON array for the widget configuration.\n\n" +
-            "[Screen Design Request (YAML)]\n---\n" + designText.trim() + "\n---\n" +
-            (addPrompt ? "\n[Additional Instructions]\n" + addPrompt.trim() + "\n*In addition to the request above and the system rules, satisfy these instructions when calculating coordinates.\n" : "") +
-            "\n" +
-            "[CRITICAL] Output MUST be a raw JSON array only, strictly adhering to the schema defined in the system prompt.\n" +
-            "Do NOT wrap the response in markdown code blocks (e.g., \`\`\`json). Do not include any explanations, introduction, or comments. Start directly with [ and end with ]."
-        );
+        const addPromptSection = addPrompt
+            ? "\n[Additional Instructions]\n" + addPrompt.trim() + "\n*In addition to the request above and the system rules, satisfy these instructions when calculating coordinates.\n"
+            : "";
+        return _fillTpl(_loadPromptTpl("form-design.user.eng.md"), { designText: designText.trim(), addPromptSection });
     };
 
     // フォームデザインにおけるYAMLが存在しない場合にセット
-    const DEFAULT_FORM_DESIGN_YAML = `
-# フォームデザイン定義
-
-説明: ユーザー情報を検索・登録するための画面
-フォームレイアウト:
-  - パターン: 検索一覧画面   # 検索一覧画面 / 登録フォーム画面 / ダイアログ
-  - カラム数: 2               # 1 / 2 / 3
-  - ラベル位置: 左            # 左 / 上
-  - ボタン位置: 右下          # 右下 / 右 / 下部中央
-
-#参照テーブル: 
-#  - users
-
-入力項目: 
-  - 検索ワード: inputtype で text
-  - 権限フィルター: selectBox
-    - 一般ユーザー: user
-    - 管理者: admin
-  - 一覧表示: datagrid
-
-アクション項目: 
-  - 検索ボタン
-  - クリアボタン
-`.trim() + "\n\n";
+    const DEFAULT_FORM_DESIGN_YAML = _loadPromptTpl("default-form-design.ja.yaml").trim() + "\n\n";
 
     //////////////////
     // グローバル展開.
@@ -1731,72 +613,15 @@ ${tablesCtx || "(No reference table specified)"}
     // 画面デザイン側のfields/actionsのような分類判断が不要な単純な構造。
     // 出力は生YAMLのみ、コードブロック・説明文禁止。
     const ENG_TEXT_TO_YAML_SYS_PROMPT = function ({ widgetsCtx, tablesCtx }) {
-        return (`
-You are an expert AI assistant for VJA (Visual JavaScript for AI).
-Your task is to convert a user's natural language request (written in Japanese) describing what a form event should do into a clean, structured VJA Event Design YAML specification.
-
-[VJA Event YAML Format Specification]
-Output strictly formatted YAML with the following keys:
-
-description: <Brief Japanese summary of the event purpose>
-tables:
-  - <table_name> (Include this section ONLY IF database table access is mentioned or required; otherwise omit this section entirely)
-validation: <Validation requirements if mentioned, or "なし">
-actions:
-  - <Step action description in clear Japanese, referencing exact widget names and DB column names where applicable>
-  - ...
-on_success: <Log or toast notification on clean completion, e.g. "トーストで完了を出力" or "なし">
-on_error: <Error handling policy, e.g. "ログとトーストにエラーを出力">
-
-[Conditional Branch / Loop Notation in "actions"]
-"actions" is NOT always a flat list of steps — if the request implies a condition, branch, or repetition, express it as a heading with nested sub-items (never flatten into separate top-level steps):
-- "〇〇の場合:" (When ...) = an if-branch; "それ以外の場合:" (Otherwise) = its else, as a sibling heading to the "の場合:" heading(s) above it.
-- "〇〇に対して繰り返し:" (Repeat for each ...) = a loop; its nested items are the steps executed per iteration.
-- Nest these headings inside each other for nested conditions (e.g. a confirmation dialog whose YES/NO branches each contain further conditions).
-
-Example (conditional branch):
-actions:
-  - selMode の選択値を取得する
-  - 選択値が「新規」の場合: users テーブルに INSERT する
-  - 選択値が「更新」の場合: users テーブルの該当レコードを UPDATE する
-  - それ以外の場合: 「不正な操作です」とダイアログを表示して処理を終了する
-
-Example (nested confirmation dialog):
-actions:
-  - 「削除しますか？」と YES/NO の確認ダイアログを表示する:
-      - YES の場合:
-          - ローディングを表示する
-          - 選択行の id で users テーブルから DELETE する
-          - 一覧を再取得して tableView1 に表示する
-      - NO の場合: 何もしない
-
-Example (loop):
-actions:
-  - tableView1 の全行データを取得する
-  - 各行に対して以下を繰り返す:
-      - status が「未処理」の場合: orders テーブルの該当レコードを「処理済」に UPDATE する
-
-[Strict Output Rules]
-- Output ONLY the raw YAML text. Do NOT wrap response in markdown code blocks (\`\`\`yaml).
-- Do not include any intro, explanations, or conversational text.
-- Begin your response immediately with "description:".
-- Use actual widget names (e.g. txtName, btnSearch, tblUsers) and reference table columns from the context provided below.
-
-[Available Widgets Context]
-${widgetsCtx || "(No widgets)"}
-
-[Available Database Tables Context]
-${tablesCtx || "(No DB tables)"}
-`.trim() + "\n");
+        return _fillTpl(_loadPromptTpl("text-to-yaml.sys.eng.md"), {
+            widgetsCtx: widgetsCtx || "(No widgets)",
+            tablesCtx: tablesCtx || "(No DB tables)",
+        }).trim() + "\n";
     };
 
     // [日本語対訳メモ]（AIには送られない）「以下の依頼文からイベントYAMLを生成せよ」＋依頼文＋出力形式の念押し。
     const ENG_TEXT_TO_YAML_USER_PROMPT = function (userReq) {
-        return (
-            "Based on the following natural language request, generate a structured VJA Event Design YAML specification:\n\n" +
-            "[User Request]\n" + userReq.trim() + "\n\n" +
-            "[CRITICAL] Output raw YAML only. Do NOT wrap in markdown code blocks (```yaml). No conversational text."
-        );
+        return _fillTpl(_loadPromptTpl("text-to-yaml.user.eng.md"), { userReq: userReq.trim() });
     };
 
     o.TEXT_TO_YAML_SYS_PROMPT = ENG_TEXT_TO_YAML_SYS_PROMPT;
@@ -1848,141 +673,15 @@ ${tablesCtx || "(No DB tables)"}
         const layoutPatternOptions = layoutPatternList
             .map((p, i) => `  ${i + 1}. ${p.desc}`)
             .join("\n");
-        return (`
-You are an expert AI assistant for VJA (Visual JavaScript for AI).
-Your task is to convert a user's natural language request (written in Japanese) describing a desired screen layout and form requirements into a clean, structured VJA Form Design YAML specification.
-
-[VJA Form Design YAML Format Specification]
-Output strictly formatted YAML with the following sections:
-
-description: "<Brief Japanese summary of the screen purpose>"
-
-layout_pattern: <number>
-[STRICT RULE for layout_pattern] The value MUST be a single digit number, chosen from the numbered list below, that best matches the request's overall input/display/button placement. If none of them clearly fits (or the request gives no layout hint), output 0. Output ONLY the number itself (e.g. "3"), never the description text.
-[Selection Guide] First decide: does this screen need ANY list/table/read-only display area (e.g. search results, a data grid, summary figures, a record list)? If NO — e.g. a login screen, a simple settings/registration form with only input fields and buttons and nothing to browse or view — you MUST pick a pattern whose description says it has no display area (currently only one such pattern below). Only if the screen DOES need a display/list area should you pick one of the patterns that includes one, based on where that area should sit (bottom-full-width, side, multiple small tiles, etc).
-[IMPORTANT] The word "編集する"/"変更する" (edit/modify a single existing record) does NOT by itself mean a display/list area is needed. A screen that only lets the user edit the one record it was opened for (input fields + Save/Back buttons, no browsing of other records) still has NO display area, even though the docDraft text uses "編集"/"変更". Only pick a "has display area" pattern when the request explicitly needs to browse, search, or view multiple records or read-only summary data — not merely because a single record is being edited.
-Available layout patterns (number: structural description — these describe ONLY the rough placement of input/display/button areas, NOT which widget types to use):
-${layoutPatternOptions}
-
-fields:
-  - <Field Name>: <Widget type (e.g. inputtype with text/number/date, selectBox, datagrid, text, image, checkbox, label, textarea, groupbox, tabs)>
-
-tables:
-  - <table_name> (see [What Goes In "tables"] below — REQUIRED, not optional, whenever a database table is actually involved)
-
-actions:
-  - <Button text or action name> (e.g. 検索ボタン, 保存ボタン, キャンセル)
-
-[Strict Output Rules]
-- Output ONLY the raw YAML text. Do NOT wrap response in markdown code blocks (\`\`\`yaml). No intro, explanations, or conversational text. Begin your response immediately with "description:".
-- Do not invent fields or actions that are not stated or implied by the request (e.g. no generic "保存"/"キャンセル" unless save/cancel is mentioned).
-
-[Core Principle: Never Assume Something Is Unnecessary]
-Leaving "fields" or "actions" empty is a strong claim — only do it when the request truly contains nothing for that section. Before outputting an empty array, re-read the request once more for anything you might have dismissed as "just part of a sentence" rather than a concrete item. When unsure whether something belongs in "fields" or "actions", put it in "fields" rather than dropping it.
-
-[What Goes In "fields"]
-Anything the user can view, select, or edit on this screen — including a filter/narrowing condition that's only mentioned as part of an action's description (e.g. "優先度で絞り込む" → add a "優先度" field). If the request names no concrete field but references a table whose columns are visible in [Available Database Tables Context] below, derive fields from those columns instead of leaving "fields" empty.
-- **If the request mentions showing a list/browse of records** (e.g. "一覧", "一覧表示", "検索結果", "履歴を表示"), you MUST include exactly one field with widget type "datagrid" representing that list (in addition to, not instead of, the individual input fields used for creating/editing one record). Do not represent "一覧" merely by choosing a layout_pattern with a display area — the "datagrid" field itself must also be present in "fields", otherwise nothing will actually render the list.
-
-[What Goes In "tables" — REQUIRED whenever applicable, never treat this as optional]
-Whenever any "fields" entry was derived from (or clearly corresponds to) a column of a table listed in [Available Database Tables Context] — whether that field is a plain input, a selectBox, or the datagrid representing a list of that table's records — "tables" MUST include that table's name. This is not a cosmetic/optional annotation: a LATER step uses "tables" to decide which table each field/widget actually reads from and writes to, and whether a screen is a single-record input form or a multi-record list view. Omitting "tables" when a table was actually used makes this distinction ambiguous downstream, even if "fields"/"description" already look correct.
-- If the request or docDraft names a table directly (e.g. "daily_salesテーブル"), include it.
-- If no table is referenced or relevant at all (e.g. a pure static confirmation dialog with no data), leave "tables" as an empty list — do not invent a table that has no relation to this screen.
-
-[What Goes In "actions"]
-One short label per pressable button (e.g. "追加", "検索"), never a full sentence. If a sentence names a button and also describes its effect (e.g. "追加ボタンを押すとタスクを追加する"), keep the short button label in "actions" and drop only the trailing effect description — do not drop the whole item.
-
-[Few-Shot Example 1: Input-only screen (no list mentioned)]
-Input request: "タスクの詳細情報を入力できるフォームを用意。追加ボタンを押すとタスクを追加。" (with a referenced table "tasks" whose columns are title, priority, due_date, status)
-Correct output:
-layout_pattern: 3
-fields:
-  - タイトル: inputtype text
-  - 優先度: selectBox
-  - 期限: inputtype date
-  - ステータス: selectBox
-tables:
-  - tasks
-actions:
-  - 追加
-
-[Few-Shot Example 1b: Edit-only screen for a SINGLE record (no browsing/list mentioned) — "編集" does NOT require a display area]
-Input request: "伝票番号・商品コード・数量・金額の詳細情報を入力または編集する。戻るボタンで一覧画面に戻る。保存ボタンでデータを保存する。" (with a referenced table "sales_data" whose columns are slip_no, item_code, qty, amount)
-Correct output (still the no-display-area pattern, exactly like Example 1 — "編集" here just means this one record's fields are editable, not that the screen displays/browses multiple records):
-layout_pattern: 3
-fields:
-  - 伝票番号: inputtype text
-  - 商品コード: inputtype text
-  - 数量: inputtype number
-  - 金額: inputtype number
-tables:
-  - sales_data
-actions:
-  - 戻る
-  - 保存
-Wrong output (do NOT do this — picking a "has display area" pattern just because the word "編集" appears; there is nothing here to browse or view besides the single record's own input fields):
-layout_pattern: 1
-
-[Few-Shot Example 2a: List-ONLY screen (no create/edit/delete mentioned) — "一覧" STILL REQUIRES a "datagrid" field]
-Input request: "商品コード・商品名・カテゴリの一覧を表示する。検索機能を備える。" (with a referenced table "products" whose columns are code, name, category)
-Correct output:
-layout_pattern: 5
-fields:
-  - 商品一覧: datagrid
-  - 検索条件: inputtype text
-tables:
-  - products
-actions:
-  - 検索
-Wrong output (do NOT do this — no create/edit/delete was mentioned, but that does NOT mean "no datagrid"; a pure list/search screen has NOTHING to show without a datagrid field, and listing individual per-record fields like this instead of a datagrid gives the screen no way to display multiple records at once):
-layout_pattern: 5
-fields:
-  - 商品コード: inputtype text
-  - 商品名: inputtype text
-  - カテゴリ: inputtype text
-tables:
-  - products
-actions:
-  - 検索
-
-[Few-Shot Example 2: List + input screen — "一覧" REQUIRES a "datagrid" field]
-Input request: "商品マスターの一覧を表示し、必要に応じて新規商品の登録や既存商品の変更・削除を行う画面。" (with a referenced table "products" whose columns are code, name, category)
-Correct output:
-layout_pattern: 2
-fields:
-  - 商品一覧: datagrid
-  - 商品コード: inputtype text
-  - 商品名: inputtype text
-  - カテゴリ: selectBox
-tables:
-  - products
-actions:
-  - 登録
-  - 削除
-Wrong output (do NOT do this — this omits the "datagrid" field even though "一覧" was explicitly requested, leaving nothing to actually display the list):
-layout_pattern: 2
-fields:
-  - 商品コード: inputtype text
-  - 商品名: inputtype text
-  - カテゴリ: selectBox
-tables:
-  - products
-actions:
-  - 登録
-  - 削除
-
-[Available Database Tables Context]
-${tablesCtx || "(No DB tables)"}
-`.trim() + "\n");
+        return _fillTpl(_loadPromptTpl("form-design-text-to-yaml.sys.eng.md"), {
+            layoutPatternOptions,
+            tablesCtx: tablesCtx || "(No DB tables)",
+        }).trim() + "\n";
     };
 
     // [日本語対訳メモ]（AIには送られない）「以下の依頼文から画面デザインYAMLを生成せよ」＋依頼文＋出力形式の念押し。
     const ENG_FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT = function (userReq) {
-        return (
-            "Based on the following natural language request, generate a structured VJA Form Design YAML specification:\n\n" +
-            "[User Request]\n" + userReq.trim() + "\n\n" +
-            "[CRITICAL] Output raw YAML only. Do NOT wrap in markdown code blocks (```yaml). No conversational text."
-        );
+        return _fillTpl(_loadPromptTpl("form-design-text-to-yaml.user.eng.md"), { userReq: userReq.trim() });
     };
 
     o.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT = ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT;
@@ -2052,67 +751,21 @@ ${tablesCtx || "(No DB tables)"}
     // YAMLドラフト生成でfieldsが空になりやすいことが確認されたための対策（この検証結果
     // 自体は現行方式でも変わらず有効なため維持）。
     const ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT = function ({ tablesCtx, screenSkeletonText, systemModelHint }) {
-        return (`
-You are writing Japanese screen descriptions for a VJA (Visual JavaScript for AI) application, given a FIXED list of required screens that has ALREADY been decided by the system (not by you).
-
-[Fixed Screen Slots — DO NOT change the count, table assignment, or formName of these]
-${screenSkeletonText}
-
-Your ONLY job is: for each slot above, in the SAME order, output one JSON array item with that EXACT "formName" copied verbatim, plus a Japanese "formTitle"/"description"/"docDraft" for it. You must NOT merge, drop, reorder, rename, or add to these slots' table assignment — the screen count and which table each slot belongs to is already final.
-
-[Output Rules]
-- Output STRICT JSON only (a JSON array). No markdown code fences, no intro, no explanations.
-- Array item shape:
-{
-  "formName": "<copied verbatim from the matching slot above>",
-  "formTitle": "<short Japanese display title for this screen, e.g. ログイン>",
-  "description": "<one-sentence Japanese description of this screen's purpose>",
-  "docDraft": "<a Japanese free-text paragraph describing what widgets/inputs/buttons this screen should have, written in the same natural style a user would type when requesting a screen design — this becomes the input to a LATER screen-layout-generation step>"
-}
-- "docDraft" MUST be concrete, not vague. Explicitly name the relevant columns of this slot's table (translated to natural Japanese labels, e.g. due_date → 期限) as the fields this screen shows/edits — do NOT write a vague summary like "タスクの詳細情報を表示する" alone; instead write "タスク名・優先度・期限・ステータスを表示する" naming the actual columns. This concreteness is required because a later AI step derives screen fields from this text and performs poorly on vague descriptions.
-- The list slot's "docDraft" STRING ITSELF (not just "formTitle" or "description") MUST start with or contain the exact word "一覧" (e.g. docDraft = "商品コード・商品名・カテゴリの一覧を表示する。検索機能を備える。") — a LATER AI step reads ONLY the "docDraft" field text to decide whether to add a real list-display widget, and it looks for this exact word "一覧" inside "docDraft"; having "一覧" only in "formTitle"/"description" does NOT count and produces a screen with no way to browse records. The input slot's docDraft should describe a single combined create-and-edit form for that table (do not describe it as two separate detail/edit screens — it is one screen, and its docDraft must NOT contain the word "一覧").
-- "削除"(delete) of a single record does NOT get its own screen — it is a confirmation dialog reachable from the list/input screen, handled later in event processing. Mention this briefly in the list or input slot's docDraft only if relevant; never add a dedicated delete screen.
-- **Navigation buttons (VB6-style app flow)**: every list slot's docDraft MUST mention a "新規登録" (or "新規作成") button, described as the entry point to that table's input slot. Every input slot's docDraft MUST mention a "戻る" button, described as returning to that table's list slot. These are just widgets to scaffold now (a LATER, separate step wires up the actual navigation/click behavior) — you only need to make sure the button is named in docDraft's "actions"-like wording so the layout step creates it.
-- **"menu" kind slot**: this slot has NO input fields and NO "一覧"/datagrid — its docDraft/description MUST describe ONLY a set of navigation buttons, one per table listed for it in [Fixed Screen Slots] above, each button labeled with the SAME Japanese wording you chose for that table's own list slot's "formTitle" elsewhere in this same output (for consistency). You may also add one "終了" (exit) button. Do not add any input fields, tables, or a datagrid to this slot's docDraft.
-${systemModelHint ? `
-[Terminology Reference — wording only, does NOT change slot count/table assignment above]
-This application was judged closest to the following structural pattern. Use ONLY its wording/terminology conventions (e.g. how it phrases a status field) when writing docDraft for the fixed slots above. It must NOT be used to add, remove, merge, or rename any screen slot, and its example table/column names must NOT appear in your output — only the actual [Confirmed Database Tables] below may be used. Do NOT mention any field, value, or attribute from this skeleton's example (e.g. a "current stock quantity") in a slot's docDraft unless that exact column actually exists in [Confirmed Database Tables] for that slot's table.
-
-${systemModelHint}
-` : ""}
-
-[Additional Non-Table Screens — optional, append AFTER the fixed slots]
-You may append AT MOST a few extra screens after the fixed slots, but ONLY for functionality explicitly mentioned in [Application Overview] that is not simply a list/input of one of the tables above (e.g. a login screen). Do not add a screen for anything already covered by a fixed slot.
-
-[Few-Shot Example: "menu" kind slot — its docDraft is per-table navigation buttons, NOT generic 新規登録/戻る/終了]
-If the fixed slots include a "menu" kind slot listing tables "daily_sales", "items", and the OTHER slots in this same output are titled "日別売上一覧"/"日別売上登録" (for daily_sales) and "商品マスター一覧"/"商品マスター登録" (for items), the menu slot's output MUST look like this:
-{
-  "formName": "MenuForm",
-  "formTitle": "メニュー",
-  "description": "各画面への入口となるメニュー画面",
-  "docDraft": "日別売上と商品マスターへの入口となるメニュー画面。「日別売上」ボタンを押すと日別売上一覧画面へ、「商品マスター」ボタンを押すと商品マスター一覧画面へ遷移する。「終了」ボタンでアプリを終了する。"
-}
-Wrong output (do NOT do this — these are generic per-record CRUD action words, not navigation to the OTHER screens in this output; a menu screen with "新規登録・戻る・終了" has no way to actually reach any other screen):
-{
-  "formName": "MenuForm",
-  "formTitle": "メニュー",
-  "description": "各テーブルへのナビゲーションボタン",
-  "docDraft": "新規登録・戻る・終了"
-}
-
-[Confirmed Database Tables]
-${tablesCtx || "(No DB tables)"}
-`.trim() + "\n");
+        const systemModelHintSection = systemModelHint
+            ? "\n[Terminology Reference — wording only, does NOT change slot count/table assignment above]\nThis application was judged closest to the following structural pattern. Use ONLY its wording/terminology conventions (e.g. how it phrases a status field) when writing docDraft for the fixed slots above. It must NOT be used to add, remove, merge, or rename any screen slot, and its example table/column names must NOT appear in your output — only the actual [Confirmed Database Tables] below may be used. Do NOT mention any field, value, or attribute from this skeleton's example (e.g. a \"current stock quantity\") in a slot's docDraft unless that exact column actually exists in [Confirmed Database Tables] for that slot's table.\n\n" + systemModelHint + "\n"
+            : "";
+        return _fillTpl(_loadPromptTpl("wizard-decompose-forms.sys.eng.md"), {
+            screenSkeletonText,
+            systemModelHintSection,
+            tablesCtx: tablesCtx || "(No DB tables)",
+        }).trim() + "\n";
     };
 
     // [日本語対訳メモ]（AIには送られない）アプリ概要（自由記述）＋「システム指示通りにフォーム一覧のJSON配列を生成せよ」の指示。
     // 2026-09-13（続報3）: 動的Q&A履歴の代わりに、ウィザードのアプリ概要ステップ
     // （自由記述、AI不使用）で記入されたテキストをそのまま渡す。
     const ENG_WIZARD_DECOMPOSE_FORMS_USER_PROMPT = function (overviewText) {
-        return (
-            "[Application Overview]\n" + (overviewText || "(未入力)") + "\n\n" +
-            "Generate the JSON array of forms as specified in the system prompt."
-        );
+        return _fillTpl(_loadPromptTpl("wizard-decompose-forms.user.eng.md"), { overviewText: overviewText || "(未入力)" });
     };
 
     o.WIZARD_DECOMPOSE_FORMS_SYS_PROMPT = ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT;
@@ -2125,26 +778,12 @@ ${tablesCtx || "(No DB tables)"}
     // （ENG_TABLE_SCHEMA_GEN_SYS_PROMPT）とは別の、テーブル名1つだけを出力させる狭いタスク。
     // 出力は英語snake_case（例: daily_sales）1個のみ、説明文以外の情報は使わない。
     const ENG_TABLE_NAME_GEN_SYS_PROMPT = function () {
-        return (`
-You are an expert AI assistant for VJA (Visual JavaScript for AI), helping a user name a SQLite table.
-Your task is to convert the user's Japanese natural language description of what this table stores into a single short SQLite table name.
-
-[Output Format — STRICT]
-Output ONLY the table name itself, nothing else. No quotes, no markdown, no explanation, no trailing punctuation.
-
-[Rules]
-- The name MUST be snake_case, using only lowercase ASCII letters, digits, and underscores (no spaces, no Japanese characters, no romaji with capital letters).
-- Prefer a plural or collection-like noun that reflects what the table stores (e.g. a description about "日別の売上データ" → "daily_sales", a description about "品名マスター" → "items").
-- Output exactly one name. Do not output multiple candidates or alternatives.
-`.trim() + "\n");
+        return _loadPromptTpl("table-name-gen.sys.eng.md").trim() + "\n";
     };
 
     // [日本語対訳メモ]（AIには送られない）「説明（任意）」欄の内容＋「テーブル名を1つだけ出力せよ」の指示。
     const ENG_TABLE_NAME_GEN_USER_PROMPT = function (description) {
-        return (
-            "[Table Description]\n" + (description || "(not specified)") + "\n\n" +
-            "Generate the single table name as specified in the system prompt."
-        );
+        return _fillTpl(_loadPromptTpl("table-name-gen.user.eng.md"), { description: description || "(not specified)" });
     };
 
     o.TABLE_NAME_GEN_SYS_PROMPT = ENG_TABLE_NAME_GEN_SYS_PROMPT;
@@ -2159,44 +798,17 @@ Output ONLY the table name itself, nothing else. No quotes, no markdown, no expl
     // PK列（通常id, INTEGER, pk=true, notNull=true）を先頭に入れる、
     // テーブル名・説明・依頼内容から妥当なカラムを推測、関係ないカラムを発明しない。
     const ENG_TABLE_SCHEMA_GEN_SYS_PROMPT = function ({ tableName, description }) {
-        return (`
-You are an expert AI assistant for VJA (Visual JavaScript for AI), helping a user design a SQLite table schema.
-Your task is to convert the user's natural language request (written in Japanese) into a JSON array of column definitions.
-
-[Output Format — STRICT]
-Output ONLY a raw JSON array (starting with [ and ending with ]), where each element is:
-{
-  "name": "<column name, snake_case, English or romaji, no spaces>",
-  "labelJa": "<a natural Japanese label for this column, for display purposes, e.g. name=\"due_date\" → labelJa=\"期限\">",
-  "type": "<one of: TEXT, INTEGER, REAL, BLOB, NULL>",
-  "notNull": <true|false>,
-  "pk": <true|false, at most ONE column should be true>,
-  "index": <true|false>,
-  "default": "<default value as a string, or empty string \"\" if none>"
-}
-
-[Rules]
-- Always include a primary key column first (typically "id" INTEGER pk=true notNull=true, labelJa="ID"), unless the user's request clearly implies a different key.
-- "labelJa" is REQUIRED for every column — never leave it empty. It is shown next to the English column name in the UI so non-technical users understand what each column is.
-- Infer reasonable columns (name/type) from the table name, description, and request content.
-- Do NOT invent unrelated columns beyond what is implied by the context.
-- Do NOT wrap the response in markdown code blocks (\`\`\`json). Do not include any explanation, introduction, or comments.
-
-[Table Name]
-${tableName || "(not specified)"}
-
-[Table Description]
-${description || "(not specified)"}
-`.trim() + "\n");
+        return _fillTpl(_loadPromptTpl("table-schema-gen.sys.eng.md"), {
+            tableName: tableName || "(not specified)",
+            description: description || "(not specified)",
+        }).trim() + "\n";
     };
 
     // [日本語対訳メモ]（AIには送られない）依頼文（未入力なら「テーブル名/説明のみから推測せよ」）＋「生JSON配列のみ出力」の念押し。
     const ENG_TABLE_SCHEMA_GEN_USER_PROMPT = function (userReq) {
-        return (
-            "Based on the following natural language request, generate the JSON array of column definitions for this table:\n\n" +
-            "[User Request]\n" + (userReq ? userReq.trim() : "(not specified — infer from the table name/description only)") + "\n\n" +
-            "[CRITICAL] Output raw JSON array only. Do NOT wrap in markdown code blocks (```json). No conversational text."
-        );
+        return _fillTpl(_loadPromptTpl("table-schema-gen.user.eng.md"), {
+            userReq: userReq ? userReq.trim() : "(not specified — infer from the table name/description only)",
+        });
     };
 
     o.TABLE_SCHEMA_GEN_SYS_PROMPT = ENG_TABLE_SCHEMA_GEN_SYS_PROMPT;
@@ -2212,46 +824,18 @@ ${description || "(not specified)"}
     // 一覧に無いウィジェット名は使わない・該当ウィジェットが無ければ空配列。
     // 依頼・定義と無関係なルールを発明しない。
     const ENG_VALIDATION_SCHEMA_GEN_SYS_PROMPT = function ({ name, description, widgetsCtx }) {
-        return (`
-You are an expert AI assistant for VJA (Visual JavaScript for AI), helping a user design a set of input validation rules for a form.
-Your task is to convert the user's natural language request (written in Japanese) into a JSON array of validation rule definitions.
-
-[Output Format — STRICT]
-Output ONLY a raw JSON array (starting with [ and ending with ]), where each element is:
-{
-  "name": "<the EXACT widget name from the [Available Input Widgets] list below — never invent a name>",
-  "type": "<one of: required, maxLength, minLength, range, numeric, integer, email, tel, zipcode, url, date, alphanumeric, alpha, hiragana, katakana, pattern>",
-  "not": <true|false, negates the rule (rarely needed, usually false)>,
-  "arg1": "<argument 1 as a string, meaning depends on type (e.g. maxLength=max length, range=min value, pattern=regex), empty string if unused>",
-  "arg2": "<argument 2 as a string, e.g. range=max value, empty string if unused>",
-  "arg3": "<argument 3 as a string, empty string if unused>",
-  "message": "<Japanese error message shown to the user when the rule fails>"
-}
-
-[Rules]
-- Only use widget names that literally appear in [Available Input Widgets]. If none are available or relevant, output an empty array [].
-- Infer reasonable rules from the definition name, description, and request content.
-- Do NOT invent rules unrelated to the request/definition context.
-- Do NOT wrap the response in markdown code blocks (\`\`\`json). Do not include any explanation, introduction, or comments.
-
-[Validation Definition Name]
-${name || "(not specified)"}
-
-[Validation Definition Description]
-${description || "(not specified)"}
-
-[Available Input Widgets]
-${widgetsCtx || "(none)"}
-`.trim() + "\n");
+        return _fillTpl(_loadPromptTpl("validation-schema-gen.sys.eng.md"), {
+            name: name || "(not specified)",
+            description: description || "(not specified)",
+            widgetsCtx: widgetsCtx || "(none)",
+        }).trim() + "\n";
     };
 
     // [日本語対訳メモ]（AIには送られない）依頼文（未入力なら「定義名/説明のみから推測せよ」）＋「生JSON配列のみ出力」の念押し。
     const ENG_VALIDATION_SCHEMA_GEN_USER_PROMPT = function (userReq) {
-        return (
-            "Based on the following natural language request, generate the JSON array of validation rule definitions:\n\n" +
-            "[User Request]\n" + (userReq ? userReq.trim() : "(not specified — infer from the definition name/description only)") + "\n\n" +
-            "[CRITICAL] Output raw JSON array only. Do NOT wrap in markdown code blocks (```json). No conversational text."
-        );
+        return _fillTpl(_loadPromptTpl("validation-schema-gen.user.eng.md"), {
+            userReq: userReq ? userReq.trim() : "(not specified — infer from the definition name/description only)",
+        });
     };
 
     o.VALIDATION_SCHEMA_GEN_SYS_PROMPT = ENG_VALIDATION_SCHEMA_GEN_SYS_PROMPT;

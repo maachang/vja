@@ -89,7 +89,8 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 | src/mainview/bridge-common.ts | RPC ブリッジ共通処理 |
 | src/mainview/project-bridge.ts | プロジェクト実行ウィンドウ RPC |
 | src/mainview/vja-runtime.js | vja.* API ランタイム |
-| src/mainview/prompt-def.js | AI プロンプト定義 |
+| src/mainview/prompt-def.js | AI プロンプト定義（コンテキスト組み立て・プレースホルダー置換ロジック。プロンプト本文自体はsrc/mainview/prompts/*.mdへ切り出し済み） |
+| src/mainview/prompts/ | AIプロンプト本文（.md、`{{変数名}}`プレースホルダー形式）。prompt-def.jsが起動時に同期XHRで読み込む。詳細は「未対応・残課題」内のprompt-def.js外部ファイル化の節を参照 |
 | src/shared/types.ts | types.tsファイル |
 | src/shared/csv-utils.ts | CSVパース共通処理（Bun側・webview側・project-bridge.tsで共有） |
 | src/wizard-system-models/ | ウィザードのシステムモデル定義（AIヒント用マークダウン）。詳細は下記「ウィザードのシステムモデル定義」節参照 |
@@ -360,6 +361,14 @@ vjaの中核コンセプトである「AIに雛形を作ってもらい、それ
 
 # 未対応・残課題(随時更新)
 
+- 【完了】`prompt-def.js`のプロンプト本文の外部ファイル化（2026-09-21）: `prompt-def.js`（AIプロンプト定義、当時2259行）内の英語プロンプト本文（長文の説明・ルール・Few-Shot例）を`src/mainview/prompts/*.md`へ切り出した。目的は「巨大な文字列リテラルとロジック（コンテキスト組み立て・条件分岐）の分離」で、人間・AIどちらにとってもプロンプト本文と組み立てロジックの見通しを良くすること
+  - **読み込み方式**: `vja-templates-loader.js`（HTMLテンプレート、既存の前例）と全く同じ設計。呼び出し元の全プロンプト関数が同期呼び出し前提のため、`prompt-def.js`に追加した`_loadPromptTpl(name)`が同期XHR（`XMLHttpRequest`, `async:false`）で`prompts/*.md`を読み込みキャッシュする。プレースホルダーは`{{変数名}}`形式（`_fillTpl(tpl, vars)`が単純な文字列置換のみ行う。条件分岐や計算等のロジックは持たせない方針）。`electrobun.config.ts`の`build.copy`に`src/mainview/prompts`をディレクトリ単位で登録済み（`templates/`と同じ理由。webviewは`views://mainview/prompts/...`経由で配信）
+  - **元のテンプレートリテラルに埋め込まれていた条件分岐・計算**（例: `ENG_FORM_DESIGN_SYS_PROMPT`のボタンx座標計算式`${formW - 20 - 85}`等、`ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`の`${systemModelHint ? ... : ""}`ブロック等）は、JS側で事前に計算・整形した上で単一の`{{プレースホルダー}}`として渡す方式に統一した（テンプレート側にロジックを持たせない）
+  - **対象外**: front/back判定やイベント名からのヒント文生成（`_program_rule`、`ENG_YAML_TO_JS_USER_PROMPT`内の`eventTypeHintEn`計算等）自体は「プロンプト文言」というより「コード寄りのロジック」であり、量も少ないため外部ファイル化せず`prompt-def.js`側に残した
+  - **検証方法**: リファクタ前後で全プロンプト関数の出力が一字一句変わっていないことを保証するため、両バージョンを`global.window={}`のスタブ環境で実行し、front/back・hint有無・空値等の代表的な引数パターン（32ケース）で出力を突き合わせるNode.js製の回帰ハーネスを作成して使用した（`/tmp`に作成、リポジトリには残していない）。作業中に検出・修正した実装ミスの例:
+    - テンプレートリテラル内の`\"`/`` \` ``/`\${`（エスケープ済み文字）をそのまま.mdファイルにコピーしてしまい、実際の出力に不要なバックスラッシュが混入する事故が複数回発生した（JSの文字列エスケープは.mdファイルには不要なため、抽出時に必ずアンエスケープすること）
+    - `return (\`...\`)`という「丸括弧で囲まれたテンプレートリテラル」を機械的に切り出す際、「`return (\``」という行自体を本文に含めてしまうミスが1件発生した
+  - 実機（`bun run mcp`）でも`testVerifyPromptIntegrity`等を実行し、リファクタ前と全く同じ`systemLen`/`userLen`が得られることを確認済み（Node上のスタブ検証だけでなく、実際のElectrobun webview上での同期XHR読み込みが正しく機能することも確認）
 - 【完了】`vja-yaml-editor.js`の分割整理（2026-09-21着手、同日完了）: 当時4915行と他ファイルの2倍以上に肥大化していたため、リスクの低い箇所から1ファイルずつ切り出す方針で分割した。①`vja-editor-search.js`（検索・置換）②`vja-learned-fixes-ui.js`（学習ノウハウ管理モーダル）③`vja-ai-config.js`（AI接続設定モーダル。移動と合わせて`_initAiPresets`の重複定義（死んだコード）を削除済み）④`vja-editor-completion.js`（入力補完・対応括弧ハイライト・共通キーハンドラ。共有関数`getVjaApiWhitelist`へのリネームを伴う）⑤`vja-mock-check.js`（検証・モック実行エンジン・スナップショット履歴・学習履歴の記録）⑥`vja-form-design-ai.js`（画面デザインAI生成一式）⑦`vja-ai-gen-core.js`（`buildGenPromptContext`/`generateEventJs`/`yamlAiGenerate`/`generateTextToYaml`/`textToYamlGenerate`等、AI生成の中核）で全7分割完了。`vja-yaml-editor.js`は当初4915行→最終968行（右パネルUI・APIオプション設定・テーブルオプション同期・エディタモーダルHTML構築等、他ファイルから共有されるコア基盤のみ残存）
   - ⑦`vja-ai-gen-core.js`は2026-09-21に発生した回帰事故（DOM読み取りタイミング。詳細は本ファイル内の「対応済み」項目を参照）の現場そのものであり最もリスクが高いため最後に回した。移動対象（`buildTablesCtxText`〜`textToYamlGenerate`）は単一の連続範囲だったため、⑥のような非連続分割の複雑さは無かった。切り出し後、⑥で確立した「`global.window={}`を用意し`new Function('window',code)(window)`で実際に実行してReferenceErrorを検出する」検証手順で、新たに3件のcross-file呼び出し違反（`_ensureTableOptInitialized`/`_isAutoMockCheckEnabled`/`_getValidationOverride`、いずれも`vja-yaml-editor.js`側に残った関数を`vja-ai-gen-core.js`側から呼ぶ形）を発見・修正した。最終検証として、`testVerifyPromptIntegrity`（`yamlAiGenerate()`の実際のボタン操作フロー全体をshowLoadingModal()経由で実行し、保存済みYAML本文がプロンプトに一字一句含まれるか等を多角的に確認する）と`testTextToYamlGenerate`を実行し、`allOk:true`（回帰なし）を確認した
   - ⑥`vja-form-design-ai.js`切り出し時の教訓（2026-09-21）: 移動対象（テンプレート適用〜AI生成本体）が、汎用エディタUI構築関数`buildYamlEditorHTML`/`initYamlEditorModal`（全イベントYAMLエディタ共通、移動対象外）を挟んで非連続の3ブロックに分断されていたため、Pythonでの機械的切り出し前に各ブロックの開始・終了行の前後をRead+grepで目視確認してから実行した（⑤の反省を踏まえた対応）。加えて、⑤までの分割では気づいていなかった**新種の不具合**を発見: 切り出し後に残った`vja-yaml-editor.js`側の`Object.assign(window,{...})`エクスポート一覧に、移動済みの関数名（`openFormDesignAi`/`formDesignAiGenerate`等17個）がそのまま残っていた。これはNode.jsの構文チェック（`new Function(code)`でパースするだけ）では検出できない（`Object.assign(window,{ 識別子 })`の識別子未定義は実行時の`ReferenceError`であり構文エラーではないため）。**教訓**: ファイル分割後の検証は、構文チェックだけでなく「`global.window={}`を用意した上で実際にコードを`new Function('window',code)(window)`として実行してみる」ところまで行うこと。この実行ベースの検証で、上記のエクスポート漏れ（正確には「もう存在しない識別子の参照」）を実際に検出・修正できた

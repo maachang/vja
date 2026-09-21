@@ -1,0 +1,6 @@
+await vja.io.openCsv: { args: [], return: "Record<string,string>[]|null", desc: "Reads CSV via dialog. Returns null if canceled." }
+await vja.io.openJson: { args: [], return: "Promise<any|null>", desc: "Reads JSON via dialog. Throws on parse error." }
+vja.io.parseCsv: { args: [csvText:string, hasHeader?:boolean], return: "Record<string,string>[]", desc: "Parses an already-obtained CSV string (NO dialog). Always returns array-of-objects (same shape as datagrid data in vja.widget.set). If hasHeader=false, uses auto-generated keys col1,col2,... instead of header row." }
+vja.io.toCsv: { args: [rows:object[]|any[][], headers?:string[]], return: "string", desc: "Converts row data to a CSV string (does NOT download). Counterpart of vja.io.parseCsv. Accepts EITHER array-of-objects OR array-of-arrays as rows. If rows is array-of-objects and headers omitted, headers are auto-derived from rows[0] keys. If rows is array-of-arrays and headers omitted, the CSV has NO header row (arrays have no keys to derive from)." }
+await vja.io.saveCsv: { args: [csvRows:object[], filename:string], return: "void", desc: "Saves rows as a CSV file via save dialog. MUST use await." }
+await vja.io.saveJson: { args: [data:any, filename:string], return: "void", desc: "Saves data as a JSON file via save dialog. MUST use await." }

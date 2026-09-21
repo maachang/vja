@@ -72,6 +72,10 @@ if (process.argv.includes("build") || process.argv.includes("dev")) {
     // fsアクセス用でこれとは配信経路が異なる）。
     // ディレクトリ単位でコピーされるため、中身のファイルを追加・削除するだけでよい。
     target[join("src", "mainview", "templates")] = join("views", "mainview", "templates");
+    // prompt-def.js（AIプロンプト定義）が起動時に同期XHRで読み込むプロンプト
+    // テンプレート（.md）。上のtemplates/ディレクトリと全く同じ理由・配信経路
+    // （views://mainview/...）で明示的なコピー登録が必要。
+    target[join("src", "mainview", "prompts")] = join("views", "mainview", "prompts");
 }
 
 // バージョンを取得して差し替える.
