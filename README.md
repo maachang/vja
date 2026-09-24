@@ -506,8 +506,8 @@ vja/
 - [VJA 画面デザイン自動生成 YAML ガイド](docs/yaml-guide-form-design.md)
 - [サンプルウォークスルー: ログイン・ユーザ登録機能をほぼノーコードで作る](docs/sample-login-nocode.md)
 - [サンプルウォークスルー: ウィザードでプロジェクトを立ち上げる](docs/sample-wizard-walkthrough.md)
-- [Mac ローカル LLM セットアップ（mlx-lm）](docs/mac-mlx-lm-setup.md)
-- [Windows ローカル LLM セットアップ（Foundry Local）](docs/windows-foundry-local-setup.md)
+- [Mac ローカル LLM セットアップ（mlx-lm）](docs/localLlm/mac-mlx-lm-setup.md)
+- [Windows ローカル LLM セットアップ（Foundry Local）](docs/localLlm/win-foundry-setup.md)
 
 ---
 

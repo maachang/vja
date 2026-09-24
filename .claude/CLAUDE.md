@@ -362,6 +362,18 @@ vjaの中核コンセプトである「AIに雛形を作ってもらい、それ
 - **AI接続設定のプリセット**: 「🤖 AI接続設定」モーダルの「💾 プリセット保存」で、AI接続設定（エンドポイント/モデル/APIキー等）を「📁 プロジェクト固有」（`.vjaproj`に同梱保存）または「🌐 プロジェクト共通」（`~/.vja-designer/ai-global-presets.json`、`loadAiGlobalPresetsRequest`/`saveAiGlobalPresetsRequest`経由、他プロジェクトからも選択可能）のどちらかに保存先を選んで保存できる。同名・同区分のプリセットへ保存すると上書き更新される
 - **無限ループ対策**: AI生成コードが自分自身と同じウィジェット・同じイベントを`vja.trigger.*`で再度発火させる「自己再発火」を、AI生成直後の検証（`_findSelfTriggerRecursion`、生成時にAIへ再生成を促す）と、実行時ランタイム（`src/bun/index.ts`の`_vjaRun`内の`_vjaRunningKeys`による再入検知、検知時はエラーで処理を中断）の二段構えで防止している
 
+# Mac（Apple Silicon）向けローカルLLM環境セットアップ支援（2026-09-24追加）
+
+- **概要**: `docs/localLlm/mac-mlx-lm-setup.md`に記載のmlx-lmセットアップ手順（Homebrew→pipx→mlx-lm導入、モデル選定、起動スクリプト作成）を対話式で自動化する`setup-mac-llm.sh`をプロジェクト直下に用意した。VJA本体のセットアップ用`setup-mac.sh`（Electrobun CLI署名破損対策）とは独立したスクリプトで、対象もvjaプロジェクト自体ではなく「Apple Silicon Mac上のローカルLLM実行環境」である
+- **設計上のポイント**:
+  - mlx-lmはpipx経由でグローバルインストールされ、モデルも`~/.cache/huggingface/`に保存されるため、vjaプロジェクトディレクトリとは独立した場所（デフォルト`~/vja-local-llm`、対話式で変更可）にセットアップする
+  - Homebrewは前提条件とし、自動インストールは行わない（未導入時はエラーで案内して終了）
+  - モデルは`Qwen2.5-Coder-7B-Instruct-4bit`固定（`docs/localLlm/mac-mlx-lm-setup.md`の「メモリ別おすすめモデル」のうち、実運用で安定して動くと確認済みの1択に絞った。ユーザー判断）
+  - `mlx_lm server`はフォアグラウンドでターミナルを1つ占有し続けるプロセスのため、フォアグラウンド起動用（`start-llm.sh`）とバックグラウンド起動用（`start-llm-bg.sh`、ログ・PIDファイル・停止方法付き）の両方を生成する
+  - 初回起動はモデルダウンロードで時間がかかるため、スクリプト自身はサーバーを自動起動しない（案内のみ行い、起動は任意のタイミングでユーザーが行う）
+- ドキュメント側（`docs/localLlm/mac-mlx-lm-setup.md`）にも、冒頭にこのスクリプトの案内を追加し、手動手順は「別モデルを使いたい場合」向けとして残した
+- 併せて、README.md内でリンク切れになっていた`docs/mac-mlx-lm-setup.md`/`docs/windows-foundry-local-setup.md`（実際は`docs/localLlm/`配下）を修正した
+
 # 既知の制約
 
 - **macOSで`bun run dev`が何も出力せず即終了する（Electrobun CLIバイナリの署名破損）**（2026-09-24、macOS 27.0で確認）: npm配布のElectrobun(v1.18.1)のCLIバイナリ（`node_modules/electrobun/bin/electrobun`）は、GitHubリリース物（`electrobun-cli-darwin-arm64.tar.gz`）自体のコード署名が壊れており（`codesign --verify`で`invalid signature`）、起動直後にOSからSIGKILL(exit 137)される。`bun run dev`側はこれを拾えずexit 0で終了するため原因が見えにくい。ad-hoc再署名（`codesign --force --sign -`）で起動できることを確認済み。Macでは`bun install`の代わりにプロジェクト直下の`setup-mac.sh`でセットアップする（bun install→CLIバイナリ未ダウンロードなら取得→`bin/`と`.cache/`の両方を再署名→起動確認）
