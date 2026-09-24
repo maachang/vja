@@ -214,6 +214,7 @@ cd vja
 
 # 2. 依存パッケージをインストール
 bun install
+#    ※ Mac の場合は bun install の代わりに bash setup-mac.sh を実行（Electrobun CLIの再署名を含む）
 
 # 3. 開発モードで起動
 bun run dev
