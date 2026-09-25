@@ -194,7 +194,6 @@ function openFormDesignAi() {
             taDoc.addEventListener("dblclick", editorDblClickHandler);
             taDoc.addEventListener("input", () => editorUpdateGutter("ta-fd-doc", "gutter-fd-doc"));
             taDoc.addEventListener("scroll", () => editorSyncGutter("ta-fd-doc", "gutter-fd-doc"));
-            if (!FORMDESIGN_EDITOR.docUndo) FORMDESIGN_EDITOR.docUndo = {};
             editorUndoInit("ta-fd-doc", FORMDESIGN_EDITOR.docUndo, taDoc.value);
         }
 

@@ -978,6 +978,7 @@ var CTX = {
         dblPending: false,
         yu: { stack: [], idx: -1, busy: false },
         ju: { stack: [], idx: -1, busy: false },
+        pu: { stack: [], idx: -1, busy: false },
         isAppEvent: false,
         // JSペインの入力補完（vja API名/ウィジェット名）ポップアップ状態
         completion: { active: false, list: [], sel: 0, wordStart: 0, wordEnd: 0, mode: "api" },
@@ -1029,6 +1030,7 @@ var EXTRT_EDITOR = {
 // AIフォーム設計エディタ専用のUndo状態
 var FORMDESIGN_EDITOR = {
     taUndo: { stack: [], idx: -1, busy: false },
+    docUndo: { stack: [], idx: -1, busy: false },
 };
 // 項目定義エディタ専用の一時状態
 var ITEMSDEF_EDITOR = {

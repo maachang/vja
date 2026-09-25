@@ -920,7 +920,6 @@ function initYamlEditorModal(cur, curJs, onAfterInit, isAppEvent = false, curDoc
         if (jta) jta.addEventListener("mouseup", () => updateBracketMatch("js-ta"));
         if (jta) jta.addEventListener("blur", clearBracketMatch);
         clearBracketMatch();
-        if (!getEditorContext().pu) getEditorContext().pu = {};
         editorUndoInit("prompt-ta", getEditorContext().pu, curDoc);
         editorUndoInit("yaml-ta", getEditorContext().yu, cur);
         editorUndoInit("js-ta", getEditorContext().ju, curJs);
