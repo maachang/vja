@@ -237,7 +237,7 @@ cd vja
 
 # 2. 依存パッケージをインストール
 bun install
-#    ※ Mac の場合は bun install の代わりに bash setup-mac.sh を実行（Electrobun CLIの再署名を含む）
+#    ※ Mac の場合は bun install の代わりに bash setup-mac.sh を実行（Electrobun CLIの再署名を含む。詳細: docs/localLlm/mac-setup.md）
 
 # 3. 開発モードで起動
 bun run dev
@@ -295,6 +295,7 @@ mlx_lm server --model mlx-community/${MODEL} --port 8080 --max-tokens 16384 --te
 モデル一覧: https://huggingface.co/models?search=mlx-community
 
 - Mac（Apple Silicon）: [セットアップ方法詳細](docs/localLlm/mac-mlx-lm-setup.md)
+- vja本体のMacセットアップ（Electrobun CLI署名破損対策）: [セットアップ方法詳細](docs/localLlm/mac-setup.md)
 
 ### Windows 11（Copilot+ PC / Snapdragon X）— Foundry Local
 
