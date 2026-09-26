@@ -10,15 +10,16 @@ OpenAI API互換のため、VJAからそのまま接続できます。
 - Windows 11
 - PowerShell または Windows Terminal が使える状態であること
 - NPU対応モデルを利用する場合は **Snapdragon X（Copilot PC）** を推奨
+- 本ドキュメントは **Foundry Local 0.8.119.102** を対象としています（バージョンによりコマンド・挙動が変わる場合があります）
 
 ---
 
 ## 1. Foundry Local をインストールする
 
-PowerShell から以下を実行します：
+PowerShell から以下を実行します（本ドキュメントが対象とするバージョンを明示的に指定してインストールします）：
 
 ```powershell
-winget install Microsoft.FoundryLocal
+winget install Microsoft.FoundryLocal --version 0.8.119.102
 ```
 
 ---
