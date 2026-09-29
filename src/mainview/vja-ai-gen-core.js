@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    vja-ai-gen-core.js — イベントJS自動生成の中核ロジック
    2026-09-21にvja-yaml-editor.jsから分割した最後（7つ目）。分割方針の
-   詳細はCLAUDE.mdの「vja-yaml-editor.jsの分割整理」節を参照。
+   詳細は.claude/notes/refactoring.mdを参照。
 
    【重要: 本ファイルは2026-09-21に発生した実際の回帰事故の現場である】
    yamlAiGenerate()/textToYamlGenerate()を「テスト自動化のためDOM非依存の

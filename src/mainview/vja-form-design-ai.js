@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    vja-form-design-ai.js — 画面デザインAI生成一式
    2026-09-21にvja-yaml-editor.jsから分割した6つ目（分割方針の詳細は
-   CLAUDE.mdの「vja-yaml-editor.jsの分割整理」節を参照）。
+   .claude/notes/refactoring.mdを参照）。
 
    【提供する機能】
    - 画面デザインテンプレート適用（insertFormDesignTemplate/
@@ -395,7 +395,7 @@ function parseFormDesignYaml(text) {
 // だと、temperature=0（サンプリングの揺らぎを排除した状態）でも100%再現する形で
 // 「参照テーブル:」セクション自体が丸ごと欠落する不具合が2026-09-20の実LLM検証
 // (qwen2.5-coder-7b)で確認された。プロンプト文言の強化だけに頼ると際限ない
-// もぐら叩きになるため（CLAUDE.md「プロンプト文言だけでは再発する」参照）、
+// もぐら叩きになるため（メモリ「プロンプト文言だけでは再発する」/.claude/notes/wizard.md 参照）、
 // _fixArithmeticInFormDesignJson()と同じ方針でコード側の機械的な安全網を追加する。
 // 戻り値: 補完すべきテーブル名の配列（既に「参照テーブル:」が1件でもあれば空配列＝何もしない）。
 // 他ファイル（vja-wizard.js）からも呼び出すため、CLAUDE.mdの規約に従い`_`無しの名前で

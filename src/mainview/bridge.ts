@@ -567,7 +567,7 @@ const _testSetAutoConfirm = (p: { value: boolean | null }) => {
 // （window.__vjaLastPrompt、vja-modal.js）を取得する。「実際に送信された内容が
 // 入力を正しく反映しているか」をサイズ・内容の両面から直接検証するために使う
 // （2026-09-21、yamlAiGenerate等でDOM読み取りタイミングの回帰が発生した際の教訓。
-//  詳細はCLAUDE.mdの当該不具合の記録を参照）。
+//  詳細は.claude/notes/mcp-test.mdの当該不具合の記録を参照）。
 const _testGetLastPrompt = () => {
     const g = window as any;
     return { ok: true, prompt: g.__vjaLastPrompt || null };
@@ -591,7 +591,7 @@ const _testYamlAiGenerateFull = async (p: { wid: number | string; evName: string
 // userPromptが「保存されているYAML本文・現在のウィジェット・利用テーブル」を
 // 正しく反映しているかを、単なるサイズ比較だけでなく複数の角度からまとめて
 // 検証する。事前にtestSetAutoConfirmで自動応答を有効にし、testSetAiMockQueueで
-// モック応答を積んでおく必要がある（詳細はCLAUDE.mdの当該不具合の記録を参照）。
+// モック応答を積んでおく必要がある（詳細は.claude/notes/mcp-test.mdの当該不具合の記録を参照）。
 // 「AIが書いたテストをAIが確認する」こと自体の限界を踏まえ、単一の判定基準
 // （生成が成功したか/サイズが0でないか等）に頼らず、データモデル上の正解
 // （保存済みYAML本文そのもの）との直接突き合わせを主軸に据えている。

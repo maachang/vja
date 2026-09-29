@@ -2,7 +2,7 @@
 // Windows向けビルドで、launcher.exe / bun.exe へアイコンを埋め込むElectrobunの postBuild フック。
 //
 // 背景: Electrobun本体(CLIバイナリ)のアイコン埋め込みは、rcedit解決パスがビルド元CIマシンの
-// 絶対パスにハードコードされているため失敗する（.claude/CLAUDE.md「既知の制約」参照）。
+// 絶対パスにハードコードされているため失敗する（.claude/notes/known-constraints.md 参照）。
 // CLIバイナリはパッチできないため、CLI側のアイコン設定(build.win.icon)は使わず、
 // この postBuild フック（アプリ本体の生成後・圧縮/パッケージング前に実行される）で
 // プロジェクトにインストールされたrceditを直接呼んで埋め込む。

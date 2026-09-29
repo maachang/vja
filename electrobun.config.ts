@@ -34,7 +34,7 @@ const conf = {
         // NOTE: WindowsでElectrobun本体側のバグ（rcedit解決失敗）によりアイコン埋め込みが
         // 機能しないため、win/linuxはコメントアウトして無効化している（Windowsはpostビルドフック
         // scripts/win-embed-icon.tsで回避済み）。
-        // 詳細は .claude/CLAUDE.md の「既知の制約」を参照。Electrobun側修正後に復活させること。
+        // 詳細は .claude/notes/known-constraints.md を参照。Electrobun側修正後に復活させること。
         mac: {
             icons: "icon/icon.iconset",
         },

@@ -5,12 +5,29 @@
 # プロジェクト概要
 vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォームにウィジェット配置でアプリが作れる開発環境を作成する。ここでは「ローカルLLM」を使って「イベント等のコード生成」や「フォームデザイン」を「YAML定義」で実現する。
 
+# 詳細ノート（.claude/notes/）
+
+CLAUDE.mdは毎セッション全文が読み込まれるため、規約・全体構成・索引だけを置き、機能ごとの詳細仕様・経緯・既知の制約は`.claude/notes/`に分離している（2026-09-29）。**該当する作業に着手する前に、下表の対応ノートを必ず読むこと**（自動では読み込まれない）。
+
+| ファイル | 内容 | 読むタイミング |
+|---|---|---|
+| `.claude/notes/mcp-test.md` | vjaデザイナーのMCPテスト自動化（`mcp/vja-mcp-server.ts`）、AI生成フローのモックテスト、DOM読み取りタイミング事故の教訓とテスト基盤 | MCP/テスト用RPC/AI生成のテストに触れる前、AI生成関数のDOM依存部分をリファクタする前 |
+| `.claude/notes/ai-generation.md` | 学習履歴・画面デザインAI生成・イベントYAMLドラフト・ロールバック・機械的な後処理・DBテーブル/検証のAI生成・総覧 | AI生成まわり（プロンプト、後処理、各AI生成機能）を変更する前 |
+| `.claude/notes/prompts.md` | プロンプトのトークン圧縮方針と、prompt-def.js→prompts/*.mdへの外部ファイル化 | prompt-def.js・prompts/*.mdを変更する前、プロンプト文言を書く前 |
+| `.claude/notes/wizard.md` | システムモデル定義（用語の参考ヒント）と、ウィザードの現行設計・経緯・教訓 | vja-wizard.js・src/wizard-system-models/・ウィザード関連のプロンプトを変更する前 |
+| `.claude/notes/known-constraints.md` | 同梱bun 1.4.2とElectrobunパッチ、Windows/Mac/Linuxのアイコン対応、macOS/Linux/Windows固有の制約 | Electrobun・bun・ビルド/コンパイル・アイコン・プラットフォーム固有の問題に触れる前 |
+| `.claude/notes/refactoring.md` | 大きなファイルを切り出す際の検証手順と過去の事故 | ファイル分割・大規模リファクタをする前 |
+| `.claude/notes/local-llm-setup.md` | setup-mac-llm.sh（mlx-lm/Qwen2.5-Coder-7B）の設計 | setup-mac-llm.sh・ローカルLLMのセットアップ手順に触れる前 |
+| `.claude/notes/remaining-issues.md` | 将来対応検討の項目（日本語解説機能、ランタイムAPI拡充候補等）と、プロンプト用語の書き分けルール | 機能追加・改善の相談を受けたとき、プロンプトを書く前 |
+
+- 新しく書き足す際の基準: CLAUDE.mdには「規約」と「全体構成」だけを書く。機能ごとの詳細・不具合の経緯・検証の手順は、対応するノートへ書く（該当するノートが無ければ新規作成し、この表へ1行足す）。経緯の全文ではなく、現行仕様と、繰り返してはいけない教訓の要約を書く。作業ログはコミットメッセージや`.claudeWork/`に残す
+
 # 作業領域（.claudeWork）
 
 - プロジェクト直下の `.claudeWork/` はClaude Code専用の作業領域（Gitには一切コミットしない、.gitignore済み）
 - セッションが落ちて再起動すると直前の会話内容は失われるため、途中の提案・調査結果・未確定の方針などで残しておきたいものは、このフォルダにファイルとして書いておくこと
 - セッション開始時、作業に関連しそうであれば `.claudeWork/` の中身を確認すること
-- プロジェクト固有の永続的な事実はここではなく本ファイル（CLAUDE.md）に書く。`.claudeWork`はあくまで一時的な作業メモ置き場
+- プロジェクト固有の永続的な事実はここではなく本ファイル（CLAUDE.md）または`.claude/notes/`（下記「詳細ノート」）に書く。`.claudeWork`はあくまで一時的な作業メモ置き場
 
 # ユニットテスト（bun test）
 
@@ -92,13 +109,13 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 | src/mainview/project-bridge.ts | プロジェクト実行ウィンドウ RPC |
 | src/mainview/vja-runtime.js | vja.* API ランタイム |
 | src/mainview/prompt-def.js | AI プロンプト定義（コンテキスト組み立て・プレースホルダー置換ロジック。プロンプト本文自体はsrc/mainview/prompts/*.mdへ切り出し済み） |
-| src/mainview/prompts/ | AIプロンプト本文（.md、`{{変数名}}`プレースホルダー形式）。prompt-def.jsが起動時に同期XHRで読み込む。詳細は「未対応・残課題」内のprompt-def.js外部ファイル化の節を参照 |
+| src/mainview/prompts/ | AIプロンプト本文（.md、`{{変数名}}`プレースホルダー形式）。prompt-def.jsが起動時に同期XHRで読み込む。詳細は`.claude/notes/prompts.md`を参照 |
 | src/shared/types.ts | types.tsファイル |
 | src/shared/csv-utils.ts | CSVパース共通処理（Bun側・webview側・project-bridge.tsで共有） |
-| src/wizard-system-models/ | ウィザードのシステムモデル定義（AIヒント用マークダウン）。詳細は下記「ウィザードのシステムモデル定義」節参照 |
+| src/wizard-system-models/ | ウィザードのシステムモデル定義（AIヒント用マークダウン）。詳細は`.claude/notes/wizard.md`を参照 |
 | *.test.ts | 各対象ファイルと同じディレクトリに置くユニットテスト（bun test）。対象はユニットテスト（bun test）節を参照 |
 | docs/ | ドキュメント関連(mdファイルなど) |
-| mcp/vja-mcp-server.ts | VJAデザイナーのテスト自動化用MCPサーバー（stdio）。詳細は下記「MCPによるテスト自動化」節参照 |
+| mcp/vja-mcp-server.ts | VJAデザイナーのテスト自動化用MCPサーバー（stdio）。詳細は`.claude/notes/mcp-test.md`を参照 |
 | icon/ | electrobun で利用する vja のアイコンファイル(windows, mac, linux用) |
 | artifacts | bun.js が vja をコンパイルした時に作成されるディレクトリ(閲覧不要) |
 | build | bun.js が vja を起動する時に作成されるディレクトリ(閲覧不要) |
@@ -123,278 +140,3 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 - パストラバーサル — src/bun/index.ts の fileReadRequest/fileWriteRequest/fileDeleteRequest/dirDeleteRequest
 等が、RPC経由の生パスをルート制限なしでそのまま使用。dirDeleteRequest({path:"/"})のような呼び出しで任意ファイル削除が可能なども、ローカルアプリなので、考慮しない
 - ハードコードされた暗号鍵も、これもローカルアプリでの組み込み（主にクラウドインフラ関連のトークン関連で利用）なので問題なしとしている
-
-# MCPによるテスト自動化
-
-- 目視確認頼みだった「画面関連（ウィジェット配置・削除のデータ整合性）」「YAML関連（保存・削除時のオーバーライドpurge）」を自動テストするため、`mcp/vja-mcp-server.ts`（MCPサーバー、stdioトランスポート）を用意している
-- 使い方: `bun run mcp`（`package.json`に定義済み。実体は`VJA_TEST_MODE=1 bun x electrobun dev`）でvjaを起動すると、`src/bun/index.ts`内にテスト用HTTPサーバー（デフォルトポート4570、`VJA_TEST_PORT`で変更可）が起動する。このサーバーが`browserWindow.webview.rpc.request.testXxx(...)`経由で`src/mainview/bridge.ts`のテスト用ハンドラを呼び出す
-- MCPサーバー（`mcp/vja-mcp-server.ts`）はこのHTTPサーバーを叩くtoolを公開する。Claude Code等のMCPクライアントに`{ "command": "bun", "args": ["run", "mcp/vja-mcp-server.ts"] }`として登録して使う（プロジェクト直下の`.mcp.json`に登録済み。ただしMCPサーバーの追加は既存セッションには反映されないため、Claude Codeの再起動/MCP再接続が必要）
-  - 画面関連: `vja_add_widget`/`vja_delete_widget`/`vja_get_widgets`/`vja_select_widget`/`vja_get_props_html`（後者2つはプロパティパネル・イベントタブの描画結果HTMLを取得し、画面を目視しなくても構造検証できるようにするためのもの）
-  - YAML関連: `vja_save_yaml`/`vja_delete_yaml`/`vja_get_overrides`/`vja_format_js`（Prettier整形機能の検証用、`formatJsCode()`を直接呼び出す）
-  - Validate関連: `vja_get_validations`/`vja_save_validation`/`vja_delete_validation`/`vja_get_tables`/`vja_save_table`/`vja_delete_table`/`vja_generate_ddl`
-  - AI生成フロー関連（2026-09-18実装）: `vja_wizard_set_ai_mock`/`vja_wizard_decompose_forms`/`vja_wizard_generate_form_yaml`/`vja_wizard_generate_form_layout`/`vja_table_ai_generate_schema`/`vja_validation_ai_generate_rules`。詳細は下記「AI生成フローの自動テスト化」節参照
-- `VJA_TEST_MODE`未設定時はテスト用HTTPサーバー自体が起動しないため、通常起動には影響しない
-- テスト用ハンドラは、確認ダイアログやDOM読み取りを伴う既存のUI関数（`deleteYaml`/`validSave`/`tblSave`等）は自動化に不向きなため使わず、データ検証・操作ロジックのみを`src/mainview/bridge.ts`側に直接再実装している（`_testAddWidget`等）
-- 2026-08-01時点でPhase 1（画面関連・YAML関連）・Phase 2（Validate関連: バリデーション定義・テーブル/カラム定義・DDL生成）まで実装済み
-- 以下1点は「現状テストで必要ない」との理由で対応見送り（詳細は`.claudeWork/mcp-webview-test-idea.md`参照）
-  - 保存・オープン・実行・コンパイルフロー全体の自動テスト化（ネイティブファイルダイアログが絡み、バイパス用の専用ルート設計が必要になる）
-- AI生成フローの自動テスト化は、当初「ローカルLLM前提・生成結果が非決定的なため判定基準の設計自体が未確定」として見送っていたが、2026-09-18にAI応答をモックする方式で解消し、一部関数に実装済み（下記節参照）
-
-## AI生成フローの自動テスト化（2026-09-18実装）
-
-- **狙い**: 従来「AI生成結果が非決定的で判定基準が未確定」として見送っていたAI生成フローの自動テスト化を、AI応答自体をモックすることで実現。実AIの生成品質評価ではなく、「固定のAI応答に対しパース・反映ロジックが正しく動くか」を検証する回帰テストとして構成した
-- **モック機構**: `runAiGenerate()`（`vja-modal.js`、AI生成の全関数が経由する共通実行関数）の冒頭で`window.__vjaTestAiMockQueue`（配列）を確認し、モック応答が積まれていればFIFOで1件消費して実際の`window.vja.fetch`呼び出しをスキップする。キューが空なら従来通り実AI APIを呼ぶため、通常起動時（`VJA_TEST_MODE`未設定時含む）には一切影響しない。このフックは`runAiGenerate()`共通部にあるため、対応済みの関数以外にも理論上は効くが、テストハンドラ（`bridge.ts`の`_testXxx`）が無い関数はMCP経由では呼び出せない
-- **テストハンドラ追加済みの関数（`bridge.ts`）**:
-  - `_testSetAiMockQueue({responses})`: モック応答キューをセット（他の全テストハンドラの前提として必須）
-  - ウィザード系: `_testWizardDecomposeForms`/`_testWizardGenerateFormYaml`/`_testWizardGenerateFormLayout`（対象関数は`wizardDecomposeForms()`/`wizardGenerateFormYaml()`/`wizardGenerateFormLayout()`。後二者は旧`_wizardGenerateFormYaml`/`_wizardGenerateFormLayout`から命名規約に沿ってリネーム・グローバル展開）
-  - テーブル/バリデーション系: `_testTblAiGenerateSchema`/`_testValidAiGenerateRules`（対象関数は`tblAiGenerateSchema()`/`validAiGenerateRules()`、`vja-table-validation.js`）。両関数は編集中データがDOM要素ではなく`TABLE_MODAL.edit`/`VALID_MODAL.edit`というJSオブジェクトに集約されているため、元関数を直接呼ばずテストハンドラ側で同等ロジック（プロンプト生成→`runAiGenerate`→JSON.parse→サニタイズ）を再現する設計にした。`_testValidAiGenerateRules`は元関数にある「UI編集用にrulesを最低3件までpaddingする」処理は意図的に含めていない（テストの関心事はAI生成結果のパース・サニタイズ検証であり、UI表示用の空行埋めではないため）
-- **利用時の注意**: `wizardDecomposeForms()`は成功時に確認モーダルを描画する副作用が残っている（テストでは無視して良い）。`wizardGenerateFormLayout()`は実際にウィジェットを配置するため、テスト時は事前に状態をクリーンにしておくこと
-- **元は未対応だった6関数も、2026-09-20〜21にすべて対応済み**: DOM読み書き（textarea・ボタン状態・モーダル再描画等）とAI呼び出し・パース・データ反映ロジックを分離し、後者を単独の関数として切り出してテストハンドラ（`bridge.ts`の`_testXxx`、`src/bun/index.ts`の`testXxx`）を追加した
-  | 元の関数 | 切り出した関数 | テストハンドラ |
-  |---|---|---|
-  | `extRtGenDoc()` | `generateExtRuntimeDoc(js)` | `_testExtRtGenDoc` |
-  | `textToYamlGenerate()` | `generateTextToYaml(wid, evName, inputText)`（widは対象ウィジェットID/`"form"`/`"appev"`） | `_testTextToYamlGenerate` |
-  | `manualRetryAiFix()` | `retryAiFix(wid, evName, isAppEvent, isFormEvent, currentCode)` | `_testManualRetryAiFix` |
-  | `formDesignTextToYamlGenerate()` | `generateFormDesignYaml(inputText, allTables)`（ウィザード版`wizardGenerateFormYaml()`と重複していた実装を共通化） | `_testFormDesignTextToYamlGenerate` |
-  | `yamlAiGenerate()` | `generateEventJs(wid, evName, isAppEvent, isFormEvent, temperatureOverride)`（検証NGなら内部リトライを1回行う） | `_testYamlAiGenerate` |
-  | `formDesignAiGenerate()` | `generateFormDesignAiLayout(rawText, addPromptExtra)` ＋ 共有`generateFormLayoutRaw(designText, extraPrompt, allTables)`（ウィザード版`wizardGenerateFormLayout()`と共通化。既存ウィジェット全削除＋`fullRedraw()`を伴う） | `_testFormDesignAiGenerate` |
-  - `textToYamlGenerate`/`manualRetryAiFix`/`yamlAiGenerate`は内部で`$("yaml-ta")`等を読むため、意味のある入力で検証する場合は事前に`testSaveYaml`→`testOpenYamlEditor`でエディタへYAMLを読み込ませておく（`showLoadingModal()`を経由する実フローの検証は、下記「AI生成フローのテスト基盤」の`testVerifyPromptIntegrity`を使う）
-- MCPクライアント経由の実疎通テストは実装時点では未実施（ビルド/起動が通ることと`bun test`の通過のみ確認済み）
-- **実LLMへの実接続テスト**（2026-09-19〜20実施）: 上記のモック方式とは別に、`_testSetAiConfig({endpoint, model, apiKey, temperature})`（`bridge.ts`）で`aiConfig`を実LLM（例: `http://192.168.0.235:8080`、llama.cpp）へ差し替えた上で、モックキューを積まずに`_testWizardDecomposeForms`等をそのまま呼ぶことで、実際のAI応答に対する動作検証ができる。この方法で`wizardDecomposeForms`/`wizardGenerateFormYaml`/`wizardGenerateFormLayout`のパイプライン全体を実LLM(qwen2.5-coder-7b)で検証し、「画面デザインYAMLの参照テーブル欠落の機械的補完」（本ファイル内、AI生成コードの機械的な後処理の節を参照）の不具合発見・修正確認に使った。**組織のエンタープライズポリシーでMCPサーバー(`vja-test`)自体が`/mcp`に接続できない環境では、HTTPテストサーバー（`bun run mcp`、ポート4570）へ直接curlでリクエストする方式で代替できる**（下記「実行手順」参照）
-
-## 実行手順
-
-1. `bun run mcp` でvjaをテストモード起動する（テスト用HTTPサーバーがポート4570で立ち上がる）
-2. Claude Code側でMCPサーバー`vja-test`が接続済みか`/mcp`で確認する（プロジェクト直下の`.mcp.json`に登録済み）
-   - 初回登録時・`.mcp.json`変更時はClaude Codeの再起動/MCP再接続が必要
-   - 組織のエンタープライズポリシーでローカル（stdio）MCPサーバーの追加自体がブロックされる環境では、`.mcp.json`の設定が正しくても`vja-test`が`/mcp`に出てこない（`claude mcp add-json`も`not allowed by enterprise policy`で拒否される）。この場合はプロジェクト側の設定不備ではないため、ポリシー制約のない環境で試す
-3. 接続済みなら、各tool（`vja_add_widget`等）をClaude Codeから呼び出してテストを行う
-# 学習履歴機能（AIプロンプト記憶）
-
-- AIコード生成時の過去修正・注意事項を学習・蓄積する機能
-- **保存スコープ・単位**: プロジェクト単位（`getProjectData().learnedFixes`）。`.vjaproj` ファイルに同梱保存される
-- **スコープ階層**:
-  - `wid_evName`: イベント個別ルール
-  - `tag_<tagName>`: ウィジェットタグ共有ルール（同一タグで2回以上類似エラーが修正された場合に自動昇格）
-  - `global`: プロジェクト全体共通ルール（手動追加・ピン留め可能）
-- **プロンプト生成 (`buildLearnedFixesCtx`)**: AIコード生成時、該当イベントの個別学習、タグ共通注意点、プロジェクト共通ルールを統合しプロンプトに自動挿入
-- **UI（学習ノウハウ管理）**: メニューバーの [表示] ➔ [学習ノウハウ…] (`openLearnedFixesModal`) から一覧確認・ピン留め（固定）・手動ルール追加・削除が可能
-- **テスト**: `src/mainview/learned-fixes.test.ts` でユニットテスト実装・検証済み
-
-# 画面デザイン自動生成機能 (AI Form Design & Templates)
-
-- **概要**: ユーザーがYAML形式で記述した画面目的・項目・レイアウト指示から、AIがウィジェットの配置座標（x, y, w, h）を含んだJSONを生成・自動配置する機能
-- **レイアウトテンプレート分離構造**: `src/mainview/form-design-templates.js` にテンプレート定義（`FORM_DESIGN_TEMPLATES`）を独立管理。検索一覧、登録フォーム、ダイアログ、マスタ保守、伝票・明細入力、ダッシュボード等に対応
-- **テンプレート選択UI**: 「🤖 AIでフォーム設計」モーダル上から `openFormDesignTemplateModal()` を呼び出し、`modal-layer-1` を用いたダイアログ形式でテンプレートを選択。既存記述がある場合は `vja.app.showConfirm` で上書き確認を実施
-- **レイアウト自動生成プロンプト & 整列エンジン**:
-  - `prompt-def.js`: パターン（検索一覧、登録、ダイアログ等）および YAMLパラメータ（`カラム数`, `ラベル位置`, `ボタン位置`, `密度`）の明確な解釈ルールを記述
-  - `vja-designer.js` (`applyAiFormDesign`): 4px単位のグリッドスナップ、同一行のラベル・入力コントロールの垂直中央自動揃え、フッター領域の複数ボタンのきれいな右寄せ横一列整列（`gap: 10px`）、同一グループのラジオボタン整列を自動実行
-- **テスト**: `src/mainview/form-design-templates.test.ts` でテンプレート取得ロジックのユニットテスト実装・検証済み
-- **画面デザインYAMLドラフト生成（初心者導線）**: 「🤖 AIでフォーム設計」モーダルに **`✨ YAMLドラフト`** タブ（`fd-doc`）と **`📋 YAML`** タブ（`fd`）を用意し、以下の2段階フローで「YAML記法に不慣れな人」でも迷わず使えるようにしている
-  1. **`✨ YAMLドラフト`タブ**: 「氏名・メールアドレス・部署の入力欄と保存ボタンが欲しい」のような、AIへの通常の指示と同じ感覚の普通の日本語文章を書く
-  2. **`✨ YAMLドラフト生成`ボタン**（`formDesignTextToYamlGenerate()`）: 1の文章とプロジェクトのDBテーブル情報を元に、AIが `📋 YAML`タブへ画面デザインYAML（説明/フォームレイアウト/入力項目/参照テーブル/アクション項目）のドラフトを自動生成する
-  3. 生成された `📋 YAML`タブの内容を必要に応じて手直しした上で、**`🤖 画面反映`ボタン**（`formDesignAiGenerate()`、既存のレイアウト自動生成プロンプト & 整列エンジンを利用）を押すと、実際のウィジェット配置に反映される
-  - つまり「自然言語での指示 → AIによるYAMLドラフト化 → そのYAMLを土台に実装（画面レイアウト）へ進む」という導線であり、YAMLをいきなり手書きする必要はない
-  - `formDesignDraft`/`formDesignDocDraft`は各フォーム（`getProjectData().forms[idx]`）ごとに保持され、他フォームの内容が混入しないよう`syncCurForm()`/`commitFormDesignDraft()`で同期・書き戻しされる
-  - **`参照テーブル:`（YAML中の`tables:`）は必須項目**（2026-09-13明記）: 以前は「関係があれば含める」という任意扱いの文言だったため、フィールドはテーブルのカラムから正しく導出されているのに`tables:`が空のまま生成されるケースがあった。`tables:`が無いと、後工程（画面レイアウト生成・実際のウィジェット配置）で「その画面がどのテーブルを読み書きする入力画面なのか、単なるテーブル一覧表示なのか」の区別があいまいになる。`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`に`[What Goes In "tables"]`節を追加し、「fieldsのいずれかがテーブルのカラムに由来する場合、tablesにそのテーブル名を含めるのは必須（省略可能な飾りではない）」と明記した
-  - プロンプト定義: `prompt-def.js` の `ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT` / `ENG_FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT`
-- **「🖼 レイアウト」タブ（レイアウトイメージ選択）を厳格なpx座標制約として反映**（2026-09-14）: 従来、選択したレイアウトパターン（`form-layout-patterns.js`の`FORM_LAYOUT_PATTERNS`）は「配置構造を言葉で説明した1文」をAIへの補足指示に足すだけで、実際の反映精度がAIの解釈に左右され「設定しても反映が微妙」という指摘があった。各パターンが元々持つ`boxes`（SVGダイアグラム描画用の0-100割合座標、役割=入力/表示/ボタン）を、`buildLayoutRegionsPromptText(patternId, formW, formH)`（`form-layout-patterns.js`）でフォーム実サイズのpx座標バウンディングボックスへ変換し、「この役割のウィジェットは必ずこの矩形内に収めよ」という具体的な数値制約として渡すよう変更した（UI手動操作版`formDesignAiGenerate()`・ウィザード版`_wizardGenerateFormLayout()`の両方に適用。ウィザード側は従来この指示自体を一切渡していなかった実装漏れもあわせて修正）。実LLM(192.168.0.235)で検証し、全ウィジェットが指定領域内に正確に収まることを確認済み
-
-# イベントYAMLドラフト自動生成機能 (Text to YAML)
-
-- **概要**: ユーザーが「やりたいこと」を普通の一言日本語で入力するだけで、AIがフォーム内のウィジェットやDBテーブル情報を考慮し、イベント用YAML定義のドラフトを自動生成する機能。上記の画面デザインYAMLドラフトと同じ「初心者導線」の考え方（自然言語での指示 → AIによるYAMLドラフト化 → そのYAMLを土台に実装（JS生成）へ進む）をイベント側にも適用したもの
-- **アクセス点**: イベントYAMLエディタの **`✨ YAMLドラフト`タブ**（`tab-prompt`、旧称「✨ 依頼」タブ）に日本語のやりたいこと文章を入力し、`textToYamlGenerate(wid, evName)`を実行すると `📋 YAML`タブへドラフトが生成される（旧仕様の別モーダルボタン`openTextToYamlModal`は現在は存在せず、エディタ内タブに統合済み）
-- **プロンプト定義**: `prompt-def.js` の `ENG_TEXT_TO_YAML_SYS_PROMPT` / `ENG_TEXT_TO_YAML_USER_PROMPT`
-- **テスト**: `src/mainview/text-to-yaml-prompt.test.ts` でユニットテスト実装・検証済み
-- **条件分岐・繰り返しの見出し記法**（2026-09-11追加）: `アクション:`配下の`〇〇の場合:`/`それ以外の場合:`（if/else相当）、`〇〇に対して繰り返し:`（for/forEach相当）というYAML規約自体はJS変換プロンプト（`ENG_YAML_TO_JS_SYS_PROMPT`）側では以前から仕様化されていたが、ドラフト生成プロンプト（`ENG_TEXT_TO_YAML_SYS_PROMPT`）側には説明もFew-Shot例も無く、AIが条件分岐を使わずフラットな手順列挙しか生成しない問題があった。`docs/yaml-guide-engineer.md`の記法例をFew-Shotとして`ENG_TEXT_TO_YAML_SYS_PROMPT`にも追加し解消した
-
-# イベントYAML/JSロールバック機能（スナップショット履歴）
-
-- **概要**: AI再生成でイベントのYAML/JSコードが悪化した場合に、以前の「正常版」へユーザーが手動で戻せる機能（2026-09-11実装）
-- **保存先**: `getProjectData().snapshotHistory["wid_evName"]`（`wid_evName`キー方式は`mockOverrides`等と同一、`OVERRIDE_MAP_NAMES`に追加済みでウィジェット/イベント削除時に自動クリーンアップされる）。`.vjaproj`へ永続化（`snapshot()`/`applyProjectData()`, `vja-modal.js`）
-- **記録方式**: 「正常に実行できた」の自動判定はしない（既存の`manualMockCheck`等は静的検証＋浅いモック実行に過ぎず実運用の正常性を保証しないため）。イベントYAMLエディタの**`📌 記録`ボタン**を押した時のみ、その時点のYAML・JS・依頼文（`docCode`）を**常にセットで**（分離せず）記録する。JSはYAMLから生成される関係上、世代がズレる事故を防ぐための設計判断
-- **上限・メモ**: 1イベントあたり新しい順で最大5件（超過分は自動間引き）。記録時に一言メモ（Gitのコミットメッセージ的なもの、`label`）を入力可能
-- **UI**: `📌 記録`→メモ入力モーダル、`🕐 履歴`→世代一覧モーダル（`↩ 復元`/`🗑 削除`）。復元は直接プロジェクトデータへ反映せずエディタの3ペインを置き換えるのみで、確定は既存の保存ボタン経由。一覧の各行には、直前の記録と比べてYAML/JSどちらが変わったかを示す`[YAML]`/`[JS]`バッジを表示
-- **対象範囲**: ウィジェットイベント（`openYaml`）・フォームイベント（`openFormYaml`）・アプリイベント（`openAppEvents`）の3種類すべてに対応
-- 学習履歴機能と合わせて設計する、とされていた残課題だが、実装してみると両者はデータの性質（学習履歴＝軽量な文字列サマリ／スナップショット＝YAML+JS全文）が大きく異なるため、独立した機能として実装した
-
-# AI生成コードの機械的な後処理（await漏れ補完・JS整形）
-
-- **await漏れの自動補完**: `vja.app.showDialog`/`showConfirm`等、await必須のvja.*API呼び出しでawaitが抜けているケースを機械的に補完する。`findMissingAwaits()`（`vja-ai-gen-core.js`、ドキュメント`VJA_USE_FRONT_JS_INFO`/`VJA_USE_BACK_JS_INFO`から「await必須API集合」を自動抽出）と同一の判定基準で、`fixMissingAwaits(code, isAppEvent)`がその場でawaitを挿入する。AI生成直後・自動修正リトライ・手動モック実行・手動修正依頼の全経路に組み込み済み（2026-09-07実装）
-- **JS整形（Prettier）**: ローカルLLM生成コードにありがちな「1行べた書き」「インデント幅の不揃い（2スペース等）」を、本物のJSフォーマッタ（Prettier）で整形する。正規表現ベースの機械的パッチでは構文木を正しく解釈できず事故りやすいため、Prettierをbun側にのみ依存追加（`package.json`）し、RPC（`formatJsRequest`、`src/shared/types.ts`にスキーマ定義）経由で整形結果を返す方式にした
-  - webview側の呼び出し口: `window.vja.editor.formatJs(code, indentSize)`（`bridge.ts`）。`vja-ai-gen-core.js`の`formatJsCode(code)`がラップし、失敗時は整形前のコードをそのまま返す（整形はあくまで品質向上の後処理であり、検証フロー自体は止めない設計）
-  - 適用タイミング: **AI生成時**（メイン生成・自動修正リトライ・手動修正依頼の各成功コールバック）と、**イベント保存時**（`saveYamlData`/`saveYaml`/`saveFormYaml`/`vja-app-config.js`の`saveAppEvent`、js-ta内容をPrettierで整形してから格納）。手動モック実行（`manualMockCheck`）単体では整形しない
-  - インデント幅は`indentSize`引数で指定可能（デフォルト4）。Prettier本体は`copy-compile-assets.ts`の`COPY_BUILD_FILES`には含めない（VJA編集機能専用でコンパイル済みユーザーアプリには不要なため）
-  - これに伴い、YAML→JS変換プロンプト（`ENG_YAML_TO_JS_SYS_PROMPT`）内にあった「インデント4スペース」「読みやすさのための改行」という生成時のコード整形指示は、最終的にPrettierで上書きされ無意味なため削除済み（2026-09-11）
-  - テスト用API: `testFormatJs`/`vja_format_js`（`formatJsCode()`を直接呼び出し整形結果を確認できる）
-- **画面レイアウトJSONの計算式是正**: 画面デザイン自動生成（`ENG_FORM_DESIGN_SYS_PROMPT`）で、x/y/w/h座標にAIが計算式をそのまま出力してしまう問題（例: `"x": 768 - 20 - 85`）が、プロンプト文言の念押し強化だけでは別のローカルLLMで再発した（2026-09-08にqwen2.5-coder-7bで発生・修正、2026-09-13にdeepseek-coder-v2で再発）。`parseFormDesignJson()`（`vja-form-design-ai.js`）に`_fixArithmeticInFormDesignJson()`を追加し、JSON.parse前にx/y/w/hの値が数式（数字・空白・四則演算子・丸カッコのみ）であれば安全に評価し整数へ機械的に是正するようにした（文字が混ざる値は対象外）。プロンプト文言の強化を重ねる対症療法ではなく、コード側の機械的な後処理で恒久対応する方針とした
-- **画面デザインYAMLの参照テーブル欠落の機械的補完**（2026-09-20実装）: `ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`には「fieldsがテーブル由来ならtablesに含めるのは必須」という明記とFew-Shot例が既にあるが、依頼文がボタン動作の説明中心（例:「〜を入力する。『戻る』ボタンで一覧に戻り、『保存』ボタンで保存する」）だと、`参照テーブル:`セクション自体が丸ごと欠落する不具合が実LLM検証（qwen2.5-coder-7b、temperature=0固定でも3/3再現＝サンプリングの揺らぎではなく決定論的な不具合）で確認された。なお同じ検証で、一覧画面のdatagrid欠落も一度観測されたが、これはtemperature=0では再現しなかったため`aiConfig.temperature`未設定によるサンプリングの揺らぎと判断し、対応不要とした。`vja-form-design-ai.js`に`deriveMissingFormDesignTables(yamlText, allTables)`を追加し、「参照テーブル:」が完全に欠落している場合のみ、「入力項目:」の各フィールド名がテーブルの列名(name/labelJa)と一致するかで該当テーブルを機械的に補完するようにした（`_fixArithmeticInFormDesignJson()`と同じ「コード側の機械的安全網」方針）。列名が重複する複数テーブル（例: `sales_data`/`sales_history`が同じ列を共有）で誤って両方候補になるのを避けるため、「fields全件をカバーし、かつ余分な列が最も少ない（＝形が最も近い）テーブル」を優先するスコアリングにしている。UI手動操作版（`formDesignTextToYamlGenerate()`）・ウィザードDOM非依存版（`wizardGenerateFormYaml()`）の両方に適用済み。AIが既に`参照テーブル:`を1件でも出力しているケースには一切介入しない
-- **入力専用画面でのlayout_pattern誤選択（「編集」という語だけで表示エリアありパターンに反転する不具合）**（2026-09-20修正）: 同じ検証で、入力専用画面（表示・一覧要素なし）が誤って「表示エリアあり」のlayout_patternを選んでしまう事象も確認された。当初は温度依存の揺らぎと考えていたが、最小差分比較（他の条件をすべて揃え、docDraft文言だけを変える）で真因を特定した: 「〜を**入力する**。」は正しく「表示エリアなし」パターンを選ぶ一方、同じ文を「〜を**入力または編集する**。」に変えるだけで、temperature=0でも確定的に「表示エリアあり」パターンへ反転する。つまりモデルが「編集する」という言葉から「既存データを表示してから編集する＝表示エリアが要る」と連想してしまうことが原因で、サンプリングの揺らぎではなく決定論的な不具合だった。`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`の[Selection Guide]に「編集する/変更するという言葉があっても、実際に複数レコードを閲覧・検索する要素が無い限り表示エリアは不要」という明記と、正しい例/誤った例を対比させたFew-Shot Example 1bを追加して解消した（`prompt-def.js`）。既存の正常系（一覧+検索画面、actionsに「編集」を含むケース）への回帰が無いことも実LLMで確認済み
-  - 検証用に、実LLM（ローカルLLM）へ実際に接続してAI接続設定（`aiConfig`のendpoint/model/temperature等）を差し替えるテスト用ハンドラ`_testSetAiConfig`/`testSetAiConfig`（`bridge.ts`/`src/bun/index.ts`）を追加した。既存の`_testSetAiMockQueue`（AI応答をモック化する方式）と異なり、こちらはモックを使わず実際のAI APIへ本当に接続して検証したい場合に使う
-- **画面レイアウト生成で「入力項目の合計件数が少ないとdatagridが消える」不具合**（2026-09-20修正）: 上記2件の修正後、他の依頼パターンでも最終確認を行ったところ、YAMLに`一覧: datagrid`が明記されているのに、レイアウト生成（`ENG_FORM_DESIGN_SYS_PROMPT`）の出力にdatagridウィジェットが1つも含まれないケースを発見した。最小差分比較で調べた結果、テーブル名や列数ではなく**「`入力項目:`の合計エントリ数（datagrid自身を含む）が3件以下だとdatagridが消える」**という、fields件数のしきい値に依存する決定論的な不具合と判明した（4件以上では発生しない。temperature=0・複数の異なるテーブルで100%再現）。既存のFew-Shot例（horse_info、検索ワード+検索条件選択+検索結果表示枠=datagrid込み4エントリ）がこの最小構成をカバーしておらず、モデルが「シンプルな入力フォーム」の型に引きずられてdatagridを取りこぼすことが原因とみられる。`ENG_FORM_DESIGN_SYS_PROMPT`に「`入力項目:`の各エントリは件数によらず必ず1つずつウィジェットとして出力すること（datagridも例外ではない）」という明記と、datagrid+個別2フィールドという最小構成のFew-Shot例（正しい例/誤った例）を追加して解消した。既存の正常系（5列テーブル・4フィールドの一覧画面）への回帰が無いことも実LLMで確認済み
-
-# AI生成システムプロンプトのトークン圧縮（ローカルLLMのコンテキスト圧迫対策）
-
-- **目的**: ローカルLLM（Qwen2.5等、context windowが小さいモデル）でもシステムプロンプトが安定して収まるよう、禁止事項・ルールの「意味」は変えずに冗長な言い回しだけを削る（2026-09-11実施）
-- **やらないこと**: SQLインジェクション対策・await必須などの安全性に直結する禁止文言そのものは削らない。front/back間の重複整理（保守性向上）は別種の作業であり、1回のリクエストで送られる文字数自体は変わらないため今回は対象外
-- **やったこと**: 各ルールに「Bad例」「Good例」を両方書いていた箇所を「Good例1本＋一言注意」に統合
-  - `ENG_YAML_TO_JS_SYS_PROMPT`（`prompt-def.js`）の`rule`（front/backそれぞれ）: front版 約10,637字→10,057字（約5.5%減）、back版 約7,082字→6,566字（約7.3%減）
-  - `ENG_TEXT_TO_YAML_SYS_PROMPT`（イベントYAMLドラフト生成、`prompt-def.js`）: 条件分岐・繰り返し記法の説明文を簡潔化し、フォーマット仕様のStep1/Step2重複行を`...`に統合。約2,747字→2,513字（約8.5%減）。ただし2026-09-11に追加したFew-Shot例3つ（if/else、ネスト確認ダイアログ、ループ）は実際にバグ修正した実績があるため削らずそのまま維持
-- **所感**: 対比例（Bad/Good）を削っても実際の削減幅は1〜2割程度にとどまる。安全上必須の説明文言自体はどのみち残るため、大幅圧縮（3割超）を狙うなら文言の言い換えではなく、動的コンテキスト（`allWidgetsCtx`/`tablesCtx`等、ユーザープロンプト側）の圧縮や、vjaUseJsInfo（必須API一覧）側の見直しが必要（未着手）
-
-# プロンプト定義の外部ファイル化（prompt-def.js → src/mainview/prompts/*.md）
-
-- **経緯**: `prompt-def.js`（AIプロンプト定義）が2259行まで肥大化し、長文の英語プロンプト本文（説明・ルール・Few-Shot例）とコンテキスト組み立てロジック（条件分岐・座標計算等）が混在して見通しが悪くなっていた。「文字列部分をファイルに外だしすれば、AIにとってもプロンプトの中身を把握しやすくなるのでは」というユーザー提案を受け、2026-09-21に全面対応した
-- **読み込み方式**: `vja-templates-loader.js`（HTMLテンプレートを起動時に同期XHRで読み込む既存の仕組み）と全く同じ設計を踏襲した。`prompt-def.js`に追加した`_loadPromptTpl(name)`が`prompts/*.md`を同期XHR（`XMLHttpRequest`, `async:false`）で読み込みキャッシュし、`_fillTpl(tpl, vars)`が`{{変数名}}`プレースホルダーを単純な文字列置換のみで埋める（条件分岐・計算等のロジックはテンプレート側に一切持たせない）。全プロンプト関数が同期呼び出し前提だったため、既存の呼び出し規約を一切変えずに済んだ。`electrobun.config.ts`の`build.copy`に`src/mainview/prompts`をディレクトリ単位で登録済み（`templates/`と同じ理由。webviewは`views://mainview/prompts/...`経由で配信されるため明示登録が必須）
-- **元のテンプレートリテラルに埋め込まれていた条件分岐・計算の扱い**: 例えば`ENG_FORM_DESIGN_SYS_PROMPT`のボタンx座標計算式（`${formW - 20 - 85}`等、Few-Shot例中に複数箇所）や、`ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`の`${systemModelHint ? ... : ""}`ブロックは、JS側で事前に計算・整形した上で単一の`{{プレースホルダー}}`として渡す方式に統一した
-- **対象外（意図的にファイル化しなかった箇所）**: `_program_rule`（4行×2言語の短い配列生成）、`ENG_YAML_TO_JS_USER_PROMPT`内の`eventTypeHintEn`計算・YAML本文/追加指示の条件分岐組み立て（1〜8行程度の断片）、`VJA_FRONT_API_OPTIONAL_LABELS`（UIのチェックボックス表示名オブジェクトで、AIへ送るプロンプト文言ではない）。これらは分量が少なく条件分岐・動的計算と密結合した「ロジック寄り」の断片であり、ファイル化してもテンプレート側にロジックを持ち込むだけで見通しの改善につながらないと判断した
-- **検証方法**: リファクタ前後で全プロンプト関数の出力が一字一句変わっていないことを保証するため、`global.window={}`のスタブ環境で新旧`prompt-def.js`を実行し、front/back・hint有無・空値等の代表的な引数パターン（32ケース）で出力を突き合わせるNode.js製の回帰ハーネスを作成して使用した（一時ファイルのためリポジトリには残していない。同種の大規模な文字列リファクタを今後行う際は、同じ手法＝「新旧を実際に実行して出力を突き合わせる」ことを推奨する）
-- **作業中に発見・修正した実装ミスの例**（今後同種の抽出作業をする際の注意点）:
-  1. テンプレートリテラル内でJSの文字列エスケープとして書かれていた`\"`/`` \` ``/`\${`を、そのまま.mdファイルへコピーしてしまい、出力に不要なバックスラッシュが混入する事故が複数回発生した。`.md`ファイルは生テキストとして読み込まれるため、抽出時に必ずアンエスケープすること
-  2. `return (\`...\`)`という「丸括弧で囲まれたテンプレートリテラル」を機械的な行範囲指定で切り出す際、「`return (\``」という行自体を本文に含めてしまうミスが1件発生した
-  3. 行番号ベースの機械的な境界検出（「次の`const`宣言の直前まで」等）が、プロンプト本文中に埋め込まれたJSコード例（例: `const startTime = new Date()...`という使用例）に反応して誤検出することがあった（`VJA_USE_BACK_JS_INFO`変換時に発生）。既知の次の宣言名を明示的な境界として使うなど、単純な正規表現に頼りすぎない工夫が必要
-  4. **一度目の変換作業で、対になっている定数の片方（`VJA_USE_BACK_JS_INFO_ENG`）だけ変換し、もう片方（`VJA_USE_BACK_JS_INFO`本体）を変換し忘れる単純な見落としが発生した**。作業完了を報告した後にユーザーから指摘されて発覚。同種の対になった定数（`_ENG`サフィックス等）がある場合は、片方だけで満足せず必ずペアの有無を確認すること
-- **最終確認**: 上記回帰ハーネスに加え、実機（`bun run mcp`）でも`testVerifyPromptIntegrity`等を実行し、リファクタ前と全く同じ`systemLen`/`userLen`が得られることを確認済み（Node上のスタブ検証だけでなく、実際のElectrobun webview上での同期XHR読み込みが正しく機能することも確認）
-
-# DBテーブルAI生成機能
-
-- **概要**: テーブル編集モーダル（`openTableEdit`）の「テーブル名」「説明」欄の下に依頼文入力欄＋「✨ AI生成」ボタンを配置。依頼文＋テーブル名/説明（入力済みなら）をAIへ渡し、カラム定義（name/type/notNull/pk/index/default）のJSON配列を生成、カラム一覧を置き換える
-- **実装**: `vja-table-validation.js` の `tblAiGenerateSchema()`。既にカラム定義がある場合は上書き確認。AI生成結果は`SQLITE_TYPES`（TEXT/INTEGER/REAL/BLOB/NULL）でサニタイズし、PKは1件のみに強制補正
-- **プロンプト定義**: `prompt-def.js` の `ENG_TABLE_SCHEMA_GEN_SYS_PROMPT` / `ENG_TABLE_SCHEMA_GEN_USER_PROMPT`
-
-# 検証（バリデーション）AI生成機能
-
-- **概要**: バリデーション編集モーダル（`openValidationEdit`）の「定義名」「説明」欄の下に依頼文入力欄＋「✨ AI生成」ボタンを配置。依頼文＋定義名/説明＋現在フォームの入力系ウィジェット名一覧（`inputtype`/`textarea`/`checkbox`/`radiobutton`/`selectBox`/`listbox`/`slider`）をAIへ渡し、ルール定義（対象ウィジェット名/type/not/arg1-3/message）のJSON配列を生成する
-- **実装**: `vja-table-validation.js` の `validAiGenerateRules()`。AIが返したウィジェット名は**現在フォームに実在するものだけ**採用し（存在しない名前は破棄）、typeも`VALIDATION_TYPES`に無ければ`required`へ補正
-- **プロンプト定義**: `prompt-def.js` の `ENG_VALIDATION_SCHEMA_GEN_SYS_PROMPT` / `ENG_VALIDATION_SCHEMA_GEN_USER_PROMPT`
-
-# ウィザードのシステムモデル定義（用語の参考ヒント）
-
-- **概要**: 新規プロジェクト作成ウィザードのステップ3「システムモデル」で、ユーザー自身が8パターンの「業務システムの骨格」から1つ選ぶ（または「わからない/スキップ」）。選ばれた骨格の詳細mdは`WIZARD_STATE.systemModelHint`に保持され、画面構成分解のAIプロンプトへ**用語・言い回しの参考としてのみ**渡される。画面数・テーブル割当はこのヒントに左右されず、コード側で機械的に確定する（`_wizardBuildScreenSkeleton()`。経緯は下記「ウィザードの現行設計と、そこに至った経緯」を参照）
-  - 当初（2026-08-30）はAIがQ&A内容から骨格を自動選択する方式だったが、「向いていないケース」の除外条件を無視して誤選択する事象が出たため、ユーザー選択制に変更した（下記「ウィザードの現行設計と、そこに至った経緯」を参照）
-- **データ配置**: `src/wizard-system-models/<id>.md`（詳細: 概要・テーブル構成の型・画面構成の骨格・AIが陥りやすい失敗）＋`src/wizard-system-models/<id>.summary.md`（要約: 「名称/想定システムタイプ例/向いているケース/向いていないケース」の4見出し固定）のペアで管理する
-  - `id`は英語kebab-case（例: `master-management`, `transaction-entry`）で、**ファイル名がそのままID**。一覧の集約は動的なディレクトリスキャンで組み立てるため、パターンの追加・削除はこのペアのファイルを置く/消すだけで完結し、別途「一覧管理ファイル」は存在しない
-  - 2026-08-30時点で8パターン用意済み: マスタ管理系/伝票・トランザクション登録系/在庫・数量推移管理系/予約・スケジュール管理系/申請・承認ワークフロー系/会員・対応履歴管理系/検索・照会・レポート系/設定・パラメータ管理系
-- **実行時の配置**: このディレクトリは`docs/`（人間向けドキュメント）とは別物で、VJA自身が実行時に読み込む必要があるデータのため`src/`配下に置いている。Electrobunは`electrobun.config.ts`の`build.copy`に明示登録したものしかdev/build時に`Resources/app/...`へコピーしないため（`WEBVIEW_RUNTIME_LIBS`と同じ制約）、`electrobun.config.ts`側で`src/wizard-system-models`をディレクトリ単位（`cpSync`の`recursive:true`）で登録済み。ディレクトリ単位登録のため、ペアファイルの追加・削除時に`electrobun.config.ts`の変更は不要
-  - コンパイル済みユーザーアプリには同梱しない（VJA自身のウィザード専用データのため、`copy-compile-assets.ts`の`COPY_BUILD_FILES`には含めていない）
-- **実装**:
-  - bun側: `src/bun/index.ts`の`_wizardSystemModelsDir()`（dev時は`process.cwd()`、パッケージ時は`BUILD_VJA_SRC_PATH`から解決）、RPC `wizardSystemModelSummariesRequest`（`*.summary.md`をファイル名昇順で列挙・読込）/`wizardSystemModelDetailRequest`（指定idの詳細md読込）
-  - webview側: `src/mainview/bridge.ts`の`window.vja.wizard.getSystemModelSummaries()`/`getSystemModelDetail(id)`
-  - ウィザード側: `src/mainview/vja-wizard.js`の`wizardShowSystemModelStep()`（ステップ3の表示）/`wizardPickSystemModel(id)`（選択確定。詳細mdを取得して`systemModelHint`へ保持）/`wizardSkipSystemModel()`（スキップ。ヒント無しで後続へ進む）。一覧取得失敗時もヒント無しで進む
-  - `WIZARD_STATE.systemModelHint`は`_wizardSaveProgress()`/`wizardResumeFromProgress()`にも組み込み済み（中断・再開時も保持される）
-- **プロンプト定義**: `prompt-def.js`の`ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`のみが`systemModelHint`を受け取り、「用語・言い回しの参考（Terminology Reference）」節として差し込む（骨格例のテーブル名・画面名・カラム名は出力に使わせない、と明記済み）。旧「AIによる骨格の自動選択用プロンプト」（`ENG_WIZARD_SYSTEM_MODEL_*`）とテーブル候補抽出へのヒント受け渡しは廃止済み
-- **未対応（スコープ外）**: カラム構成生成（`ENG_TABLE_SCHEMA_GEN_SYS_PROMPT`）には`systemModelHint`を渡していない。このプロンプトはウィザード専用ではなく「テーブル管理」の「✨ AI生成」機能と共有されているため、今回はスコープ外とした（テーブル構成の型もヒントに含めたい場合は共有プロンプトの改修が別途必要）
-
-# ウィザードの現行設計と、そこに至った経緯（2026-09-12〜14の要約）
-
-（各回の詳細な作業ログはgit履歴とコミットメッセージに残っている。ここには現行仕様と教訓のみを記す）
-
-## 現行の設計（6ステップ）
-1. 画面サイズ選択 → 2. アプリ概要（自由記述、AI不使用） → 3. システムモデル選択（ユーザーが8パターンから選択/スキップ。用語の参考のみ） → 4. テーブル管理（既存の`openTableManager()`をそのまま開き、ユーザーがテーブル・カラムを作成。`WIZARD_STATE._inTableStep`でヘッダーに「戻る/次へ」を追加表示） → 5. 画面構成 → 6. 生成
-- **画面構成の構造判断はコード側で確定する**（`_wizardBuildScreenSkeleton()`、`vja-wizard.js`）: 確定テーブル1つにつき「一覧画面＋入力画面」を1組。確定テーブルが2つ以上ある場合のみ、先頭に`kind:"menu"`の`MenuForm`スロットを追加（各テーブルの一覧画面へ遷移するボタンのみで構成。遷移コード自体は生成せず雛形止まり）。AIは各スロットの日本語文言（formTitle/description/docDraft）を埋めるだけ（`ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`）。生成後、確定スロットのformNameが全て含まれるかを`wizardDecomposeForms()`が機械的に検証し、欠落があれば失敗として再生成を促す
-- **Q&A履歴等の永続化**: `wizardConfirmAndGenerate()`完了時、`getProjectData().wizardHistory`（アプリ概要・テーブル候補・画面構成計画・画面サイズ・システムモデルヒント）を`.vjaproj`に保存する（「なぜこの画面構成になったか」を後から調査するため）
-
-## 経緯から得た教訓（同種の設計をする際に参照）
-- **AIに構造を自由に設計させ、長いルール文で誘導する方式は、ローカルLLMのモデル差で大きく揺れる**（2026-09-12〜13）。画面数の下限ルール文や過剰分割禁止ルール、骨格ヒント全文の差し込みでは、確定テーブルを1つも参照しない無関係な画面が生成される事象を防げなかった。vja本来の方針（1リクエスト＝狭い範囲のタスク）に戻し、構造決定をコードへ移して解決した
-- **プロンプト文言だけでは別モデルで再発する**。ルールは「文言の強化」ではなく、コード側の機械確定・機械検証を併用する（メモリ「プロンプト文言だけでは再発する」参照）
-- **AIに質問を発明させない**: 動的Q&A（`ENG_WIZARD_NEXT_QUESTION_SYS_PROMPT`）は「業務ロジックは聞くな」と明記しても、話題を使い切ると業務ロジックの質問を発明した。動的Q&A・AIによるテーブル候補抽出・AIによる骨格の自動選択は全て廃止し、ユーザー自身の入力/選択（アプリ概要・テーブル管理・システムモデル選択）に置き換えた
-- **AIによる骨格の自動選択は「向いていないケース」の除外条件を無視して誤選択した**（例: 伝票登録系の内容を「数量」「履歴」等の表面的なキーワードで在庫管理系に誤選択）。ユーザーは作りたいアプリの性質を把握しているため、ユーザー選択制にした
-- **後付けの増改築でウィザードの記述が矛盾しやすい**: ヘッダーコメントの通し番号（丸数字）は全廃しステップ名を直接書く。ステップを巻き戻す処理では`WIZARD_STATE.step`の更新漏れに注意（インジケーター表示がズレる実バグがあった）
-- **一覧画面のdatagrid欠落**: 一覧スロットのdocDraft本文に「一覧」という語が入らないと、後工程（`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`のdatagrid必須ルール）が発動しない。docDraftには必ず「一覧」を含める、一覧スロットには「新規登録」ボタン、入力スロットには「戻る」ボタンを含める、と`ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`に明記している。あわせて`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`に「一覧＋入力」「一覧オンリー」のFew-Shot例（正しい例/誤った例の対比）を追加した
-- **`layout_pattern`の同期漏れ**（AI/モデルの問題ではなかった）: `layout_pattern:`行の抽出・`formLayoutPattern`への反映は、UI手動操作版にしか実装されておらず、ウィザード版（`wizardGenerateFormYaml()`）は`{ yaml, layoutPatternId }`を返す形にし、`wizardConfirmAndGenerate()`のループ内でも`formLayoutPattern`を`formDesignDraft`等と同じパターンで同期するよう修正した。モデルのせいにする前に、実データ（生成結果）を確認すること
-- 実LLM(192.168.0.235)での検証は、8システムモデル全パターン・3テーブル構成で実施済み（欠落・実在しないカラムの混入なし）。実機（`bun run dev`）でのUI操作込みの全体再テストは、当時は未実施
-
-# AI雛形生成機能 総覧（2026-08-08時点でカバーする主要対象）
-
-vjaの中核コンセプトである「AIに雛形を作ってもらい、それを土台に人間が仕上げる」という導線が、アプリ開発に必要な主要な構成要素すべてに行き渡った状態（2026-08-08時点）。各詳細は本ファイル内の対応する節を参照。
-
-| 対象 | 機能名 | アクセス点 |
-|------|--------|-----------|
-| 画面（フォームレイアウト） | 画面デザインYAMLドラフト生成 | 「🤖 AIでフォーム設計」モーダルの`✨ YAMLドラフト`タブ |
-| イベント処理（YAML→JS） | イベントYAMLドラフト自動生成 + AI JSコード生成 | イベントYAMLエディタの`✨ YAMLドラフト`タブ |
-| DBテーブル定義 | テーブルスキーマAI生成 | テーブル編集モーダルの「✨ AI生成」 |
-| 検証（バリデーション）定義 | バリデーションルールAI生成 | バリデーション編集モーダルの「✨ AI生成」 |
-
-いずれも「依頼文（自由記述の日本語） + 既に入力済みの関連情報（名前・説明・対象ウィジェット等）」をAIへのコンテキストとして渡し、JSON/YAML形式の雛形を生成 → 人間が確認・調整、という同じ設計パターンに統一されている。
-
-- **AI接続設定のプリセット**: 「🤖 AI接続設定」モーダルの「💾 プリセット保存」で、AI接続設定（エンドポイント/モデル/APIキー等）を「📁 プロジェクト固有」（`.vjaproj`に同梱保存）または「🌐 プロジェクト共通」（`~/.vja-designer/ai-global-presets.json`、`loadAiGlobalPresetsRequest`/`saveAiGlobalPresetsRequest`経由、他プロジェクトからも選択可能）のどちらかに保存先を選んで保存できる。同名・同区分のプリセットへ保存すると上書き更新される
-- **無限ループ対策**: AI生成コードが自分自身と同じウィジェット・同じイベントを`vja.trigger.*`で再度発火させる「自己再発火」を、AI生成直後の検証（`_findSelfTriggerRecursion`、生成時にAIへ再生成を促す）と、実行時ランタイム（`src/bun/index.ts`の`_vjaRun`内の`_vjaRunningKeys`による再入検知、検知時はエラーで処理を中断）の二段構えで防止している
-
-# Mac（Apple Silicon）向けローカルLLM環境セットアップ支援（2026-09-24追加）
-
-- **概要**: `docs/localLlm/mac-mlx-lm-setup.md`に記載のmlx-lmセットアップ手順（Homebrew→pipx→mlx-lm導入、モデル選定、起動スクリプト作成）を対話式で自動化する`setup-mac-llm.sh`をプロジェクト直下に用意した。VJA本体のセットアップ用`setup-mac.sh`（Electrobun CLI署名破損対策）とは独立したスクリプトで、対象もvjaプロジェクト自体ではなく「Apple Silicon Mac上のローカルLLM実行環境」である
-- **設計上のポイント**:
-  - mlx-lmはpipx経由でグローバルインストールされ、モデルも`~/.cache/huggingface/`に保存されるため、vjaプロジェクトディレクトリとは独立した場所（デフォルト`~/vja-local-llm`、対話式で変更可）にセットアップする
-  - Homebrewは前提条件とし、自動インストールは行わない（未導入時はエラーで案内して終了）
-  - モデルは`Qwen2.5-Coder-7B-Instruct-4bit`固定（`docs/localLlm/mac-mlx-lm-setup.md`の「メモリ別おすすめモデル」のうち、実運用で安定して動くと確認済みの1択に絞った。ユーザー判断）
-  - `mlx_lm server`はフォアグラウンドでターミナルを1つ占有し続けるプロセスのため、フォアグラウンド起動用（`start-llm.sh`）とバックグラウンド起動用（`start-llm-bg.sh`、ログ・PIDファイル・停止方法付き）の両方を生成する
-  - 初回起動はモデルダウンロードで時間がかかるため、スクリプト自身はサーバーを自動起動しない（案内のみ行い、起動は任意のタイミングでユーザーが行う）
-- ドキュメント側（`docs/localLlm/mac-mlx-lm-setup.md`）にも、冒頭にこのスクリプトの案内を追加し、手動手順は「別モデルを使いたい場合」向けとして残した
-- 併せて、README.md内でリンク切れになっていた`docs/mac-mlx-lm-setup.md`/`docs/windows-foundry-local-setup.md`（実際は`docs/localLlm/`配下）を修正した
-
-# 既知の制約
-
-- **同梱bunを1.4.2へ上げており、Electrobun 1.18.1へのパッチ（`patches/electrobun@1.18.1.patch`）が必須**（2026-09-29）
-  - **経緯**: Electrobun 1.18.1が同梱するbunは1.3.13（`node_modules/electrobun/dist/api/shared/bun-version.ts`、`build.bunVersion`で上書き可能）。この1.3.13で、約88分稼働後に`Segmentation fault at address 0x10`（bunのクラッシュ）が1回発生したため、新しいbun（システムのbunは1.4.2）を試した。**このsegfaultが1.4.2で直るかは未検証**（再現手順も不明）。Electrobunの最新2.0.1は、Linuxの`bun run dev`が起動時に`SyntaxError`で落ちたため使えず、1.18.1に固定している（`package.json`は`"electrobun": "1.18.1"`の完全固定）
-  - **`bunVersion`を1.4.2にするだけでは壊れる**: bun 1.4系では`JSCallback`の`FFIType.cstring`引数が、1.3.x（ポインタ数値）と違い変換済みのJS文字列で渡される。Electrobunの`dist/api/bun/proc/native.ts`は`new CString(引数)`でポインタ前提のため`TypeError: ptr must be a number`になる。webview→bunのRPCは通常WebSocket経由（正常）だが、WebSocketが開く前の起動直後のメッセージは`postMessage`（`bunBridgePostmessageHandler`）へフォールバックするため、そこで失敗して捨てられる。実際に、起動時に呼ぶ`loadUiConfigRequest`（UI設定）と`loadAiGlobalPresetsRequest`（AI接続設定の「プロジェクト共通」プリセット）が読み込まれず、プリセット一覧が空になる不具合が出た（ユーザーが1.3.13に戻すと表示されることで確認）。ログには`Error converting strings`/`error sending message to bun`/`error in eventBridgeHandler`が出る
-  - **対応**: `native.ts`に`_cstr()`（文字列ならそのまま、ポインタなら`CString`で読む）を追加し、`JSCallback`内の`new CString(引数)`10箇所を置き換えた（1.3.13/1.4.2の両方で動く後方互換）。これを`bun patch`で`patches/electrobun@1.18.1.patch`へ永続化し、`package.json`の`patchedDependencies`に登録している
-  - **`compileProject`（vjaで作ったプロジェクトのコンパイル）にも同じ対応**: 生成する`package.json`でElectrobunを1.18.1に固定（以前は`latest`）、`patchedDependencies`とパッチファイル（`patches/`）を同梱、生成する`electrobun.config.ts`に`bunVersion`を指定する。バージョン・パッチ名は`src/bun/copy-compile-assets.ts`の`ELECTROBUN_PIN_VERSION`/`ELECTROBUN_BUN_VERSION`/`ELECTROBUN_PATCH_FILE`に集約し、vja本体の`electrobun.config.ts`と共有している。ビルド後のvjaが参照できるよう、パッチは`build.copy`で`Resources/app/patches/`へ同梱する
-  - **バージョン表示**: vja起動ログ・コンパイル済みアプリの起動ログ・「ファイル→バージョン情報」に、実行中のbun（`Bun.version`）と実際にインストールされたElectrobun（`electrobun/package.json`のimport）のバージョンを出す。想定外のbunで動いていないかの確認に使う
-  - **注意（運用）**:
-    - Electrobunのバージョンを上げるとパッチは当たらなくなる（ファイル名も`@1.18.1`固定）。新しいElectrobunがbun 1.4系に対応済みならパッチ不要、未対応なら作り直す。`bunVersion`を上げる場合も同様にJSCallbackの型変更に対応済みか確認すること
-    - `node_modules/electrobun`のファイルをその場で直接編集してはならない。bunのキャッシュ（`~/.bun/install/cache/electrobun@1.18.1@@@1`）とハードリンクされており、同じバージョンを使う他プロジェクト（`~/.vja-apps/VJAFormDesigner/dist/*/node_modules`等）のファイルまで書き換わる（実際に発生し、原本に戻して復旧した）。修正は`bun patch electrobun`→編集→`bun patch --commit 'node_modules/electrobun'`の手順で行う
-    - `bun.lock`はgit管理外
-  - 検証状況: vja本体（dev）は1.4.2で起動しエラー無し・`bun test`全件通過。1.3.13でも同様に動作。コンパイル先プロジェクトの同梱bunが1.4.2になることはユーザー実機で確認済み
-
-- **macOSで`bun run dev`が何も出力せず即終了する（Electrobun CLIバイナリの署名破損）**（2026-09-24、macOS 27.0で確認）: npm配布のElectrobun(v1.18.1)のCLIバイナリ（`node_modules/electrobun/bin/electrobun`）は、GitHubリリース物（`electrobun-cli-darwin-arm64.tar.gz`）自体のコード署名が壊れており（`codesign --verify`で`invalid signature`）、起動直後にOSからSIGKILL(exit 137)される。`bun run dev`側はこれを拾えずexit 0で終了するため原因が見えにくい。ad-hoc再署名（`codesign --force --sign -`）で起動できることを確認済み。Macでは`bun install`の代わりにプロジェクト直下の`setup-mac.sh`でセットアップする（bun install→CLIバイナリ未ダウンロードなら取得→`bin/`と`.cache/`の両方を再署名→起動確認）
-  - CLIバイナリはnpmパッケージに含まれず、`electrobun`コマンド初回実行時に`electrobun.cjs`が`bin/`・`.cache/`へダウンロードする（`bin/electrobun`が存在すれば再ダウンロードしない）。そのため`node_modules/electrobun`が入れ直された場合（再インストール・electrobunのバージョン変更等）は再署名が消えるので、`setup-mac.sh`を再実行すること
-  - `bun run dev`時に自動ダウンロードされるcoreバイナリ（`dist-macos-arm64/`のbun・launcher等）は署名が正常で、再署名不要であることを確認済み
-
-- **Linuxのアイコン対応は行わない方針**（2026-09-29決定）: Linuxはディストリビューション（デスクトップ環境）ごとにアイコンの設定方法が異なり（例: Linux Mintでは`.desktop`ファイルの`Icon=`指定）、vjaの主な利用者はWindows/Macと想定されるため、vja側では対応しない。Linuxでアイコンを付けたい利用者が自分で`.desktop`を標準位置（`~/.local/share/applications/`等）へ配置し、`Icon=`に絶対パスを指定すれば対応できる。以下は、その判断の根拠となった調査内容
-- **Linux開発実行時のタスクバーアイコンが反映されない**: `electrobun.config.ts`の`build.linux.icon`設定・アイコンファイルのコピー自体は正しく行われている（`Resources/appIcon.png`等に反映済み）ことを確認済み。しかしElectrobunが生成する`.desktop`ファイルの`Icon=`指定がファイル名のみ（絶対パスでない）であり、Linuxデスクトップ環境は`.desktop`ファイルが`~/.local/share/applications/`等の標準位置にインストールされ、アイコンもXDGアイコンテーマの検索パス上に見つかる場合のみタスクバー表示に反映する仕様。`bun run dev`（未インストールの開発実行）の`build/dev-linux-x64/`配下に生成される`.desktop`ではこの条件を満たさないため、タスクバーアイコンが変わらないのはVJA側の設定不備ではなくElectrobunのdev実行時の制約と推定される（未確認）。`bun run build`でパッケージング・インストールした状態、または別のLinuxデスクトップ環境で実際に変わるか要確認。
-
-- **Windowsで`.exe`へのアイコン埋め込みが失敗する（Electrobun本体のバグ）→ postBuildフックで回避済み**（2026-09-29、Windows実機でアイコン表示を確認済み）: Electrobun本体のCLI（`electrobun build`の実体は`node_modules/electrobun/.cache/electrobun`という**コンパイル済みバイナリ**）が`rcedit`モジュールを、ビルド元CIマシン上の絶対パス（`D:\a\electrobun\electrobun\package\node_modules\rcedit`）でrequireするようハードコードしているため、`build.win.icon`を指定しても`Failed to embed icon into launcher.exe: ResolveMessage: Cannot find module ...`となり埋め込まれない。CLIはコンパイル済みバイナリのため`bun patch`では直せない
-  - **回避策**: Electrobunの`scripts.postBuild`フック（アプリ本体の生成後・圧縮/パッケージング前に実行される）で`scripts/win-embed-icon.ts`を実行し、プロジェクトの`node_modules/rcedit`を直接呼んで`<ビルド先>/<アプリ名>/bin/`の`launcher.exe`/`bun.exe`へ`icon/vja.ico`を埋め込む。Windows以外では何もしない。失敗してもビルドは止めない（警告のみ）
-  - 適用先: vja本体（`electrobun.config.ts`の`scripts.postBuild`）と、`compileProject`が生成するプロジェクト（スクリプトと`icon/vja.ico`を生成先へ配置し、生成する`electrobun.config.ts`にも`scripts.postBuild`を記述）の両方。ビルド後のvjaから`compileProject`が参照できるよう、`electrobun.config.ts`の`build.copy`で`scripts/win-embed-icon.ts`と`icon/vja.ico`を`Resources/app/`へ同梱している
-  - `build.win.icon`（Electrobun本体のアイコン設定）は、壊れている処理を通らないよう引き続きコメントアウトのままにする（`electrobun.config.ts`・`compileProject`の生成config）。これらのコメントにある「Electrobun側修正後に復活させること」は、Electrobun本体が修正された場合に、フックを廃止して`build.win.icon`へ戻すという意味
-  - **Macは`build.mac.icons`（`icon/icon.iconset`）を有効化するだけで対応済み**（2026-09-29、Mac実機でアイコン表示を確認済み）: Electrobun本体がmacOS上のビルド時に`iconutil`で`.iconset`を`AppIcon.icns`へ変換して埋め込む（`rcedit`は使わないためWindowsのバグの影響を受けない）。vja本体（`electrobun.config.ts`）と`compileProject`の生成config（`icon/icon.iconset`も生成先へコピー）の両方で有効。`build.copy`で`icon/icon.iconset`を`Resources/app/`へ同梱している。Linuxからのクロスビルドでは`iconutil`が無く警告のみでアイコン無しになる
-  - Linuxのアイコンは対応しない方針（下記の「Linuxのアイコン対応は行わない方針」を参照）
-
-# 未対応・残課題(随時更新)
-
-- 【将来対応検討】ウィザードのシステムモデル定義（`src/wizard-system-models/`）を、カラム構成生成プロンプト（`ENG_TABLE_SCHEMA_GEN_SYS_PROMPT`、テーブル管理「✨ AI生成」と共有）にも反映したい場合、共有プロンプトの関数シグネチャ改修が必要。現状は未着手（詳細は「ウィザードのシステムモデル定義」節参照）
-- 【将来対応検討】生成コードの日本語解説機能: AIがイベント処理コードを生成した後、続けて「このコードは何をしているか」を日本語で解説させる。VBA経験者・初学者向けの学習導線（README記載の「登竜門」コンセプト）に直結する機能。まだ未着手・仕様未確定
-- 【将来対応検討】vjaランタイムAPIの拡充候補（優先度低・未着手）:
-  - 印刷・帳票機能（vja.io.print/printElementはwindow.print()呼び出しのみで、ページ設定・ヘッダーフッター・複数レコード帳票レイアウトが無い）
-  - グローバルホットキー登録（F5=保存等、画面全体のショートカット登録手段が無い。VB6のKeyPreview相当）
-  - クリップボードからdatagridへの直接貼り付け（Excel貼り付け的操作）
-  - 汎用モーダルダイアログ（alert/confirm以外の、入力付きプロンプトや子ウィンドウ）
-  - 外部プログラム起動（生成したPDFを既定アプリで開く等）
-  - バーコード/QR対応、画像サムネイル生成、ドラッグ&ドロップファイル入力
-    （QR生成用に `src/mainview/qrcode.js` を配置済み。実装時はこれを利用する。
-    文字数が多いとQRコードが生成されなくなるため、生成時は
-    `correctLevel: QRCode.CorrectLevel.L` を指定する必要がある）
-- 既存プロジェクトの後方互換性（旧検証:記法のマイグレーション）は「今は自分しか使っていない」との理由で対応見送り
-- AI生成プロンプトでは、「テーブル」はDBのテーブル（`vja.db.*`）のみを指し、datagridウィジェット側は「データグリッド」と書き分ける（2026-09-07対応済み）。ローカルLLMが同じ語から両者を混同し、意図しない実装（ウィジェット側を触るべき所でDB操作をする等）をしたため。新規にプロンプトを書く際も守ること
-
-# ファイル分割リファクタ（大きなファイルの切り出し）の教訓（2026-09-21、vja-yaml-editor.jsを4915行→968行、7ファイルへ分割した際の事故から）
-
-- **構成**: 分割後のファイルと役割は「ディレクトリ構成」表を参照。最もリスクの高い`vja-ai-gen-core.js`（AI生成の中核）は、リスクの低い箇所から順に切り出した最後に回した
-- **検証は「構文チェック」だけでは足りない**: 切り出し後は、必ず`global.window={}`を用意して`new Function('window', code)(window)`として実際に実行し、`ReferenceError`を検出すること。`Object.assign(window,{ 識別子 })`の識別子が、移動により存在しなくなっていても構文エラーにはならず、実行時の`ReferenceError`になる（実際に、移動済みの17関数名が旧ファイルのエクスポート一覧に残っていた）
-- **行番号ベースの機械的な切り出しをしたら、境界の前後を必ず目視確認する**（`sed -n`等）。境界が1行ずれ、関数の閉じ括弧`}`だけ、または説明コメントだけが旧ファイルに孤立して残る事故が実際に発生した。移動対象が非連続の複数ブロックに分断されている場合は、各ブロックの前後をRead+grepで確認してから切り出す
-- **cross-fileの`_`始まり関数呼び出しは機械的な集合演算で全数チェックする**: 「a.js内の`_`始まり関数呼び出し」∩「b.js内の`_`始まり関数定義」を取り、命名規約（`_`始まり=そのファイル内限定）に違反する呼び出しを洗い出す（実際に双方向で計13件、加えて後日3件を発見・修正）。他ファイルから呼ぶ関数は`_`を外し、両ファイルの`Object.assign(window,{...})`へ追加する
-- **対になった定数・関数の片方だけ移動/変換する見落とし**に注意（`_ENG`サフィックス等、ペアの有無を必ず確認する。プロンプト外部ファイル化でも実際に発生した）
-
-# AI生成フローのテスト基盤と、DOM読み取りタイミングの事故（2026-09-21）
-
-- **事故の概要**: `yamlAiGenerate`/`textToYamlGenerate`のテスト自動化リファクタで、`$("yaml-ta")`等のDOMを読む`buildGenPromptContext()`の呼び出しを、誤って`runAiGenerate()`が呼ぶ`showLoadingModal()`（`#modal-root`を丸ごとローディング表示へ差し替える）**より後**へ移してしまい、生成の瞬間にはYAMLエディタのDOMが既に無く、依頼内容（YAML本文）が丸ごとAIに渡らないまま文脈の無いコードが生成される回帰バグとなった。DOM非依存のテストハンドラ経由の検証だけに頼っていたため見落とした
-- **現状の対処**: `buildGenPromptContext()`に`domOverride`引数（`{yamlCur, addPrompt}`）を持たせ、`yamlAiGenerate`/`textToYamlGenerate`側が`showLoadingModal()`より**前**にYAML本文・追加指示を確保して`generateEventJs`/`generateTextToYaml`へ渡す
-- **教訓**: DOM読み取りを伴う関数をDOM非依存にリファクタする際は、「呼び出し元のどのタイミングでDOM状態が変化しうるか」を確認する。DOM非依存版のテストハンドラだけでは検出できないため、実際のボタン操作フロー（`showLoadingModal`を経由する経路）でも最低限の動作確認をする。また「AIが書いたコードをAIが書いたテストで確認する」と同じ盲点を共有した自己確認になりがちなので、単一の判定基準（生成が成功したか等）に頼らず、多角的に確認する
-- **再発防止用のテスト基盤**:
-  - `window.__vjaLastPrompt`（`vja-modal.js`の`runAiGenerate()`が設定）: 実際に送信された`systemPrompt`/`userPrompt`本文を常に記録する
-  - `window.__vjaTestAutoConfirm`（`vja-runtime.js`の`showVjaDialog`）: 確認ダイアログを自動テストで通過させ、`showLoadingModal()`を含む実際のボタン操作フロー全体を自動実行可能にする
-  - `testVerifyPromptIntegrity`（`bridge.ts`）: `yamlAiGenerate()`を実際に実行し、①保存済みYAML本文が実際のプロンプトに一字一句含まれるか、②現在のウィジェット名、③「利用テーブル:」の各テーブル名、④`### `セクション見出しの数、⑤userLenが保存済みYAML本文の文字数を下回っていないか、を1回で検証する。`testYamlAiGenerateFull`も同様
-  - **`testSetAutoConfirm`のパラメータ名は`{value:true}`が正**（`{confirm:true}`だと無音で無視され、`showConfirm()`が本物のダイアログで無期限に待機してハングする）。テスト用RPCハンドラを使う際は、`bridge.ts`側の実際の引数名を必ず確認する
-- **テスト題材・接続先は個人環境に依存させない**:
-  - 題材は個人のプロジェクトファイルを使わず、`mcp/fixtures/prompt-integrity-test.vjaproj.json`（リポジトリ同梱の固定フィクスチャ）を`testApplyProjectData`で読み込む。ウィジェット名`testSearchButton`/`testSearchInput`/`testSearchSelect`/`testResultGrid`、テーブル`test_items`、対象イベントは`testSearchButton`の`Click`（widget id=2）
-  - ローカルLLMの接続先（IPアドレス等）はCLAUDE.md・コード・コミットに書かない。`mcp/fixtures/test-llm.local.json`（`.gitignore`済み、各マシンにのみ置く）に`{"endpoint","model","temperature"}`を定義し、テスト時に読んで`testSetAiConfig`へ渡す。テンプレートは`mcp/fixtures/test-llm.local.json.example`。ファイルが無ければユーザーに接続先を確認し、推測で決め打ちしない

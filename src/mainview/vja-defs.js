@@ -665,7 +665,7 @@ const WIDGET_DEFS = {
         // previewは空のプレースホルダー枠のみを返し、実際の描画はafterRender
         // （renderWidget()から描画直後に呼ばれる）でQRCodeコンストラクタを使って行う。
         // 文字数超過でQRコードが生成できなくなる問題を避けるため、
-        // correctLevelは常にL固定とする（CLAUDE.md記載の既知の制約）。
+        // correctLevelは常にL固定とする（.claude/notes/remaining-issues.md記載の既知の制約）。
         preview: (p, base, vis) => render("wp-tpl-qrcode", { base, vis, bg: p.bg || "#ffffff" }),
         afterRender: (el, p) => {
             const box = el.querySelector(".qr-box");
