@@ -168,7 +168,7 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
   - `wid_evName`: イベント個別ルール
   - `tag_<tagName>`: ウィジェットタグ共有ルール（同一タグで2回以上類似エラーが修正された場合に自動昇格）
   - `global`: プロジェクト全体共通ルール（手動追加・ピン留め可能）
-- **プロンプト生成 (`_buildLearnedFixesCtx`)**: AIコード生成時、該当イベントの個別学習、タグ共通注意点、プロジェクト共通ルールを統合しプロンプトに自動挿入
+- **プロンプト生成 (`buildLearnedFixesCtx`)**: AIコード生成時、該当イベントの個別学習、タグ共通注意点、プロジェクト共通ルールを統合しプロンプトに自動挿入
 - **UI（学習ノウハウ管理）**: メニューバーの [表示] ➔ [学習ノウハウ…] (`openLearnedFixesModal`) から一覧確認・ピン留め（固定）・手動ルール追加・削除が可能
 - **テスト**: `src/mainview/learned-fixes.test.ts` でユニットテスト実装・検証済み
 
@@ -211,15 +211,15 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 
 # AI生成コードの機械的な後処理（await漏れ補完・JS整形）
 
-- **await漏れの自動補完**: `vja.app.showDialog`/`showConfirm`等、await必須のvja.*API呼び出しでawaitが抜けているケースを機械的に補完する。`_findMissingAwaits()`（`vja-yaml-editor.js`、ドキュメント`VJA_USE_FRONT_JS_INFO`/`VJA_USE_BACK_JS_INFO`から「await必須API集合」を自動抽出）と同一の判定基準で、`_fixMissingAwaits(code, isAppEvent)`がその場でawaitを挿入する。AI生成直後・自動修正リトライ・手動モック実行・手動修正依頼の全経路に組み込み済み（2026-09-07実装）
+- **await漏れの自動補完**: `vja.app.showDialog`/`showConfirm`等、await必須のvja.*API呼び出しでawaitが抜けているケースを機械的に補完する。`findMissingAwaits()`（`vja-ai-gen-core.js`、ドキュメント`VJA_USE_FRONT_JS_INFO`/`VJA_USE_BACK_JS_INFO`から「await必須API集合」を自動抽出）と同一の判定基準で、`fixMissingAwaits(code, isAppEvent)`がその場でawaitを挿入する。AI生成直後・自動修正リトライ・手動モック実行・手動修正依頼の全経路に組み込み済み（2026-09-07実装）
 - **JS整形（Prettier）**: ローカルLLM生成コードにありがちな「1行べた書き」「インデント幅の不揃い（2スペース等）」を、本物のJSフォーマッタ（Prettier）で整形する。正規表現ベースの機械的パッチでは構文木を正しく解釈できず事故りやすいため、Prettierをbun側にのみ依存追加（`package.json`）し、RPC（`formatJsRequest`、`src/shared/types.ts`にスキーマ定義）経由で整形結果を返す方式にした
-  - webview側の呼び出し口: `window.vja.editor.formatJs(code, indentSize)`（`bridge.ts`）。`vja-yaml-editor.js`の`formatJsCode(code)`がラップし、失敗時は整形前のコードをそのまま返す（整形はあくまで品質向上の後処理であり、検証フロー自体は止めない設計）
+  - webview側の呼び出し口: `window.vja.editor.formatJs(code, indentSize)`（`bridge.ts`）。`vja-ai-gen-core.js`の`formatJsCode(code)`がラップし、失敗時は整形前のコードをそのまま返す（整形はあくまで品質向上の後処理であり、検証フロー自体は止めない設計）
   - 適用タイミング: **AI生成時**（メイン生成・自動修正リトライ・手動修正依頼の各成功コールバック）と、**イベント保存時**（`saveYamlData`/`saveYaml`/`saveFormYaml`/`vja-app-config.js`の`saveAppEvent`、js-ta内容をPrettierで整形してから格納）。手動モック実行（`manualMockCheck`）単体では整形しない
   - インデント幅は`indentSize`引数で指定可能（デフォルト4）。Prettier本体は`copy-compile-assets.ts`の`COPY_BUILD_FILES`には含めない（VJA編集機能専用でコンパイル済みユーザーアプリには不要なため）
   - これに伴い、YAML→JS変換プロンプト（`ENG_YAML_TO_JS_SYS_PROMPT`）内にあった「インデント4スペース」「読みやすさのための改行」という生成時のコード整形指示は、最終的にPrettierで上書きされ無意味なため削除済み（2026-09-11）
   - テスト用API: `testFormatJs`/`vja_format_js`（`formatJsCode()`を直接呼び出し整形結果を確認できる）
-- **画面レイアウトJSONの計算式是正**: 画面デザイン自動生成（`ENG_FORM_DESIGN_SYS_PROMPT`）で、x/y/w/h座標にAIが計算式をそのまま出力してしまう問題（例: `"x": 768 - 20 - 85`）が、プロンプト文言の念押し強化だけでは別のローカルLLMで再発した（2026-09-08にqwen2.5-coder-7bで発生・修正、2026-09-13にdeepseek-coder-v2で再発）。`parseFormDesignJson()`（`vja-yaml-editor.js`）に`_fixArithmeticInFormDesignJson()`を追加し、JSON.parse前にx/y/w/hの値が数式（数字・空白・四則演算子・丸カッコのみ）であれば安全に評価し整数へ機械的に是正するようにした（文字が混ざる値は対象外）。プロンプト文言の強化を重ねる対症療法ではなく、コード側の機械的な後処理で恒久対応する方針とした
-- **画面デザインYAMLの参照テーブル欠落の機械的補完**（2026-09-20実装）: `ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`には「fieldsがテーブル由来ならtablesに含めるのは必須」という明記とFew-Shot例が既にあるが、依頼文がボタン動作の説明中心（例:「〜を入力する。『戻る』ボタンで一覧に戻り、『保存』ボタンで保存する」）だと、`参照テーブル:`セクション自体が丸ごと欠落する不具合が実LLM検証（qwen2.5-coder-7b、temperature=0固定でも3/3再現＝サンプリングの揺らぎではなく決定論的な不具合）で確認された。なお同じ検証で、一覧画面のdatagrid欠落も一度観測されたが、これはtemperature=0では再現しなかったため`aiConfig.temperature`未設定によるサンプリングの揺らぎと判断し、対応不要とした。`vja-yaml-editor.js`に`deriveMissingFormDesignTables(yamlText, allTables)`を追加し、「参照テーブル:」が完全に欠落している場合のみ、「入力項目:」の各フィールド名がテーブルの列名(name/labelJa)と一致するかで該当テーブルを機械的に補完するようにした（`_fixArithmeticInFormDesignJson()`と同じ「コード側の機械的安全網」方針）。列名が重複する複数テーブル（例: `sales_data`/`sales_history`が同じ列を共有）で誤って両方候補になるのを避けるため、「fields全件をカバーし、かつ余分な列が最も少ない（＝形が最も近い）テーブル」を優先するスコアリングにしている。UI手動操作版（`formDesignTextToYamlGenerate()`）・ウィザードDOM非依存版（`wizardGenerateFormYaml()`）の両方に適用済み。AIが既に`参照テーブル:`を1件でも出力しているケースには一切介入しない
+- **画面レイアウトJSONの計算式是正**: 画面デザイン自動生成（`ENG_FORM_DESIGN_SYS_PROMPT`）で、x/y/w/h座標にAIが計算式をそのまま出力してしまう問題（例: `"x": 768 - 20 - 85`）が、プロンプト文言の念押し強化だけでは別のローカルLLMで再発した（2026-09-08にqwen2.5-coder-7bで発生・修正、2026-09-13にdeepseek-coder-v2で再発）。`parseFormDesignJson()`（`vja-form-design-ai.js`）に`_fixArithmeticInFormDesignJson()`を追加し、JSON.parse前にx/y/w/hの値が数式（数字・空白・四則演算子・丸カッコのみ）であれば安全に評価し整数へ機械的に是正するようにした（文字が混ざる値は対象外）。プロンプト文言の強化を重ねる対症療法ではなく、コード側の機械的な後処理で恒久対応する方針とした
+- **画面デザインYAMLの参照テーブル欠落の機械的補完**（2026-09-20実装）: `ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`には「fieldsがテーブル由来ならtablesに含めるのは必須」という明記とFew-Shot例が既にあるが、依頼文がボタン動作の説明中心（例:「〜を入力する。『戻る』ボタンで一覧に戻り、『保存』ボタンで保存する」）だと、`参照テーブル:`セクション自体が丸ごと欠落する不具合が実LLM検証（qwen2.5-coder-7b、temperature=0固定でも3/3再現＝サンプリングの揺らぎではなく決定論的な不具合）で確認された。なお同じ検証で、一覧画面のdatagrid欠落も一度観測されたが、これはtemperature=0では再現しなかったため`aiConfig.temperature`未設定によるサンプリングの揺らぎと判断し、対応不要とした。`vja-form-design-ai.js`に`deriveMissingFormDesignTables(yamlText, allTables)`を追加し、「参照テーブル:」が完全に欠落している場合のみ、「入力項目:」の各フィールド名がテーブルの列名(name/labelJa)と一致するかで該当テーブルを機械的に補完するようにした（`_fixArithmeticInFormDesignJson()`と同じ「コード側の機械的安全網」方針）。列名が重複する複数テーブル（例: `sales_data`/`sales_history`が同じ列を共有）で誤って両方候補になるのを避けるため、「fields全件をカバーし、かつ余分な列が最も少ない（＝形が最も近い）テーブル」を優先するスコアリングにしている。UI手動操作版（`formDesignTextToYamlGenerate()`）・ウィザードDOM非依存版（`wizardGenerateFormYaml()`）の両方に適用済み。AIが既に`参照テーブル:`を1件でも出力しているケースには一切介入しない
 - **入力専用画面でのlayout_pattern誤選択（「編集」という語だけで表示エリアありパターンに反転する不具合）**（2026-09-20修正）: 同じ検証で、入力専用画面（表示・一覧要素なし）が誤って「表示エリアあり」のlayout_patternを選んでしまう事象も確認された。当初は温度依存の揺らぎと考えていたが、最小差分比較（他の条件をすべて揃え、docDraft文言だけを変える）で真因を特定した: 「〜を**入力する**。」は正しく「表示エリアなし」パターンを選ぶ一方、同じ文を「〜を**入力または編集する**。」に変えるだけで、temperature=0でも確定的に「表示エリアあり」パターンへ反転する。つまりモデルが「編集する」という言葉から「既存データを表示してから編集する＝表示エリアが要る」と連想してしまうことが原因で、サンプリングの揺らぎではなく決定論的な不具合だった。`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`の[Selection Guide]に「編集する/変更するという言葉があっても、実際に複数レコードを閲覧・検索する要素が無い限り表示エリアは不要」という明記と、正しい例/誤った例を対比させたFew-Shot Example 1bを追加して解消した（`prompt-def.js`）。既存の正常系（一覧+検索画面、actionsに「編集」を含むケース）への回帰が無いことも実LLMで確認済み
   - 検証用に、実LLM（ローカルLLM）へ実際に接続してAI接続設定（`aiConfig`のendpoint/model/temperature等）を差し替えるテスト用ハンドラ`_testSetAiConfig`/`testSetAiConfig`（`bridge.ts`/`src/bun/index.ts`）を追加した。既存の`_testSetAiMockQueue`（AI応答をモック化する方式）と異なり、こちらはモックを使わず実際のAI APIへ本当に接続して検証したい場合に使う
 - **画面レイアウト生成で「入力項目の合計件数が少ないとdatagridが消える」不具合**（2026-09-20修正）: 上記2件の修正後、他の依頼パターンでも最終確認を行ったところ、YAMLに`一覧: datagrid`が明記されているのに、レイアウト生成（`ENG_FORM_DESIGN_SYS_PROMPT`）の出力にdatagridウィジェットが1つも含まれないケースを発見した。最小差分比較で調べた結果、テーブル名や列数ではなく**「`入力項目:`の合計エントリ数（datagrid自身を含む）が3件以下だとdatagridが消える」**という、fields件数のしきい値に依存する決定論的な不具合と判明した（4件以上では発生しない。temperature=0・複数の異なるテーブルで100%再現）。既存のFew-Shot例（horse_info、検索ワード+検索条件選択+検索結果表示枠=datagrid込み4エントリ）がこの最小構成をカバーしておらず、モデルが「シンプルな入力フォーム」の型に引きずられてdatagridを取りこぼすことが原因とみられる。`ENG_FORM_DESIGN_SYS_PROMPT`に「`入力項目:`の各エントリは件数によらず必ず1つずつウィジェットとして出力すること（datagridも例外ではない）」という明記と、datagrid+個別2フィールドという最小構成のFew-Shot例（正しい例/誤った例）を追加して解消した。既存の正常系（5列テーブル・4フィールドの一覧画面）への回帰が無いことも実LLMで確認済み
@@ -259,10 +259,10 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 - **実装**: `vja-table-validation.js` の `validAiGenerateRules()`。AIが返したウィジェット名は**現在フォームに実在するものだけ**採用し（存在しない名前は破棄）、typeも`VALIDATION_TYPES`に無ければ`required`へ補正
 - **プロンプト定義**: `prompt-def.js` の `ENG_VALIDATION_SCHEMA_GEN_SYS_PROMPT` / `ENG_VALIDATION_SCHEMA_GEN_USER_PROMPT`
 
-# ウィザードのシステムモデル定義（AIヒント）（2026-08-30時点）
+# ウィザードのシステムモデル定義（用語の参考ヒント）
 
-- **概要**: 新規プロジェクト作成ウィザード（Q&A完了後）で、AIがヒアリング内容から最も近い「業務システムの骨格パターン」を1つ選び、その骨格をテーブル候補抽出・画面構成分解のAIプロンプトに文脈として差し込む機能。ユーザーには見えない「裏側の処理」として実装しており、専用のステップ画面・ステップインジケーターの番号増加は無い
-- **狙い**: ローカルLLMが「一覧・登録・編集・削除・詳細」を安易に別画面へ分割してしまう既知の悪癖を、骨格パターン側で明示的に矯正すること。個別業種にズバリ合わせた精密テンプレートではなく、「マスタ管理系」「伝票・トランザクション登録系」等の構造レベルの骨格を主軸にしている
+- **概要**: 新規プロジェクト作成ウィザードのステップ3「システムモデル」で、ユーザー自身が8パターンの「業務システムの骨格」から1つ選ぶ（または「わからない/スキップ」）。選ばれた骨格の詳細mdは`WIZARD_STATE.systemModelHint`に保持され、画面構成分解のAIプロンプトへ**用語・言い回しの参考としてのみ**渡される。画面数・テーブル割当はこのヒントに左右されず、コード側で機械的に確定する（`_wizardBuildScreenSkeleton()`。経緯は下記「ウィザードの現行設計と、そこに至った経緯」を参照）
+  - 当初（2026-08-30）はAIがQ&A内容から骨格を自動選択する方式だったが、「向いていないケース」の除外条件を無視して誤選択する事象が出たため、ユーザー選択制に変更した（下記「ウィザードの現行設計と、そこに至った経緯」を参照）
 - **データ配置**: `src/wizard-system-models/<id>.md`（詳細: 概要・テーブル構成の型・画面構成の骨格・AIが陥りやすい失敗）＋`src/wizard-system-models/<id>.summary.md`（要約: 「名称/想定システムタイプ例/向いているケース/向いていないケース」の4見出し固定）のペアで管理する
   - `id`は英語kebab-case（例: `master-management`, `transaction-entry`）で、**ファイル名がそのままID**。一覧の集約は動的なディレクトリスキャンで組み立てるため、パターンの追加・削除はこのペアのファイルを置く/消すだけで完結し、別途「一覧管理ファイル」は存在しない
   - 2026-08-30時点で8パターン用意済み: マスタ管理系/伝票・トランザクション登録系/在庫・数量推移管理系/予約・スケジュール管理系/申請・承認ワークフロー系/会員・対応履歴管理系/検索・照会・レポート系/設定・パラメータ管理系
@@ -271,82 +271,29 @@ vja（Visual JavaScript for AI） と言う 昔の VB6のようにフォーム�
 - **実装**:
   - bun側: `src/bun/index.ts`の`_wizardSystemModelsDir()`（dev時は`process.cwd()`、パッケージ時は`BUILD_VJA_SRC_PATH`から解決）、RPC `wizardSystemModelSummariesRequest`（`*.summary.md`をファイル名昇順で列挙・読込）/`wizardSystemModelDetailRequest`（指定idの詳細md読込）
   - webview側: `src/mainview/bridge.ts`の`window.vja.wizard.getSystemModelSummaries()`/`getSystemModelDetail(id)`
-  - ウィザード側: `src/mainview/vja-wizard.js`の`wizardSelectSystemModel()`（`wizardQaComplete()`から呼ばれる）。要約一覧を番号付きテキストに組み立て、AIに**番号のみ**で回答させ（ローカルLLMはID文字列を自由記述させると架空の名前を混ぜて出力する傾向があるため、既存の番号選択方式を踏襲）、選ばれたIDの詳細mdを`WIZARD_STATE.systemModelHint`に保持する。一覧取得失敗・AI応答のパース失敗/範囲外の場合は、他のウィザードAIステップと同様「フォールバック無し」でヒント無しのまま後続へ進む
+  - ウィザード側: `src/mainview/vja-wizard.js`の`wizardShowSystemModelStep()`（ステップ3の表示）/`wizardPickSystemModel(id)`（選択確定。詳細mdを取得して`systemModelHint`へ保持）/`wizardSkipSystemModel()`（スキップ。ヒント無しで後続へ進む）。一覧取得失敗時もヒント無しで進む
   - `WIZARD_STATE.systemModelHint`は`_wizardSaveProgress()`/`wizardResumeFromProgress()`にも組み込み済み（中断・再開時も保持される）
-- **プロンプト定義**: `prompt-def.js`の`ENG_WIZARD_SYSTEM_MODEL_SYS_PROMPT`/`ENG_WIZARD_SYSTEM_MODEL_USER_PROMPT`（選択用）。`ENG_WIZARD_TABLE_CANDIDATES_USER_PROMPT`と`ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`に`systemModelHint`引数を追加し、選ばれた骨格を「構造面の参考」として渡す（テーブル名等の具体値はあくまでQ&A履歴優先、と明記済み）
+- **プロンプト定義**: `prompt-def.js`の`ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`のみが`systemModelHint`を受け取り、「用語・言い回しの参考（Terminology Reference）」節として差し込む（骨格例のテーブル名・画面名・カラム名は出力に使わせない、と明記済み）。旧「AIによる骨格の自動選択用プロンプト」（`ENG_WIZARD_SYSTEM_MODEL_*`）とテーブル候補抽出へのヒント受け渡しは廃止済み
 - **未対応（スコープ外）**: カラム構成生成（`ENG_TABLE_SCHEMA_GEN_SYS_PROMPT`）には`systemModelHint`を渡していない。このプロンプトはウィザード専用ではなく「テーブル管理」の「✨ AI生成」機能と共有されているため、今回はスコープ外とした（テーブル構成の型もヒントに含めたい場合は共有プロンプトの改修が別途必要）
 
-# ウィザードの既知バグ修正（2026-09-12）
+# ウィザードの現行設計と、そこに至った経緯（2026-09-12〜14の要約）
 
-実プロジェクト（ローカルLLM: deepseek-coder-v2で「売上入力アプリ」を作成）で、以下2件の不具合が実際に発生し修正した。
+（各回の詳細な作業ログはgit履歴とコミットメッセージに残っている。ここには現行仕様と教訓のみを記す）
 
-- **画面数が最低限を下回る不具合**: 「売上管理」「商品マスター管理」の2構成それぞれに「一覧・新規登録・変更削除」を求めたが、実際には各構成につき入力画面1枚（計2画面）しか生成されず、一覧画面が両方とも存在せず、`sales_history`（売上履歴）テーブルもどの画面からも参照されなかった。
-  - 原因1: `ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`の「過剰分割を避けろ（詳細/編集/削除を1画面に統合しろ）」という指示と、Q&A回答「少なめ」が相まって、ローカルLLMが「一覧画面」自体や「関連テーブルの参照」ごと落としてしまった。→ 「管理単位ごとに一覧+入力の最低2画面は必須で、これ以上は統合しない」という下限ルールと、「確定済みテーブルは必ずどこかの画面から参照する」という念押しを追加して対応
-  - 原因2: 一覧要求がdocDraftに正しく残っていたケース（商品マスター管理）でも、`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`（画面デザインYAMLドラフト生成）側が`layout_pattern`は一覧向けを選びつつ、`fields`に`datagrid`を1件も含めず個別入力欄だけを生成していた。→ 「一覧への言及があれば`fields`に`datagrid`を1件含める」ことを明記して対応
-- **Q&Aの質問が後半になるほど画面構成・DB設計と無関係な話題（集計ロジックの実装方法等）に脱線する不具合**: `ENG_WIZARD_NEXT_QUESTION_SYS_PROMPT`の旧仕様は、「システム概要/主な機能/画面数の目安」の3項目が完了した後も「新しい話題」で質問を出し続けることを強制する一方、聞いてよい範囲（画面構成・DB設計に関する情報のみ）を一切制限していなかったため、話題を使い切ったAIが実装レベルの質問（集計方法など、本来は後工程のイベント処理で決めるべき内容）にまで踏み込んでいた。
-  - 対応: 質問ステージを「アプリの目的→データ入力の要否→必要なデータの種類→データ項目の詳細」の固定4段階に再構成し、「業務ロジック・計算方法・アルゴリズムは聞かない」という明示的なスコープ制限を追加。4段階が完了した後は、新規話題を発明せず確認質問1つに留めるよう変更した
-  - 2026-09-12追記: 当初は5段階目として「画面数の目安（少なめ/標準/多め）」も含めていたが、「画面数は下限ルール（管理単位ごとに一覧+入力の最低2画面）＋過剰分割禁止ルールという構造的な基準だけで決まるべきで、ユーザーの曖昧な目安に従わせると下限を割ったり逆に不要な画面を増やしたりする」という指摘を受け廃止。`ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`側の「目安があれば従う」という記述も合わせて削除した
-- **ウィザードのQ&A履歴の永続化**: `wizardConfirmAndGenerate()`完了時、従来は再開用の`wizardProgress`をそのまま`null`にしていたため、完了後は「なぜこの画面構成になったか」を後から調査する手段が無かった（今回の調査でも実プロジェクトファイルには手がかりが残っていなかった）。再開用フラグとは別に、Q&A履歴・テーブル候補・画面構成計画・画面サイズ・システムモデルヒントを`getProjectData().wizardHistory`として`.vjaproj`に永続保存するよう変更（`vja-modal.js`の`snapshot()`/`applyProjectData()`にも組み込み済み）
+## 現行の設計（6ステップ）
+1. 画面サイズ選択 → 2. アプリ概要（自由記述、AI不使用） → 3. システムモデル選択（ユーザーが8パターンから選択/スキップ。用語の参考のみ） → 4. テーブル管理（既存の`openTableManager()`をそのまま開き、ユーザーがテーブル・カラムを作成。`WIZARD_STATE._inTableStep`でヘッダーに「戻る/次へ」を追加表示） → 5. 画面構成 → 6. 生成
+- **画面構成の構造判断はコード側で確定する**（`_wizardBuildScreenSkeleton()`、`vja-wizard.js`）: 確定テーブル1つにつき「一覧画面＋入力画面」を1組。確定テーブルが2つ以上ある場合のみ、先頭に`kind:"menu"`の`MenuForm`スロットを追加（各テーブルの一覧画面へ遷移するボタンのみで構成。遷移コード自体は生成せず雛形止まり）。AIは各スロットの日本語文言（formTitle/description/docDraft）を埋めるだけ（`ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`）。生成後、確定スロットのformNameが全て含まれるかを`wizardDecomposeForms()`が機械的に検証し、欠落があれば失敗として再生成を促す
+- **Q&A履歴等の永続化**: `wizardConfirmAndGenerate()`完了時、`getProjectData().wizardHistory`（アプリ概要・テーブル候補・画面構成計画・画面サイズ・システムモデルヒント）を`.vjaproj`に保存する（「なぜこの画面構成になったか」を後から調査するため）
 
-## 続報（2026-09-13）: 同じ依頼文で再テストし判明した追加の不具合と対応
-
-`wizardHistory`永続化のおかげで、再テスト時の実際のAI応答ログ（bunの起動ログ）とQ&A履歴を突き合わせて原因を特定できた。
-
-- **システムモデル骨格の自動選択が明確な除外条件を無視して誤選択**: Q&A内容（伝票番号・商品コード・数量・金額の当日売上データ→締め処理で売上履歴へコピー＆クリア→CSV出力）は`inventory-tracking.summary.md`自身が明記する「向いていないケース: 1件ごとの取引金額・伝票としての完結性が重要な場合は伝票・トランザクション登録系へ」にそのまま合致するのに、温度0のローカルLLMは「数量」「履歴」等の表面的なキーワード一致で`在庫・数量推移管理系`を誤選択した。この誤った骨格が画面分解プロンプトに強く指示として渡り、確定済みテーブル（`sales_data`/`sales_history`）を一切参照しない、実態と無関係な2画面（品目一覧・入出庫登録）が生成される事態になった
-  - 対応: AIによる番号自動選択（`ENG_WIZARD_SYSTEM_MODEL_SYS_PROMPT`/`USER_PROMPT`、履歴に不明瞭な除外判断をAIに委ねる方式）を廃止し、ウィザードに新ステップ「システムモデル」（Q&Aとテーブル候補の間、全7ステップ構成に変更）を追加。8パターンをフラットな一覧（名称・想定システムタイプ例・向いているケースを抜粋表示）でユーザーに直接選ばせる方式に変更した（「わからない/スキップ」も選択可）。ユーザー自身は作りたいアプリの性質を把握しているため、AIに推測させるより確実という判断
-  - `vja-wizard.js`: `wizardShowSystemModelStep()`/`_wizardRenderSystemModelModal()`/`wizardPickSystemModel()`/`wizardSkipSystemModel()`を追加、`WIZARD_STEPS`に「システムモデル」を挿入し以降のステップ番号を全て1つ後ろへずらした。`templates/wizard.html`に`wz-tpl-sysmodel-item`/`wz-tpl-sysmodel-body`を追加
-- **Q&Aが全4段階完了後に最初の質問へ逆戻りする不具合**: 履歴が長くなった後半で、ローカルLLMが進行状況を見失い、既に`done:true`だったはずの段階を`done:false`で出力し直し、既出の質問をそのまま再出題する事例を実ログで確認した
-  - 対応: `_wizardMergeQaStatus()`で「一度`done:true`になったラベルは後戻りさせない」ようマージするガードを追加。また、AIが既出の質問文をそのまま繰り返した場合は履歴に積まず、トーストで通知して現在の質問のまま留める処理を`wizardQaFetchNext()`に追加した
-- **`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`のdatagrid必須ルールが弱いモデルには効かなかった**: 前回追加した文章によるルールだけでは、実際に一覧要求付きのdocDraftからdatagridが生成されなかった（再現ログで確認）。対応: 「一覧+入力」構成の具体的なFew-Shot例（正しい出力＝datagrid含む、誤った出力＝datagrid無し、の対比）を追加した
-- **ウィザード全体の後付け増改築による矛盾を洗い出して整理**: ファイル先頭のヘッダーコメントが「ウィザード本体は未実装」のまま古くなっていた（実際は7ステップ全て実装済み）。また各ステップの見出しに振っていた丸数字の通し番号（①②③…）が、機能追加のたびに振り直されず複数箇所で衝突していた（例: 「④画面サイズ選択」と「テーブル候補抽出（②③④）」が同じ数字を指す）。加えて、画面構成生成（ステップ6）が失敗してカラム確認（ステップ5）へ戻す際、`WIZARD_STATE.step`の更新漏れでステップインジケーターの表示がズレる実バグも見つかった。ヘッダーコメントを実態に合わせて書き直し、丸数字の通し番号は全廃してステップ名を直接書く形に統一、ステップ巻き戻し漏れも修正した
-
-## 続報2（2026-09-13）: 画面構成分解の「構造判断」自体をAIから剥がす設計変更
-
-上記の「システムモデル選択の手動化」対応後も、project2（`daily_sales`/`items`の2テーブル確定）で、ユーザーが手動選択した「在庫・数量推移管理系」ヒントの画面骨格例（品目一覧・入出庫登録）をAIがそのまま採用し、確定テーブルを一切参照しない無関係な2画面で打ち切られる事象を確認した。
-
-- **根本原因の再整理**: 個別のバグではなく、ウィザードが継ぎ足しを重ねる過程で「AIに画面構成を自由に設計させ、systemModelHint/Floor/Avoid-Over-Splittingという長大なルール文で誘導する」という、当初のvjaの方針（[LLM利用方針]「1イベント単位の細分化リクエストによりトークン消費が極小」＝狭い範囲でローカルLLMを使う）から外れた広い委任になっていたことが本質的な原因だった。広い委任はローカルLLMのモデル差で挙動が大きく揺れる（今回のようにヒント文言の具体例をそのまま採用してしまう等）。
-- **対応方針**: 「画面がいくつ必要か」「どのテーブルを使うか」という構造決定はAIの裁量から完全に外し、コード側（`_wizardBuildScreenSkeleton()`、`vja-wizard.js`）で「確定済みテーブル1つにつき、一覧画面+入力画面を1組」を機械的に確定する。AIの仕事は各スロットの日本語文言（formTitle/description/docDraft）を埋めることだけに縮小した（`ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`を全面改訂）。
-  - システムモデル選択（ステップ3、ユーザーが選択制で確定させた骨格）は、もう画面数・テーブル選定を左右しない。画面の言い回し・用語（例:「入出庫」という言葉遣い）の参考程度に格下げし、「その骨格の例に出てくるテーブル名・画面名を出力に使うな」と明記した
-  - 確定テーブルに紐づかない画面（ログイン画面等）は、Q&A履歴に明記されている場合のみ、固定スロットの後にAIが追加してよい
-  - テーブル候補抽出（ステップ4）からもsystemModelHintの受け渡しを撤去（Q&A履歴のみで判断する狭いタスクに戻した。ここにhintを混ぜる必然性が無く、混線の起点になり得たため）
-  - 生成後、確定スロットのformNameが結果に全て含まれているかを`wizardDecomposeForms()`側で機械的に検証し、欠落があれば失敗として再生成を促す（プロンプト文言だけに頼らない強制）
-- **実LLM(192.168.0.235)での検証**: project2相当のQ&A・確定テーブル(daily_sales/items)で、8システムモデルパターン全てを実際にローカルLLMへ投げて検証した。全パターンで確定テーブルそれぞれの一覧+入力4画面が生成され、欠落・実在しないカラムへの混入（現在庫・承認者・残高等）は無かった。ただし実機（`bun run dev`）でのUI操作込みの再テストはこの変更ではまだ行っていない
-
-## 続報3（2026-09-13）: 動的Q&A自体を廃止し、既存の「テーブル管理」を直接使う方式へ
-
-続報2の対応後も実プロジェクトで再テストしたところ、動的Q&A（`ENG_WIZARD_NEXT_QUESTION_SYS_PROMPT`）が「4段階完了後は新規話題を発明するな」「業務ロジック・処理手順は聞くな」という禁止文言を明記していたにもかかわらず、実際には話題を使い切ったAIが業務ロジックの質問（例:「伝票登録後、締め処理を行いますが、締め処理にはどのような手順が含まれていますか？」）を発明してしまう事象が実ログ（`project2.vjaproj`の`wizardHistory.qaHistory`）で確認された。また、ユーザーが登録したい別のデータ種別（例:「商品マスター」）が動的Q&Aの流れに乗らず抜け落ちる問題も指摘された。
-
-- **対応**: 「AIに質問自体を作らせる」という仕組みをやめ、ウィザードを以下の6ステップに再構成した。
-  1. 画面サイズ選択（変更なし）
-  2. **アプリ概要**（自由記述、AIは使わない。旧「Q&A」を置き換え）
-  3. システムモデル選択（変更なし。ただし旧ステップ3のまま、アプリ概要の直後に位置）
-  4. **テーブル管理**（vjaに既存の「テーブル管理」モーダル`openTableManager()`/`renderTableManagerModal()`をウィザードから直接開き、ユーザー自身がテーブル・カラムを作成する。カラムの「✨ AI生成」ボタンも既存のまま使える。旧「テーブル候補抽出（AI）」「カラム確認（AI生成）」の2ステップを置き換え）
-  5. 画面構成（続報2の機械的スケルトン確定はそのまま維持）
-  6. 生成（変更なし）
-  - `renderTableManagerModal()`（`vja-table-validation.js`）は`WIZARD_STATE._inTableStep`を見て、ヘッダーに「← 戻る/次へ →」ボタンを追加表示する（`renderListManagerModal()`に`extraHeaderBtn`オプションを追加）。add/edit/delete後の再描画でも毎回このチェックを通るため、常にボタンが表示され続ける
-  - `ENG_WIZARD_NEXT_QUESTION_SYS_PROMPT`/`ENG_WIZARD_TABLE_CANDIDATES_SYS_PROMPT`（旧テーブル候補抽出AI）は丸ごと廃止した
-- **副次対応（一覧画面のdatagrid欠落）**: 続報2で機械確定した「一覧画面」スロットのdocDraftに、実際には「一覧」という言葉が入らないケースがあり（`formTitle`には入るが`docDraft`本文には入らない）、後工程（`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`のdatagrid必須ルール）のトリガー条件を満たさず、結果的に一覧画面にdatagridウィジェットが1つも配置されない不具合が実データ（project2の実際の生成結果）で見つかった。`ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`側で「docDraft本文自体に一覧という語を含めよ」と明記し直したのに加え、`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`側にも「一覧はあるが登録/削除への言及が無い、一覧オンリー画面」向けのFew-Shot例を追加した（既存のFew-Shot例は「一覧+登録+削除が同一画面」のケースしかカバーしておらず、一覧単体画面では実LLM検証でdatagridが脱落することを確認した）
-- **実LLM(192.168.0.235)での検証**: project2相当のアプリ概要・確定テーブルで画面構成分解を再実行し、4画面（欠落なし）・docDraftへの「一覧」語の混入・後工程でのdatagrid生成を確認した
-- **未検証**: 実機（`bun run dev`）でのウィザード全体（UI操作込み）の再テストはこの変更ではまだ行っていない
-
-## 続報4（2026-09-13）: 「🖼 レイアウト」タブが常に「なし」になる不具合（AI/モデルの問題ではない）
-
-続報3の対応後、project2で実機（`bun run dev`）再テストしたところ、生成された全フォームで「🖼 レイアウト」タブの選択状態（`formLayoutPattern`）が常に空（なし）になっていた。ユーザーから「これはdeepseek-coder-v2の問題か」と問われたが、実データを確認した結果、AI生成結果自体には`layout_pattern: 5`等の値が正しく含まれており、モデルの問題ではなかった。
-
-- **原因**: `layout_pattern:`行をYAML本文から抜き出し`getProjectData().formLayoutPattern`へ反映する処理は、既存のUI手動操作版（`vja-yaml-editor.js`の`formDesignTextToYamlGenerate()`）にしか実装されておらず、ウィザード専用のDOM非依存版関数`_wizardGenerateFormYaml()`（`vja-wizard.js`）にはこの抽出処理が無かった（ウィザード実装当初からの単純な実装漏れ）。さらに`wizardConfirmAndGenerate()`のフォーム一括生成ループでも、`formDesignDraft`/`formDesignDocDraft`は各フォームへ同期させていたが`formLayoutPattern`だけ同期させる処理が漏れていた。
-- **対応**: `_wizardGenerateFormYaml()`の戻り値を`{ yaml, layoutPatternId }`に変更し、既存UI版と同じ`layout_pattern:`抽出ロジックを追加。`wizardConfirmAndGenerate()`のループ内・ループ後の同期処理にも`formLayoutPattern`を追加した（`formDesignDraft`/`formDesignDocDraft`と全く同じ同期パターン）。
-
-## 続報5（2026-09-14）: メニュー画面の自動生成（VB6アプリ的な導線の雛形）
-
-project2をウィザードで作成→YAMLドラフト見直し→画面生成→手直しして整えた結果をユーザーが「理想形」として提示。比較して判明した改善点のうち、まず「管理単位（テーブル）が複数ある場合の起点となるメニュー画面が無い」点に対応した（画面ごとのサイズ差別化・履歴系テーブルの「一覧+詳細閲覧」化は将来検討、今回は対象外）。
-
-- **対応**: `_wizardBuildScreenSkeleton()`（`vja-wizard.js`）で、確定テーブルが2つ以上ある場合、`kind: "menu"`の`MenuForm`スロットを先頭に機械的に追加する（1テーブルのみの場合はメニューを挟む意味が薄いため追加しない）。`ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`（`prompt-def.js`）に、
-  - 一覧スロットのdocDraftには必ず「新規登録」ボタンを含めること
-  - 入力スロットのdocDraftには必ず「戻る」ボタンを含めること
-  - `menu`スロットのdocDraftは入力欄・datagrid無しで、各テーブルの一覧画面と同じ日本語表記のボタンのみで構成すること（Few-Shot例で「正しい例（各画面名のボタン）」と「誤った例（新規登録/戻る/終了という汎用CRUD語で、実際にはどの画面にも遷移できない）」を対比提示。当初モデルは後者を出力しがちだったため追加）
-  という指示を追加した
-- ボタンクリック時の実際の画面遷移処理（イベントコード）自体はこのステップでは生成しない。あくまで雛形として遷移用ボタンウィジェットが配置されるところまでで、実装はイベント処理側で後から人間が行う前提（ユーザー自身「整形は人の手でやれば良い、雛形が欲しい」との方針）
-- 実LLM(192.168.0.235)で3テーブル構成（daily_receipts/sales_history/items）を検証。MenuFormが各テーブルの一覧画面へのボタン＋終了ボタンで正しく生成され、後工程のYAML化でもfields無し・tables無し・4アクションのみの画面として正しく変換されることを確認した
+## 経緯から得た教訓（同種の設計をする際に参照）
+- **AIに構造を自由に設計させ、長いルール文で誘導する方式は、ローカルLLMのモデル差で大きく揺れる**（2026-09-12〜13）。画面数の下限ルール文や過剰分割禁止ルール、骨格ヒント全文の差し込みでは、確定テーブルを1つも参照しない無関係な画面が生成される事象を防げなかった。vja本来の方針（1リクエスト＝狭い範囲のタスク）に戻し、構造決定をコードへ移して解決した
+- **プロンプト文言だけでは別モデルで再発する**。ルールは「文言の強化」ではなく、コード側の機械確定・機械検証を併用する（メモリ「プロンプト文言だけでは再発する」参照）
+- **AIに質問を発明させない**: 動的Q&A（`ENG_WIZARD_NEXT_QUESTION_SYS_PROMPT`）は「業務ロジックは聞くな」と明記しても、話題を使い切ると業務ロジックの質問を発明した。動的Q&A・AIによるテーブル候補抽出・AIによる骨格の自動選択は全て廃止し、ユーザー自身の入力/選択（アプリ概要・テーブル管理・システムモデル選択）に置き換えた
+- **AIによる骨格の自動選択は「向いていないケース」の除外条件を無視して誤選択した**（例: 伝票登録系の内容を「数量」「履歴」等の表面的なキーワードで在庫管理系に誤選択）。ユーザーは作りたいアプリの性質を把握しているため、ユーザー選択制にした
+- **後付けの増改築でウィザードの記述が矛盾しやすい**: ヘッダーコメントの通し番号（丸数字）は全廃しステップ名を直接書く。ステップを巻き戻す処理では`WIZARD_STATE.step`の更新漏れに注意（インジケーター表示がズレる実バグがあった）
+- **一覧画面のdatagrid欠落**: 一覧スロットのdocDraft本文に「一覧」という語が入らないと、後工程（`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`のdatagrid必須ルール）が発動しない。docDraftには必ず「一覧」を含める、一覧スロットには「新規登録」ボタン、入力スロットには「戻る」ボタンを含める、と`ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`に明記している。あわせて`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`に「一覧＋入力」「一覧オンリー」のFew-Shot例（正しい例/誤った例の対比）を追加した
+- **`layout_pattern`の同期漏れ**（AI/モデルの問題ではなかった）: `layout_pattern:`行の抽出・`formLayoutPattern`への反映は、UI手動操作版にしか実装されておらず、ウィザード版（`wizardGenerateFormYaml()`）は`{ yaml, layoutPatternId }`を返す形にし、`wizardConfirmAndGenerate()`のループ内でも`formLayoutPattern`を`formDesignDraft`等と同じパターンで同期するよう修正した。モデルのせいにする前に、実データ（生成結果）を確認すること
+- 実LLM(192.168.0.235)での検証は、8システムモデル全パターン・3テーブル構成で実施済み（欠落・実在しないカラムの混入なし）。実機（`bun run dev`）でのUI操作込みの全体再テストは、当時は未実施
 
 # AI雛形生成機能 総覧（2026-08-08時点でカバーする主要対象）
 
