@@ -12,6 +12,8 @@ const conf = {
         version: "unknown",
     },
     build: {
+        // 同梱bunのバージョン（Electrobun 1.18.1の既定は1.3.13）.
+        bunVersion: "1.4.2",
         // vjaのbun.jsメイン.
         bun: {
             entrypoint: "src/bun/index.ts",
