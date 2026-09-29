@@ -394,6 +394,7 @@ vjaの中核コンセプトである「AIに雛形を作ってもらい、それ
   - CLIバイナリはnpmパッケージに含まれず、`electrobun`コマンド初回実行時に`electrobun.cjs`が`bin/`・`.cache/`へダウンロードする（`bin/electrobun`が存在すれば再ダウンロードしない）。そのため`node_modules/electrobun`が入れ直された場合（再インストール・electrobunのバージョン変更等）は再署名が消えるので、`setup-mac.sh`を再実行すること
   - `bun run dev`時に自動ダウンロードされるcoreバイナリ（`dist-macos-arm64/`のbun・launcher等）は署名が正常で、再署名不要であることを確認済み
 
+- **Linuxのアイコン対応は行わない方針**（2026-09-29決定）: Linuxはディストリビューション（デスクトップ環境）ごとにアイコンの設定方法が異なり（例: Linux Mintでは`.desktop`ファイルの`Icon=`指定）、vjaの主な利用者はWindows/Macと想定されるため、vja側では対応しない。Linuxでアイコンを付けたい利用者が自分で`.desktop`を標準位置（`~/.local/share/applications/`等）へ配置し、`Icon=`に絶対パスを指定すれば対応できる。以下は、その判断の根拠となった調査内容
 - **Linux開発実行時のタスクバーアイコンが反映されない**: `electrobun.config.ts`の`build.linux.icon`設定・アイコンファイルのコピー自体は正しく行われている（`Resources/appIcon.png`等に反映済み）ことを確認済み。しかしElectrobunが生成する`.desktop`ファイルの`Icon=`指定がファイル名のみ（絶対パスでない）であり、Linuxデスクトップ環境は`.desktop`ファイルが`~/.local/share/applications/`等の標準位置にインストールされ、アイコンもXDGアイコンテーマの検索パス上に見つかる場合のみタスクバー表示に反映する仕様。`bun run dev`（未インストールの開発実行）の`build/dev-linux-x64/`配下に生成される`.desktop`ではこの条件を満たさないため、タスクバーアイコンが変わらないのはVJA側の設定不備ではなくElectrobunのdev実行時の制約と推定される（未確認）。`bun run build`でパッケージング・インストールした状態、または別のLinuxデスクトップ環境で実際に変わるか要確認。
 
 - **Windowsで`.exe`へのアイコン埋め込みが失敗する（Electrobun本体のバグ）→ postBuildフックで回避済み**（2026-09-29、Windows実機でアイコン表示を確認済み）: Electrobun本体のCLI（`electrobun build`の実体は`node_modules/electrobun/.cache/electrobun`という**コンパイル済みバイナリ**）が`rcedit`モジュールを、ビルド元CIマシン上の絶対パス（`D:\a\electrobun\electrobun\package\node_modules\rcedit`）でrequireするようハードコードしているため、`build.win.icon`を指定しても`Failed to embed icon into launcher.exe: ResolveMessage: Cannot find module ...`となり埋め込まれない。CLIはコンパイル済みバイナリのため`bun patch`では直せない
@@ -401,7 +402,7 @@ vjaの中核コンセプトである「AIに雛形を作ってもらい、それ
   - 適用先: vja本体（`electrobun.config.ts`の`scripts.postBuild`）と、`compileProject`が生成するプロジェクト（スクリプトと`icon/vja.ico`を生成先へ配置し、生成する`electrobun.config.ts`にも`scripts.postBuild`を記述）の両方。ビルド後のvjaから`compileProject`が参照できるよう、`electrobun.config.ts`の`build.copy`で`scripts/win-embed-icon.ts`と`icon/vja.ico`を`Resources/app/`へ同梱している
   - `build.win.icon`（Electrobun本体のアイコン設定）は、壊れている処理を通らないよう引き続きコメントアウトのままにする（`electrobun.config.ts`・`compileProject`の生成config）。これらのコメントにある「Electrobun側修正後に復活させること」は、Electrobun本体が修正された場合に、フックを廃止して`build.win.icon`へ戻すという意味
   - **Macは`build.mac.icons`（`icon/icon.iconset`）を有効化するだけで対応済み**（2026-09-29、Mac実機でアイコン表示を確認済み）: Electrobun本体がmacOS上のビルド時に`iconutil`で`.iconset`を`AppIcon.icns`へ変換して埋め込む（`rcedit`は使わないためWindowsのバグの影響を受けない）。vja本体（`electrobun.config.ts`）と`compileProject`の生成config（`icon/icon.iconset`も生成先へコピー）の両方で有効。`build.copy`で`icon/icon.iconset`を`Resources/app/`へ同梱している。Linuxからのクロスビルドでは`iconutil`が無く警告のみでアイコン無しになる
-  - Linuxのアイコンはこの対応の対象外（下記の別項目を参照）
+  - Linuxのアイコンは対応しない方針（下記の「Linuxのアイコン対応は行わない方針」を参照）
 
 # 未対応・残課題(随時更新)
 
