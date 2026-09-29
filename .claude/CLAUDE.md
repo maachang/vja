@@ -384,12 +384,11 @@ vjaの中核コンセプトである「AIに雛形を作ってもらい、それ
 
 - **Linux開発実行時のタスクバーアイコンが反映されない**: `electrobun.config.ts`の`build.linux.icon`設定・アイコンファイルのコピー自体は正しく行われている（`Resources/appIcon.png`等に反映済み）ことを確認済み。しかしElectrobunが生成する`.desktop`ファイルの`Icon=`指定がファイル名のみ（絶対パスでない）であり、Linuxデスクトップ環境は`.desktop`ファイルが`~/.local/share/applications/`等の標準位置にインストールされ、アイコンもXDGアイコンテーマの検索パス上に見つかる場合のみタスクバー表示に反映する仕様。`bun run dev`（未インストールの開発実行）の`build/dev-linux-x64/`配下に生成される`.desktop`ではこの条件を満たさないため、タスクバーアイコンが変わらないのはVJA側の設定不備ではなくElectrobunのdev実行時の制約と推定される（未確認）。`bun run build`でパッケージング・インストールした状態、または別のLinuxデスクトップ環境で実際に変わるか要確認。
 
-- **Windowsで`.exe`へのアイコン埋め込みが失敗する（Electrobun本体のバグ）**: `bun run dev`実行時、以下の警告が出てアイコンが`launcher.exe`/`bun.exe`に埋め込まれない。
-  ```
-  Warning: Failed to embed icon into launcher.exe: ResolveMessage: Cannot find module
-  'D:\a\electrobun\electrobun\package\node_modules\rcedit\package.json' from 'B:\~BUN\root\electrobun'
-  ```
-  原因はVJA側の設定ではなく、npm配布されているElectrobun本体（CLIバンドル）が`rcedit`モジュールを、Electrobun本体をビルドしたCIマシン上の絶対パス（`D:\a\electrobun\electrobun\package\node_modules\rcedit`）でrequireするようハードコードしてしまっているバグ。どの環境でインストールしてもこのパスは存在せず解決できない。VJA側での修正は不可能なため、Electrobun側の修正（バージョンアップ）待ち。自前でのワークアラウンド（`rcedit`を後処理で直接呼んで埋め込む等）は今回あえて対応しない。
+- **Windowsで`.exe`へのアイコン埋め込みが失敗する（Electrobun本体のバグ）→ postBuildフックで回避済み**（2026-09-29、Windows実機でアイコン表示を確認済み）: Electrobun本体のCLI（`electrobun build`の実体は`node_modules/electrobun/.cache/electrobun`という**コンパイル済みバイナリ**）が`rcedit`モジュールを、ビルド元CIマシン上の絶対パス（`D:\a\electrobun\electrobun\package\node_modules\rcedit`）でrequireするようハードコードしているため、`build.win.icon`を指定しても`Failed to embed icon into launcher.exe: ResolveMessage: Cannot find module ...`となり埋め込まれない。CLIはコンパイル済みバイナリのため`bun patch`では直せない
+  - **回避策**: Electrobunの`scripts.postBuild`フック（アプリ本体の生成後・圧縮/パッケージング前に実行される）で`scripts/win-embed-icon.ts`を実行し、プロジェクトの`node_modules/rcedit`を直接呼んで`<ビルド先>/<アプリ名>/bin/`の`launcher.exe`/`bun.exe`へ`icon/vja.ico`を埋め込む。Windows以外では何もしない。失敗してもビルドは止めない（警告のみ）
+  - 適用先: vja本体（`electrobun.config.ts`の`scripts.postBuild`）と、`compileProject`が生成するプロジェクト（スクリプトと`icon/vja.ico`を生成先へ配置し、生成する`electrobun.config.ts`にも`scripts.postBuild`を記述）の両方。ビルド後のvjaから`compileProject`が参照できるよう、`electrobun.config.ts`の`build.copy`で`scripts/win-embed-icon.ts`と`icon/vja.ico`を`Resources/app/`へ同梱している
+  - `build.win.icon`（Electrobun本体のアイコン設定）は、壊れている処理を通らないよう引き続きコメントアウトのままにする（`electrobun.config.ts`・`compileProject`の生成config）。これらのコメントにある「Electrobun側修正後に復活させること」は、Electrobun本体が修正された場合に、フックを廃止して`build.win.icon`へ戻すという意味
+  - Linux/Macのアイコンについてはこの対応の対象外
 
 # 未対応・残課題(随時更新)
 
