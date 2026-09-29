@@ -30,12 +30,14 @@ const conf = {
             },
         },
         // アイコン設定.
+        // Mac: Electrobun本体が.iconsetを.icnsへ変換して埋め込む（macOS上のビルド時のみ。iconutil使用）.
         // NOTE: WindowsでElectrobun本体側のバグ（rcedit解決失敗）によりアイコン埋め込みが
-        // 機能しないため、一旦全OS分をコメントアウトして無効化している。
+        // 機能しないため、win/linuxはコメントアウトして無効化している（Windowsはpostビルドフック
+        // scripts/win-embed-icon.tsで回避済み）。
         // 詳細は .claude/CLAUDE.md の「既知の制約」を参照。Electrobun側修正後に復活させること。
-        // mac: {
-        //     icons: "icon/icon.iconset",
-        // },
+        mac: {
+            icons: "icon/icon.iconset",
+        },
         // win: {
         //     icon: "icon/vja.ico",
         // },
@@ -77,6 +79,7 @@ if (process.argv.includes("build") || process.argv.includes("dev")) {
     // Resources/app/ へ同梱する（compileProject()が参照）。
     target[join("scripts", "win-embed-icon.ts")] = join("scripts", "win-embed-icon.ts");
     target[join("icon", "vja.ico")] = join("icon", "vja.ico");
+    target[join("icon", "icon.iconset")] = join("icon", "icon.iconset");
     // VJAデザイナー本体（vja-templates-loader.js）が起動時に同期XHRで読み込む
     // HTMLテンプレート定義。index.htmlのentrypointビルドでは<script src>のような
     // 静的参照ではないため自動検出されず、明示的にコピー対象へ加える必要がある。

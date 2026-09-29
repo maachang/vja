@@ -13,6 +13,7 @@ import {
     mkdirSync,
     rmSync,
     copyFileSync,
+    cpSync,
 } from "fs";
 import { Database } from "bun:sqlite";
 import * as prettier from "prettier";
@@ -941,6 +942,8 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
         copyFileSync(join(vjaRoot, "scripts", "win-embed-icon.ts"), join(distPath, "scripts", "win-embed-icon.ts"));
         mkdirSync(join(distPath, "icon"), { recursive: true });
         copyFileSync(join(vjaRoot, "icon", "vja.ico"), join(distPath, "icon", "vja.ico"));
+        // Mac向けアイコン(.iconset。生成するelectrobun.config.tsのmac.iconsが参照する).
+        cpSync(join(vjaRoot, "icon", "icon.iconset"), join(distPath, "icon", "icon.iconset"), { recursive: true });
         mkdirSync(join(distPath, "patches"), { recursive: true });
         copyFileSync(join(vjaRoot, "patches", ELECTROBUN_PATCH_FILE), join(distPath, "patches", ELECTROBUN_PATCH_FILE));
         await Bun.write(join(distPath, "package.json"), packageJson);
@@ -968,12 +971,14 @@ export default {
             },
         },
         // アイコン設定.
+        // Mac: Electrobun本体が.iconsetを.icnsへ変換して埋め込む（macOS上のビルド時のみ。iconutil使用）.
         // NOTE: WindowsでElectrobun本体側のバグ（rcedit解決失敗）によりアイコン埋め込みが
-        // 機能しないため、一旦コメントアウトして無効化している。
+        // 機能しないため、win/linuxはコメントアウトして無効化している（Windowsはpostビルドフック
+        // scripts/win-embed-icon.tsで回避済み）。
         // 詳細は .claude/CLAUDE.md の「既知の制約」を参照。Electrobun側修正後に復活させること。
-        // mac: {
-        //     icons: "icon/icon.iconset",
-        // },
+        mac: {
+            icons: "icon/icon.iconset",
+        },
         // win: {
         //     icon: "icon/vja.ico",
         // },
