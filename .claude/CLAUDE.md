@@ -378,6 +378,18 @@ vjaの中核コンセプトである「AIに雛形を作ってもらい、それ
 
 # 既知の制約
 
+- **同梱bunを1.4.2へ上げており、Electrobun 1.18.1へのパッチ（`patches/electrobun@1.18.1.patch`）が必須**（2026-09-29）
+  - **経緯**: Electrobun 1.18.1が同梱するbunは1.3.13（`node_modules/electrobun/dist/api/shared/bun-version.ts`、`build.bunVersion`で上書き可能）。この1.3.13で、約88分稼働後に`Segmentation fault at address 0x10`（bunのクラッシュ）が1回発生したため、新しいbun（システムのbunは1.4.2）を試した。**このsegfaultが1.4.2で直るかは未検証**（再現手順も不明）。Electrobunの最新2.0.1は、Linuxの`bun run dev`が起動時に`SyntaxError`で落ちたため使えず、1.18.1に固定している（`package.json`は`"electrobun": "1.18.1"`の完全固定）
+  - **`bunVersion`を1.4.2にするだけでは壊れる**: bun 1.4系では`JSCallback`の`FFIType.cstring`引数が、1.3.x（ポインタ数値）と違い変換済みのJS文字列で渡される。Electrobunの`dist/api/bun/proc/native.ts`は`new CString(引数)`でポインタ前提のため`TypeError: ptr must be a number`になる。webview→bunのRPCは通常WebSocket経由（正常）だが、WebSocketが開く前の起動直後のメッセージは`postMessage`（`bunBridgePostmessageHandler`）へフォールバックするため、そこで失敗して捨てられる。実際に、起動時に呼ぶ`loadUiConfigRequest`（UI設定）と`loadAiGlobalPresetsRequest`（AI接続設定の「プロジェクト共通」プリセット）が読み込まれず、プリセット一覧が空になる不具合が出た（ユーザーが1.3.13に戻すと表示されることで確認）。ログには`Error converting strings`/`error sending message to bun`/`error in eventBridgeHandler`が出る
+  - **対応**: `native.ts`に`_cstr()`（文字列ならそのまま、ポインタなら`CString`で読む）を追加し、`JSCallback`内の`new CString(引数)`10箇所を置き換えた（1.3.13/1.4.2の両方で動く後方互換）。これを`bun patch`で`patches/electrobun@1.18.1.patch`へ永続化し、`package.json`の`patchedDependencies`に登録している
+  - **`compileProject`（vjaで作ったプロジェクトのコンパイル）にも同じ対応**: 生成する`package.json`でElectrobunを1.18.1に固定（以前は`latest`）、`patchedDependencies`とパッチファイル（`patches/`）を同梱、生成する`electrobun.config.ts`に`bunVersion`を指定する。バージョン・パッチ名は`src/bun/copy-compile-assets.ts`の`ELECTROBUN_PIN_VERSION`/`ELECTROBUN_BUN_VERSION`/`ELECTROBUN_PATCH_FILE`に集約し、vja本体の`electrobun.config.ts`と共有している。ビルド後のvjaが参照できるよう、パッチは`build.copy`で`Resources/app/patches/`へ同梱する
+  - **バージョン表示**: vja起動ログ・コンパイル済みアプリの起動ログ・「ファイル→バージョン情報」に、実行中のbun（`Bun.version`）と実際にインストールされたElectrobun（`electrobun/package.json`のimport）のバージョンを出す。想定外のbunで動いていないかの確認に使う
+  - **注意（運用）**:
+    - Electrobunのバージョンを上げるとパッチは当たらなくなる（ファイル名も`@1.18.1`固定）。新しいElectrobunがbun 1.4系に対応済みならパッチ不要、未対応なら作り直す。`bunVersion`を上げる場合も同様にJSCallbackの型変更に対応済みか確認すること
+    - `node_modules/electrobun`のファイルをその場で直接編集してはならない。bunのキャッシュ（`~/.bun/install/cache/electrobun@1.18.1@@@1`）とハードリンクされており、同じバージョンを使う他プロジェクト（`~/.vja-apps/VJAFormDesigner/dist/*/node_modules`等）のファイルまで書き換わる（実際に発生し、原本に戻して復旧した）。修正は`bun patch electrobun`→編集→`bun patch --commit 'node_modules/electrobun'`の手順で行う
+    - `bun.lock`はgit管理外
+  - 検証状況: vja本体（dev）は1.4.2で起動しエラー無し・`bun test`全件通過。1.3.13でも同様に動作。コンパイル先プロジェクトの同梱bunが1.4.2になることはユーザー実機で確認済み
+
 - **macOSで`bun run dev`が何も出力せず即終了する（Electrobun CLIバイナリの署名破損）**（2026-09-24、macOS 27.0で確認）: npm配布のElectrobun(v1.18.1)のCLIバイナリ（`node_modules/electrobun/bin/electrobun`）は、GitHubリリース物（`electrobun-cli-darwin-arm64.tar.gz`）自体のコード署名が壊れており（`codesign --verify`で`invalid signature`）、起動直後にOSからSIGKILL(exit 137)される。`bun run dev`側はこれを拾えずexit 0で終了するため原因が見えにくい。ad-hoc再署名（`codesign --force --sign -`）で起動できることを確認済み。Macでは`bun install`の代わりにプロジェクト直下の`setup-mac.sh`でセットアップする（bun install→CLIバイナリ未ダウンロードなら取得→`bin/`と`.cache/`の両方を再署名→起動確認）
   - CLIバイナリはnpmパッケージに含まれず、`electrobun`コマンド初回実行時に`electrobun.cjs`が`bin/`・`.cache/`へダウンロードする（`bin/electrobun`が存在すれば再ダウンロードしない）。そのため`node_modules/electrobun`が入れ直された場合（再インストール・electrobunのバージョン変更等）は再署名が消えるので、`setup-mac.sh`を再実行すること
   - `bun run dev`時に自動ダウンロードされるcoreバイナリ（`dist-macos-arm64/`のbun・launcher等）は署名が正常で、再署名不要であることを確認済み
