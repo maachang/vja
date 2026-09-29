@@ -5,6 +5,8 @@
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { initLogger } from "./logger";
+// 実際にインストール(ビルド)されているElectrobunのバージョンを取得する（ビルド時にバンドルされる）.
+import electrobunPkg from "electrobun/package.json";
 import {
     setProjectData, setFormHtmlPathResolver, getProjectFormPath,
     openProjectWindow, _VJA_PASSPHRASE, setVjaProject, _decrypt,
@@ -12,7 +14,7 @@ import {
 } from "./project-runner";
 
 // 一旦コンソール出力.
-process.stdout.write("### run standalone-index.ts\n");
+process.stdout.write("### run standalone-index.ts [bun v" + Bun.version + ", electrobun v" + electrobunPkg.version + "]\n");
 // プロジェクト実行セット.
 setVjaProject(true);
 

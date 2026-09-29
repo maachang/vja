@@ -20,6 +20,14 @@ export const WEBVIEW_RUNTIME_LIBS: string[] = [
     "marked.umd.js",
 ];
 
+// Electrobunのバージョン固定・同梱bunのバージョン・bun 1.4系対応パッチの定義.
+// vja本体(electrobun.config.ts)と、vjaで作ったプロジェクトのコンパイル(index.tsのcompileProject)の
+// 両方で使う。Electrobunを上げる時は、ここと patches/ 配下のパッチファイル名・package.jsonの
+// patchedDependenciesをあわせて更新すること(パッチ内容: bun 1.4系のJSCallback cstring引数対応)。
+export const ELECTROBUN_PIN_VERSION = "1.18.1";
+export const ELECTROBUN_BUN_VERSION = "1.4.2";
+export const ELECTROBUN_PATCH_FILE = `electrobun@${ELECTROBUN_PIN_VERSION}.patch`;
+
 // コピー対象ファイル定義
 // [vjaRoot/src/ からの相対パス, compile-assets/src/ からの相対パス]
 // compileProject() でも同じリストを使って一元管理する

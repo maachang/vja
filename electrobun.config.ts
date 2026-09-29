@@ -2,7 +2,7 @@
 import type { ElectrobunConfig } from "electrobun";
 import { join } from "path";
 
-import { COPY_BUILD_FILES, getVersion } from "./src/bun/copy-compile-assets";
+import { COPY_BUILD_FILES, getVersion, ELECTROBUN_BUN_VERSION, ELECTROBUN_PATCH_FILE } from "./src/bun/copy-compile-assets";
 
 // 基本コンフィグ定義をセット.
 const conf = {
@@ -12,8 +12,8 @@ const conf = {
         version: "unknown",
     },
     build: {
-        // 同梱bunのバージョン（Electrobun 1.18.1の既定は1.3.13）.
-        bunVersion: "1.4.2",
+        // 同梱bunのバージョン（Electrobun 1.18.1の既定は1.3.13。bun 1.4系対応パッチとセット）.
+        bunVersion: ELECTROBUN_BUN_VERSION,
         // vjaのbun.jsメイン.
         bun: {
             entrypoint: "src/bun/index.ts",
@@ -65,6 +65,9 @@ if (process.argv.includes("build") || process.argv.includes("dev")) {
     // するだけでよく、このファイルの変更は不要（copyCompileAssetsとは別枠。
     // コンパイル済みユーザーアプリには同梱しない、VJA自身の実行時専用データのため）。
     target[join("src", "wizard-system-models")] = join("src", "wizard-system-models");
+    // vjaプロジェクトのコンパイル時に、生成先のpackage.jsonへ同じbun 1.4系対応パッチを適用するため、
+    // パッチファイルをResources/app/patches/へ同梱する（compileProject()が参照）。
+    target[join("patches", ELECTROBUN_PATCH_FILE)] = join("patches", ELECTROBUN_PATCH_FILE);
     // VJAデザイナー本体（vja-templates-loader.js）が起動時に同期XHRで読み込む
     // HTMLテンプレート定義。index.htmlのentrypointビルドでは<script src>のような
     // 静的参照ではないため自動検出されず、明示的にコピー対象へ加える必要がある。

@@ -18,7 +18,9 @@ import { Database } from "bun:sqlite";
 import * as prettier from "prettier";
 import { type VjaRPCType, type DbRow, type DbResult } from "../shared/types";
 import { initLogger, writeLog } from "./logger";
-import { copyCompileAssets, getVersion, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH, WEBVIEW_RUNTIME_LIBS } from "./copy-compile-assets";
+// 実際にインストール(ビルド)されているElectrobunのバージョンを取得する（ビルド時にバンドルされる）.
+import electrobunPkg from "electrobun/package.json";
+import { copyCompileAssets, getVersion, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH, WEBVIEW_RUNTIME_LIBS, ELECTROBUN_PIN_VERSION, ELECTROBUN_BUN_VERSION, ELECTROBUN_PATCH_FILE } from "./copy-compile-assets";
 import { clearProjectDb, closeProjectDb } from "./db-manager";
 import {
     fileReadHandler, fileWriteHandler, fileReadBytesHandler, fileWriteBytesHandler,
@@ -42,7 +44,8 @@ const _VERSION = _VJA_VERION.version;
 const _VJA_RUN_MODE = _VJA_VERION.runMode;
 
 // 一旦コンソール出力.
-process.stdout.write("### run index.ts: " + _TITLE + "(" + _VERSION + "): " + _VJA_RUN_MODE + "\n");
+process.stdout.write("### run index.ts: " + _TITLE + "(" + _VERSION + "): " + _VJA_RUN_MODE
+    + " [bun v" + Bun.version + ", electrobun v" + electrobunPkg.version + "]\n");
 
 // ウィザードが参照する「システムモデル定義」(src/wizard-system-models/)の実体パスを解決する。
 // compileProject()/buildProjectFiles()内のvjaRoot解決と同じ考え方
@@ -526,6 +529,9 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 return {
                     version: _VERSION,
                     runMode: _VJA_RUN_MODE,
+                    // 実行中のbun(同梱bun)のバージョンと、実際にインストールされているElectrobunのバージョン.
+                    bunVersion: Bun.version,
+                    electrobunVersion: electrobunPkg.version,
                 };
             },
 
@@ -924,8 +930,14 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
             name: projName,
             version: projVersion,
             scripts: { dev: "electrobun dev", build: "electrobun build --env=stable" },
-            dependencies: { electrobun: "latest" },
+            // vja本体と同じElectrobunに固定し、bun 1.4系対応パッチを適用する（latestだと未検証版が入るため）。
+            dependencies: { electrobun: ELECTROBUN_PIN_VERSION },
+            patchedDependencies: {
+                [`electrobun@${ELECTROBUN_PIN_VERSION}`]: `patches/${ELECTROBUN_PATCH_FILE}`,
+            },
         }, null, 2);
+        mkdirSync(join(distPath, "patches"), { recursive: true });
+        copyFileSync(join(vjaRoot, "patches", ELECTROBUN_PATCH_FILE), join(distPath, "patches", ELECTROBUN_PATCH_FILE));
         await Bun.write(join(distPath, "package.json"), packageJson);
 
         // ── electrobun.config.ts を生成 ──────────────
@@ -941,6 +953,7 @@ export default {
         version: ${JSON.stringify(projVersion)},
     },
     build: {
+        bunVersion: ${JSON.stringify(ELECTROBUN_BUN_VERSION)},
         bun: {
             entrypoint: "src/bun/index.ts",
         },
@@ -969,6 +982,7 @@ export default {
         await Bun.write(join(distPath, "electrobun.config.ts"), configTs);
 
         console.log(`[compile] ファイル生成完了: ${distPath}`);
+        console.log(`[compile] 対象: electrobun v${ELECTROBUN_PIN_VERSION} / 同梱bun v${ELECTROBUN_BUN_VERSION} (実行中のvjaのbun v${Bun.version})`);
 
         // ── bun install ───────────────────────────────
         console.log(`[compile] bun install 実行中...`);

@@ -250,7 +250,7 @@ async function actClearProjectDb() {
 async function actShowVersion() {
     closeAllMenus();
     const result = await window.bunGetVersion();
-    showVjaAlert(`vja  v${result.version}  (${result.runMode})`);
+    showVjaAlert(`vja  v${result.version}  (${result.runMode})\nbun  v${result.bunVersion}\nelectrobun  v${result.electrobunVersion}`);
 }
 
 async function actStopProject() {

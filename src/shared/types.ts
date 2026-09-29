@@ -228,7 +228,7 @@ export type VjaRPCType = {
             };
 
             // ── バージョン情報取得 ────────────────────────
-            getVersionRequest: { params: { _?: never }; response: { version: string; runMode: string } };
+            getVersionRequest: { params: { _?: never }; response: { version: string; runMode: string; bunVersion: string; electrobunVersion: string } };
 
             // ── UI設定読み込み ────────────────────────────
             loadUiConfigRequest: {
