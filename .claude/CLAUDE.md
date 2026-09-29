@@ -400,7 +400,8 @@ vjaの中核コンセプトである「AIに雛形を作ってもらい、それ
   - **回避策**: Electrobunの`scripts.postBuild`フック（アプリ本体の生成後・圧縮/パッケージング前に実行される）で`scripts/win-embed-icon.ts`を実行し、プロジェクトの`node_modules/rcedit`を直接呼んで`<ビルド先>/<アプリ名>/bin/`の`launcher.exe`/`bun.exe`へ`icon/vja.ico`を埋め込む。Windows以外では何もしない。失敗してもビルドは止めない（警告のみ）
   - 適用先: vja本体（`electrobun.config.ts`の`scripts.postBuild`）と、`compileProject`が生成するプロジェクト（スクリプトと`icon/vja.ico`を生成先へ配置し、生成する`electrobun.config.ts`にも`scripts.postBuild`を記述）の両方。ビルド後のvjaから`compileProject`が参照できるよう、`electrobun.config.ts`の`build.copy`で`scripts/win-embed-icon.ts`と`icon/vja.ico`を`Resources/app/`へ同梱している
   - `build.win.icon`（Electrobun本体のアイコン設定）は、壊れている処理を通らないよう引き続きコメントアウトのままにする（`electrobun.config.ts`・`compileProject`の生成config）。これらのコメントにある「Electrobun側修正後に復活させること」は、Electrobun本体が修正された場合に、フックを廃止して`build.win.icon`へ戻すという意味
-  - Linux/Macのアイコンについてはこの対応の対象外
+  - **Macは`build.mac.icons`（`icon/icon.iconset`）を有効化するだけで対応済み**（2026-09-29、Mac実機でアイコン表示を確認済み）: Electrobun本体がmacOS上のビルド時に`iconutil`で`.iconset`を`AppIcon.icns`へ変換して埋め込む（`rcedit`は使わないためWindowsのバグの影響を受けない）。vja本体（`electrobun.config.ts`）と`compileProject`の生成config（`icon/icon.iconset`も生成先へコピー）の両方で有効。`build.copy`で`icon/icon.iconset`を`Resources/app/`へ同梱している。Linuxからのクロスビルドでは`iconutil`が無く警告のみでアイコン無しになる
+  - Linuxのアイコンはこの対応の対象外（下記の別項目を参照）
 
 # 未対応・残課題(随時更新)
 
