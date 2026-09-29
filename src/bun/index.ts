@@ -936,6 +936,11 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
                 [`electrobun@${ELECTROBUN_PIN_VERSION}`]: `patches/${ELECTROBUN_PATCH_FILE}`,
             },
         }, null, 2);
+        // Windows向けビルドでのアイコン埋め込みフック(postBuild)とアイコンを配置する.
+        mkdirSync(join(distPath, "scripts"), { recursive: true });
+        copyFileSync(join(vjaRoot, "scripts", "win-embed-icon.ts"), join(distPath, "scripts", "win-embed-icon.ts"));
+        mkdirSync(join(distPath, "icon"), { recursive: true });
+        copyFileSync(join(vjaRoot, "icon", "vja.ico"), join(distPath, "icon", "vja.ico"));
         mkdirSync(join(distPath, "patches"), { recursive: true });
         copyFileSync(join(vjaRoot, "patches", ELECTROBUN_PATCH_FILE), join(distPath, "patches", ELECTROBUN_PATCH_FILE));
         await Bun.write(join(distPath, "package.json"), packageJson);
@@ -976,6 +981,10 @@ export default {
         //     icon: "icon/vja.png",
         // },
         copy: ${copyEntriesStr},
+    },
+    // Windows向けビルドでlauncher.exe/bun.exeへアイコンを埋め込むフック（Windows以外では何もしない）.
+    scripts: {
+        postBuild: "scripts/win-embed-icon.ts",
     },
 } satisfies ElectrobunConfig;
 `;

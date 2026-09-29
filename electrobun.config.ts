@@ -46,6 +46,11 @@ const conf = {
         // ここでプロジェクトコンパイルで必要なファイルをコピー.
         copy: {},
     },
+    // Windows向けビルドでlauncher.exe/bun.exeへアイコンを埋め込むフック（Electrobun本体のrcedit解決バグの回避）.
+    // Windows以外では何もしない。詳細は scripts/win-embed-icon.ts を参照。
+    scripts: {
+        postBuild: "scripts/win-embed-icon.ts",
+    },
 } satisfies ElectrobunConfig;
 
 // build時・dev時に実行(実行コマンドに "build" または "dev" が含まれているか判定).
@@ -68,6 +73,10 @@ if (process.argv.includes("build") || process.argv.includes("dev")) {
     // vjaプロジェクトのコンパイル時に、生成先のpackage.jsonへ同じbun 1.4系対応パッチを適用するため、
     // パッチファイルをResources/app/patches/へ同梱する（compileProject()が参照）。
     target[join("patches", ELECTROBUN_PATCH_FILE)] = join("patches", ELECTROBUN_PATCH_FILE);
+    // vjaプロジェクトのコンパイル時に、生成先へWindowsアイコン埋め込みフックとアイコンを配置するため
+    // Resources/app/ へ同梱する（compileProject()が参照）。
+    target[join("scripts", "win-embed-icon.ts")] = join("scripts", "win-embed-icon.ts");
+    target[join("icon", "vja.ico")] = join("icon", "vja.ico");
     // VJAデザイナー本体（vja-templates-loader.js）が起動時に同期XHRで読み込む
     // HTMLテンプレート定義。index.htmlのentrypointビルドでは<script src>のような
     // 静的参照ではないため自動検出されず、明示的にコピー対象へ加える必要がある。
