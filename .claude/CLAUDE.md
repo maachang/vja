@@ -87,6 +87,7 @@ CLAUDE.mdは毎セッション全文が読み込まれるため、規約・全�
 | src/mainview/init-params.js | 静的定義値の集約（全ファイルで最初に読み込む） |
 | src/mainview/vja-defs.js | 状態管理・ウィジェット定義・共通ユーティリティ |
 | src/mainview/vja-designer.js | デザイナー本体（描画・選択・プロパティパネル） |
+| src/mainview/vja-form-layout-fix.js | AI生成レイアウトJSONの座標の機械的是正（ボタン右端整列・ラベル/入力ペア揃え・重なり解消）。`applyAiFormDesign`から呼ばれる（2026-09-30） |
 | src/mainview/vja-modal.js | モーダル基盤・Undo/Redo・削除/複製 |
 | src/mainview/vja-yaml-editor.js | YAML/JSエディタ・AI生成 |
 | src/mainview/vja-editor-search.js | エディタ内検索・置換（2026-09-21にvja-yaml-editor.jsから分割した1つ目） |

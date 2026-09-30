@@ -410,6 +410,9 @@ function applyAiFormDesign(items) {
     const MARGIN = 8;
     let skipped = 0;
 
+    // AIの座標ミス（ボタンの右端計算・ウィジェット同士の重なり等）を機械的に是正する（vja-form-layout-fix.js）
+    items = arrangeAiFormItems(items, formW, formH);
+
     items.forEach((item) => {
         if (!item || !AI_FORM_DESIGN_TAGS.includes(item.tag)) { skipped++; return; }
         const tool = getToolById(item.tag);
