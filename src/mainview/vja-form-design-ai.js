@@ -387,6 +387,24 @@ function parseFormDesignYaml(text) {
     return { desc, tables };
 }
 
+// 「入力項目:」セクションの各項目名（`- 項目名: ...`の項目名部分）を返す。セクションが無ければ空配列。
+function _parseFormDesignInputFieldLabels(yamlText) {
+    const fieldsM = yamlText.match(/入力項目\s*:\s*\n([\s\S]*?)(?:\n\S|\n\n|$)/);
+    if (!fieldsM) return [];
+    const labels = [];
+    fieldsM[1].split("\n").forEach((l) => {
+        const m = l.match(/^\s*-\s*([^:]+):/);
+        if (m) labels.push(m[1].trim());
+    });
+    return labels;
+}
+
+// 「入力項目:」の項目数を返す（無ければ0）。レイアウトパターンの行数を項目数に合わせて
+// 延長するため（buildLayoutRegionsPromptText）。他ファイルからも呼ぶため`_`無しでグローバル展開する。
+function countFormDesignInputFields(yamlText) {
+    return _parseFormDesignInputFieldLabels(yamlText || "").length;
+}
+
 // 「入力項目:」の各フィールド名がテーブルの列名(name/labelJa)と一致する場合、
 // 「参照テーブル:」が完全に欠落していても機械的に補完する。
 // Why: ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPTには「fieldsがテーブル由来なら
@@ -403,13 +421,7 @@ function parseFormDesignYaml(text) {
 function deriveMissingFormDesignTables(yamlText, allTables) {
     const { tables: existingTables } = parseFormDesignYaml(yamlText);
     if (existingTables.length > 0) return [];
-    const fieldsM = yamlText.match(/入力項目\s*:\s*\n([\s\S]*?)(?:\n\S|\n\n|$)/);
-    if (!fieldsM) return [];
-    const fieldLabels = [];
-    fieldsM[1].split("\n").forEach((l) => {
-        const m = l.match(/^\s*-\s*([^:]+):/);
-        if (m) fieldLabels.push(m[1].trim());
-    });
+    const fieldLabels = _parseFormDesignInputFieldLabels(yamlText);
     if (fieldLabels.length === 0) return [];
     // 単純な「1列でも一致したら候補」だと、sales_data/sales_historyのように
     // 列名が重なる複数テーブルが同時にヒットしてしまう（実際に2026-09-20の
@@ -548,7 +560,8 @@ async function generateFormDesignAiLayout(rawText, addPromptExtra) {
     const layoutHint = buildLayoutRegionsPromptText(
         getProjectData().formLayoutPattern,
         getProjectData().formCfg.w,
-        getProjectData().formCfg.h
+        getProjectData().formCfg.h,
+        countFormDesignInputFields(designText)
     );
     const extraPrompt = (addPromptExtra || "") + layoutHint;
 
@@ -612,6 +625,6 @@ Object.assign(window, {
     insertFormDesignTemplate, openFormDesignTemplateModal, confirmApplyFormDesignTemplate,
     buildFormLayoutPickerHtml, selectFormLayoutPattern, openFormDesignAi,
     convertFormDesignEngKeysToJp, generateFormDesignYaml, formDesignTextToYamlGenerate,
-    saveFormDesignDraft, parseFormDesignYaml, deriveMissingFormDesignTables, parseFormDesignJson,
+    saveFormDesignDraft, parseFormDesignYaml, deriveMissingFormDesignTables, countFormDesignInputFields, parseFormDesignJson,
     openAiRawOutputModal, generateFormLayoutRaw, generateFormDesignAiLayout, formDesignAiGenerate,
 });

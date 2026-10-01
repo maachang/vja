@@ -151,6 +151,57 @@
         return regions;
     }
 
+    // 行ごとの領域を持つパターンの下端（0-100の割合値）。この下に収まるよう行間を詰める。
+    // 上端の余白（y=4）と同じ4を下端にも確保する。
+    const ROW_BOTTOM_LIMIT = 96;
+
+    // 「ラベル欄(入力) + 値欄(labelが空)」が同じyで続く組を行として検出する。
+    // 2行以上ある場合のみ行ごとの領域を持つパターンとみなす（stackedInputBottomButtons等）。
+    function _detectPairRows(pattern) {
+        const boxes = pattern.boxes || [];
+        const pairs = [];
+        for (let i = 0; i + 1 < boxes.length; i++) {
+            const l = boxes[i], v = boxes[i + 1];
+            if (l.label === "入力" && !v.label && l.y === v.y) { pairs.push({ l, v }); i++; }
+        }
+        return pairs.length >= 2 ? pairs : null;
+    }
+
+    // 行ごとの領域を持つパターンを、入力項目数(fieldCount)に合わせて行数を延長した
+    // boxesへ展開する。fieldCountが0/未指定（「入力項目:」が無い）、または
+    // パターンの行数以下ならパターン本来の行数のまま。
+    // 行が増えた分、入力行以外(ボタン等)は下へ押し下げ、ROW_BOTTOM_LIMITを超える場合は
+    // 行間を詰める（0未満にはしない。それでも超える分はapplyAiFormDesignの画面内収めに任せる）。
+    // 戻り値: { boxes, rowCount }。行を持たないパターンはnull。
+    function _expandPairRows(pattern, fieldCount) {
+        const pairs = _detectPairRows(pattern);
+        if (!pairs) return null;
+        const baseN = pairs.length;
+        const n = fieldCount > baseN ? fieldCount : baseN;
+        const rowH = pairs[0].l.h, y0 = pairs[0].l.y;
+        const baseGap = pairs[1].l.y - (y0 + rowH);
+        const others = (pattern.boxes || []).filter((b) => !pairs.some((p) => p.l === b || p.v === b));
+        let gap = baseGap;
+        let shift = 0;
+        if (n > baseN) {
+            const lastBottom = pairs[baseN - 1].l.y + rowH;
+            const oTop = others.length ? Math.min(...others.map((b) => b.y)) : lastBottom;
+            const oBottom = others.length ? Math.max(...others.map((b) => b.y + b.h)) : lastBottom;
+            const btnGap = oTop - lastBottom, btnH = oBottom - oTop;
+            if (y0 + n * rowH + (n - 1) * gap + btnGap + btnH > ROW_BOTTOM_LIMIT) {
+                gap = Math.max(0, (ROW_BOTTOM_LIMIT - y0 - n * rowH - btnGap - btnH) / (n - 1));
+            }
+            shift = (y0 + n * rowH + (n - 1) * gap + btnGap) - oTop;
+        }
+        const boxes = [];
+        for (let i = 0; i < n; i++) {
+            const y = y0 + i * (rowH + gap);
+            boxes.push({ ...pairs[0].l, y }, { ...pairs[0].v, y });
+        }
+        others.forEach((b) => boxes.push({ ...b, y: b.y + shift }));
+        return { boxes, rowCount: n };
+    }
+
     // 選択中のレイアウトパターンを、AIへ渡す「厳格な配置エリア（px座標）」の
     // プロンプト断片へ変換する。従来は「配置構造を言葉で説明した1文」を
     // addPromptに足すだけで、AIの解釈に配置の正確さが左右されていた
@@ -160,10 +211,16 @@
     // ウィジェットは必ずこの矩形内に収めよ」という具体的な数値制約として
     // 渡すことで、AIの解釈に頼らず配置を強制する。
     // patternIdが未選択、または該当パターンが見つからない場合は空文字を返す。
-    function buildLayoutRegionsPromptText(patternId, formW, formH) {
+    // fieldCount: YAMLの「入力項目:」の項目数（省略可）。行ごとの領域を持つパターンで、
+    // 行数をこの数に合わせて延長する。
+    // 2026-10-02: 従来は役割ごとに1つの外接矩形へ併合していたため、「入力は縦に1行ずつ
+    // 積む」という構造が失われ、AIが1行に複数組の「ラベル+入力欄」を横並びに置く不具合が
+    // あった。行を持つパターンは、行ごとの領域も合わせて渡す。
+    function buildLayoutRegionsPromptText(patternId, formW, formH, fieldCount) {
         const pattern = getFormLayoutPatternById(patternId);
         if (!pattern) return "";
-        const regions = _buildLayoutRegionsFromPattern(pattern, formW, formH);
+        const expanded = _expandPairRows(pattern, fieldCount);
+        const regions = _buildLayoutRegionsFromPattern(expanded ? { boxes: expanded.boxes } : pattern, formW, formH);
         const roleDesc = {
             "入力": "input-role widgets (labels + their inputtype/selectBox/checkbox/etc., i.e. everything EXCEPT buttons and display areas)",
             "表示": "display-role widgets (datagrid, read-only summary/list areas)",
@@ -176,6 +233,17 @@
                 " (STRICT bounding box — every widget of this role MUST be placed fully inside these bounds, not merely near them)";
         });
         if (lines.length === 0) return "";
+        if (expanded) {
+            const px = (v, total) => Math.round((v / 100) * total);
+            lines.push("- input rows (stacked top to bottom, one row per input item in the YAML 入力項目 order; unused rows are simply left empty):");
+            for (let i = 0; i < expanded.rowCount; i++) {
+                const l = expanded.boxes[i * 2], v = expanded.boxes[i * 2 + 1];
+                lines.push("  row" + (i + 1) + ": y=" + px(l.y, formH) + "-" + px(l.y + l.h, formH) +
+                    ", label x=" + px(l.x, formW) + "-" + px(l.x + l.w, formW) +
+                    ", input x=" + px(v.x, formW) + "-" + px(v.x + v.w, formW));
+            }
+            lines.push("  Each row holds exactly ONE label + its ONE input widget side by side. NEVER put two label/input pairs in the same row, and NEVER place a second pair to the right of the first.");
+        }
         return "\n\n[Strict Layout Regions — user-selected layout image, MUST be followed exactly]\n" +
             "The user selected the layout image \"" + pattern.label + "\" (" + pattern.desc + "). It has been converted into the following strict pixel regions for THIS form's actual size (" + formW + "x" + formH + "px). Place each widget according to its role into the matching region below:\n" +
             lines.join("\n") +

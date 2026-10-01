@@ -732,7 +732,7 @@ async function wizardGenerateFormYaml(docDraft) {
 async function wizardGenerateFormLayout(yamlText, layoutPatternId) {
     const formW = getProjectData().formCfg.w;
     const formH = getProjectData().formCfg.h;
-    const layoutHint = buildLayoutRegionsPromptText(layoutPatternId, formW, formH);
+    const layoutHint = buildLayoutRegionsPromptText(layoutPatternId, formW, formH, countFormDesignInputFields(yamlText));
     const generated = await generateFormLayoutRaw(yamlText, layoutHint, getProjectData().tables || []);
     if (generated === null) return false;
     const items = parseFormDesignJson(generated);
