@@ -1,0 +1,42 @@
+{
+  "name": "task-1table",
+  "formSize": {
+    "w": 640,
+    "h": 420
+  },
+  "appOverview": "個人のタスクを登録して管理するシンプルなアプリ。",
+  "tables": [
+    {
+      "name": "tasks",
+      "description": "タスク",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "title",
+          "labelJa": "タイトル",
+          "type": "TEXT",
+          "notNull": true
+        },
+        {
+          "name": "priority",
+          "labelJa": "優先度",
+          "type": "TEXT"
+        },
+        {
+          "name": "due_date",
+          "labelJa": "期限",
+          "type": "TEXT"
+        },
+        {
+          "name": "status",
+          "labelJa": "ステータス",
+          "type": "TEXT"
+        }
+      ]
+    }
+  ]
+}

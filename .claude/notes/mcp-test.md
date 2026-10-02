@@ -59,3 +59,13 @@
 - **テスト題材・接続先は個人環境に依存させない**:
   - 題材は個人のプロジェクトファイルを使わず、`mcp/fixtures/prompt-integrity-test.vjaproj.json`（リポジトリ同梱の固定フィクスチャ）を`testApplyProjectData`で読み込む。ウィジェット名`testSearchButton`/`testSearchInput`/`testSearchSelect`/`testResultGrid`、テーブル`test_items`、対象イベントは`testSearchButton`の`Click`（widget id=2）
   - ローカルLLMの接続先（IPアドレス等）はCLAUDE.md・コード・コミットに書かない。`mcp/fixtures/test-llm.local.json`（`.gitignore`済み、各マシンにのみ置く）に`{"endpoint","model","temperature"}`を定義し、テスト時に読んで`testSetAiConfig`へ渡す。テンプレートは`mcp/fixtures/test-llm.local.json.example`。ファイルが無ければユーザーに接続先を確認し、推測で決め打ちしない
+
+# ウィザード生成のシナリオ＋実LLMテスト（Claude専用、2026-10-02）
+
+- `bun run mcp/wizard-scenario-test.ts [--runs N] [--scenario 名前の一部] [--out 出力JSON]`。画面/Electrobun不要で、本物のウィザード関数（`wizardDecomposeFormsCore`→`wizardGenerateFormYaml`（必須ボタン補完込み）→`generateFormLayoutRaw`→`arrangeAiFormItems`）を実LLMで走らせ、自動チェックする。`bun test`には含めない（実LLM必須で遅く非決定的。`*.test.ts`の名前にしない）
+- シナリオ: `mcp/fixtures/wizard-scenarios/*.json`（`name`/`formSize`/`appOverview`/`tables`）。追加はJSONを置くだけ
+- 接続先: 既存の`mcp/fixtures/test-llm.local.json`（`.gitignore`済み）。無ければユーザーに確認する
+- チェック: 一覧=datagrid/検索（条件入力あり）/新規登録、入力=登録系+戻る、メニュー=全一覧への遷移ボタン、全画面=アクション項目のボタンウィジェット有無・重なり・フォーム枠外。結果の詳細は`.claudeWork/wizard-scenario-result.json`
+- 所要時間: qwen2.5-coder-7bで1シナリオ約2〜6分（画面数に比例）
+- 注意: `runAiGenerate`の後処理は`vja-modal.js`と同内容を再現している（変更時は両方）。レイアウト結果は`applyAiFormDesign`のはみ出し補正の前の値
+- 初回結果（1回ずつ）: 3シナリオ・14画面で必須ボタンの不足は0件。NGは1画面の重なり（datagridとラベル/textarea）のみ

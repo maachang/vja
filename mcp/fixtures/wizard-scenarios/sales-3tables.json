@@ -1,0 +1,96 @@
+{
+  "name": "sales-3tables",
+  "formSize": {
+    "w": 640,
+    "h": 420
+  },
+  "appOverview": "日々の入力データを記録し、入力履歴を確認し、品目マスターを保守する小さな業務アプリ。",
+  "tables": [
+    {
+      "name": "daily_input",
+      "description": "日次入力",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "input_date",
+          "labelJa": "入力日",
+          "type": "TEXT",
+          "notNull": true
+        },
+        {
+          "name": "item_code",
+          "labelJa": "品目コード",
+          "type": "TEXT"
+        },
+        {
+          "name": "quantity",
+          "labelJa": "数量",
+          "type": "INTEGER"
+        },
+        {
+          "name": "amount",
+          "labelJa": "金額",
+          "type": "INTEGER"
+        }
+      ]
+    },
+    {
+      "name": "input_history",
+      "description": "入力履歴",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "input_date",
+          "labelJa": "入力日",
+          "type": "TEXT"
+        },
+        {
+          "name": "operator",
+          "labelJa": "担当者",
+          "type": "TEXT"
+        },
+        {
+          "name": "action",
+          "labelJa": "操作内容",
+          "type": "TEXT"
+        }
+      ]
+    },
+    {
+      "name": "items",
+      "description": "品目マスター",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "item_code",
+          "labelJa": "品目コード",
+          "type": "TEXT",
+          "notNull": true
+        },
+        {
+          "name": "item_name",
+          "labelJa": "品目名",
+          "type": "TEXT",
+          "notNull": true
+        },
+        {
+          "name": "unit_price",
+          "labelJa": "単価",
+          "type": "INTEGER"
+        }
+      ]
+    }
+  ]
+}

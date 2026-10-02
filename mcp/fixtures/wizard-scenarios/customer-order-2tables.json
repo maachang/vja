@@ -1,0 +1,68 @@
+{
+  "name": "customer-order-2tables",
+  "formSize": {
+    "w": 768,
+    "h": 480
+  },
+  "appOverview": "顧客と受注を管理する小規模な受注管理アプリ。",
+  "tables": [
+    {
+      "name": "customers",
+      "description": "顧客",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "name",
+          "labelJa": "顧客名",
+          "type": "TEXT",
+          "notNull": true
+        },
+        {
+          "name": "region",
+          "labelJa": "地域",
+          "type": "TEXT"
+        },
+        {
+          "name": "phone",
+          "labelJa": "電話番号",
+          "type": "TEXT"
+        }
+      ]
+    },
+    {
+      "name": "orders",
+      "description": "受注",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "customer_id",
+          "labelJa": "顧客ID",
+          "type": "INTEGER"
+        },
+        {
+          "name": "order_date",
+          "labelJa": "受注日",
+          "type": "TEXT"
+        },
+        {
+          "name": "amount",
+          "labelJa": "金額",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status",
+          "labelJa": "状態",
+          "type": "TEXT"
+        }
+      ]
+    }
+  ]
+}

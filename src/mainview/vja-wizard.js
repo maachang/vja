@@ -562,15 +562,17 @@ function _wizardBuildScreenSkeletonText(skeleton) {
 // _wizardBuildScreenSkeleton()でコード側が機械的に確定する。AIの仕事は各スロットの
 // 日本語文言（formTitle/description/docDraft）を埋めることだけに縮小した
 // （詳細はENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPTのAIメモ参照）。
-async function wizardDecomposeForms() {
-    const tables = getProjectData().tables || [];
+// 画面構成の分解（AI呼び出し＋機械的検証）のDOM非依存版。自動テスト（画面なし）と
+// wizardDecomposeForms()が共有する。
+// 戻り値: { forms, missing, skeleton }。formsは確定スロットのkind付き。生成失敗時はforms=null。
+async function wizardDecomposeFormsCore(tables, appOverview, systemModelHint) {
     const tablesCtx = buildTablesCtxText(tables);
     const skeleton = _wizardBuildScreenSkeleton(tables);
     const screenSkeletonText = skeleton.length > 0
         ? _wizardBuildScreenSkeletonText(skeleton)
         : "(確定済みテーブルが無いため、固定スロットはありません。[Application Overview]から必要な画面のみを判断してください)";
-    const sysPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_SYS_PROMPT({ tablesCtx, screenSkeletonText, systemModelHint: WIZARD_STATE.systemModelHint });
-    const userPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_USER_PROMPT(WIZARD_STATE.appOverview);
+    const sysPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_SYS_PROMPT({ tablesCtx, screenSkeletonText, systemModelHint });
+    const userPrompt = _PROMPT_DEF.WIZARD_DECOMPOSE_FORMS_USER_PROMPT(appOverview);
 
     let forms = null;
     await runAiGenerate({
@@ -587,7 +589,18 @@ async function wizardDecomposeForms() {
     // （プロンプト文言だけに頼らず、コード側で強制する）。
     const returnedNames = new Set((forms || []).map((f) => f.formName));
     const missing = skeleton.filter((s) => !returnedNames.has(s.formName));
-    if (!forms || forms.length === 0 || missing.length > 0) {
+    if (!forms || forms.length === 0 || missing.length > 0) return { forms: null, missing, skeleton };
+
+    // 確定済みスロットの画面種別(kind)を持たせる。生成後のアクション補完
+    // （ensureWizardFormActions）が、一覧/入力/メニューごとの必須ボタンを判断するために使う。
+    const kindByName = {};
+    skeleton.forEach((sl) => { kindByName[sl.formName] = sl.kind; });
+    return { forms: forms.map((f) => (kindByName[f.formName] ? { ...f, kind: kindByName[f.formName] } : f)), missing, skeleton };
+}
+
+async function wizardDecomposeForms() {
+    const { forms, missing } = await wizardDecomposeFormsCore(getProjectData().tables || [], WIZARD_STATE.appOverview, WIZARD_STATE.systemModelHint);
+    if (!forms) {
         showToast(missing.length > 0
             ? "画面構成の生成結果に確定テーブルの画面（" + missing.map((s) => s.formName).join("、") + "）が含まれていません。もう一度お試しください"
             : "画面構成の生成に失敗しました。もう一度お試しください");
@@ -597,11 +610,7 @@ async function wizardDecomposeForms() {
         renderTableManagerModal();
         return;
     }
-    // 確定済みスロットの画面種別(kind)を持たせる。生成後のアクション補完
-    // （ensureWizardFormActions）が、一覧/入力/メニューごとの必須ボタンを判断するために使う。
-    const kindByName = {};
-    skeleton.forEach((sl) => { kindByName[sl.formName] = sl.kind; });
-    WIZARD_STATE.formPlan = forms.map((f) => (kindByName[f.formName] ? { ...f, kind: kindByName[f.formName] } : f));
+    WIZARD_STATE.formPlan = forms;
     _wizardRenderFormReviewModal();
 }
 
@@ -678,14 +687,11 @@ async function wizardConfirmAndGenerate() {
         getProjectData().formDesignDocDraft = f.formDesignDocDraft || "";
         getProjectData().formLayoutPattern = f.formLayoutPattern || ""; // 同上（レイアウトタブの選択状態も同じ同期が必要）
         showToast("フォーム" + (i + 1) + "/" + total + ": " + f.cfg.title + " を生成中…");
-        const genResult = await wizardGenerateFormYaml(f.formDesignDocDraft);
-        if (!genResult) continue; // 失敗した場合はこのフォームは空のまま次へ進む
-        const { layoutPatternId } = genResult;
-        // 画面の種類ごとの必須ボタン（登録/検索/メニューの各一覧への遷移）をコード側で補完する
-        // （詳細はvja-wizard-actions.jsのAIメモ参照）
         const plan = WIZARD_STATE.formPlan[i] || {};
         const listTitles = WIZARD_STATE.formPlan.filter((p) => p.kind === "list").map((p) => p.formTitle);
-        const yaml = ensureWizardFormActions(genResult.yaml, plan.kind, listTitles);
+        const genResult = await wizardGenerateFormYaml(f.formDesignDocDraft, plan.kind, listTitles);
+        if (!genResult) continue; // 失敗した場合はこのフォームは空のまま次へ進む
+        const { yaml, layoutPatternId } = genResult;
         f.formDesignDraft = yaml;
         f.formLayoutPattern = layoutPatternId;
         getProjectData().formDesignDraft = yaml; // 同期を保つ（次のswitchForm()呼び出しで消されないように）
@@ -729,8 +735,13 @@ async function wizardConfirmAndGenerate() {
 // 戻り値は { yaml, layoutPatternId }。
 // 実体はvja-yaml-editor.jsのgenerateFormDesignYaml()（UI手動操作版
 // formDesignTextToYamlGenerate()と共通のロジック本体、2026-09-21に統合）。
-async function wizardGenerateFormYaml(docDraft) {
-    return await generateFormDesignYaml(docDraft || "", getProjectData().tables || []);
+// kind/listTitlesを渡すと、画面種別ごとの必須ボタン（登録/検索/メニューの一覧遷移）を
+// 生成後のYAMLへコード側で補完する（詳細はvja-wizard-actions.jsのAIメモ参照）。
+// 補完をここへ置くことで、実アプリのウィザード生成と画面なしの自動テストが同じ処理を通る。
+async function wizardGenerateFormYaml(docDraft, kind, listTitles) {
+    const r = await generateFormDesignYaml(docDraft || "", getProjectData().tables || []);
+    if (!r) return r;
+    return { ...r, yaml: ensureWizardFormActions(r.yaml, kind, listTitles) };
 }
 
 // 1フォーム分の「YAML → 画面レイアウト（ウィジェット配置）」生成（DOM非依存版）
@@ -761,6 +772,6 @@ Object.assign(window, {
     // ウィザードAI呼び出し部分の自動テスト用（bridge.tsのtestWizardXxxハンドラから呼ばれる）。
     // 元は_wizardGenerateFormYaml/_wizardGenerateFormLayoutという同ファイル限定名だったが、
     // bridge.tsから呼び出す必要が生じたため、CLAUDE.mdの規約に従い`_`を外してグローバル展開した。
-    wizardGenerateFormYaml, wizardGenerateFormLayout,
+    wizardGenerateFormYaml, wizardGenerateFormLayout, wizardDecomposeFormsCore,
     WIZARD_STATE,
 });
