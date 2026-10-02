@@ -132,7 +132,7 @@ for (const sc of scenarios) {
                     const hint = g.buildLayoutRegionsPromptText(y.layoutPatternId, sc.formSize.w, sc.formSize.h, g.countFormDesignInputFields(y.yaml));
                     const raw = await g.generateFormLayoutRaw(y.yaml, hint, sc.tables);
                     const parsed = raw ? g.parseFormDesignJson(raw) : null;
-                    fr.items = parsed ? g.arrangeAiFormItems(parsed, sc.formSize.w, sc.formSize.h) : null;
+                    fr.items = parsed ? g.arrangeAiFormItems(g.ensureAiFormButtons(parsed, y.yaml, sc.formSize.w, sc.formSize.h), sc.formSize.w, sc.formSize.h) : null;
                     fr.ng = checkForm(f.kind, y.yaml, fr.items, sc.formSize.w, sc.formSize.h, listTitles);
                     rec.forms.push(fr);
                 }

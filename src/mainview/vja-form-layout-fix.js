@@ -12,6 +12,7 @@
 // - DOMには一切触れない純粋関数（bun testでevalして検証できる）。
 // - x/y/w/hが数値でない要素は触らない（applyAiFormDesign側の既存フォールバックに任せる）。
 // - 入力を破壊しない（要素は浅いコピーを返す）。
+// - ensureAiFormButtonsは、YAMLのアクション項目に対応するボタンが無い時だけ補う（arrangeAiFormItemsの前に呼ぶ）。
 // - 補正は「ボタンの右端整列」→「ラベル+入力のペア垂直中央揃え」→「重なり解消（下方向のみ）」の順。
 // - はみ出し補正は applyAiFormDesign 側に既にあるためここでは行わない。
 // ═══════════════════════════════════════════
@@ -132,8 +133,75 @@
         return list;
     }
 
+    // ---- アクション項目のボタン補完 ----
+    // AI(レイアウト生成)が、YAMLのアクション項目に書かれたボタンを出力しないことがあるため、
+    // 無いものだけをコードで補う（原因: ボタン領域の無いレイアウトパターンの選択・LLMの出力落ち）。
+    const ADD_BTN_W = 85;
+    const ADD_BTN_H = 28;
+    const ADD_BTN_BOTTOM_MARGIN = 14;
+    // 日本語アクション名 → ウィジェット名の英語部分（上から順に最初に一致したもの）
+    const ACTION_NAME_MAP = [
+        [/検索|絞り込|フィルタ/, "Search"],
+        [/新規|追加/, "Add"],
+        [/登録|保存|確定|更新/, "Save"],
+        [/戻る/, "Back"],
+        [/削除/, "Delete"],
+        [/閉じる/, "Close"],
+        [/キャンセル/, "Cancel"],
+        [/クリア|リセット/, "Clear"],
+    ];
+
+    function _actionNamesOf(yamlText) {
+        const m = String(yamlText || "").match(/アクション項目:[ \t]*\n((?:[ \t]+-.*(?:\n|$))*)/);
+        if (!m) return [];
+        return m[1].split("\n").filter((l) => /^\s+-/.test(l))
+            .map((l) => l.replace(/^\s+-\s*/, "").replace(/:.*$/, "").replace(/ボタン$/, "").trim())
+            .filter((a) => a);
+    }
+
+    // YAMLのアクション項目に対応するbuttonが無ければ補う。座標は
+    // 既存ボタンがあればその行の左隣（後段の右端整列が詰め直す）、無ければ最下部ウィジェットの下。
+    function ensureAiFormButtons(items, yamlText, formW, formH) {
+        if (!Array.isArray(items)) return items;
+        const list = items.slice();
+        const actions = _actionNamesOf(yamlText);
+        const names = new Set(list.map((it) => it && it.name));
+        const uniqueName = (base) => {
+            let cand = base, i = 1;
+            while (names.has(cand)) cand = base + (++i);
+            names.add(cand);
+            return cand;
+        };
+        let seq = 0;
+        actions.forEach((act) => {
+            const btns = list.filter((it) => it && it.tag === "button");
+            const has = btns.some((b) => {
+                const t = String(b.text || "").replace(/ボタン$/, "").trim();
+                return t && (t.includes(act) || act.includes(t));
+            });
+            if (has) return;
+            const hit = ACTION_NAME_MAP.find(([re]) => re.test(act));
+            const name = uniqueName("btn" + (hit ? hit[1] : "Action" + (++seq)));
+            const rects = list.filter(_hasRect);
+            const rowBtns = btns.filter(_hasRect);
+            let x, y;
+            if (rowBtns.length > 0) {
+                const left = rowBtns.reduce((a, b) => (b.x < a.x ? b : a));
+                y = left.y;
+                x = Math.max(LEFT_MARGIN, left.x - BTN_GAP - ADD_BTN_W);
+            } else {
+                const bottom = rects.reduce((mx, it) => Math.max(mx, it.y + it.h), 0);
+                y = bottom + BTN_GAP + ADD_BTN_H <= formH ? bottom + BTN_GAP : formH - ADD_BTN_H - ADD_BTN_BOTTOM_MARGIN;
+                x = formW - RIGHT_MARGIN - ADD_BTN_W;
+            }
+            list.push({ tag: "button", name, text: act, x, y, w: ADD_BTN_W, h: ADD_BTN_H });
+        });
+        return list;
+    }
+
     // グローバル展開
     Object.assign(window, {
         arrangeAiFormItems,
+        ensureAiFormButtons,
     });
 })();

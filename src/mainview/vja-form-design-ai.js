@@ -588,7 +588,7 @@ async function generateFormDesignAiLayout(rawText, addPromptExtra) {
         if (po) po.textContent = getProjectData().formCfg.title;
         fullRedraw();
     }
-    applyAiFormDesign(items);
+    applyAiFormDesign(ensureAiFormButtons(items, designText, getProjectData().formCfg.w, getProjectData().formCfg.h));
     return { ok: true, widgets: getProjectData().widgets };
 }
 

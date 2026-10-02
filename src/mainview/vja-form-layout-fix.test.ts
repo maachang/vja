@@ -68,3 +68,38 @@ describe("arrangeAiFormItems", () => {
         expect(src[1].x).toBe(1);
     });
 });
+
+describe("ensureAiFormButtons", () => {
+    let ensure: (items: any[], yaml: string, w: number, h: number) => any[];
+    beforeAll(() => {
+        (globalThis as any).window = globalThis;
+        eval(readFileSync(join(import.meta.dir, "vja-form-layout-fix.js"), "utf-8"));
+        ensure = (globalThis as any).ensureAiFormButtons;
+    });
+    const yaml = "説明: x\n\nアクション項目:\n  - 新規登録\n  - 検索ボタン\n";
+    const grid = { tag: "datagrid", name: "tbl", x: 10, y: 14, w: 470, h: 238 };
+
+    it("ボタンが無ければ全アクションを補い、日本語から英語名を付ける", () => {
+        const r = ensure([grid], yaml, 480, 360);
+        const b = r.filter((i) => i.tag === "button");
+        expect(b.map((i) => i.text)).toEqual(["新規登録", "検索"]);
+        expect(b.map((i) => i.name)).toEqual(["btnAdd", "btnSearch"]);
+        expect(b[0].y).toBe(252 + 10);
+    });
+    it("既に有るボタンは補わず、不足分だけ既存ボタンの左隣へ置く", () => {
+        const add = { tag: "button", name: "btnAdd", text: "新規登録", x: 300, y: 300, w: 85, h: 28 };
+        const r = ensure([grid, add], yaml, 480, 360);
+        expect(r.length).toBe(3);
+        expect(r[2]).toMatchObject({ text: "検索", y: 300, x: 205 });
+    });
+    it("アクション項目が無ければ何も足さない・入力は破壊しない", () => {
+        const src = [grid];
+        expect(ensure(src, "説明: x", 480, 360)).toEqual(src);
+        ensure(src, yaml, 480, 360);
+        expect(src.length).toBe(1);
+    });
+    it("下に収まらない場合は下端余白の位置に置く", () => {
+        const tall = { ...grid, h: 340 };
+        expect(ensure([tall], "アクション項目:\n  - 戻る\n", 480, 360)[1].y).toBe(360 - 28 - 14);
+    });
+});

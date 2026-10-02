@@ -757,7 +757,7 @@ async function wizardGenerateFormLayout(yamlText, layoutPatternId) {
     if (generated === null) return false;
     const items = parseFormDesignJson(generated);
     if (!items) return false;
-    applyAiFormDesign(items);
+    applyAiFormDesign(ensureAiFormButtons(items, yamlText, formW, formH));
     return true;
 }
 
