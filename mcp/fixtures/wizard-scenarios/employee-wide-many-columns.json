@@ -1,0 +1,78 @@
+{
+  "name": "employee-wide-many-columns",
+  "formSize": {
+    "w": 1024,
+    "h": 600
+  },
+  "appOverview": "社員情報を登録・検索する人事アプリ。項目が多い。",
+  "tables": [
+    {
+      "name": "employees",
+      "description": "社員",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "emp_no",
+          "type": "TEXT",
+          "labelJa": "社員番号",
+          "notNull": true
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "labelJa": "氏名",
+          "notNull": true
+        },
+        {
+          "name": "kana",
+          "type": "TEXT",
+          "labelJa": "フリガナ"
+        },
+        {
+          "name": "department",
+          "type": "TEXT",
+          "labelJa": "部署"
+        },
+        {
+          "name": "position",
+          "type": "TEXT",
+          "labelJa": "役職"
+        },
+        {
+          "name": "email",
+          "type": "TEXT",
+          "labelJa": "メール"
+        },
+        {
+          "name": "phone",
+          "type": "TEXT",
+          "labelJa": "電話"
+        },
+        {
+          "name": "hired_on",
+          "type": "TEXT",
+          "labelJa": "入社日"
+        },
+        {
+          "name": "salary",
+          "type": "INTEGER",
+          "labelJa": "給与"
+        },
+        {
+          "name": "address",
+          "type": "TEXT",
+          "labelJa": "住所"
+        },
+        {
+          "name": "memo",
+          "type": "TEXT",
+          "labelJa": "備考"
+        }
+      ]
+    }
+  ]
+}

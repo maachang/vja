@@ -1,0 +1,32 @@
+{
+  "name": "memo-small-form",
+  "formSize": {
+    "w": 480,
+    "h": 360
+  },
+  "appOverview": "一言メモを残すだけの小さなアプリ。",
+  "tables": [
+    {
+      "name": "memos",
+      "description": "メモ",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "body",
+          "type": "TEXT",
+          "labelJa": "内容",
+          "notNull": true
+        },
+        {
+          "name": "created_at",
+          "type": "TEXT",
+          "labelJa": "作成日"
+        }
+      ]
+    }
+  ]
+}

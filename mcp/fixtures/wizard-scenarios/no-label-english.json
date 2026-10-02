@@ -1,0 +1,38 @@
+{
+  "name": "no-label-english",
+  "formSize": {
+    "w": 640,
+    "h": 420
+  },
+  "appOverview": "English column names only; a simple contact book.",
+  "tables": [
+    {
+      "name": "contacts",
+      "description": "contacts",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "full_name",
+          "type": "TEXT",
+          "notNull": true
+        },
+        {
+          "name": "company",
+          "type": "TEXT"
+        },
+        {
+          "name": "phone_number",
+          "type": "TEXT"
+        },
+        {
+          "name": "note",
+          "type": "TEXT"
+        }
+      ]
+    }
+  ]
+}

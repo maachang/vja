@@ -1,0 +1,111 @@
+{
+  "name": "shop-4tables",
+  "formSize": {
+    "w": 800,
+    "h": 500
+  },
+  "appOverview": "商品・顧客・注文・在庫を扱う小さなショップ管理アプリ。",
+  "tables": [
+    {
+      "name": "products",
+      "description": "商品",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "labelJa": "商品名",
+          "notNull": true
+        },
+        {
+          "name": "price",
+          "type": "INTEGER",
+          "labelJa": "価格"
+        },
+        {
+          "name": "category",
+          "type": "TEXT",
+          "labelJa": "カテゴリ"
+        }
+      ]
+    },
+    {
+      "name": "customers",
+      "description": "顧客",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "labelJa": "顧客名",
+          "notNull": true
+        },
+        {
+          "name": "email",
+          "type": "TEXT",
+          "labelJa": "メール"
+        }
+      ]
+    },
+    {
+      "name": "orders",
+      "description": "注文",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "customer_id",
+          "type": "INTEGER",
+          "labelJa": "顧客ID"
+        },
+        {
+          "name": "product_id",
+          "type": "INTEGER",
+          "labelJa": "商品ID"
+        },
+        {
+          "name": "quantity",
+          "type": "INTEGER",
+          "labelJa": "数量"
+        },
+        {
+          "name": "ordered_on",
+          "type": "TEXT",
+          "labelJa": "注文日"
+        }
+      ]
+    },
+    {
+      "name": "stocks",
+      "description": "在庫",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "product_id",
+          "type": "INTEGER",
+          "labelJa": "商品ID"
+        },
+        {
+          "name": "amount",
+          "type": "INTEGER",
+          "labelJa": "在庫数"
+        }
+      ]
+    }
+  ]
+}

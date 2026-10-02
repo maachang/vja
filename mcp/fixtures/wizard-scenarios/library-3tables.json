@@ -1,0 +1,100 @@
+{
+  "name": "library-3tables",
+  "formSize": {
+    "w": 800,
+    "h": 520
+  },
+  "appOverview": "図書館の蔵書と会員を管理し、貸出と返却を記録するアプリ。",
+  "tables": [
+    {
+      "name": "books",
+      "description": "蔵書",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "title",
+          "type": "TEXT",
+          "labelJa": "書名",
+          "notNull": true
+        },
+        {
+          "name": "author",
+          "type": "TEXT",
+          "labelJa": "著者"
+        },
+        {
+          "name": "isbn",
+          "type": "TEXT",
+          "labelJa": "ISBN"
+        },
+        {
+          "name": "published_year",
+          "type": "INTEGER",
+          "labelJa": "出版年"
+        }
+      ]
+    },
+    {
+      "name": "members",
+      "description": "会員",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "labelJa": "氏名",
+          "notNull": true
+        },
+        {
+          "name": "phone",
+          "type": "TEXT",
+          "labelJa": "電話番号"
+        },
+        {
+          "name": "joined_on",
+          "type": "TEXT",
+          "labelJa": "入会日"
+        }
+      ]
+    },
+    {
+      "name": "loans",
+      "description": "貸出",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "book_id",
+          "type": "INTEGER",
+          "labelJa": "書籍ID"
+        },
+        {
+          "name": "member_id",
+          "type": "INTEGER",
+          "labelJa": "会員ID"
+        },
+        {
+          "name": "loan_date",
+          "type": "TEXT",
+          "labelJa": "貸出日"
+        },
+        {
+          "name": "return_date",
+          "type": "TEXT",
+          "labelJa": "返却日"
+        }
+      ]
+    }
+  ]
+}
