@@ -202,6 +202,38 @@
         return { boxes, rowCount: n };
     }
 
+    // 行ごとの領域（_expandPairRows）を持たないパターンで、同じ役割のboxが複数の「段」
+    // （y違い）に並ぶ場合、段ごと・枠ごとの領域をプロンプト行として返す。
+    // 役割ごとの外接矩形だけを渡すと「縦に積む」「上段に横4つ+下段に全幅1つ」等の
+    // 並びの構造が消え、AIが縦を横一列にしたり段の順序を入れ替える不具合があった（2026-10-02）。
+    // 段が1つだけの役割（横一列のみ）は外接矩形で足りるため出さない。
+    function _buildRoleSlotLines(pattern, formW, formH) {
+        const px = (v, total) => Math.round((v / 100) * total);
+        const slotDesc = {
+            "入力": "one input item per slot (its label + its input widget)",
+            "表示": "one display widget per slot",
+            "ボタン": "one button per slot",
+        };
+        const roles = [];
+        (pattern.boxes || []).forEach((b) => { if (b.label && !roles.includes(b.label)) roles.push(b.label); });
+        const out = [];
+        roles.forEach((role) => {
+            const boxes = pattern.boxes.filter((b) => b.label === role);
+            const ys = [];
+            boxes.forEach((b) => { if (!ys.includes(b.y)) ys.push(b.y); });
+            if (ys.length < 2) return;
+            ys.sort((a, b) => a - b);
+            out.push("- " + role + " slots of the " + role + " role (rows top to bottom, " + (slotDesc[role] || "one widget per slot") + "; unused slots are simply left empty):");
+            ys.forEach((y, i) => {
+                const row = boxes.filter((b) => b.y === y).sort((a, b) => a.x - b.x);
+                out.push("  " + role + "-row" + (i + 1) + ": y=" + px(y, formH) + "-" + px(y + row[0].h, formH) +
+                    ", slot" + (row.length > 1 ? "s" : "") + " " + row.map((b) => "x=" + px(b.x, formW) + "-" + px(b.x + b.w, formW)).join(" | "));
+            });
+            out.push("  Keep this row structure: widgets in different rows MUST NOT be moved into another row, and a row with a single slot holds widgets only in that one slot (never side by side).");
+        });
+        return out;
+    }
+
     // 選択中のレイアウトパターンを、AIへ渡す「厳格な配置エリア（px座標）」の
     // プロンプト断片へ変換する。従来は「配置構造を言葉で説明した1文」を
     // addPromptに足すだけで、AIの解釈に配置の正確さが左右されていた
@@ -243,6 +275,8 @@
                     ", input x=" + px(v.x, formW) + "-" + px(v.x + v.w, formW));
             }
             lines.push("  Each row holds exactly ONE label + its ONE input widget side by side. NEVER put two label/input pairs in the same row, and NEVER place a second pair to the right of the first.");
+        } else {
+            _buildRoleSlotLines(pattern, formW, formH).forEach((l) => lines.push(l));
         }
         return "\n\n[Strict Layout Regions — user-selected layout image, MUST be followed exactly]\n" +
             "The user selected the layout image \"" + pattern.label + "\" (" + pattern.desc + "). It has been converted into the following strict pixel regions for THIS form's actual size (" + formW + "x" + formH + "px). Place each widget according to its role into the matching region below:\n" +

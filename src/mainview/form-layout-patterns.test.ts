@@ -48,4 +48,24 @@ describe("buildLayoutRegionsPromptText（行ごとの領域）", () => {
         expect(rowLines(t).length).toBe(0);
         expect(t).toContain("input-role widgets");
     });
+    const slotRows = (t: string, role: string) => t.split("\n").filter((l) => new RegExp("^ {2}" + role + "-row\\d+:").test(l));
+
+    it("同じ役割が複数段に並ぶパターンは段ごとの領域を出す（ボタン縦4段）", () => {
+        const rows = slotRows(build("stackedButtonsOnly", 640, 420), "ボタン");
+        expect(rows.length).toBe(4);
+        expect(rows[0]).toContain("slot x=160-480");
+        expect(ys(rows[1])[0]).toBeGreaterThanOrEqual(ys(rows[0])[1]);
+    });
+
+    it("上段に横4つ+下段に全幅1つの表示は、段ごとに枠を分ける", () => {
+        const rows = slotRows(build("topInputMidMultiDisplayBottomDisplay", 640, 420), "表示");
+        expect(rows.length).toBe(2);
+        expect(rows[0].match(/x=\d+-\d+/g)!.length).toBe(4);
+        expect(rows[1].match(/x=\d+-\d+/g)!.length).toBe(1);
+    });
+
+    it("1段だけの役割・単一boxの役割は段指定を出さない", () => {
+        expect(slotRows(build("topInputBottomDisplay", 640, 420), "入力").length).toBe(0);
+        expect(slotRows(build("centerInputBottomButtons", 640, 420), "入力").length).toBe(0);
+    });
 });
