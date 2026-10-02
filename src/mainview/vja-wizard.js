@@ -55,7 +55,7 @@ const WIZARD_STATE = {
     resumeAfterTableEdit: null, // 2026-09-13時点で設定箇所は無い（テーブル管理ステップが既存UIをそのまま使うため不要になった）。将来ウィザード内から個別テーブル編集への遷移を作る場合のために残置。
     _resumeDiscardCb: null, // wizardOfferResume()で「破棄する」を選んだ後に続けたい処理（省略可）
     appOverview: "", // アプリ概要ステップで記入された自由記述テキスト
-    formPlan: [], // [{ formName, formTitle, description, docDraft }]
+    formPlan: [], // [{ formName, formTitle, description, docDraft, kind }] kindはスケルトン確定分のみ("menu"|"list"|"input")、AI追加の画面は無し
     step: 1, // 現在のステップ番号（ステップインジケーター表示用）
     formSize: null, // { key: 'small'|'medium'|'large', label, w, h } 画面サイズ選択ステップの結果
     systemModelHint: null, // ユーザーがシステムモデル選択ステップで選んだ骨格（src/wizard-system-models/の
@@ -597,7 +597,11 @@ async function wizardDecomposeForms() {
         renderTableManagerModal();
         return;
     }
-    WIZARD_STATE.formPlan = forms;
+    // 確定済みスロットの画面種別(kind)を持たせる。生成後のアクション補完
+    // （ensureWizardFormActions）が、一覧/入力/メニューごとの必須ボタンを判断するために使う。
+    const kindByName = {};
+    skeleton.forEach((sl) => { kindByName[sl.formName] = sl.kind; });
+    WIZARD_STATE.formPlan = forms.map((f) => (kindByName[f.formName] ? { ...f, kind: kindByName[f.formName] } : f));
     _wizardRenderFormReviewModal();
 }
 
@@ -676,7 +680,12 @@ async function wizardConfirmAndGenerate() {
         showToast("フォーム" + (i + 1) + "/" + total + ": " + f.cfg.title + " を生成中…");
         const genResult = await wizardGenerateFormYaml(f.formDesignDocDraft);
         if (!genResult) continue; // 失敗した場合はこのフォームは空のまま次へ進む
-        const { yaml, layoutPatternId } = genResult;
+        const { layoutPatternId } = genResult;
+        // 画面の種類ごとの必須ボタン（登録/検索/メニューの各一覧への遷移）をコード側で補完する
+        // （詳細はvja-wizard-actions.jsのAIメモ参照）
+        const plan = WIZARD_STATE.formPlan[i] || {};
+        const listTitles = WIZARD_STATE.formPlan.filter((p) => p.kind === "list").map((p) => p.formTitle);
+        const yaml = ensureWizardFormActions(genResult.yaml, plan.kind, listTitles);
         f.formDesignDraft = yaml;
         f.formLayoutPattern = layoutPatternId;
         getProjectData().formDesignDraft = yaml; // 同期を保つ（次のswitchForm()呼び出しで消されないように）

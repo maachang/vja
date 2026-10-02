@@ -104,6 +104,7 @@ CLAUDE.mdは毎セッション全文が読み込まれるため、規約・全�
 | src/mainview/vja-table-validation.js | 定数・テーブル・バリデーション編集 |
 | src/mainview/vja-app-config.js | フォーム定数・アプリイベント・クラウド設定等 |
 | src/mainview/vja-wizard.js | プロジェクト新規作成ウィザード |
+| src/mainview/vja-wizard-actions.js | ウィザード生成画面のアクション項目へ、画面種別ごとの必須ボタン（入力=登録/戻る、一覧=検索/新規登録、メニュー=各一覧への遷移）をコードで補完する純粋関数`ensureWizardFormActions`（2026-10-02） |
 | src/mainview/vja-ui.js | キーボード・ルーラー・INIT（最後に読み込む） |
 | src/mainview/bridge.ts | Webview RPC ブリッジ |
 | src/mainview/bridge-common.ts | RPC ブリッジ共通処理 |

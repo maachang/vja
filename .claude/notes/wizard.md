@@ -35,3 +35,15 @@
 - **一覧画面のdatagrid欠落**: 一覧スロットのdocDraft本文に「一覧」という語が入らないと、後工程（`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`のdatagrid必須ルール）が発動しない。docDraftには必ず「一覧」を含める、一覧スロットには「新規登録」ボタン、入力スロットには「戻る」ボタンを含める、と`ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`に明記している。あわせて`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`に「一覧＋入力」「一覧オンリー」のFew-Shot例（正しい例/誤った例の対比）を追加した
 - **`layout_pattern`の同期漏れ**（AI/モデルの問題ではなかった）: `layout_pattern:`行の抽出・`formLayoutPattern`への反映は、UI手動操作版にしか実装されておらず、ウィザード版（`wizardGenerateFormYaml()`）は`{ yaml, layoutPatternId }`を返す形にし、`wizardConfirmAndGenerate()`のループ内でも`formLayoutPattern`を`formDesignDraft`等と同じパターンで同期するよう修正した。モデルのせいにする前に、実データ（生成結果）を確認すること
 - 実LLM(192.168.0.235)での検証は、8システムモデル全パターン・3テーブル構成で実施済み（欠落・実在しないカラムの混入なし）。実機（`bun run dev`）でのUI操作込みの全体再テストは、当時は未実施
+
+## 画面種別ごとの必須ボタンのコード補完（2026-10-02）
+
+- 症状: ウィザード生成で「登録画面に登録ボタンが無い」「条件入力のある一覧に検索ボタンが無い」「一覧画面があるのにメニューにそのボタンが無い」
+- 原因: アクション項目はAIが依頼文（docDraft）から作る。decomposeプロンプトが依頼文へ必ず入れさせるのは一覧=新規登録・入力=戻るだけで、YAML生成プロンプトは「依頼文にないアクションを作るな」としているため、それ以外は生成されなかった
+- 対応: プロンプトではなくコードで補完する。`vja-wizard-actions.js`の`ensureWizardFormActions(yaml, kind, listTitles)`を、`wizardConfirmAndGenerate`でYAML生成直後（レイアウト生成の前）に呼ぶ。`kind`は`wizardDecomposeForms`が確定スロット(`_wizardBuildScreenSkeleton`)から`formPlan`の各要素へ持たせる（AI追加の画面はkind無し=補完しない）
+  - input: 「登録」（登録/保存/追加/更新/確定が無ければ、戻るの前）、「戻る」
+  - list: 「検索」（datagrid以外の入力項目があり検索系が無ければ先頭）、「新規登録」
+  - menu: 一覧画面のformTitle（末尾の「一覧」を除く）ごとの遷移ボタン
+- 範囲はウィザード生成のみ。手動作成の画面・手書きYAMLは変更しない。kind導入前に保存した再開データはkindが無いため補完されない
+- テスト: `vja-wizard-actions.test.ts`（実機/実LLMでの確認は未実施）
+
