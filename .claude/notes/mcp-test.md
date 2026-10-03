@@ -68,4 +68,8 @@
 - チェック: 一覧=datagrid/検索（条件入力あり）/新規登録、入力=登録系+戻る、メニュー=全一覧への遷移ボタン、全画面=アクション項目のボタンウィジェット有無・重なり・フォーム枠外。結果の詳細は`.claudeWork/wizard-scenario-result.json`
 - 所要時間: qwen2.5-coder-7bで1シナリオ約2〜6分（画面数に比例）
 - 注意: `runAiGenerate`の後処理は`vja-modal.js`と同内容を再現している（変更時は両方）。レイアウト結果は`applyAiFormDesign`のはみ出し補正の前の値
+- シナリオは9件（2026-10-03時点）: 基本3件に加え、`library-3tables`/`shop-4tables`（多テーブル）、`employee-wide-many-columns`（12カラム・1024×600）、`memo-small-form`（480×360）、`no-label-english`（日本語名なし）、`managed-columns-2tables`（管理系カラム入り）。全9件を1回流すと約45分
+- 追加チェック: 管理系カラム（`managed:true`のカラムのnameとlabelJa）が、画面YAMLの入力項目・レイアウトのlabel/datagrid列に出ていないこと。除外を外した対照実験で4件NGになることを確認済み（検査が有効な根拠）
+- 長時間実行の注意: Bashの`run_in_background`は既定30分で打ち切られる。全シナリオを流すときは`timeout`を2時間（7200000）にすること。`pkill -f`は自分自身のコマンド行にも一致して自殺するので使わない。結果JSONは完走時にしか書かれない（途中で落ちるとログの`[シナリオ #n]`行しか残らない）
 - 初回結果（1回ずつ）: 3シナリオ・14画面で必須ボタンの不足は0件。NGは1画面の重なり（datagridとラベル/textarea）のみ
+- 2026-10-03の改善後の結果: 全9シナリオ・各1回でNG 0件（ローカルLLM qwen2.5-coder-7bのみ。複数回の通し・実機での見え方・別モデルは未確認）。結果は`applyAiFormDesign`の補正前の値

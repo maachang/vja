@@ -47,3 +47,14 @@
 - 範囲はウィザード生成のみ。手動作成の画面・手書きYAMLは変更しない。kind導入前に保存した再開データはkindが無いため補完されない
 - テスト: `vja-wizard-actions.test.ts`（実機/実LLMでの確認は未実施）
 
+## 画面生成の補完・補正と管理系カラム（2026-10-03）
+
+シナリオテスト（`mcp-test.md`参照）で見つけた不具合と、現行の対応。いずれもプロンプト文言ではなくコード側で確定している。
+
+- **レイアウトでアクションのボタンが落ちる**: ボタン領域の無いパターン（`topMultiDisplayBottomDisplay`等）の選択、およびボタン領域があってもLLMが出力を落とす、の2系統があった。`ensureAiFormButtons`（`vja-form-layout-fix.js`）が、YAMLのアクション項目に対応するbuttonが無ければ補う（既存ボタンの左隣、無ければ最下部ウィジェットの下。名前は日本語から英語名への対応表）。ウィザード・手動の画面デザイン生成の両方で`applyAiFormDesign`の直前に呼ぶ
+- **表示欄の無い入力画面でYAMLに無いdatagridが出て重なる**: 表示エリア付きパターンが選ばれても、YAMLにdatagridが無ければ`correctLayoutPatternByFields`（`form-layout-patterns.js`）が表示無しの入力パターンへ差し替える。ウィザードの一覧画面は`ensureWizardFormActions`が`一覧: datagrid`を補った後にこの判定をやり直す（`generateFormDesignYaml`が補正前の`originalLayoutPatternId`を返す）
+- **多項目で入力行が枠外に出る**: `_expandPairRows`が、行間0でも収まらない場合に行の高さを縮める（下限32px）
+- **一覧画面の入力項目に全カラムが入る**: 原因は依頼文でもテーブル情報の規則でもなく、`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`のFew-Shot例2（一覧+登録）が「datagrid＋全カラムの入力欄」を正解として示していたこと。例2の正解をdatagridのみにして解消。切り分けは「依頼文を変える」「疑わしい一文を削る」「例を削る」の順に実験し、一文ずつ原因を潰した（仮説を実験で2回外した。「依頼文にカラム名があるから」は誤りだった）
+- **カラムの表示系/管理系**: カラム定義の`managed`（true=管理系。作成日時・更新日時・削除フラグ等）。テーブル編集の「表示系」列のチェックONが表示系で、データは`managed`のまま反転して保持する（属性なしの既存テーブル=表示系でON）。DDLには影響しない。画面生成（YAML・レイアウト・ウィザードの画面構成分解）は`buildTablesCtxText(tables, true)`で管理系を除いて渡す。**イベントJS生成は全カラムのまま**（INSERT/UPDATEで管理系も扱うため）。AI生成のカラムは常に表示系
+- 未対応: 依頼文に管理系カラム名が明示された場合の除外、「一覧には出すが入力はさせない」等の3つ目の区別、入力スロット数を超える多項目の一覧用パターン（今のところ不要と判断。`leftInputRightDisplay`は入力3行）
+- 単体テスト: `vja-form-layout-fix.test.ts`/`form-layout-patterns.test.ts`/`vja-wizard-actions.test.ts`/`vja-table-validation.test.ts`/`vja-ai-gen-core.test.ts`
