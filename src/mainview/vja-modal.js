@@ -164,6 +164,15 @@ async function runAiGenerate(options) {
         const msg = data.choices?.[0]?.message || {};
         const raw = (msg.content || msg.reasoning_content || "");
 
+        // トークン使用量ログ（圧縮・キャッシュ効果の測定用。usageはOpenAI互換、timingsはllama-server拡張）
+        const u = data.usage || {};
+        const t = data.timings || {};
+        window.vja?.log?.debug?.("[AI] usage: prompt=" + (u.prompt_tokens ?? "?")
+            + " cached=" + (u.prompt_tokens_details?.cached_tokens ?? t.cache_n ?? "?")
+            + " completion=" + (u.completion_tokens ?? "?")
+            + (t.prompt_ms !== undefined ? " prompt_ms=" + Math.round(t.prompt_ms) : "")
+            + (t.predicted_ms !== undefined ? " predicted_ms=" + Math.round(t.predicted_ms) : ""));
+
         // AI返却結果をデバッグ出力.
         window.vja?.log?.debug?.("# AI返却結果:\n" + raw + "\n---EOF");
 
