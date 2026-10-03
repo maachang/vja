@@ -185,7 +185,7 @@
     //   「〇〇に対して繰り返し」→for/forEachに変換
     // ## Fidelity to YAML: YAMLに書かれていない処理(navigate/show/hide等)を勝手に追加禁止、
     //   イベント名から典型的な実装を推測して追加することも禁止。
-    //   (バックエンドのみ)エラーログはconsole.error(e.message, e)の形式で第2引数にErrorを渡す
+    //   (フロントエンドのみ)エラーログはconsole.error(e.message, e)の形式で第2引数にErrorを渡す
     // ## Other: コメントは日本語で書く
     const ENG_YAML_TO_JS_SYS_PROMPT = function (
         isAppEvent,
