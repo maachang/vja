@@ -96,13 +96,10 @@ actions:
 
 [Few-Shot Example 2: List + input screen — "一覧" REQUIRES a "datagrid" field]
 Input request: "商品マスターの一覧を表示し、必要に応じて新規商品の登録や既存商品の変更・削除を行う画面。" (with a referenced table "products" whose columns are code, name, category)
-Correct output:
+Correct output (the datagrid alone represents the records' columns — do NOT add one input field per table column; add input fields on a list screen only for search/filter conditions the request names):
 layout_pattern: 2
 fields:
   - 商品一覧: datagrid
-  - 商品コード: inputtype text
-  - 商品名: inputtype text
-  - カテゴリ: selectBox
 tables:
   - products
 actions:
