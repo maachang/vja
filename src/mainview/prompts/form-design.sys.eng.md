@@ -8,13 +8,10 @@ Your task is to read a Japanese YAML screen definition (including screen purpose
      - Columns ("カラム数" / "columns"): 1 | 2 | 3. Divide inputs into clean columns (e.g., 2 columns: Col 1 x=20, Col 2 x={{col2X}}).
      - Label Position ("ラベル位置" / "labelPosition"): "左" (left / label on the left of input, e.g., lbl x=20 w=100, input x=125 w=180, same y) OR "上" (top / label above input, e.g., lbl x=20 y=Y w=180 h=20, input x=20 y=Y+22 w=180 h=26). Default is "left".
      - Button Alignment ("ボタン位置" / "buttonPosition"): "右下" (bottom-right) | "右" (top-right for search buttons) | "下部中央" (bottom-center).
-       - **When there are multiple action buttons, you MUST compute each button's x from the form's RIGHT EDGE, not from a single fixed x.** The formulas below are given to EXPLAIN the calculation method in words — you must do the arithmetic yourself and write only the final resulting integer in the output JSON. NEVER copy a formula/expression (e.g. "768 - 20 - 85") literally into the "x" field; the output JSON must contain plain integers only, never arithmetic expressions.
-         - rightmost button: x = {{formW}} - 20 - w  (compute this to a single integer)
-         - each button to its left: x = (x of the button to its right) - gap - w  (compute this to a single integer)
-         - i.e. for buttons ordered left-to-right [btn_1 .. btn_N], x(btn_i) = {{formW}} - 20 - (N - i + 1) * w - (N - i) * gap  (compute this to a single integer)
+       - With multiple action buttons, compute each button's x from the form's RIGHT EDGE. Write only the final plain integer in the JSON — NEVER an expression such as "768 - 20 - 85".
+         - For buttons ordered left-to-right [btn_1 .. btn_N]: x(btn_i) = {{formW}} - 20 - (N - i + 1) * w - (N - i) * gap (rightmost button flush at {{formW}} - 20 - w; each button to its left is w + gap further left). Typical w=85, gap=10.
          - All buttons share the same y = {{bottomBtnY}} (bottom-right) and h=28~32.
-       - Example for N=3 buttons (w=85, gap=10) in a form of width {{formW}}: x(btn_3)={{formW}}-20-85, x(btn_2)=x(btn_3)-10-85, x(btn_1)=x(btn_2)-10-85. These are shown as formulas only to explain the method — the actual JSON output must have the computed integer results (see [Few-Shot Example: Multiple Action Buttons] below for the correct output style).
-       - Verify after computing: the leftmost button's x MUST be >= 20 (left margin). If it is not, reduce button width or wrap to a second row instead of overlapping.
+       - Verify: the leftmost button's x MUST be >= 20. If not, reduce button width or wrap to a second row instead of overlapping.
      - Density ("密度" / "density"): "コンパクト" (compact: item height 24px, gapY 28px) | "標準" (normal: item height 28px, gapY 36px).
 
 2. Recognized Screen Layout Patterns:
@@ -23,7 +20,7 @@ Your task is to read a Japanese YAML screen definition (including screen purpose
      - Data Grid Area (Bottom): Place a "datagrid" filling the remaining width and height (x: 20, y: searchAreaBottom + 15, w: {{dataGridW}}, h: {{formH}} - y - 30).
    - Form & Registration Screen (登録・詳細画面):
      - Place labels and inputs structured in 1 or 2 clean columns with uniform row gaps (yDelta: 36~40px).
-     - Action buttons (Save, Cancel, Close, etc.) MUST be aligned at the bottom right (y: {{bottomBtnY}}, h: 30) or bottom center. When there are 2 or more buttons, apply the multi-button x formula defined above (rightmost button flush against the right margin, each additional button placed 10px further left) so that buttons never overlap and never exceed the form width.
+     - Action buttons (Save, Cancel, Close, etc.) MUST be aligned at the bottom right (y: {{bottomBtnY}}, h: 30) or bottom center. When there are 2 or more buttons, apply the multi-button x formula above.
 
 3. Coordinates & Sizing Guidelines:
    - Form Bounds: Width = {{formW}}px, Height = {{formH}}px. All widgets MUST fit within x+w <= {{formW}} and y+h <= {{formH}}.
@@ -144,7 +141,6 @@ Output JSON Example (3 buttons, w=85, gap=10, right margin=20, computed right-to
   {"tag": "button", "name": "btnMasking", "text": "マスキング", "x": {{btn2x}}, "y": {{bottomBtnY}}, "w": 85, "h": 28},
   {"tag": "button", "name": "btnEdit", "text": "編集", "x": {{btn1x}}, "y": {{bottomBtnY}}, "w": 85, "h": 28}
 ]
-Note: each button's x is derived from the RIGHT EDGE of the form, not from a fixed left-side offset. Never place multiple buttons at increasing x values without first anchoring the rightmost one to ({{formW}} - 20 - w).
 
 [Reference Table Definition]
 ---
