@@ -140,7 +140,10 @@ const _runAppEventCode = async (name: string, code: string): Promise<void> => {
                 error: (msg: string) => console.error("[app]", msg),
             },
         };
-        const fn = new Function("vja", `"use strict";\n${code}`);
+        // AsyncFunctionで生成する（通常のFunctionだと、AI生成コードのawaitが構文エラーになるため）。
+        // バック側のvja.*は同期関数だが、awaitを付けても無害なのでAIがawaitを付けても動く。
+        const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
+        const fn = new AsyncFunction("vja", `"use strict";\n${code}`);
         await fn(vja);
         console.log(`[app] ${name} 実行完了`);
     } catch (e: any) {
