@@ -181,7 +181,7 @@
   - 説明: 前の画面に戻り、入力内容を復元する
   - 引数: なし
   - 戻り値: なし
-  - 使用例: "vja.form.back();"
+  - 使用例: "await vja.form.back();"
   - 使用例説明: 前の画面に戻り、その時点の入力値を復元する
 
 - 関数名: vja.form.setParam(key, value):
