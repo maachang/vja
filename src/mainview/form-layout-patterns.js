@@ -154,6 +154,8 @@
     // 行ごとの領域を持つパターンの下端（0-100の割合値）。この下に収まるよう行間を詰める。
     // 上端の余白（y=4）と同じ4を下端にも確保する。
     const ROW_BOTTOM_LIMIT = 96;
+    // 行間を0まで詰めても収まらない場合に、行の高さを縮める下限（px）。入力欄の高さ(26〜28)に余白を足した値。
+    const MIN_ROW_PX = 32;
 
     // 「ラベル欄(入力) + 値欄(labelが空)」が同じyで続く組を行として検出する。
     // 2行以上ある場合のみ行ごとの領域を持つパターンとみなす（stackedInputBottomButtons等）。
@@ -173,12 +175,13 @@
     // 行が増えた分、入力行以外(ボタン等)は下へ押し下げ、ROW_BOTTOM_LIMITを超える場合は
     // 行間を詰める（0未満にはしない。それでも超える分はapplyAiFormDesignの画面内収めに任せる）。
     // 戻り値: { boxes, rowCount }。行を持たないパターンはnull。
-    function _expandPairRows(pattern, fieldCount) {
+    function _expandPairRows(pattern, fieldCount, formH) {
         const pairs = _detectPairRows(pattern);
         if (!pairs) return null;
         const baseN = pairs.length;
         const n = fieldCount > baseN ? fieldCount : baseN;
-        const rowH = pairs[0].l.h, y0 = pairs[0].l.y;
+        let rowH = pairs[0].l.h;
+        const y0 = pairs[0].l.y;
         const baseGap = pairs[1].l.y - (y0 + rowH);
         const others = (pattern.boxes || []).filter((b) => !pairs.some((p) => p.l === b || p.v === b));
         let gap = baseGap;
@@ -190,13 +193,18 @@
             const btnGap = oTop - lastBottom, btnH = oBottom - oTop;
             if (y0 + n * rowH + (n - 1) * gap + btnGap + btnH > ROW_BOTTOM_LIMIT) {
                 gap = Math.max(0, (ROW_BOTTOM_LIMIT - y0 - n * rowH - btnGap - btnH) / (n - 1));
+                // 行間0でも収まらない場合は行の高さを縮める（下限MIN_ROW_PX。それでも超える分は画面内収めに任せる）
+                if (gap === 0 && y0 + n * rowH + btnGap + btnH > ROW_BOTTOM_LIMIT) {
+                    const minRowH = formH > 0 ? (MIN_ROW_PX / formH) * 100 : rowH;
+                    rowH = Math.min(rowH, Math.max(minRowH, (ROW_BOTTOM_LIMIT - y0 - btnGap - btnH) / n));
+                }
             }
             shift = (y0 + n * rowH + (n - 1) * gap + btnGap) - oTop;
         }
         const boxes = [];
         for (let i = 0; i < n; i++) {
             const y = y0 + i * (rowH + gap);
-            boxes.push({ ...pairs[0].l, y }, { ...pairs[0].v, y });
+            boxes.push({ ...pairs[0].l, y, h: rowH }, { ...pairs[0].v, y, h: rowH });
         }
         others.forEach((b) => boxes.push({ ...b, y: b.y + shift }));
         return { boxes, rowCount: n };
@@ -251,7 +259,7 @@
     function buildLayoutRegionsPromptText(patternId, formW, formH, fieldCount) {
         const pattern = getFormLayoutPatternById(patternId);
         if (!pattern) return "";
-        const expanded = _expandPairRows(pattern, fieldCount);
+        const expanded = _expandPairRows(pattern, fieldCount, formH);
         const regions = _buildLayoutRegionsFromPattern(expanded ? { boxes: expanded.boxes } : pattern, formW, formH);
         const roleDesc = {
             "入力": "input-role widgets (labels + their inputtype/selectBox/checkbox/etc., i.e. everything EXCEPT buttons and display areas)",
@@ -284,8 +292,31 @@
             "\n[IMPORTANT] These regions define WHERE each role of widget goes — they do NOT define WHICH widgets to create. Widget types/count still come only from the YAML's 入力項目/参照テーブル/アクション項目 as usual. If a region above has no matching widgets to place (e.g. no button was requested), simply ignore that region. Widgets must still obey the form's overall width/height bounds and the no-overlap rule even when placed inside these regions.";
     }
 
+    // AIが選んだパターンが「表示エリアを持つ入力画面向け」なのに、YAMLの入力項目に表示ウィジェット
+    // （datagrid）が無い場合、表示エリアを持たない入力パターンへ差し替えたIDを返す（それ以外は元のID）。
+    // Why: 表示エリア付きパターンを選ぶと、YAMLに無いdatagridがレイアウト生成で勝手に足され、
+    // 入力ウィジェット（textarea等）と重なる不具合が出る（2026-10-03、sales-3tablesで確認）。
+    // プロンプトに「表示欄が不要なら表示無しパターンを選べ」と既にあるが、LLMが「表示」の語に
+    // 引きずられて守らないため、コード側で確定する。
+    // 対象は「入力+表示の両エリアを持つパターン」かつ「datagrid以外の入力項目が1件以上ある」場合のみ
+    // （入力が無い閲覧専用画面・メニュー画面は触らない）。
+    function correctLayoutPatternByFields(patternId, yamlText) {
+        const roles = (p) => new Set((p.boxes || []).map((b) => b.label).filter((l) => l));
+        const cur = getFormLayoutPatternById(patternId);
+        if (!cur) return patternId;
+        const curRoles = roles(cur);
+        if (!(curRoles.has("入力") && curRoles.has("表示"))) return patternId;
+        const m = String(yamlText || "").match(/入力項目:[ \t]*\n((?:[ \t]+-.*(?:\n|$))*)/);
+        const lines = m ? m[1].split("\n").filter((l) => /^\s+-/.test(l)) : [];
+        if (lines.some((l) => /datagrid/i.test(l))) return patternId;
+        if (!lines.some((l) => !/:\s*button\b/i.test(l))) return patternId;
+        const alt = FORM_LAYOUT_PATTERNS.find((p) => { const r = roles(p); return r.has("入力") && !r.has("表示"); });
+        return alt ? alt.id : patternId;
+    }
+
     // グローバル展開
     Object.assign(window, {
+        correctLayoutPatternByFields,
         FORM_LAYOUT_PATTERNS,
         buildLayoutPatternDiagramSvg,
         getFormLayoutPatterns,

@@ -69,3 +69,53 @@ describe("buildLayoutRegionsPromptText（行ごとの領域）", () => {
         expect(slotRows(build("centerInputBottomButtons", 640, 420), "入力").length).toBe(0);
     });
 });
+
+describe("correctLayoutPatternByFields", () => {
+    let fix: (id: string, yaml: string) => string;
+    beforeAll(() => {
+        (globalThis as any).window = globalThis;
+        eval(readFileSync(join(import.meta.dir, "form-layout-patterns.js"), "utf-8"));
+        fix = (globalThis as any).correctLayoutPatternByFields;
+    });
+    const noGrid = "入力項目:\n  - 担当者: inputtype text\n  - 操作内容: textarea\n\nアクション項目:\n  - 保存\n";
+    const grid = "入力項目:\n  - 条件: inputtype text\n  - 一覧: datagrid\n";
+
+    it("入力+表示パターンでdatagridが無ければ、表示無しの入力パターンへ差し替える", () => {
+        expect(fix("topInputBottomDisplay", noGrid)).toBe("stackedInputBottomButtons");
+        expect(fix("leftInputRightDisplay", noGrid)).toBe("stackedInputBottomButtons");
+    });
+    it("datagridがあれば変えない", () => {
+        expect(fix("topInputBottomDisplay", grid)).toBe("topInputBottomDisplay");
+    });
+    it("入力が無い画面・表示のみ/ボタンのみパターン・不明IDは変えない", () => {
+        expect(fix("topInputBottomDisplay", "入力項目:\n  - 新規: button\n")).toBe("topInputBottomDisplay");
+        expect(fix("topMultiDisplayBottomDisplay", noGrid)).toBe("topMultiDisplayBottomDisplay");
+        expect(fix("stackedButtonsOnly", noGrid)).toBe("stackedButtonsOnly");
+        expect(fix("", noGrid)).toBe("");
+    });
+});
+
+describe("buildLayoutRegionsPromptText（行が収まらない場合は行の高さを縮める）", () => {
+    let build: (id: string, w: number, h: number, n?: number) => string;
+    beforeAll(() => {
+        (globalThis as any).window = globalThis;
+        eval(readFileSync(join(import.meta.dir, "form-layout-patterns.js"), "utf-8"));
+        build = (globalThis as any).buildLayoutRegionsPromptText;
+    });
+    const rows = (t: string) => t.split("\n").filter((l) => /^ {2}row\d+:/.test(l)).map((l) => l.match(/y=(\d+)-(\d+)/)!.slice(1).map(Number));
+
+    it("11項目(1024x600)でも全行とボタンがフォーム内に収まり、行の高さは32px以上", () => {
+        const t = build("stackedInputBottomButtons", 1024, 600, 11);
+        const r = rows(t);
+        expect(r.length).toBe(11);
+        expect(r[10][1]).toBeLessThanOrEqual(600);
+        r.forEach(([a, b]) => expect(b - a).toBeGreaterThanOrEqual(32));
+        const btn = t.split("\n").find((l) => l.startsWith("- button-role"))!.match(/y=(\d+)-(\d+)/)!.slice(1).map(Number);
+        expect(btn[1]).toBeLessThanOrEqual(600);
+        expect(btn[0]).toBeGreaterThanOrEqual(r[10][1]);
+    });
+    it("収まる場合は従来どおり行の高さを変えない(10%=60px)", () => {
+        const r = rows(build("stackedInputBottomButtons", 800, 600, 4));
+        expect(r[0][1] - r[0][0]).toBe(60);
+    });
+});

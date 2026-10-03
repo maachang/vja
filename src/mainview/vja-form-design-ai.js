@@ -294,7 +294,9 @@ async function generateFormDesignYaml(inputText, allTables) {
                 yaml += "\n参照テーブル:\n" + derivedTables.map((n) => "  - " + n).join("\n");
             }
 
-            result = { yaml, layoutPatternId: matchedPattern ? matchedPattern.id : "" };
+            // 表示エリア付きパターンなのにYAMLに表示ウィジェット（datagrid）が無い場合は、表示無しパターンへ差し替える
+            const patternId = matchedPattern ? correctLayoutPatternByFields(matchedPattern.id, yaml) : "";
+            result = { yaml, layoutPatternId: patternId };
         },
         onCancel: async () => { },
         onError: async () => { },
