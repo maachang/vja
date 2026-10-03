@@ -19,6 +19,10 @@
 //     input: 確定ボタン「登録」（登録/保存/追加/更新/確定が無ければ）、「戻る」（無ければ）
 //     list : 「検索」（datagrid以外の入力項目があり、検索系が無ければ）、「新規登録」（無ければ）
 //     menu : listTitles（一覧画面のformTitle）ごとの遷移ボタン。文言は末尾の「一覧」を除いたもの
+// - list画面で「入力項目:」にdatagridが無い場合は、先頭へ「一覧: datagrid」を補う（2026-10-03）。
+//   AIが一覧画面なのにdatagrid項目を出さないことがあり（YAML生成の揺らぎ）、その場合レイアウト側で
+//   datagridが作られず一覧が表示されなくなる。項目名は固定の「一覧」。入力項目セクションが無ければ
+//   「説明:」の次の行（説明も無ければ先頭）へセクションごと新設する。
 // - kindが上記以外（AIが追加した画面等）は何もしない。
 // ═══════════════════════════════════════════
 (function () {
@@ -46,12 +50,29 @@
         return { h, end };
     }
 
+    // list画面の「入力項目:」にdatagridが無ければ「一覧: datagrid」を先頭へ補った行配列を返す
+    function _ensureDatagridField(lines) {
+        const sec = _section(lines, "入力項目");
+        if (sec) {
+            const items = _itemIdx(lines, sec.h + 1, sec.end);
+            if (items.some((i) => /datagrid/i.test(lines[i]))) return lines;
+            const out = lines.slice();
+            out.splice(items.length > 0 ? items[0] : sec.h + 1, 0, "  - 一覧: datagrid");
+            return out;
+        }
+        const out = lines.slice();
+        const d = out.findIndex((l) => /^説明\s*:/.test(l));
+        out.splice(d + 1, 0, ...(d >= 0 ? [""] : []), "入力項目:", "  - 一覧: datagrid", ...(d >= 0 ? [] : [""]));
+        return out;
+    }
+
     // yamlTextの「アクション項目:」へ不足分を補った新しいYAML文字列を返す。
     // kind: "menu" | "list" | "input"。listTitles: 一覧画面のformTitle配列（menuのみ使用）
     function ensureWizardFormActions(yamlText, kind, listTitles) {
         const text = String(yamlText || "");
         if (kind !== "menu" && kind !== "list" && kind !== "input") return text;
-        const lines = text.split("\n");
+        let lines = text.split("\n");
+        if (kind === "list") lines = _ensureDatagridField(lines);
 
         const inSec = _section(lines, "入力項目");
         const fieldLines = inSec ? _itemIdx(lines, inSec.h + 1, inSec.end).map((i) => lines[i]) : [];
@@ -78,11 +99,11 @@
                 }
             });
         }
-        if (adds.length === 0) return text;
+        if (adds.length === 0) return lines.join("\n");
 
         // アクション項目セクションが無ければ末尾へ新設する
         if (!actSec) {
-            const out = text.replace(/\s+$/, "") + "\n\nアクション項目:\n" + adds.map((a) => "  - " + a.label).join("\n");
+            const out = lines.join("\n").replace(/\s+$/, "") + "\n\nアクション項目:\n" + adds.map((a) => "  - " + a.label).join("\n");
             return out + "\n";
         }
 

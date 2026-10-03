@@ -53,4 +53,22 @@ describe("ensureWizardFormActions（ウィザード生成画面の必須ボタ�
         expect(ensure(inputYaml, "")).toBe(inputYaml);
         expect(ensure(inputYaml, "other")).toBe(inputYaml);
     });
+
+    const fields = (y: string) => (y.match(/入力項目:\n((?:  - .*\n?)*)/)?.[1] || "").split("\n").filter(Boolean);
+
+    it("一覧画面: datagridが無ければ入力項目の先頭へ「一覧: datagrid」を補う", () => {
+        const y = "説明: x\n\n入力項目:\n  - 検索条件: inputtype text\n\n参照テーブル:\n  - t\n\nアクション項目:\n  - 新規登録\n  - 検索";
+        expect(fields(ensure(y, "list"))).toEqual(["  - 一覧: datagrid", "  - 検索条件: inputtype text"]);
+    });
+    it("一覧画面: 入力項目セクションが無ければ説明の次へ新設する", () => {
+        const out = ensure("説明: x\n\n参照テーブル:\n  - t\n\nアクション項目:\n  - 新規登録", "list");
+        expect(fields(out)).toEqual(["  - 一覧: datagrid"]);
+        expect(out.indexOf("入力項目:")).toBeGreaterThan(out.indexOf("説明:"));
+        expect(out.indexOf("入力項目:")).toBeLessThan(out.indexOf("参照テーブル:"));
+    });
+    it("一覧画面: datagridが既にあれば変更しない / 入力画面・メニューには補わない", () => {
+        expect(ensure(listYaml, "list")).toContain("商品一覧: datagrid");
+        expect(fields(ensure(listYaml, "list")).filter((l) => /datagrid/.test(l)).length).toBe(1);
+        expect(ensure(inputYaml, "input")).not.toContain("datagrid");
+    });
 });

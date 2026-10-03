@@ -741,7 +741,11 @@ async function wizardConfirmAndGenerate() {
 async function wizardGenerateFormYaml(docDraft, kind, listTitles) {
     const r = await generateFormDesignYaml(docDraft || "", getProjectData().tables || []);
     if (!r) return r;
-    return { ...r, yaml: ensureWizardFormActions(r.yaml, kind, listTitles) };
+    const yaml = ensureWizardFormActions(r.yaml, kind, listTitles);
+    // 一覧画面へdatagridを補った場合があるため、レイアウトパターンの補正（表示無しへの差し替え）は
+    // 補完後のYAMLで判定し直す（補正前のIDから）
+    const layoutPatternId = r.originalLayoutPatternId ? correctLayoutPatternByFields(r.originalLayoutPatternId, yaml) : r.layoutPatternId;
+    return { ...r, yaml, layoutPatternId };
 }
 
 // 1フォーム分の「YAML → 画面レイアウト（ウィジェット配置）」生成（DOM非依存版）

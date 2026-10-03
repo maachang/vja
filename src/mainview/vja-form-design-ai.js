@@ -296,7 +296,8 @@ async function generateFormDesignYaml(inputText, allTables) {
 
             // 表示エリア付きパターンなのにYAMLに表示ウィジェット（datagrid）が無い場合は、表示無しパターンへ差し替える
             const patternId = matchedPattern ? correctLayoutPatternByFields(matchedPattern.id, yaml) : "";
-            result = { yaml, layoutPatternId: patternId };
+            // originalLayoutPatternId: 補正前のID（ウィザードが一覧画面へdatagridを補った後に、補正を判定し直すため）
+            result = { yaml, layoutPatternId: patternId, originalLayoutPatternId: matchedPattern ? matchedPattern.id : "" };
         },
         onCancel: async () => { },
         onError: async () => { },
