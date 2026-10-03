@@ -320,7 +320,9 @@ function openTableEdit(idx) {
 
 function defaultColumn() {
     // labelJa: カラム名（英語のDBカラム名）に併記する日本語名。DDLには影響しない表示用の項目。
-    return { name: "", labelJa: "", type: "TEXT", notNull: false, pk: false, index: false, useDefault: false, default: "" };
+    // managed: true=管理系（作成日時・更新日時・削除フラグ等、管理で使うカラム）、false/未設定=表示系
+    // （入力や表示される内容）。DDLには影響しないメタ情報。属性が無い既存テーブルのカラムは表示系として扱う。
+    return { name: "", labelJa: "", type: "TEXT", notNull: false, pk: false, index: false, useDefault: false, default: "", managed: false };
 }
 
 function renderTableEditModal() {
@@ -349,6 +351,8 @@ function renderTableEditModal() {
             attrPk: evtAttr("onchange", "tblColUpdatePk(" + i + ",this.checked)"),
             indexChecked: c.index ? "checked" : "",
             attrIndex: evtAttr("onchange", "tblColUpdate(" + i + ",'index',this.checked)"),
+            managedChecked: c.managed ? "checked" : "",
+            attrManaged: evtAttr("onchange", "tblColUpdate(" + i + ",'managed',this.checked)"),
             defCell,
             attrInsert: evtAttr("onmousedown", "tblColInsert(" + i + ")"),
             attrDelete: evtAttr("onmousedown", "tblColDelete(" + i + ")"),
@@ -676,6 +680,8 @@ function tblSyncFromDOM() {
         if (cbs[2]) tbl.columns[i].index = cbs[2].checked;
         // DEFAULT: 4番目のcheckboxがuseDefault、3番目のtextがdefault値
         if (cbs[3] !== undefined) tbl.columns[i].useDefault = cbs[3].checked;
+        // 5番目のcheckboxが管理系（DEFAULT列の後ろ。位置依存のため、この並びを変えるとズレる）
+        if (cbs[4] !== undefined) tbl.columns[i].managed = cbs[4].checked;
         // テキスト入力の並び順: [0]=カラム名, [1]=日本語名, [2]=DEFAULT値
         const txts = tr.querySelectorAll("input[type=text]");
         if (txts[1]) tbl.columns[i].labelJa = txts[1].value;
@@ -698,6 +704,7 @@ function sanitizeAiTableColumns(cols) {
         index: !!c.index,
         useDefault: !!(c.default && String(c.default).trim() !== ""),
         default: c.default ? String(c.default) : "",
+        managed: false, // AI生成のカラムは表示系（管理系の指定はユーザーがテーブル編集で行う）
     })).filter(c => c.name !== "");
     // PKは1つのみ許可（複数trueが返ってきた場合は先頭のみ有効にする）
     let pkFound = false;

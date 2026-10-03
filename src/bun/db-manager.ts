@@ -19,6 +19,7 @@ export interface TableColumn {
     index: boolean;
     useDefault?: boolean;
     default?: string;
+    managed?: boolean; // true=管理系（作成日時・更新日時・削除フラグ等）、false/未設定=表示系。DDLには影響しない
 }
 
 export interface TableDef {
