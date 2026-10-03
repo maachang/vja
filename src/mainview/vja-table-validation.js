@@ -351,8 +351,9 @@ function renderTableEditModal() {
             attrPk: evtAttr("onchange", "tblColUpdatePk(" + i + ",this.checked)"),
             indexChecked: c.index ? "checked" : "",
             attrIndex: evtAttr("onchange", "tblColUpdate(" + i + ",'index',this.checked)"),
-            managedChecked: c.managed ? "checked" : "",
-            attrManaged: evtAttr("onchange", "tblColUpdate(" + i + ",'managed',this.checked)"),
+            // UIは「表示系」チェック（ON=表示系）。データはmanaged（true=管理系）なので反転して扱う
+            displayChecked: c.managed ? "" : "checked",
+            attrDisplay: evtAttr("onchange", "tblColUpdate(" + i + ",'managed',!this.checked)"),
             defCell,
             attrInsert: evtAttr("onmousedown", "tblColInsert(" + i + ")"),
             attrDelete: evtAttr("onmousedown", "tblColDelete(" + i + ")"),
@@ -680,8 +681,9 @@ function tblSyncFromDOM() {
         if (cbs[2]) tbl.columns[i].index = cbs[2].checked;
         // DEFAULT: 4番目のcheckboxがuseDefault、3番目のtextがdefault値
         if (cbs[3] !== undefined) tbl.columns[i].useDefault = cbs[3].checked;
-        // 5番目のcheckboxが管理系（DEFAULT列の後ろ。位置依存のため、この並びを変えるとズレる）
-        if (cbs[4] !== undefined) tbl.columns[i].managed = cbs[4].checked;
+        // 5番目のcheckboxが「表示系」（DEFAULT列の後ろ。位置依存のため、この並びを変えるとズレる）。
+        // OFF=管理系なのでmanagedは反転して保持する
+        if (cbs[4] !== undefined) tbl.columns[i].managed = !cbs[4].checked;
         // テキスト入力の並び順: [0]=カラム名, [1]=日本語名, [2]=DEFAULT値
         const txts = tr.querySelectorAll("input[type=text]");
         if (txts[1]) tbl.columns[i].labelJa = txts[1].value;

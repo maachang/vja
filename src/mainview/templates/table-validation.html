@@ -94,7 +94,7 @@
 <td><input class="col-check" type="checkbox" <%= pkChecked %> <%- attrPk %>></td>
 <td><input class="col-check" type="checkbox" <%= indexChecked %> <%- attrIndex %>></td>
 <td style="white-space:nowrap"><%- defCell %></td>
-<td><input class="col-check" type="checkbox" title="ON=管理系 / OFF=表示系" <%= managedChecked %> <%- attrManaged %>></td>
+<td><input class="col-check" type="checkbox" title="ON=表示系 / OFF=管理系" <%= displayChecked %> <%- attrDisplay %>></td>
 <td style="white-space:nowrap"><button class="tbl-action-btn" <%- attrInsert %> style="margin-right:2px">＋</button><button class="tbl-action-btn del" <%- attrDelete %>>✕</button></td>
 </tr>
 </script>
@@ -129,7 +129,7 @@
 <th style="width:48px">KEY</th>
 <th style="width:72px">インデックス</th>
 <th style="min-width:90px">DEFAULT</th>
-<th style="width:56px" title="ON=管理系（作成日時・更新日時・削除フラグ等）/ OFF=表示系（入力・表示される内容）">管理系</th>
+<th style="width:56px" title="ON=表示系（入力・表示される内容）/ OFF=管理系（作成日時・更新日時・削除フラグ等、管理で使う）">表示系</th>
 <th style="width:40px">削除</th>
 </tr></thead>
 <tbody id="col-tbody"><%- tbody %></tbody>
