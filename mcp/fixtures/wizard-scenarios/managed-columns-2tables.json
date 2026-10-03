@@ -1,0 +1,95 @@
+{
+  "name": "managed-columns-2tables",
+  "formSize": {
+    "w": 768,
+    "h": 480
+  },
+  "appOverview": "取引先と案件を管理する営業支援アプリ。作成日時・更新日時・削除フラグは管理用。",
+  "tables": [
+    {
+      "name": "clients",
+      "description": "取引先",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "labelJa": "取引先名",
+          "notNull": true
+        },
+        {
+          "name": "phone",
+          "type": "TEXT",
+          "labelJa": "電話番号"
+        },
+        {
+          "name": "created_at",
+          "type": "TEXT",
+          "labelJa": "作成日時",
+          "managed": true
+        },
+        {
+          "name": "updated_at",
+          "type": "TEXT",
+          "labelJa": "更新日時",
+          "managed": true
+        },
+        {
+          "name": "deleted_flag",
+          "type": "INTEGER",
+          "labelJa": "削除フラグ",
+          "managed": true
+        }
+      ]
+    },
+    {
+      "name": "deals",
+      "description": "案件",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true
+        },
+        {
+          "name": "client_id",
+          "type": "INTEGER",
+          "labelJa": "取引先ID"
+        },
+        {
+          "name": "title",
+          "type": "TEXT",
+          "labelJa": "案件名",
+          "notNull": true
+        },
+        {
+          "name": "amount",
+          "type": "INTEGER",
+          "labelJa": "金額"
+        },
+        {
+          "name": "created_at",
+          "type": "TEXT",
+          "labelJa": "作成日時",
+          "managed": true
+        },
+        {
+          "name": "updated_at",
+          "type": "TEXT",
+          "labelJa": "更新日時",
+          "managed": true
+        },
+        {
+          "name": "deleted_flag",
+          "type": "INTEGER",
+          "labelJa": "削除フラグ",
+          "managed": true
+        }
+      ]
+    }
+  ]
+}

@@ -566,7 +566,7 @@ function _wizardBuildScreenSkeletonText(skeleton) {
 // wizardDecomposeForms()が共有する。
 // 戻り値: { forms, missing, skeleton }。formsは確定スロットのkind付き。生成失敗時はforms=null。
 async function wizardDecomposeFormsCore(tables, appOverview, systemModelHint) {
-    const tablesCtx = buildTablesCtxText(tables);
+    const tablesCtx = buildTablesCtxText(tables, true); // 画面構成の分解なので管理系カラムは除く
     const skeleton = _wizardBuildScreenSkeleton(tables);
     const screenSkeletonText = skeleton.length > 0
         ? _wizardBuildScreenSkeletonText(skeleton)

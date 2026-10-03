@@ -78,8 +78,16 @@ const actionsOf = (yaml: string): string[] => {
     const m = yaml.match(/アクション項目:\n((?:[ \t]+-.*\n?)*)/);
     return m ? m[1].split("\n").filter((l) => /^\s+-/.test(l)).map((l) => l.replace(/^\s+-\s*/, "").replace(/:.*$/, "").replace(/ボタン$/, "").trim()) : [];
 };
-function checkForm(kind: string | undefined, yaml: string, items: Item[] | null, W: number, H: number, listTitles: string[]): string[] {
+function checkForm(kind: string | undefined, yaml: string, items: Item[] | null, W: number, H: number, listTitles: string[], tables: any[]): string[] {
     const ng: string[] = [];
+    // 管理系カラム（managed=true）が画面項目・レイアウトに出ていないこと
+    const managedKeys = new Set<string>();
+    tables.forEach((t) => (t.columns || []).filter((c: any) => c.managed).forEach((c: any) => { managedKeys.add(c.name); if (c.labelJa) managedKeys.add(c.labelJa); }));
+    const fieldSec = yaml.match(/入力項目:\n((?:[ \t]+-.*\n?)*)/)?.[1] || "";
+    managedKeys.forEach((k) => {
+        if (fieldSec.split("\n").some((l) => l.replace(/^\s*-\s*/, "").split(":")[0].trim() === k)) ng.push("管理系カラム「" + k + "」が入力項目に出ている");
+        if ((items || []).some((i: any) => (i.tag === "label" && (i.text || "").trim() === k) || (i.tag === "datagrid" && JSON.stringify(i.columns || []).includes('"' + k + '"')))) ng.push("管理系カラム「" + k + "」がレイアウトに出ている");
+    });
     const acts = actionsOf(yaml);
     const has = (re: RegExp) => acts.some((a) => re.test(a));
     if (!items || items.length === 0) { ng.push("レイアウト生成失敗/空"); return ng; }
@@ -133,7 +141,7 @@ for (const sc of scenarios) {
                     const raw = await g.generateFormLayoutRaw(y.yaml, hint, sc.tables);
                     const parsed = raw ? g.parseFormDesignJson(raw) : null;
                     fr.items = parsed ? g.arrangeAiFormItems(g.ensureAiFormButtons(parsed, y.yaml, sc.formSize.w, sc.formSize.h), sc.formSize.w, sc.formSize.h) : null;
-                    fr.ng = checkForm(f.kind, y.yaml, fr.items, sc.formSize.w, sc.formSize.h, listTitles);
+                    fr.ng = checkForm(f.kind, y.yaml, fr.items, sc.formSize.w, sc.formSize.h, listTitles, sc.tables);
                     rec.forms.push(fr);
                 }
             }

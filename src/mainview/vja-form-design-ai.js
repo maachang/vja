@@ -261,7 +261,7 @@ async function generateFormDesignYaml(inputText, allTables) {
     //   （既存ウィジェットとの重複回避ルール、下記参照）と判明したが、
     //   無関係テーブルを渡さない方が安全なので絞り込み自体は残す）
     const targetTablesForCtx = narrowTablesByRequest(inputText, allTables || []);
-    const tablesCtx = buildTablesCtxText(targetTablesForCtx);
+    const tablesCtx = buildTablesCtxText(targetTablesForCtx, true); // 画面生成なので管理系カラムは除く
 
     const sysPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT({ tablesCtx: tablesCtx });
     const userPrompt = _PROMPT_DEF.FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT(inputText);
@@ -432,8 +432,10 @@ function deriveMissingFormDesignTables(yamlText, allTables) {
     // 最も近い）テーブルを優先することで、この誤爆を減らす。
     const scored = (allTables || []).map((t) => {
         const cols = t.columns || [];
+        const isMatch = (c) => fieldLabels.some((label) => c.name === label || c.labelJa === label);
         const matchedCount = fieldLabels.filter((label) => cols.some((c) => c.name === label || c.labelJa === label)).length;
-        return { name: t.name, matchedCount, extraCount: cols.length - matchedCount };
+        // 余分な列は表示系カラムだけで数える（管理系カラムは画面項目にならないため、形の近さに含めない）
+        return { name: t.name, matchedCount, extraCount: cols.filter((c) => !c.managed && !isMatch(c)).length };
     }).filter((s) => s.matchedCount === fieldLabels.length); // fields全件をカバーするテーブルのみ候補にする
     if (scored.length === 0) return [];
     const minExtra = Math.min(...scored.map((s) => s.extraCount));
@@ -513,7 +515,7 @@ function openAiRawOutputModal(rawText) {
 async function generateFormLayoutRaw(designText, extraPrompt, allTables) {
     const { tables } = parseFormDesignYaml(designText);
     const targetTables = (allTables || []).filter((t) => tables.includes(t.name));
-    const tablesCtx = buildTablesCtxText(targetTables);
+    const tablesCtx = buildTablesCtxText(targetTables, true); // 画面生成なので管理系カラムは除く
     const sysPrompt = _PROMPT_DEF.FORM_DESIGN_SYS_PROMPT({
         formW: getProjectData().formCfg.w,
         formH: getProjectData().formCfg.h,

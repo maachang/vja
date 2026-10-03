@@ -58,10 +58,13 @@
 // 指定テーブル一覧から、AIへ渡すカラム定義テキストを生成する
 // （PK/NOT NULL/DEFAULT/INDEXフラグ付き）。yamlAiGenerate()と
 // formDesignAiGenerate()の両方から共有される。
-function buildTablesCtxText(targetTables) {
+// excludeManaged: trueなら管理系カラム（managed=true。作成日時・更新日時・削除フラグ等）を除く。
+// 画面生成（YAML・レイアウト・ウィザードの画面構成）用。イベントJS生成はINSERT/UPDATEで
+// 管理系カラムも扱うため、省略（false）のまま全カラムを渡すこと。
+function buildTablesCtxText(targetTables, excludeManaged) {
     return targetTables.length > 0
         ? targetTables.map(t => {
-            const cols = (t.columns || []).map(c => {
+            const cols = (t.columns || []).filter(c => !(excludeManaged && c.managed)).map(c => {
                 let def = "    - " + c.name + (c.labelJa ? "（" + c.labelJa + "）" : "") + " (" + c.type + ")";
                 if (c.pk) def += " PK";
                 if (c.notNull) def += " NOT NULL";
