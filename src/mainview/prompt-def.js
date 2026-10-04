@@ -42,6 +42,16 @@
         return tpl.replace(/\{\{(\w+)\}\}/g, (m, key) => (key in vars ? String(vars[key]) : m));
     }
 
+    // 「@@キー名」の行で区切られた差分ファイルを { キー: 値 } に分解する。
+    // 値は次の@@行までの内容で、前後の改行は除去する（空の値は空文字列）。
+    function _parsePromptParts(text) {
+        const parts = {};
+        const re = /^@@(\w+)\n([\s\S]*?)(?=^@@\w+\n|(?![\s\S]))/gm;
+        let m;
+        while ((m = re.exec(text)) !== null) parts[m[1]] = m[2].replace(/^\n+|\n+$/g, "");
+        return parts;
+    }
+
     // ### [AIP説明で利用]
     // [フロントエンド]利用可能なjavascript関数の説明.
     // 「vja ランタイムの追加・変更・削除がある場合は、反映が必要」
@@ -210,10 +220,14 @@
 
         const codeType = isAppEvent ? "TypeScript" : "JavaScript";
 
-        const rule = (isAppEvent
-            ? _loadPromptTpl("yaml-to-js.rule.back.eng.md")
-            : _loadPromptTpl("yaml-to-js.rule.front.eng.md")
-        ).trim();
+        // 共通テンプレート（yaml-to-js.rule.eng.md）に、front/backで異なる箇所だけを
+        // 差分ファイル（yaml-to-js.rule-part.{front,back}.eng.md）から差し込む。
+        // 差分ファイルは「@@キー名」の行で区切られ、次の@@行までが値（前後の改行は除去）。
+        const rulePart = _parsePromptParts(_loadPromptTpl(
+            isAppEvent ? "yaml-to-js.rule-part.back.eng.md" : "yaml-to-js.rule-part.front.eng.md"));
+        // extraApiLines: frontのみの追加行。ある場合だけ直前の行から改行して続ける（backは空）
+        if (rulePart.extraApiLines) rulePart.extraApiLines = "\n" + rulePart.extraApiLines;
+        const rule = _fillTpl(_loadPromptTpl("yaml-to-js.rule.eng.md"), rulePart).trim();
 
         return _fillTpl(_loadPromptTpl("yaml-to-js.sys.eng.md"), {
             codeType,

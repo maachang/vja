@@ -22,3 +22,10 @@
   3. 行番号ベースの機械的な境界検出（「次の`const`宣言の直前まで」等）が、プロンプト本文中に埋め込まれたJSコード例（例: `const startTime = new Date()...`という使用例）に反応して誤検出することがあった（`VJA_USE_BACK_JS_INFO`変換時に発生）。既知の次の宣言名を明示的な境界として使うなど、単純な正規表現に頼りすぎない工夫が必要
   4. **一度目の変換作業で、対になっている定数の片方（`VJA_USE_BACK_JS_INFO_ENG`）だけ変換し、もう片方（`VJA_USE_BACK_JS_INFO`本体）を変換し忘れる単純な見落としが発生した**。作業完了を報告した後にユーザーから指摘されて発覚。同種の対になった定数（`_ENG`サフィックス等）がある場合は、片方だけで満足せず必ずペアの有無を確認すること
 - **最終確認**: 上記回帰ハーネスに加え、実機（`bun run mcp`）でも`testVerifyPromptIntegrity`等を実行し、リファクタ前と全く同じ`systemLen`/`userLen`が得られることを確認済み（Node上のスタブ検証だけでなく、実際のElectrobun webview上での同期XHR読み込みが正しく機能することも確認）
+
+# yaml-to-js のfront/backルールの共通化（2026-10-04）
+
+- `yaml-to-js.rule.eng.md`（共通テンプレート）＋`yaml-to-js.rule-part.{front,back}.eng.md`（差分のみ）に整理した。以前は`rule.front`/`rule.back`が約85%同じ文面の複製で、片方だけ直す事故の余地があった
+- 差分ファイルは「`@@キー名`」の行で区切る。読み込みは`prompt-def.js`の`_parsePromptParts()`。差し込むキー: `helperRule`/`declKw`(var|let)/`constRule`/`likeExample`/`extraApiLines`(frontのみの追加2行、backは空)/`fidelityRule`
+- 共通の説明を直すときは`yaml-to-js.rule.eng.md`を1か所直せばよい。front/backで文面が異なる箇所を足したいときは、テンプレートに`{{キー}}`を足して、両方の差分ファイルに同名のキーを書く（片方に書き忘れると`{{キー}}`が残るので注意）
+- 検証方法: 整理前後で`YAML_TO_JS_SYS_PROMPT`のfront/back出力が一字一句同じことを確認した（出力は変わらないのでLLM生成テストは不要）

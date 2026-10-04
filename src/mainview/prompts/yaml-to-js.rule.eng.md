@@ -1,18 +1,18 @@
 ## Structure
-- Code must always be written inline.
-- Declare variables (let) BEFORE if/else/try/catch/any block, not inside it. Example: let params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
-- As a general rule, do not use "const"; use only "let".
+- {{helperRule}}
+- Declare variables ({{declKw}}) BEFORE if/else/try/catch/any block, not inside it. Example: {{declKw}} params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
+- {{constRule}}
 
 ## vja API
 - API selection priority (always follow this order, do NOT skip a tier): 1) If a vja.* API exists for the operation (see [vja Runtime(yaml)] below), you MUST use it. 2) If no vja.* API covers it, but a function is defined under the "### 拡張ランタイム(yaml)" section in the user message, use that. 3) Only if neither covers it, fall back to a standard/available JavaScript API. Never reimplement something a vja.* API already provides (e.g. do NOT use crypto.subtle directly — use vja.crypto.sha256/sha1/sha512 or vja.crypto.encrypt/decrypt instead).
 - All vja.* calls must use "await", except for the following synchronous calls: vja.event.*, vja.trigger.*, vja.widget.get, vja.widget.set, vja.widget.show, vja.widget.hide, vja.widget.enable, and vja.widget.disable.
 - Never use Promise, .then(), or .catch() directly. Use await instead.
-- Screen navigation must use vja.form.navigate('screen name') only (window.location is prohibited), and only for switching screens — never for refreshing/updating the current screen.
+- Screen navigation must use vja.form.navigate('screen name') only (window.location is prohibited), and only for switching screens — never for refreshing/updating the current screen.{{extraApiLines}}
 
 ## SQL
 - Placeholders (?) are mandatory for all variable inputs to prevent SQL injection, using sqlite3-executable SQL.
-- For LIKE searches, concatenate '%' wildcards on the JS variable side — NEVER put '?' inside quotes (e.g. LIKE '%?%' is STRICTLY PROHIBITED). Example: let pattern = '%' + searchText + '%'; let sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
-- NEVER embed a data VALUE into the SQL string via a template literal (`${...}`) — any value (search text, numbers, IDs, JSON.stringify() results, etc.) must always go through the `?` placeholder and params array. Example: let sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]); (i.e. NEVER `WHERE name = ${name}`)
+- For LIKE searches, concatenate '%' wildcards on the JS variable side — NEVER put '?' inside quotes (e.g. LIKE '%?%' is STRICTLY PROHIBITED). Example: {{likeExample}}
+- NEVER embed a data VALUE into the SQL string via a template literal (`${...}`) — any value (search text, numbers, IDs, JSON.stringify() results, etc.) must always go through the `?` placeholder and params array. Example: {{declKw}} sql = 'SELECT * FROM users WHERE name = ?'; await vja.db.query(sql, [name]); (i.e. NEVER `WHERE name = ${name}`)
   - Exception: embedding a column/table NAME (an identifier, not a data value) via template literal is acceptable when it comes from a controlled source (e.g. a dropdown of known column names) — e.g. `SELECT * FROM t WHERE ${columnName} = ?` — as long as the actual searched value still goes through `?`.
 
 ## YAML Definition Structure
@@ -29,7 +29,7 @@
 
 ## Fidelity to YAML
 - Adding operations not specified in the YAML (such as navigate, setVisible, show/hide, etc.) is strictly prohibited.
-- Strictly adhere to the implementation requirements specified in "the YAML specification".
+- {{fidelityRule}}
 - The event name (e.g., KeyUp, SelectedIndexChanged) is merely reference information indicating what triggers the code — it is NOT an instruction. NEVER infer or add a "typical" implementation commonly associated with that event name (e.g., assuming SelectedIndexChanged implies "retrieve the selected value and display it"). The implementation must be based solely on what is explicitly specified under "アクション:" (Action).
 
 ## Other
