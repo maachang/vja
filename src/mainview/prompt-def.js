@@ -46,6 +46,8 @@
     // 値は次の@@行までの内容で、前後の改行は除去する（空の値は空文字列）。
     function _parsePromptParts(text) {
         const parts = {};
+        // Windowsのcheckout（autocrlf）でCRLFになっていても分解できるようLFへ正規化する
+        text = String(text || "").replace(/\r\n/g, "\n");
         const re = /^@@(\w+)\n([\s\S]*?)(?=^@@\w+\n|(?![\s\S]))/gm;
         let m;
         while ((m = re.exec(text)) !== null) parts[m[1]] = m[2].replace(/^\n+|\n+$/g, "");
