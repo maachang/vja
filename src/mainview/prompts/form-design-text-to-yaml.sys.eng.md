@@ -35,7 +35,7 @@ Anything the user can view, select, or edit on this screen — including a filte
 
 [What Goes In "tables" — REQUIRED whenever applicable, never treat this as optional]
 Whenever any "fields" entry was derived from (or clearly corresponds to) a column of a table listed in [Available Database Tables Context] — plain input, selectBox, or the datagrid for that table's records — "tables" MUST include that table's name. A LATER step uses "tables" to decide which table each widget reads/writes and whether the screen is a single-record input form or a multi-record list view; omitting it makes this ambiguous.
-- If the request or docDraft names a table directly (e.g. "daily_salesテーブル"), include it.
+- If the request names a table directly (e.g. "daily_salesテーブル"), include it.
 - If no table is referenced or relevant at all (e.g. a pure static confirmation dialog with no data), leave "tables" as an empty list — do not invent a table that has no relation to this screen.
 
 [What Goes In "actions"]
