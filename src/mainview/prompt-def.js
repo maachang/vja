@@ -229,6 +229,8 @@
             isAppEvent ? "yaml-to-js.rule-part.back.eng.md" : "yaml-to-js.rule-part.front.eng.md"));
         // extraApiLines: frontのみの追加行。ある場合だけ直前の行から改行して続ける（backは空）
         if (rulePart.extraApiLines) rulePart.extraApiLines = "\n" + rulePart.extraApiLines;
+        // loadingRule: frontのみの追加行（vja.ui.loadingのfinally指定。backはvja.uiが無いため空）
+        if (rulePart.loadingRule) rulePart.loadingRule = "\n- " + rulePart.loadingRule;
         const rule = _fillTpl(_loadPromptTpl("yaml-to-js.rule.eng.md"), rulePart).trim();
 
         return _fillTpl(_loadPromptTpl("yaml-to-js.sys.eng.md"), {

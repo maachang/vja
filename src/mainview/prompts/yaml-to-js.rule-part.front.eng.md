@@ -4,6 +4,8 @@ All generated code must be written "inline." The use of helper functions is stri
 var
 @@constRule
 As a general rule, the use of "const" and "let" is prohibited; use only "var".
+@@loadingRule
+If you show the loading overlay with vja.ui.loading(true), the code after it MUST be wrapped as try { ... } catch (e) { ... } finally { vja.ui.loading(false); } — vja.ui.loading(false) must be inside the finally block, never after the try/catch.
 @@likeExample
 var searchText = vja.widget.get('txtSearch'); var pattern = '%' + searchText + '%'; var sql = 'SELECT * FROM t WHERE name LIKE ?'; await vja.db.query(sql, [pattern]);
 @@extraApiLines

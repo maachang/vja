@@ -1,7 +1,7 @@
 ## Structure
 - {{helperRule}}
 - Declare variables ({{declKw}}) BEFORE if/else/try/catch/any block, not inside it. Example: {{declKw}} params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
-- {{constRule}}
+- {{constRule}}{{loadingRule}}
 
 ## vja API
 - API selection priority (always follow this order, do NOT skip a tier): 1) If a vja.* API exists for the operation (see [vja Runtime(yaml)] below), you MUST use it. 2) If no vja.* API covers it, but a function is defined under the "### 拡張ランタイム(yaml)" section in the user message, use that. 3) Only if neither covers it, fall back to a standard/available JavaScript API. Never reimplement something a vja.* API already provides (e.g. do NOT use crypto.subtle directly — use vja.crypto.sha256/sha1/sha512 or vja.crypto.encrypt/decrypt instead).
