@@ -450,7 +450,8 @@ function buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowConte
             inputParamsCtx: inputParamsCtx, allWidgetsCtx: allWidgetsCtx,
             formsCtx: formsCtxGated, globalConstCtx: globalConstCtxGated,
             formConstCtx: formConstCtxGated, tablesCtx: tablesCtx,
-            extRuntimeDoc: getProjectData().extRuntime.doc
+            extRuntimeDoc: getProjectData().extRuntime.doc,
+            yamlDef: yamlForAi,
         });
 
     // ── ⑦ ユーザープロンプト ──

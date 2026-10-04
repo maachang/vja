@@ -26,6 +26,6 @@
 # yaml-to-js のfront/backルールの共通化（2026-10-04）
 
 - `yaml-to-js.rule.eng.md`（共通テンプレート）＋`yaml-to-js.rule-part.{front,back}.eng.md`（差分のみ）に整理した。以前は`rule.front`/`rule.back`が約85%同じ文面の複製で、片方だけ直す事故の余地があった
-- 差分ファイルは「`@@キー名`」の行で区切る。読み込みは`prompt-def.js`の`_parsePromptParts()`。差し込むキー: `helperRule`/`declKw`(var|let)/`constRule`/`loadingRule`(frontのみ。vja.ui.loadingのfinally指定)/`likeExample`/`extraApiLines`(frontのみの追加2行、backは空)/`fidelityRule`
+- 差分ファイルは「`@@キー名`」の行で区切る。読み込みは`prompt-def.js`の`_parsePromptParts()`。差し込むキー: `helperRule`/`declKw`(var|let)/`constRule`/`loadingRule`(frontのみ・YAMLに「ローディング」の語がある時だけ差し込む。常時入れると指示の無いloading追加が1/12→9/12に増えたため。vja.ui.loadingのfinally指定)/`likeExample`/`extraApiLines`(frontのみの追加2行、backは空)/`fidelityRule`
 - 共通の説明を直すときは`yaml-to-js.rule.eng.md`を1か所直せばよい。front/backで文面が異なる箇所を足したいときは、テンプレートに`{{キー}}`を足して、両方の差分ファイルに同名のキーを書く（片方に書き忘れると`{{キー}}`が残るので注意）
 - 検証方法: 整理前後で`YAML_TO_JS_SYS_PROMPT`のfront/back出力が一字一句同じことを確認した（出力は変わらないのでLLM生成テストは不要）

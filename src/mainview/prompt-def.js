@@ -214,6 +214,7 @@
             formConstCtx,
             tablesCtx,
             extRuntimeDoc,
+            yamlDef,
         },
     ) {
         const vjaUseJsInfo = isAppEvent
@@ -230,7 +231,10 @@
         // extraApiLines: frontのみの追加行。ある場合だけ直前の行から改行して続ける（backは空）
         if (rulePart.extraApiLines) rulePart.extraApiLines = "\n" + rulePart.extraApiLines;
         // loadingRule: frontのみの追加行（vja.ui.loadingのfinally指定。backはvja.uiが無いため空）
-        if (rulePart.loadingRule) rulePart.loadingRule = "\n- " + rulePart.loadingRule;
+        // YAMLに「ローディング」の語がある場合だけ差し込む。常時入れると、YAMLにloadingの指示が無い
+        // イベントでもvja.ui.loadingを勝手に追加する頻度が上がった（実測 1/12→9/12）ため。
+        if (rulePart.loadingRule && /ローディング/.test(String(yamlDef || ""))) rulePart.loadingRule = "\n- " + rulePart.loadingRule;
+        else rulePart.loadingRule = "";
         const rule = _fillTpl(_loadPromptTpl("yaml-to-js.rule.eng.md"), rulePart).trim();
 
         return _fillTpl(_loadPromptTpl("yaml-to-js.sys.eng.md"), {
