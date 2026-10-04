@@ -1,0 +1,3 @@
+# AIプロンプトのテンプレートは常にLFで扱う。Windowsのautocrlfでcheckout時にCRLFになると、
+# 「@@キー」区切りの差分ファイル分解や文面の一致が崩れるため（2026-10-04の不具合）
+src/mainview/prompts/* text eol=lf

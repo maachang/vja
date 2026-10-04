@@ -39,7 +39,13 @@
     // {{変数名}} プレースホルダーを置換する。条件分岐・計算等のロジックは
     // 持たせない（呼び出し元のJSで計算・整形してから渡すこと）。
     function _fillTpl(tpl, vars) {
-        return tpl.replace(/\{\{(\w+)\}\}/g, (m, key) => (key in vars ? String(vars[key]) : m));
+        return tpl.replace(/\{\{(\w+)\}\}/g, (m, key) => {
+            if (key in vars) return String(vars[key]);
+            // 値が渡されなかったプレースホルダーはそのままAIへ送られてしまう（2026-10-04、
+            // CRLFで差分ファイルが分解できずルールが空になった時に気付けなかったため警告する）
+            console.error("[prompt-def] 未置換のプレースホルダー:", m);
+            return m;
+        });
     }
 
     // 「@@キー名」の行で区切られた差分ファイルを { キー: 値 } に分解する。
