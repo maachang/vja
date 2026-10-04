@@ -391,13 +391,19 @@ function parseFormDesignYaml(text) {
 }
 
 // 「入力項目:」セクションの各項目名（`- 項目名: ...`の項目名部分）を返す。セクションが無ければ空配列。
-function _parseFormDesignInputFieldLabels(yamlText) {
+// excludeDatagrid=trueの場合、値がdatagridの項目（「商品一覧: datagrid」等）を除く。
+// datagridの項目名は画面の部品名であってテーブルの列名ではないため、列名との照合
+// （deriveMissingFormDesignTables）では除く必要がある。項目数のカウント（レイアウト行数の
+// 算出）にはdatagridも含めるため、既定は除外しない。
+function _parseFormDesignInputFieldLabels(yamlText, excludeDatagrid) {
     const fieldsM = yamlText.match(/入力項目\s*:\s*\n([\s\S]*?)(?:\n\S|\n\n|$)/);
     if (!fieldsM) return [];
     const labels = [];
     fieldsM[1].split("\n").forEach((l) => {
-        const m = l.match(/^\s*-\s*([^:]+):/);
-        if (m) labels.push(m[1].trim());
+        const m = l.match(/^\s*-\s*([^:]+):(.*)$/);
+        if (!m) return;
+        if (excludeDatagrid && /^\s*datagrid\b/.test(m[2])) return;
+        labels.push(m[1].trim());
     });
     return labels;
 }
@@ -424,7 +430,9 @@ function countFormDesignInputFields(yamlText) {
 function deriveMissingFormDesignTables(yamlText, allTables) {
     const { tables: existingTables } = parseFormDesignYaml(yamlText);
     if (existingTables.length > 0) return [];
-    const fieldLabels = _parseFormDesignInputFieldLabels(yamlText);
+    // datagrid項目（一覧画面の「商品一覧: datagrid」等）は列名ではないため照合から除く
+    // （含めると「fields全件が列名と一致」の条件を満たせず、一覧画面で補完が働かなかった）
+    const fieldLabels = _parseFormDesignInputFieldLabels(yamlText, true);
     if (fieldLabels.length === 0) return [];
     // 単純な「1列でも一致したら候補」だと、sales_data/sales_historyのように
     // 列名が重なる複数テーブルが同時にヒットしてしまう（実際に2026-09-20の
