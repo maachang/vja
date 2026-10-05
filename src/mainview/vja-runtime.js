@@ -1103,7 +1103,7 @@ import { parseCsvLine } from "../shared/csv-utils";
     // 戻り値: { KEY: "value", ... } または null
     // ════════════════════════════════════════════════
     vja.getCloudInfraCredential = async function (infra, service) {
-        // Bun側から復号済みインフラ一覧を取得
+        // Bun側からインフラ一覧を取得（クレデンシャルは暗号化済み。復号は下で vja.cloud.getCredential を使う）
         const infras = await vja.cloud.list().catch(() => []);
 
         // infra名でフィルタ（大文字小文字無視）
@@ -1134,16 +1134,12 @@ import { parseCsvLine } from "../shared/csv-utils";
 
         for (const [k, v] of Object.entries(creds)) {
             if (!appInput[k]) {
-                // vja側定義が優先
-                if (v) result[keyOf(k)] = v;
+                // vja側定義が優先。保存されている値は暗号化済みのため、Bun側で1項目ずつ復号して受け取る
+                if (v) {
+                    const plain = await vja.cloud.getCredential(target.id, k).catch(() => "");
+                    if (plain) result[keyOf(k)] = plain;
+                }
             }
-        }
-        // 保存されていない項目は、選択肢の既定値(selected)で補う（リージョン等。画面では既定値が
-        // 選択表示されるが、操作しないと値として保存されないため）
-        for (const d of defs) {
-            if (!d.select || result[d.key] || appInput[d.name]) continue;
-            const sel = d.select.find(o => o.selected && o.value);
-            if (sel) result[d.key] = sel.value;
         }
 
         // appInput=ON のキーはアプリ側入力ファイルから取得
@@ -1158,7 +1154,19 @@ import { parseCsvLine } from "../shared/csv-utils";
             }
         }
 
-        return Object.keys(result).length > 0 ? result : null;
+        // 実際のクレデンシャルが1つも取れなかった場合（復号できない旧形式の保存値など）はnullを返す。
+        // 既定値だけの結果を返すと、利用側の「取得できたか」の判定をすり抜けてしまうため、既定値の補完より前に判定する
+        if (Object.keys(result).length === 0) return null;
+
+        // 保存されていない項目は、選択肢の既定値(selected)で補う（リージョン等。画面では既定値が
+        // 選択表示されるが、操作しないと値として保存されないため）
+        for (const d of defs) {
+            if (!d.select || result[d.key] || appInput[d.name]) continue;
+            const sel = d.select.find(o => o.selected && o.value);
+            if (sel) result[d.key] = sel.value;
+        }
+
+        return result;
     };
 
     // アプリ側入力ファイル（~/vja/credential.json or .yml/.yaml）を読み込む

@@ -765,7 +765,7 @@ w.bunCloseApp = () => s.closeAppRequest({});
 w.bunToggleDevTools = () => s.toggleDevToolsRequest({});
 w.bunSaveCloudInfras = (infras: any[]) => r.saveCloudInfrasRequest({ infras });
 w.bunCompileProject = () => r.compileProjectRequest({});
-w.bunGetCloudInfras = () => r.getCloudInfrasRequest({});
+w.bunGetCloudInfras = (infras?: any[]) => r.getCloudInfrasRequest({ infras });
 w.bunGetDecryptedCredential = (infraId: string, key: string) =>
     r.getDecryptedCredentialRequest({ infraId, key });
 w.bunOpenFolder = (path: string) => s.openFolderRequest({ path });

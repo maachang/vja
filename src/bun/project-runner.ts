@@ -83,6 +83,11 @@ export const setProjectData = (data: {
     _vjaPass = data.vjaPass;
 };
 
+// index.ts側で合言葉(_vjaPass)を生成・読み込みした時に、復号に使うこちら側へも反映する
+export const setVjaPass = (pass: string): void => {
+    _vjaPass = pass;
+};
+
 export const setCloudInfras = (infras: any[]): void => {
     _cloudInfras = infras;
 };

@@ -31,7 +31,7 @@ import {
 } from "./fs-rpc-handlers";
 import {
     _VJA_PASSPHRASE, _decrypt, _deriveKey, decryptCredential,
-    setProjectData, setFormHtmlPathResolver, setCloudInfras,
+    setProjectData, setFormHtmlPathResolver, setCloudInfras, setVjaPass,
     openProjectWindow, closeProjectWindow, navigateProjectWindow, getProjectFormPath,
     _currentProjectForms, _currentProjectName,
     _cloudInfras, _session, _projectWindow,
@@ -123,14 +123,14 @@ const _loadVjaPass = async (proj: any): Promise<string> => {
 // vjaPassをプロジェクトJSONに埋め込む（保存前に呼ぶ）
 const _injectVjaPass = async (jsonStr: string): Promise<string> => {
     const proj = JSON.parse(jsonStr);
-    if (!_vjaPass) _vjaPass = _generateVjaPass();
+    if (!_vjaPass) { _vjaPass = _generateVjaPass(); setVjaPass(_vjaPass); }
     proj._vjaPass = await _encrypt(_vjaPass, _VJA_PASSPHRASE);
     return JSON.stringify(proj);
 };
 
 // クレデンシャルの暗号化
 const encryptCredential = async (plain: string): Promise<string> => {
-    if (!_vjaPass) _vjaPass = _generateVjaPass();
+    if (!_vjaPass) { _vjaPass = _generateVjaPass(); setVjaPass(_vjaPass); }
     return _encrypt(plain, _vjaPass);
 };
 
@@ -221,10 +221,11 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
         requests: {
             // ── クラウドインフラ設定 ──────────────────────
 
-            getCloudInfrasRequest: async () => {
+            getCloudInfrasRequest: async ({ infras }: { infras?: any[] } = {}) => {
                 // 復号済みクレデンシャルを含むインフラ一覧を返す
+                // infrasが渡された場合は画面側が持つ値(保存ファイルと同じ暗号化済み)を復号する
                 try {
-                    const decrypted = await Promise.all(_cloudInfras.map(async (inf: any) => {
+                    const decrypted = await Promise.all((infras ?? _cloudInfras).map(async (inf: any) => {
                         const creds: Record<string, string> = {};
                         for (const [k, v] of Object.entries(inf.credentials || {})) {
                             creds[k] = v ? await decryptCredential(v as string) : "";
@@ -261,10 +262,13 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                                 encCreds[k] = await encryptCredential(v);
                             }
                         }
-                        return { ...inf, credentials: encCreds };
+                        // credentialsJson（カスタム用の平文JSONコピー）は保存しない（画面表示時にcredentialsから作り直される）
+                        const { credentialsJson: _plainJson, ...rest } = inf;
+                        return { ...rest, credentials: encCreds };
                     }));
                     setCloudInfras(merged);
-                    return { ok: true };
+                    // 暗号化済みの一覧を返す（画面側はこれを保持し、保存ファイルにも暗号化済みの値が書かれる）
+                    return { ok: true, infras: merged };
                 } catch (e: any) {
                     return { ok: false, error: e.message };
                 }
@@ -288,7 +292,7 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                     _lastDir = dirname(path);
                     await saveLastDir(path);
                     console.log("[open]", path);
-                    _updateProjectData(content, path);
+                    await _updateProjectData(content, path);
                     return { content, path };
                 } catch (e: any) {
                     console.error("[open error]", e.message);
@@ -311,7 +315,7 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                     _lastDir = dirname(savePath);
                     await saveLastDir(savePath);
                     console.log("[saved]", savePath);
-                    _updateProjectData(contentWithPass, savePath);
+                    await _updateProjectData(contentWithPass, savePath);
                     return { ok: true, path: savePath, cancelled: false };
                 } catch (e: any) {
                     console.error("[save error]", e.message);
@@ -510,7 +514,7 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                         return { ok: false, error: "already running" };
                     }
                     // フロントから受け取った最新データを使用
-                    if (!_updateProjectData(projectData)) {
+                    if (!await _updateProjectData(projectData, undefined, true)) {
                         return { ok: false, error: "プロジェクトデータの解析に失敗しました" };
                     }
                     const result = await buildProjectFiles();
@@ -734,7 +738,9 @@ let _currentProjectVersion: string = "1.0.0";
 let _currentProjectFilePath: string = "";
 
 // プロジェクトデータをメモリに反映する共通関数
-const _updateProjectData = (jsonStr: string, filePath?: string): boolean => {
+// keepPass: true の場合は、データ内の合言葉を読み直さず、現在の合言葉を使い続ける（実行時用。
+// 実行用データには合言葉が含まれず、読み直すと新しい合言葉が作られて復号できなくなるため）
+const _updateProjectData = async (jsonStr: string, filePath?: string, keepPass: boolean = false): Promise<boolean> => {
     try {
         const proj = JSON.parse(jsonStr);
         const name = proj.projectInfo?.name || "";
@@ -742,8 +748,11 @@ const _updateProjectData = (jsonStr: string, filePath?: string): boolean => {
         if (filePath) _currentProjectFilePath = filePath;
         _currentProjectDbDir = join(_projectWorkDir, name, "db");
         _currentProjectExtRuntime = proj.extRuntime?.js || "";
-        // vjaPass を非同期で読み込み（await不可なので then で）
-        _loadVjaPass(proj).then(pass => { _vjaPass = pass; });
+        // vjaPass を読み込む（setProjectDataに渡す前に確定させる）
+        if (!keepPass) {
+            _vjaPass = await _loadVjaPass(proj);
+            setVjaPass(_vjaPass);
+        }
         // project-runner.ts の setProjectData でプロジェクト共通データを設定
         // 互換: nameがなければtitleをnameとして補完
         const forms = (proj.forms || []).map((f: any) => ({

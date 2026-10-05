@@ -275,9 +275,12 @@ function openDebugTools() {
     window.bunToggleDevTools?.();
 }
 
-function openCloudInfraConfig() {
+async function openCloudInfraConfig() {
     closeAllMenus();
-    CLOUD_MODAL.draft = getProjectData().cloudInfras.map(c => JSON.parse(JSON.stringify(c)));
+    // 画面側が持つクラウド設定のクレデンシャルは暗号化済みのため、Bun側で復号した値を編集用に表示する
+    // （復号できない値＝旧版で平文のまま保存された値は空になるので、入れ直して保存し直す）
+    const res = await window.bunGetCloudInfras(getProjectData().cloudInfras);
+    CLOUD_MODAL.draft = (res?.infras || []).map(c => JSON.parse(JSON.stringify(c)));
     renderCloudModal();
 }
 
@@ -516,8 +519,9 @@ async function saveCloudInfraConfig() {
         // Bun側で暗号化して保存
         const result = await window.bunSaveCloudInfras(CLOUD_MODAL.draft);
         if (!result?.ok) throw new Error(result?.error || "保存失敗");
-        // フロント側にも反映（次回モーダルオープン時のベースになる）
-        getProjectData().cloudInfras = CLOUD_MODAL.draft.map(c => JSON.parse(JSON.stringify(c)));
+        // フロント側にも反映する。Bun側で暗号化済みの一覧を保持する（保存ファイルにも暗号化済みの値が書かれる。
+        // 以前は暗号化前の編集中データを反映していたため、保存ファイルに平文のクレデンシャルが残っていた）
+        getProjectData().cloudInfras = (result.infras || []).map(c => JSON.parse(JSON.stringify(c)));
         closeModal();
         showToast("クラウドインフラ設定を保存しました");
         pushUndo();

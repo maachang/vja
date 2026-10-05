@@ -209,8 +209,8 @@ export type VjaRPCType = {
             navigateFormRequest: { params: { formName: string }; response: { ok: boolean; error?: string } };
 
             // ── クラウドインフラ設定 ──────────────────────
-            getCloudInfrasRequest: { params: { _?: never }; response: { infras: any[] } };
-            saveCloudInfrasRequest: { params: { infras: any[] }; response: { ok: boolean; error?: string } };
+            getCloudInfrasRequest: { params: { _?: never; infras?: any[] }; response: { infras: any[] } };
+            saveCloudInfrasRequest: { params: { infras: any[] }; response: { ok: boolean; infras?: any[]; error?: string } };
             getDecryptedCredentialRequest: {
                 params: { infraId: string; key: string };
                 response: { ok: boolean; value: string };
