@@ -916,7 +916,7 @@ function initYamlEditorModal(cur, curJs, onAfterInit, isAppEvent = false, curDoc
         if (yta) yta.addEventListener("dblclick", editorDblClickHandler);
         if (jta) jta.addEventListener("dblclick", editorDblClickHandler);
         // JSペインの入力補完（vja API名/ウィジェット名）
-        if (jta) jta.addEventListener("input", _editorCompletionOnInput);
+        if (jta) jta.addEventListener("input", editorCompletionOnInput);
         if (jta) jta.addEventListener("blur", closeCompletionPopup);
         // 対応括弧のハイライト（入力だけでなく、クリック・カーソル移動キーでも再計算する）
         if (yta) yta.addEventListener("input", () => updateBracketMatch("yaml-ta"));

@@ -64,7 +64,7 @@ function _getCompletionWidgetNames() {
 }
 
 // js-ta の input イベントで呼ばれ、候補を絞り込んでポップアップを更新する。
-function _editorCompletionOnInput(e) {
+function editorCompletionOnInput(e) {
     const ta = e.target;
     const info = _getCompletionPartial(ta);
     if (!info || info.partial.length < 1) { closeCompletionPopup(); return; }
@@ -598,4 +598,5 @@ function updateBracketMatch(taId) {
 Object.assign(window, {
     editorKeyHandler, editorMouseDownHandler2, editorDblClickHandler, editorHlUpdate,
     closeCompletionPopup, acceptCompletionAt, clearBracketMatch, updateBracketMatch,
+    editorCompletionOnInput,
 });
