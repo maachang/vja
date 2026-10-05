@@ -360,6 +360,14 @@ const _API_OPT_DETECT_PATTERNS = {
     dir: /\bvja\.dir\./,
     http: /\bvja\.http\.|\bvja\.fetch\s*\(/,
     aws_s3: /\bvja\.aws\.s3\./,
+    aws_dynamodb: /\bvja\.aws\.dynamodb\./,
+    aws_sqs: /\bvja\.aws\.sqs\./,
+    aws_sns: /\bvja\.aws\.sns\./,
+    aws_lambda: /\bvja\.aws\.lambda\./,
+    aws_ses: /\bvja\.aws\.ses\./,
+    aws_sts: /\bvja\.aws\.sts\./,
+    aws_secretsmanager: /\bvja\.aws\.secretsmanager\./,
+    aws_cloudwatch: /\bvja\.aws\.cloudwatch\./,
 };
 // クラウドのサービス用カテゴリ（キーは aws_ + サービス名）は、クラウド設定に登録済みで有効な場合だけ選択肢に出す
 function _isCloudApiCategoryAvailable(key) {

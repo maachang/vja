@@ -1,0 +1,3 @@
+await vja.aws.sqs.send: { args: [queueUrl:string, body:string], return: "string", desc: "Send a message to an SQS queue. body must be a string (use JSON.stringify for objects). Returns the message id." }
+await vja.aws.sqs.receive: { args: [queueUrl:string, options?:{max?:number, waitSeconds?:number}], return: "{id:string, body:string, receiptHandle:string}[]", desc: "Receive messages (max 1-10, default 1; waitSeconds 0-20, default 0). Delete each processed message with vja.aws.sqs.delete, otherwise it is delivered again later." }
+await vja.aws.sqs.delete: { args: [queueUrl:string, receiptHandle:string], return: "void", desc: "Delete a received message using its receiptHandle." }

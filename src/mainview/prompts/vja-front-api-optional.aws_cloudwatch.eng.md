@@ -1,0 +1,1 @@
+await vja.aws.cloudwatch.putLog: { args: [logGroup:string, logStream:string, message:string], return: "void", desc: "Write one log line to CloudWatch Logs. The log stream is created if missing; the log group must already exist." }

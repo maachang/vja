@@ -1,0 +1,5 @@
+await vja.aws.dynamodb.get: { args: [table:string, key:object], return: "object|null", desc: "Get one item by its primary key (e.g. {id:'u1'}). Plain JS objects, no DynamoDB type wrappers. Returns null if not found." }
+await vja.aws.dynamodb.put: { args: [table:string, item:object], return: "void", desc: "Put one item (replaces an item with the same key). Plain JS object." }
+await vja.aws.dynamodb.delete: { args: [table:string, key:object], return: "void", desc: "Delete one item by its primary key." }
+await vja.aws.dynamodb.query: { args: [table:string, keyName:string, keyValue:any, options?:{index?:string, limit?:number}], return: "object[]", desc: "Query items whose partition key (keyName) equals keyValue. Optional index name and limit (default 100). Equality on the partition key only." }
+await vja.aws.dynamodb.scan: { args: [table:string, options?:{limit?:number}], return: "object[]", desc: "Scan the table (default limit 100). Slow and costly on large tables; always keep limit small." }

@@ -845,6 +845,23 @@ const items = await vja.aws.s3.list('my-bucket', { prefix: 'memo/' });
 await vja.aws.s3.delete('my-bucket', 'memo/a.txt');
 ```
 
+### AWS のそのほかのサービス（vja.aws.*）
+
+S3 と同じように、クラウド設定に登録して有効にしたサービスは、次の関数で使えます。AI に使わせるには、イベントの右パネル「🧩 拡張API（任意）」で、そのサービスを ON にします。
+
+| サービス | 関数 | 戻り値 |
+|----------|------|--------|
+| DynamoDB | `vja.aws.dynamodb.get(table, key)` / `put(table, item)` / `delete(table, key)` / `query(table, keyName, keyValue, options?)` / `scan(table, options?)` | `get` はオブジェクトか `null`、`query` と `scan` は配列（普通の JS オブジェクトで読み書き。`query` はパーティションキーの一致検索のみ。`limit` の既定は 100） |
+| SQS | `vja.aws.sqs.send(queueUrl, body)` / `receive(queueUrl, options?)` / `delete(queueUrl, receiptHandle)` | 送信はメッセージ ID、受信は `[{ id, body, receiptHandle }]`（処理後は `delete` で削除する） |
+| SNS | `vja.aws.sns.publish(topicArn, message, options?)` | メッセージ ID |
+| Lambda | `vja.aws.lambda.invoke(functionName, payload?)` | 結果（JSON ならオブジェクトに変換。関数内のエラーは例外） |
+| SES | `vja.aws.ses.sendEmail({ from, to, subject, text, html?, cc?, bcc? })` | メッセージ ID（`from` は SES で確認済みのアドレスまたはドメイン） |
+| STS | `vja.aws.sts.getCallerIdentity()` | `{ account, arn, userId }` |
+| Secrets Manager | `vja.aws.secretsmanager.getSecret(secretId)` | 文字列 |
+| CloudWatch Logs | `vja.aws.cloudwatch.putLog(logGroup, logStream, message)` | なし（ログストリームは無ければ作る。ロググループは事前に作る） |
+
+> Cognito は、認証まわりでクライアント側に面倒な実装が必要なため、対象外です。
+
 - SDK は、クラウド設定の「エンドポイント URL」（SDK の CDN URL）から自動で読み込まれます。
 - クラウド設定に登録されていない場合や、クレデンシャルが取得できない場合は、その旨のエラーになります。
 - AI にこの関数を使ったコードを生成させるには、イベントの右パネル「🧩 拡張API（任意）」で **「AWS S3」を ON** にします（クラウド設定に AWS の s3 を登録して有効にしたときだけ表示されます）。

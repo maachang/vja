@@ -1,0 +1,1 @@
+await vja.aws.lambda.invoke: { args: [functionName:string, payload?:any], return: "any", desc: "Invoke a Lambda function synchronously. payload is sent as JSON. The result is parsed as JSON when possible (otherwise returned as a string). Throws if the function itself fails." }

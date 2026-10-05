@@ -571,7 +571,17 @@ function _buildFrontMock(evName, wtag, overrides, widgets) {
             sha512: async () => "0".repeat(128),
         },
         getCloudInfraCredential: async () => ({}),
-        aws: { s3: { put: async () => {}, get: async () => "", list: async () => [], delete: async () => {} } },
+        aws: {
+            s3: { put: async () => {}, get: async () => "", list: async () => [], delete: async () => {} },
+            dynamodb: { get: async () => null, put: async () => {}, delete: async () => {}, query: async () => [], scan: async () => [] },
+            sqs: { send: async () => "", receive: async () => [], delete: async () => {} },
+            sns: { publish: async () => "" },
+            lambda: { invoke: async () => ({}) },
+            ses: { sendEmail: async () => "" },
+            sts: { getCallerIdentity: async () => ({ account: "", arn: "", userId: "" }) },
+            secretsmanager: { getSecret: async () => "" },
+            cloudwatch: { putLog: async () => {} },
+        },
         validate: {
             run: async () => true,
         },

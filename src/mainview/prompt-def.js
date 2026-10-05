@@ -99,6 +99,14 @@
         http: _loadPromptTpl("vja-front-api-optional.http.eng.md").trim(),
         // クラウド設定に登録済みのAWSサービス用（キー名は aws_ + サービス名）
         aws_s3: _loadPromptTpl("vja-front-api-optional.aws_s3.eng.md").trim(),
+        aws_dynamodb: _loadPromptTpl("vja-front-api-optional.aws_dynamodb.eng.md").trim(),
+        aws_sqs: _loadPromptTpl("vja-front-api-optional.aws_sqs.eng.md").trim(),
+        aws_sns: _loadPromptTpl("vja-front-api-optional.aws_sns.eng.md").trim(),
+        aws_lambda: _loadPromptTpl("vja-front-api-optional.aws_lambda.eng.md").trim(),
+        aws_ses: _loadPromptTpl("vja-front-api-optional.aws_ses.eng.md").trim(),
+        aws_sts: _loadPromptTpl("vja-front-api-optional.aws_sts.eng.md").trim(),
+        aws_secretsmanager: _loadPromptTpl("vja-front-api-optional.aws_secretsmanager.eng.md").trim(),
+        aws_cloudwatch: _loadPromptTpl("vja-front-api-optional.aws_cloudwatch.eng.md").trim(),
     };
 
     // 任意カテゴリの表示名（チェックボックスUI用）
@@ -113,12 +121,20 @@
         dir: "ディレクトリ操作 (vja.dir.*)",
         http: "外部API (vja.http.*)",
         aws_s3: "AWS S3 (vja.aws.s3.*)",
+        aws_dynamodb: "AWS DynamoDB (vja.aws.dynamodb.*)",
+        aws_sqs: "AWS SQS (vja.aws.sqs.*)",
+        aws_sns: "AWS SNS (vja.aws.sns.*)",
+        aws_lambda: "AWS Lambda (vja.aws.lambda.*)",
+        aws_ses: "AWS SES (vja.aws.ses.*)",
+        aws_sts: "AWS STS (vja.aws.sts.*)",
+        aws_secretsmanager: "AWS Secrets Manager (vja.aws.secretsmanager.*)",
+        aws_cloudwatch: "AWS CloudWatch Logs (vja.aws.cloudwatch.*)",
     };
 
     // 右パネルで「拡張API」セクションに表示するカテゴリのキー（クラウド設定のサービス用）。
     // それ以外のキーは「利用API」セクションに表示する。ON/OFFの状態の保存・AIへの説明・検証は
     // どちらも同じ仕組み（上記ENG/LABELS）を共有する。
-    const VJA_FRONT_API_EXTENSION_KEYS = ["aws_s3"];
+    const VJA_FRONT_API_EXTENSION_KEYS = ["aws_s3", "aws_dynamodb", "aws_sqs", "aws_sns", "aws_lambda", "aws_ses", "aws_sts", "aws_secretsmanager", "aws_cloudwatch"];
 
     // 互換用: 上記3つを結合した全量（ドキュメント自動生成・ホワイトリスト系の用途では未使用。
     // AIP説明用の日本語詳細版VJA_USE_FRONT_JS_INFOとは別物）

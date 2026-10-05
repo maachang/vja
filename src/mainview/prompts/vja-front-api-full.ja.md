@@ -683,6 +683,163 @@ getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ
   - 使用例: "await vja.aws.s3.delete('my-bucket', 'memo/a.txt');"
   - 使用例説明: S3のオブジェクトを削除する
 
+## AWS DynamoDB (vja.aws.dynamodb.*)
+
+- 前提: クラウド設定に AWS の dynamodb を登録して有効にしておく。イベントの右パネル「拡張API（任意）」で「AWS DynamoDB」をONにしたときだけAIへ渡される。値はDynamoDB独自の形式ではなく、普通のJSオブジェクトで読み書きする（数値はNumber）
+
+- 関数名: await vja.aws.dynamodb.get(table, key):
+  - 説明: プライマリキーの完全一致で1件取得する
+  - 引数:
+    - table: string - テーブル名
+    - key: object - プライマリキー（例: { id: 'u1' }）
+  - 戻り値: "object | null - 存在しない場合はnull"
+  - 使用例: "const user = await vja.aws.dynamodb.get('users', { id: 'u1' });"
+  - 使用例説明: 1件取得する
+
+- 関数名: await vja.aws.dynamodb.put(table, item):
+  - 説明: 1件登録する（同じキーがあれば置き換える）
+  - 引数:
+    - table: string - テーブル名
+    - item: object - 登録する内容
+  - 戻り値: なし
+  - 使用例: "await vja.aws.dynamodb.put('users', { id: 'u1', name: '山田', age: 30 });"
+  - 使用例説明: 1件登録する
+
+- 関数名: await vja.aws.dynamodb.delete(table, key):
+  - 説明: プライマリキーの完全一致で1件削除する
+  - 引数:
+    - table: string - テーブル名
+    - key: object - プライマリキー
+  - 戻り値: なし
+  - 使用例: "await vja.aws.dynamodb.delete('users', { id: 'u1' });"
+  - 使用例説明: 1件削除する
+
+- 関数名: await vja.aws.dynamodb.query(table, keyName, keyValue, options?):
+  - 説明: パーティションキーが一致する項目を検索する（パーティションキーの一致検索のみ）
+  - 引数:
+    - table: string - テーブル名
+    - keyName: string - パーティションキーの名前
+    - keyValue: any - 検索する値
+    - options?: { index?: string, limit?: number } - インデックス名、最大件数（既定100）
+  - 戻り値: object[]
+  - 使用例: "const rows = await vja.aws.dynamodb.query('orders', 'userId', 'u1', { limit: 20 });"
+  - 使用例説明: userIdが一致する注文を検索する
+
+- 関数名: await vja.aws.dynamodb.scan(table, options?):
+  - 説明: テーブルを全件走査する（件数が多いと時間と費用がかかるため、limitで絞る）
+  - 引数:
+    - table: string - テーブル名
+    - options?: { limit?: number } - 最大件数（既定100）
+  - 戻り値: object[]
+  - 使用例: "const rows = await vja.aws.dynamodb.scan('users', { limit: 50 });"
+  - 使用例説明: 先頭50件を取得する
+
+## AWS SQS (vja.aws.sqs.*)
+
+- 前提: クラウド設定に AWS の sqs を登録して有効にしておく。「拡張API（任意）」で「AWS SQS」をONにしたときだけAIへ渡される
+
+- 関数名: await vja.aws.sqs.send(queueUrl, body):
+  - 説明: キューにメッセージを送信する
+  - 引数:
+    - queueUrl: string - キューのURL
+    - body: string - メッセージ本文（オブジェクトはJSON.stringifyで文字列にする）
+  - 戻り値: string - メッセージID
+  - 使用例: "const id = await vja.aws.sqs.send(queueUrl, JSON.stringify({ orderId: 1 }));"
+  - 使用例説明: キューにメッセージを送信する
+
+- 関数名: await vja.aws.sqs.receive(queueUrl, options?):
+  - 説明: キューからメッセージを受信する。処理が終わったメッセージはdeleteで削除する（削除しないと一定時間後に再び受信される）
+  - 引数:
+    - queueUrl: string - キューのURL
+    - options?: { max?: number, waitSeconds?: number } - 最大件数（1〜10、既定1）、待ち時間（0〜20秒、既定0）
+  - 戻り値: "{ id: string, body: string, receiptHandle: string }[]"
+  - 使用例: "const msgs = await vja.aws.sqs.receive(queueUrl, { max: 5 });"
+  - 使用例説明: 最大5件受信する
+
+- 関数名: await vja.aws.sqs.delete(queueUrl, receiptHandle):
+  - 説明: 受信したメッセージを削除する
+  - 引数:
+    - queueUrl: string - キューのURL
+    - receiptHandle: string - 受信したメッセージのreceiptHandle
+  - 戻り値: なし
+  - 使用例: "await vja.aws.sqs.delete(queueUrl, msgs[0].receiptHandle);"
+  - 使用例説明: 処理済みのメッセージを削除する
+
+## AWS SNS (vja.aws.sns.*)
+
+- 前提: クラウド設定に AWS の sns を登録して有効にしておく。「拡張API（任意）」で「AWS SNS」をONにしたときだけAIへ渡される
+
+- 関数名: await vja.aws.sns.publish(topicArn, message, options?):
+  - 説明: トピックにメッセージを発行する
+  - 引数:
+    - topicArn: string - トピックのARN
+    - message: string - メッセージ本文
+    - options?: { subject?: string } - 件名
+  - 戻り値: string - メッセージID
+  - 使用例: "const id = await vja.aws.sns.publish(topicArn, '処理が完了しました', { subject: '完了通知' });"
+  - 使用例説明: トピックにメッセージを発行する
+
+## AWS Lambda (vja.aws.lambda.*)
+
+- 前提: クラウド設定に AWS の lambda を登録して有効にしておく。「拡張API（任意）」で「AWS Lambda」をONにしたときだけAIへ渡される
+
+- 関数名: await vja.aws.lambda.invoke(functionName, payload?):
+  - 説明: Lambda関数を同期で呼び出す。payloadはJSONで送る。結果はJSONならオブジェクトに変換して返し、JSONでなければ文字列で返す。関数内でエラーになった場合は例外になる
+  - 引数:
+    - functionName: string - 関数名またはARN
+    - payload?: any - 関数へ渡す値
+  - 戻り値: any
+  - 使用例: "const result = await vja.aws.lambda.invoke('my-func', { name: '山田' });"
+  - 使用例説明: Lambda関数を呼び出して結果を受け取る
+
+## AWS SES (vja.aws.ses.*)
+
+- 前提: クラウド設定に AWS の ses を登録して有効にしておく。送信元は、SESで確認済み（検証済み）のメールアドレスまたはドメインであること。「拡張API（任意）」で「AWS SES」をONにしたときだけAIへ渡される
+
+- 関数名: await vja.aws.ses.sendEmail(mail):
+  - 説明: メールを送信する
+  - 引数:
+    - mail: { from: string, to: string | string[], subject: string, text?: string, html?: string, cc?: string | string[], bcc?: string | string[] } - textまたはhtmlのどちらかは必須
+  - 戻り値: string - メッセージID
+  - 使用例: "await vja.aws.ses.sendEmail({ from: 'info@example.com', to: 'a@example.com', subject: 'お知らせ', text: '本文' });"
+  - 使用例説明: メールを送信する
+
+## AWS STS (vja.aws.sts.*)
+
+- 前提: クラウド設定に AWS の sts を登録して有効にしておく。「拡張API（任意）」で「AWS STS」をONにしたときだけAIへ渡される
+
+- 関数名: await vja.aws.sts.getCallerIdentity():
+  - 説明: 今使っているクレデンシャルの持ち主を確認する（接続・認証の確認に使える）
+  - 戻り値: { account: string, arn: string, userId: string }
+  - 使用例: "const me = await vja.aws.sts.getCallerIdentity();"
+  - 使用例説明: 接続中のAWSアカウントを確認する
+
+## AWS Secrets Manager (vja.aws.secretsmanager.*)
+
+- 前提: クラウド設定に AWS の secretsmanager を登録して有効にしておく。「拡張API（任意）」で「AWS Secrets Manager」をONにしたときだけAIへ渡される
+
+- 関数名: await vja.aws.secretsmanager.getSecret(secretId):
+  - 説明: シークレットの値を文字列で取得する（JSONで保存した値はJSON.parseで変換する）
+  - 引数:
+    - secretId: string - シークレットの名前またはARN
+  - 戻り値: string
+  - 使用例: "const value = await vja.aws.secretsmanager.getSecret('my-secret');"
+  - 使用例説明: シークレットを取得する
+
+## AWS CloudWatch Logs (vja.aws.cloudwatch.*)
+
+- 前提: クラウド設定に AWS の cloudwatch を登録して有効にしておく。ロググループは事前に作っておくこと。「拡張API（任意）」で「AWS CloudWatch Logs」をONにしたときだけAIへ渡される
+
+- 関数名: await vja.aws.cloudwatch.putLog(logGroup, logStream, message):
+  - 説明: ログを1行書き込む。ログストリームが無ければ作る
+  - 引数:
+    - logGroup: string - ロググループ名
+    - logStream: string - ログストリーム名
+    - message: string - ログの内容
+  - 戻り値: なし
+  - 使用例: "await vja.aws.cloudwatch.putLog('/vja/app', 'main', '処理を開始しました');"
+  - 使用例説明: CloudWatch Logsにログを書き込む
+
 ## ログ出力 (vja.log.*)
 
 - 関数名: await vja.log.info(message):

@@ -89,7 +89,8 @@
             "service": [
                 { "s3": { "url": "https://cdn.jsdelivr.net/npm/@aws-sdk/client-s3/+esm", "input": false } },
                 { "dynamodb": { "url": "https://cdn.jsdelivr.net/npm/@aws-sdk/client-dynamodb/+esm", "input": false } },
-                { "cognito": { "url": "https://cdn.jsdelivr.net/npm/@aws-sdk/client-cognito-identity-provider/+esm", "input": false } },
+                // Cognito は、認証まわりでクライアント側に面倒な実装（トークン管理など）が必要なため、vjaでは対象外として一旦コメントアウトする（2026-10-05）
+                // { "cognito": { "url": "https://cdn.jsdelivr.net/npm/@aws-sdk/client-cognito-identity-provider/+esm", "input": false } },
                 { "sqs": { "url": "https://cdn.jsdelivr.net/npm/@aws-sdk/client-sqs/+esm", "input": false } },
                 { "sns": { "url": "https://cdn.jsdelivr.net/npm/@aws-sdk/client-sns/+esm", "input": false } },
                 { "lambda": { "url": "https://cdn.jsdelivr.net/npm/@aws-sdk/client-lambda/+esm", "input": false } },
@@ -97,7 +98,8 @@
                 { "sts": { "url": "https://cdn.jsdelivr.net/npm/@aws-sdk/client-sts/+esm", "input": false } },
                 { "secretsmanager": { "url": "https://cdn.jsdelivr.net/npm/@aws-sdk/client-secrets-manager/+esm", "input": false } },
                 { "cloudwatch": { "url": "https://cdn.jsdelivr.net/npm/@aws-sdk/client-cloudwatch-logs/+esm", "input": false } },
-                { "カスタム": { "url": "https://cdn.jsdelivr.net/npm/@aws-sdk/", "input": true } }
+                // 「カスタム」（SDKのURLを自分で指定）は、vjaでは対象外として一旦コメントアウトする（2026-10-05）
+                // { "カスタム": { "url": "https://cdn.jsdelivr.net/npm/@aws-sdk/", "input": true } }
             ],
             "credential": [
                 { "accessKeyId": { "key": "AWS_ACCESS_KEY_ID", "secret": false } },

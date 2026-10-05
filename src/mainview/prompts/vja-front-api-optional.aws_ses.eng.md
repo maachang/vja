@@ -1,0 +1,1 @@
+await vja.aws.ses.sendEmail: { args: [mail:{from:string, to:string|string[], subject:string, text?:string, html?:string, cc?:string|string[], bcc?:string|string[]}], return: "string", desc: "Send an email with AWS SES. from must be a verified SES address or domain. Provide text and/or html. Returns the message id." }

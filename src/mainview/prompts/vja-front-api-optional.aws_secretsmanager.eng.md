@@ -1,0 +1,1 @@
+await vja.aws.secretsmanager.getSecret: { args: [secretId:string], return: "string", desc: "Get a secret value as a string from AWS Secrets Manager (name or ARN). Use JSON.parse for secrets stored as JSON." }
