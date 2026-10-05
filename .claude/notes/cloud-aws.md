@@ -35,7 +35,7 @@
 - 両方（Webhook/Slack Web API）が登録されている場合、`vja.slack.send`は有効で先頭のものを使う。`getCloudInfraCredential('Slack', entry.service)`でそのサービスの設定を取る。
 - Webhook: `url`=WebhookのURL（必須）。送信先はWebhook側で固定のため、`options.channel`指定はエラー。Slack Web API: `url`は省略可（既定`https://slack.com/api/chat.postMessage`）、`token`必須、`Authorization: Bearer`。Slack APIは失敗してもHTTP 200で本文`ok:false`+`error`を返すので本文を確認する。戻り値なし、テキストのみ。
 - Webhookは**Slackアプリ経由**のものは現行サポート。非推奨なのは「レガシーのカスタム連携」で作った旧方式（公式ドキュメントで確認、2026-10-05）。
-- 拡張APIのカテゴリキーは`slack`（`aws_<service>`ではない）。`_isCloudApiCategoryAvailable`は、キー→(インフラ名,サービス名)で、クラウド設定に登録・有効な時だけ表示する（slackはWebhook/Slack Web APIのどちらかが有効なら表示）。実Slackでの確認は未実施（偽fetchの単体テストまで）。
+- 拡張APIのカテゴリキーは`slack`（`aws_<service>`ではない）。`_isCloudApiCategoryAvailable`は、キー→(インフラ名,サービス名)で、クラウド設定に登録・有効な時だけ表示する（slackはWebhook/Slack Web APIのどちらかが有効なら表示）。**実機確認済み（2026-10-06）**: Slack Web API方式で、YAMLドラフト→AI生成（`vja.slack.send`、`options.channel`指定）→実行が動作（`s3Test.vjaproj`のサンプル）。Webhook方式の実Slackでの送信は未確認。
 
 ## Chatwork・汎用Webhook（`chatwork-runtime.ts` / `webhook-runtime.ts`、2026-10-06）
 - いずれもSDKなし、`vja.fetch`でHTTPを送る。拡張APIのキーは`chatwork` / `webhook`（`_isCloudApiCategoryAvailable`の対応表`_OTHER`に、キー→(インフラ名,サービス名)を追加する。インフラ名の比較は小文字）。
