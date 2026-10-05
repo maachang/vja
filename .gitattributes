@@ -1,3 +1,11 @@
-# AIプロンプトのテンプレートは常にLFで扱う。Windowsのautocrlfでcheckout時にCRLFになると、
-# 「@@キー」区切りの差分ファイル分解や文面の一致が崩れるため（2026-10-04の不具合）
-src/mainview/prompts/* text eol=lf
+# テキストは常にLFで扱う。Windowsのautocrlfでcheckout時にCRLFになると、
+# 「@@キー」区切りの差分ファイル分解（prompt-def.js）等が崩れるため（2026-10-04の不具合）
+* text=auto eol=lf
+
+# バイナリ（変換しない）
+*.png binary
+*.ico binary
+*.icns binary
+
+# NULバイトが混入しており、gitもバイナリ判定している。改行変換の対象外にする
+src/mainview/vja-runtime.js -text
