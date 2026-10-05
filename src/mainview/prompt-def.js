@@ -115,6 +115,11 @@
         aws_s3: "AWS S3 (vja.aws.s3.*)",
     };
 
+    // 右パネルで「拡張API」セクションに表示するカテゴリのキー（クラウド設定のサービス用）。
+    // それ以外のキーは「利用API」セクションに表示する。ON/OFFの状態の保存・AIへの説明・検証は
+    // どちらも同じ仕組み（上記ENG/LABELS）を共有する。
+    const VJA_FRONT_API_EXTENSION_KEYS = ["aws_s3"];
+
     // 互換用: 上記3つを結合した全量（ドキュメント自動生成・ホワイトリスト系の用途では未使用。
     // AIP説明用の日本語詳細版VJA_USE_FRONT_JS_INFOとは別物）
     // vja.notify.toastはVJA_FRONT_API_MANDATORY_ENGに含まれるためここでの個別追記は不要。
@@ -479,6 +484,7 @@ ${_safeYamlFence(yamlDef)}
     o.VJA_FRONT_API_DB_ENG = VJA_FRONT_API_DB_ENG;
     o.VJA_FRONT_API_OPTIONAL_ENG = VJA_FRONT_API_OPTIONAL_ENG;
     o.VJA_FRONT_API_OPTIONAL_LABELS = VJA_FRONT_API_OPTIONAL_LABELS;
+    o.VJA_FRONT_API_EXTENSION_KEYS = VJA_FRONT_API_EXTENSION_KEYS;
 
     // [プロンプト]yamlから js AI生成依頼.
     // (日本語版は使用実績がなく陳腐化していたため削除済み。英語版のみ使用)

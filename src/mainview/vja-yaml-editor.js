@@ -444,11 +444,12 @@ function _getExistingJsCodeFor(wid, evName) {
 // ただし「event」がロック対象イベント（KeyDown/KeyUp/RowClick/HeaderClick）で
 // 常時有効固定されているだけの状態（ユーザーが操作できるカテゴリは0件）は、
 // オープンにする理由にはならないため除外する。
-function _hasEnabledApiOpts(wid, evName) {
+function _hasEnabledApiOpts(wid, evName, ext = false) {
     const code = _getExistingJsCodeFor(wid, evName);
     const enabled = _ensureApiOptInitialized(wid, evName, code);
     const locked = isEventCategoryLocked(evName);
-    const meaningful = (enabled || []).filter(key => !(key === "event" && locked));
+    const extKeys = new Set(_PROMPT_DEF.VJA_FRONT_API_EXTENSION_KEYS || []);
+    const meaningful = (enabled || []).filter(key => !(key === "event" && locked) && extKeys.has(key) === ext);
     return meaningful.length > 0;
 }
 
@@ -609,13 +610,15 @@ function _rpBuildLearnedFixesSection(wid, evName) {
 
 // ── 右パネル: 利用API（任意カテゴリ）セクション ──
 // フロントエンドイベントのみ表示。バックエンド（isAppEvent）では表示しない。
-function _rpBuildApiOptSection(wid, evName) {
+// ext=false: 「利用API」（vja本体のAPI）、ext=true: 「拡張API」（クラウド設定のサービス用）
+function _rpBuildApiOptSection(wid, evName, ext = false) {
     const code = _getExistingJsCodeFor(wid, evName);
     const enabledArr = _ensureApiOptInitialized(wid, evName, code);
     const enabled = new Set(enabledArr);
     const locked = isEventCategoryLocked(evName);
     const labels = _PROMPT_DEF.VJA_FRONT_API_OPTIONAL_LABELS || {};
-    const rows = Object.keys(labels).filter(_isCloudApiCategoryAvailable).map(key => {
+    const extKeys = new Set(_PROMPT_DEF.VJA_FRONT_API_EXTENSION_KEYS || []);
+    const rows = Object.keys(labels).filter(k => extKeys.has(k) === ext).filter(_isCloudApiCategoryAvailable).map(key => {
         // 「event」カテゴリは、ロック対象イベント（KeyDown/KeyUp/RowClick/HeaderClick）
         // では常時有効固定とし、ON/OFF切り替え自体を出さない（vja.dbの注記と同じ扱い）。
         if (key === "event" && locked) {
@@ -629,13 +632,20 @@ function _rpBuildApiOptSection(wid, evName) {
             label: labels[key],
         });
     }).join("");
-    const dbNote = render("ye-tpl-apiopt-dbnote", {});
+    // vja.dbの注記は「利用API」側だけに出す
+    const dbNote = ext ? "" : render("ye-tpl-apiopt-dbnote", {});
     return "<div>" + rows + dbNote + "</div>";
+}
+
+// 「拡張API」セクションに出す行があるか（クラウド設定に登録・有効なサービスが1つも無ければセクションごと出さない）
+function _rpHasExtApiRows() {
+    return (_PROMPT_DEF.VJA_FRONT_API_EXTENSION_KEYS || []).some(_isCloudApiCategoryAvailable);
 }
 
 function yamlBuildRightPanel(showWidgets = true, wid = null, evName = null, isAppEvent = false, curYaml = "") {
     return [
-        (!isAppEvent && wid && evName) ? yamlRpSection("🔌 利用API（任意）", _rpBuildApiOptSection(wid, evName), _hasEnabledApiOpts(wid, evName)) : "",
+        (!isAppEvent && wid && evName) ? yamlRpSection("🔌 利用API（任意）", _rpBuildApiOptSection(wid, evName, false), _hasEnabledApiOpts(wid, evName, false)) : "",
+        (!isAppEvent && wid && evName && _rpHasExtApiRows()) ? yamlRpSection("🧩 拡張API（任意）", _rpBuildApiOptSection(wid, evName, true), _hasEnabledApiOpts(wid, evName, true)) : "",
         (!isAppEvent && wid && evName) ? yamlRpSection("🧪 自動モック検証", _rpBuildMockCheckSection(wid, evName), false) : "",
         (wid && evName) ? yamlRpSection("🧠 学習履歴", _rpBuildLearnedFixesSection(wid, evName), false) : "",
         yamlRpSection("📌 定数", _rpBuildConstSection(), false),

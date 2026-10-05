@@ -643,7 +643,7 @@ getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ
 
 ## AWS S3 (vja.aws.s3.*)
 
-- 前提: クラウド設定に AWS の s3 を登録して有効にしておく。イベントの「利用API（任意）」で「AWS S3」をONにしたときだけAIへ渡される
+- 前提: クラウド設定に AWS の s3 を登録して有効にしておく。イベントの右パネル「拡張API（任意）」で「AWS S3」をONにしたときだけAIへ渡される
 - 関数名: await vja.aws.s3.put(bucket, key, body, options?):
   - 説明: S3にオブジェクトを登録（アップロード）する。bodyが文字列の場合はUTF-8のテキストとして保存する
   - 引数:
