@@ -18,6 +18,7 @@ CLAUDE.mdは毎セッション全文が読み込まれるため、規約・全�
 | `.claude/notes/known-constraints.md` | 同梱bun 1.4.2とElectrobunパッチ、Windows/Mac/Linuxのアイコン対応、macOS/Linux/Windows固有の制約 | Electrobun・bun・ビルド/コンパイル・アイコン・プラットフォーム固有の問題に触れる前 |
 | `.claude/notes/refactoring.md` | 大きなファイルを切り出す際の検証手順と過去の事故 | ファイル分割・大規模リファクタをする前 |
 | `.claude/notes/local-llm-setup.md` | setup-mac-llm.sh（mlx-lm/Qwen2.5-Coder-7B）の設計 | setup-mac-llm.sh・ローカルLLMのセットアップ手順に触れる前 |
+| `.claude/notes/cloud-aws.md` | クラウド（AWS）対応: AWSのみ正式対応、webviewのCDN版SDK＋AWS宛てfetchのvja.fetch差し替え、`vja.aws.*`ランタイム、拡張API、クレデンシャルの暗号化保存 | クラウド設定・`vja.aws.*`・`vja.fetch`・クレデンシャル・拡張APIに触れる前 |
 | `.claude/notes/remaining-issues.md` | 将来対応検討の項目（日本語解説機能、ランタイムAPI拡充候補等）と、プロンプト用語の書き分けルール | 機能追加・改善の相談を受けたとき、プロンプトを書く前 |
 
 - 新しく書き足す際の基準: CLAUDE.mdには「規約」と「全体構成」だけを書く。機能ごとの詳細・不具合の経緯・検証の手順は、対応するノートへ書く（該当するノートが無ければ新規作成し、この表へ1行足す）。経緯の全文ではなく、現行仕様と、繰り返してはいけない教訓の要約を書く。作業ログはコミットメッセージや`.claudeWork/`に残す
@@ -32,7 +33,7 @@ CLAUDE.mdは毎セッション全文が読み込まれるため、規約・全�
 # ユニットテスト（bun test）
 
 - `bun test`（追加設定不要、`package.json`に`test`スクリプトあり）でユニットテストが実行できる
-- 対象は「Electrobunのウィンドウ/DOMに依存しない純粋なロジック」のみ（`src/mainview/bridge-common.ts`、`src/bun/bun-utils.ts`、`src/bun/fs-rpc-handlers.ts`、`src/bun/db-manager.ts`が対象。各ファイルと同じディレクトリに`*.test.ts`を置く）
+- 対象は「Electrobunのウィンドウ/DOMに依存しない純粋なロジック」のみ（`src/mainview/bridge-common.ts`、`src/mainview/aws-runtime.ts`、`src/bun/bun-utils.ts`、`src/bun/fs-rpc-handlers.ts`、`src/bun/db-manager.ts`が対象。各ファイルと同じディレクトリに`*.test.ts`を置く）
 - `src/bun/project-runner.ts`は`electrobun/bun`をトップレベルでimportしており、単体でimportするとハングするため、現状テスト対象外（モック化すればテスト可能だが未対応）
 - `src/mainview/*.js`（vja-yaml-editor.js等）はモジュールシステムを使わない素の`<script>`読み込みのため、現状テスト対象外（`export`追加等の小さなリファクタが必要）
 - ロジック以外（ウィジェット配置・描画・ダイアログ操作等、DOM/ネイティブウィンドウに依存する部分）は引き続き人の目視確認に頼る
@@ -108,6 +109,7 @@ CLAUDE.mdは毎セッション全文が読み込まれるため、規約・全�
 | src/mainview/vja-ui.js | キーボード・ルーラー・INIT（最後に読み込む） |
 | src/mainview/bridge.ts | Webview RPC ブリッジ |
 | src/mainview/bridge-common.ts | RPC ブリッジ共通処理 |
+| src/mainview/aws-runtime.ts | `vja.aws.*`（クラウド設定に登録したAWSサービス用ランタイム。依存を注入する形で単体テスト可。詳細は`.claude/notes/cloud-aws.md`）（2026-10-05） |
 | src/mainview/project-bridge.ts | プロジェクト実行ウィンドウ RPC |
 | src/mainview/vja-runtime.js | vja.* API ランタイム |
 | src/mainview/prompt-def.js | AI プロンプト定義（コンテキスト組み立て・プレースホルダー置換ロジック。プロンプト本文自体はsrc/mainview/prompts/*.mdへ切り出し済み） |

@@ -29,3 +29,9 @@
 - 差分ファイルは「`@@キー名`」の行で区切る。読み込みは`prompt-def.js`の`_parsePromptParts()`。差し込むキー: `helperRule`/`declKw`(var|let)/`constRule`/`loadingRule`(frontのみ・YAMLに「ローディング」の語がある時だけ差し込む。常時入れると指示の無いloading追加が1/12→9/12に増えたため。vja.ui.loadingのfinally指定)/`likeExample`/`extraApiLines`(frontのみの追加2行、backは空)/`fidelityRule`
 - 共通の説明を直すときは`yaml-to-js.rule.eng.md`を1か所直せばよい。front/backで文面が異なる箇所を足したいときは、テンプレートに`{{キー}}`を足して、両方の差分ファイルに同名のキーを書く（片方に書き忘れると`{{キー}}`が残るので注意）
 - 検証方法: 整理前後で`YAML_TO_JS_SYS_PROMPT`のfront/back出力が一字一句同じことを確認した（出力は変わらないのでLLM生成テストは不要）
+
+## CRLF事故と再発防止（2026-10-04〜05）
+- Windowsのautocrlfで`prompts/*.md`がCRLFになると、`@@キー`区切りの差分ファイルの分解（`_parsePromptParts`）が失敗し、`{{helperRule}}`等が未置換のままAIへ送られていた（var指示・await規則等が空になり、systemLenがLinux 10057/Windows 8831と食い違ったのが手がかり）。
+- 再発防止: `_parsePromptParts`でCRLF→LF正規化、`.gitattributes`でリポジトリ全体をLF統一（`* text=auto eol=lf`、png/ico/icnsはbinary、NUL混入の`vja-runtime.js`は`-text`）、`_fillTpl`で未置換`{{...}}`を`console.error`警告。
+- フロントのsystemLenの目安: 10057（YAMLに「ローディング」の語があれば`loadingRule`が入り10305）。CRLF残存時は約+76字。
+- `loadingRule`（`vja.ui.loading`のfinally指定）は、常時入れると指示の無いloading追加が増える（実測1/12→9/12）ため、YAML本文に「ローディング」の語がある時だけ入れる。
