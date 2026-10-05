@@ -372,12 +372,13 @@ const _API_OPT_DETECT_PATTERNS = {
 };
 // クラウドのサービス用カテゴリ（キーは aws_ + サービス名）は、クラウド設定に登録済みで有効な場合だけ選択肢に出す
 function _isCloudApiCategoryAvailable(key) {
-    // キー → クラウド設定の（インフラ名, サービス名）。aws_xxx は AWS の xxx、slack は Slack の slack
+    // キー → クラウド設定の（インフラ名, サービス名）。aws_xxx は AWS の xxx、slack は Slack の Webhook / Slack Web API
     const m = /^aws_(\w+)$/.exec(key);
-    const target = m ? { infra: "aws", service: m[1] } : (key === "slack" ? { infra: "slack", service: "slack" } : null);
+    // slack は、サービス（Webhook / Slack Web API）のどちらかが登録・有効なら出す
+    const target = m ? { infra: "aws", services: [m[1]] } : (key === "slack" ? { infra: "slack", services: ["webhook", "slack web api"] } : null);
     if (!target) return true; // クラウド用ではない通常のカテゴリは常に出す
     return (getProjectData().cloudInfras || []).some(c =>
-        c.enabled && String(c.name || "").toLowerCase() === target.infra && String(c.service || "").toLowerCase() === target.service);
+        c.enabled && String(c.name || "").toLowerCase() === target.infra && target.services.includes(String(c.service || "").toLowerCase()));
 }
 // 「event」カテゴリを常時有効（OFFにできない）扱いにするイベント名。
 // これらのイベントはvja.event.*（ev.type/getKey()等）を使わないと

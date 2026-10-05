@@ -348,6 +348,23 @@ function cloudUrlFieldHtml(preset, curSvc, isCustomSvc, inf, i) {
 // クレデンシャル欄HTML生成
 // カスタム×カスタムの場合はJSON一括入力欄、それ以外は credDefs の定義に従って
 // テキスト入力・パスワード入力・セレクト形式のいずれかを生成する。
+// credDefs の when（{ 他の項目名 または "$service"（選択中のサービス）: 値 }）を満たす場合だけ項目を表示する（サービスごとに不要な項目を出さないため）。
+// 参照先の項目が未保存の場合は、その項目の選択肢の既定値(selected)で判定する
+function _cloudCredVisible(inf, credDefs, cd) {
+    if (typeof cd !== "object" || !cd.when) return true;
+    return Object.entries(cd.when).every(([depName, want]) => {
+        // "$service" は、選択中のサービス（AWSのS3等にあたる選択）で判定する
+        if (depName === "$service") return Array.isArray(want) ? want.includes(inf.service) : inf.service === want;
+        const dep = credDefs.find(d => typeof d === "object" && d.name === depName);
+        let cur = (inf.credentials && depName in inf.credentials) ? inf.credentials[depName] : null;
+        if (cur === null && dep && Array.isArray(dep.select)) {
+            const sel = dep.select.find(o => o.selected) || dep.select[0];
+            cur = sel ? (sel.value ?? sel.name ?? "") : "";
+        }
+        return Array.isArray(want) ? want.includes(cur) : cur === want;
+    });
+}
+
 function cloudCredFieldsHtml(inf, credDefs, isCustomCloud, i) {
     if (isCustomCloud) {
         const jsonVal = inf.credentialsJson || JSON.stringify(inf.credentials || {});
@@ -356,8 +373,10 @@ function cloudCredFieldsHtml(inf, credDefs, isCustomCloud, i) {
             attr: evtAttr("oninput", "updateCloudCredsJson(" + i + ",this.value)"),
         });
     }
-    return credDefs.map((cd, ci) => {
+    return credDefs.filter(cd => _cloudCredVisible(inf, credDefs, cd)).map((cd, ci) => {
         const k = typeof cd === "string" ? cd : cd.name;
+        // この項目の値で、他の項目の表示/非表示が変わる場合は、選択後に再描画する
+        const controlsOthers = credDefs.some(o => typeof o === "object" && o.when && Object.prototype.hasOwnProperty.call(o.when, k));
         const isSecret = typeof cd === "object" && cd.secret;
         const appInput = !!(inf.appInput?.[k]);
         const selOpts = typeof cd === "object" && Array.isArray(cd.select) ? cd.select : null;
@@ -376,7 +395,7 @@ function cloudCredFieldsHtml(inf, credDefs, isCustomCloud, i) {
                 const pickArg3 = optDisp === "&nbsp;" ? "" : esc(optDisp);
                 return render("cm-tpl-sel-opt", {
                     active: (selCur === optVal || selCur === o.name) ? "active" : "",
-                    attr: evtAttr("onmousedown", "pvSelPick('" + selId + "','" + esc(optVal) + "','" + pickArg3 + "',event);updateCloudCred(" + i + ",'" + esc(k) + "','" + esc(optVal) + "')"),
+                    attr: evtAttr("onmousedown", "pvSelPick('" + selId + "','" + esc(optVal) + "','" + pickArg3 + "',event);updateCloudCred(" + i + ",'" + esc(k) + "','" + esc(optVal) + "')" + (controlsOthers ? ";refreshCloudList()" : "")),
                     label: optDisp === "&nbsp;" ? "&nbsp;" : esc(optDisp),
                 });
             }).join("");

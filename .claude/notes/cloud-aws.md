@@ -30,7 +30,9 @@
 - 「簡略化した条件では動くが実機相当では動かない」ことがある。確認は実機相当のコンテキスト・実際のプロジェクトデータで行う。
 
 ## Slack（`src/mainview/slack-runtime.ts`、`vja.slack.send(text, options?)`）
-- クラウド設定の「Slack」（infra名`Slack`、service`slack`、URLなし）。クレデンシャルは`method`（選択: webhook/bot、既定webhook）・`webhookUrl`・`botToken`・`channel`（key名は`SLACK_METHOD`/`SLACK_WEBHOOK_URL`/`SLACK_BOT_TOKEN`/`SLACK_CHANNEL`）。SDKは使わず`vja.fetch`でHTTPを送る（CORS無関係）。
-- Webhook方式: 送信先はWebhook側で固定のため、`options.channel`指定はエラー。Bot方式: `chat.postMessage`（`Authorization: Bearer`）。Slack APIは失敗してもHTTP 200で本文`ok:false`+`error`を返すので本文を確認する。戻り値なし、テキストのみ。
+- クラウド設定の「Slack」（infra名`Slack`）。**サービスの選択（AWSのS3等にあたる選択）が送信方式**: `Webhook` / `Slack Web API`（URLなし、SDKなし）。クレデンシャルは`url`（送信URL。両方式で共通）・`token`・`channel`（key名は`SLACK_URL`/`SLACK_TOKEN`/`SLACK_CHANNEL`）。`vja.fetch`でHTTPを送る（CORS無関係）。
+- **サービスごとに不要な項目は設定画面に出さない**: 定義の`"when": { "$service": サービス名 }`（init-params.js。`$service`は選択中のサービス、通常のキーは他のクレデンシャル項目の値）を、`initCloudInfra`（index.html）が`creds[].when`へ引き継ぎ、`vja-app-config.js`の`_cloudCredVisible`が判定する。サービスの選択を変えると`selectCloudService`が再描画する。保存済みのクラウド設定は`credDefs`の写しを持つため、定義を変えた場合は設定の追加し直しが必要。
+- 両方（Webhook/Slack Web API）が登録されている場合、`vja.slack.send`は有効で先頭のものを使う。`getCloudInfraCredential('Slack', entry.service)`でそのサービスの設定を取る。
+- Webhook: `url`=WebhookのURL（必須）。送信先はWebhook側で固定のため、`options.channel`指定はエラー。Slack Web API: `url`は省略可（既定`https://slack.com/api/chat.postMessage`）、`token`必須、`Authorization: Bearer`。Slack APIは失敗してもHTTP 200で本文`ok:false`+`error`を返すので本文を確認する。戻り値なし、テキストのみ。
 - Webhookは**Slackアプリ経由**のものは現行サポート。非推奨なのは「レガシーのカスタム連携」で作った旧方式（公式ドキュメントで確認、2026-10-05）。
-- 拡張APIのカテゴリキーは`slack`（`aws_<service>`ではない）。`_isCloudApiCategoryAvailable`は、キー→(インフラ名,サービス名)で、クラウド設定に登録・有効な時だけ表示する。実Slackでの確認は未実施（偽fetchの単体テストまで）。
+- 拡張APIのカテゴリキーは`slack`（`aws_<service>`ではない）。`_isCloudApiCategoryAvailable`は、キー→(インフラ名,サービス名)で、クラウド設定に登録・有効な時だけ表示する（slackはWebhook/Slack Web APIのどちらかが有効なら表示）。実Slackでの確認は未実施（偽fetchの単体テストまで）。

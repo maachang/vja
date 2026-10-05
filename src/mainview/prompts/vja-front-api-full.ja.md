@@ -842,12 +842,12 @@ getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ
 
 ## Slack (vja.slack.*)
 
-- 前提: クラウド設定に Slack を登録して有効にしておく。方式は「Webhook」（Slackアプリで作ったIncoming Webhookの URL。送信先のチャンネルはWebhook側で固定）または「Bot」（Botトークン。送信時にチャンネルを指定できる）から選ぶ。イベントの右パネル「拡張API（任意）」で「Slack」をONにしたときだけAIへ渡される
+- 前提: クラウド設定に Slack を登録して有効にしておく。クラウド設定のサービスを「Webhook」（送信URLにSlackアプリで作ったIncoming Webhookの URLを設定。送信先のチャンネルはWebhook側で固定）または「Slack Web API」（トークンを設定。送信URLは省略可で既定はchat.postMessage。送信時にチャンネルを指定できる）から選ぶ。イベントの右パネル「拡張API（任意）」で「Slack」をONにしたときだけAIへ渡される
 - 関数名: await vja.slack.send(text, options?):
   - 説明: Slackにテキストのメッセージを送る
   - 引数:
     - text: string - 送信するメッセージ
-    - options?: { channel?: string } - 送信先のチャンネル（Bot方式のみ。省略時はクラウド設定の既定のチャンネル）。Webhook方式で指定するとエラーになる
+    - options?: { channel?: string } - 送信先のチャンネル（Slack Web API方式のみ。省略時はクラウド設定の既定のチャンネル）。Webhook方式で指定するとエラーになる
   - 戻り値: なし
   - 使用例: "await vja.slack.send('処理が完了しました');"
   - 使用例説明: Slackにメッセージを通知する

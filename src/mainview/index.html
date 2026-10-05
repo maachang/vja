@@ -433,7 +433,7 @@
                     })),
                     creds: def.credential.map(c => {
                         const [name, meta] = Object.entries(c)[0];
-                        return {name, key: meta.key, secret: meta.secret, select: meta.select || null};
+                        return {name, key: meta.key, secret: meta.secret, select: meta.select || null, when: meta.when || null};
                     }),
                 }));
             } catch (e) {

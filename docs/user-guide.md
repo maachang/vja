@@ -881,25 +881,44 @@ S3 と同じように、クラウド設定に登録して有効にしたサー�
 
 ### Slack に送信する（vja.slack.send）
 
-クラウド設定に **Slack** を登録して有効にすると、`vja.slack.send` でメッセージを送れます。SDK は使わず、通信は `vja.fetch`（Bun 経由）で行います。
+クラウド設定で、クラウド種別に **Slack** を選び、サービスに **Webhook** または **Slack Web API** を選んで登録（有効に）すると、`vja.slack.send` でメッセージを送れます。SDK は使わず、通信は `vja.fetch`（Bun 経由）で行います。両方を登録した場合は、有効で、先に登録した方を使います。
 
 | 設定項目 | 説明 |
 |----------|------|
-| 方式 | `Webhook` または `Bot`（選択） |
-| webhookUrl | Webhook 方式で使う URL（Slack アプリの Incoming Webhooks で作成。暗号化して保存） |
-| botToken | Bot 方式で使うトークン（`xoxb-...`。暗号化して保存） |
-| channel | Bot 方式の既定の送信先チャンネル（例: `#general` またはチャンネル ID） |
+| サービス | `Webhook` または `Slack Web API`（AWS の S3 などと同じ「サービス」の選択。選んだサービスで使う項目だけが表示されます） |
+| url（送信URL） | Webhook 方式: Webhook の URL（必須。Slack アプリの Incoming Webhooks で作成）。Slack Web API 方式: 送信先の URL（省略可。空なら既定の `https://slack.com/api/chat.postMessage`）。暗号化して保存 |
+| token | Slack Web API 方式で使うトークン（`xoxb-...`。暗号化して保存） |
+| channel | Slack Web API 方式の既定の送信先チャンネル（例: `#general` またはチャンネル ID） |
 
 ```javascript
 await vja.slack.send('処理が完了しました');
-await vja.slack.send('在庫が少なくなりました', { channel: '#alerts' }); // Bot 方式のみ
+await vja.slack.send('在庫が少なくなりました', { channel: '#alerts' }); // Slack Web API 方式のみ
 ```
 
 - **Webhook 方式**: URL を1つ入れるだけで使えます。送信先のチャンネルは Webhook を作るときに固定され、`channel` を指定するとエラーになります。送ったメッセージの削除やファイルの添付はできません。
-- **Bot 方式**: 送信時に `channel` を指定できます。Slack アプリに `chat:write` の権限を付け、送信先のチャンネルにアプリを招待しておく必要があります。
+- **Slack Web API 方式**: 送信時に `channel` を指定できます。Slack アプリに `chat:write` の権限を付け、送信先のチャンネルにアプリを招待しておく必要があります。
 - Webhook は、**Slack アプリ経由**で作ったものを使ってください（アプリを使わない旧方式の Webhook は、非推奨です）。
 - 送れるのはテキストのメッセージだけです（ファイル、ボタンなどは対象外）。
 - AI にこの関数を使わせるには、イベントの右パネル「🧩 拡張API（任意）」で **「Slack」を ON** にします。
+
+#### Slack 側の準備
+
+**Webhook（サービス: Webhook）の場合**
+1. <https://api.slack.com/apps> で **「Create New App」** を選び、アプリの名前と、使うワークスペースを選んで作成します。
+2. アプリの設定の **「Incoming Webhooks」** で、**「Activate Incoming Webhooks」** をオンにします。
+3. **「Add New Webhook to Workspace」** を選び、投稿先のチャンネルを選んで、許可します。
+4. 表示された Webhook の URL を、vja のクラウド設定の **url** に入れます。
+
+> Webhook の URL は秘密の値です。他の人に見せたり、公開されるリポジトリに載せたりしないでください（公開されると、Slack に無効にされることがあります）。
+
+**Slack Web API（サービス: Slack Web API）の場合**
+1. 上と同じ手順で、Slack アプリを作成します。
+2. アプリの設定の **「OAuth & Permissions」** で、Bot Token Scopes に **`chat:write`** を追加します。
+3. 同じ画面で、アプリをワークスペースにインストールし、発行された **Bot User OAuth Token**（`xoxb-...`）を、vja のクラウド設定の **token** に入れます。
+4. 送信先のチャンネルを、**channel** に入れます（例: `#general`）。
+5. 送信先のチャンネルに、アプリを招待します（チャンネルで `/invite @アプリ名`）。招待していないと、`not_in_channel` というエラーになることがあります。
+
+> 手順1〜4は Slack の公式ドキュメントに基づきます。手順5（チャンネルへの招待）は、一般的な運用で、実際の挙動は、お使いのワークスペースの設定によって異なります。
 
 ### アプリ側入力ファイル（~/vja/credential.json）
 

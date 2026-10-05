@@ -123,25 +123,19 @@
             ]
         },
         {
-            // Slack（SDKは使わず、vja.fetchでHTTPを送る。サービスのURLは無し）
+            // Slack（SDKは使わず、vja.fetchでHTTPを送る。サービスのURLは無し）。
+            // サービスの選択が送信方式（Webhook / Slack Web API）。
+            // "when": { "$service": サービス名 } は、そのサービスを選んでいる時だけ設定画面に項目を表示する（不要な項目は出さない）
             "infra": "Slack",
             "service": [
-                { "slack": { "url": "", "input": false } }
+                { "Webhook": { "url": "", "input": false } },
+                { "Slack Web API": { "url": "", "input": false } }
             ],
             "credential": [
-                {
-                    "method": {
-                        "key": "SLACK_METHOD",
-                        "secret": false,
-                        "select": [
-                            { "name": "Webhook", "value": "webhook", "selected": true },
-                            { "name": "Bot", "value": "bot", "selected": false }
-                        ]
-                    }
-                },
-                { "webhookUrl": { "key": "SLACK_WEBHOOK_URL", "secret": true } },
-                { "botToken": { "key": "SLACK_BOT_TOKEN", "secret": true } },
-                { "channel": { "key": "SLACK_CHANNEL", "secret": false } }
+                // 送信URL: Webhookは Webhook の URL（必須）、Slack Web API は送信先のURL（空なら既定の chat.postMessage）
+                { "url": { "key": "SLACK_URL", "secret": true } },
+                { "token": { "key": "SLACK_TOKEN", "secret": true, "when": { "$service": "Slack Web API" } } },
+                { "channel": { "key": "SLACK_CHANNEL", "secret": false, "when": { "$service": "Slack Web API" } } }
             ]
         },
         // 2026-10-05: 正式対応はまずAWSとSlackのみのため、それ以外のクラウド定義は一旦コメントアウトして画面に表示しない
