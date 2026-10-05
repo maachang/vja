@@ -1,0 +1,1 @@
+await vja.slack.send: { args: [text:string, options?:{channel?:string}], return: "void", desc: "Send a text message to Slack. options.channel works only when the Slack setting uses the Bot method (default channel from the setting otherwise); with the Webhook method the channel is fixed and specifying one throws." }

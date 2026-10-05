@@ -191,6 +191,7 @@ GAS や AWS Lambda などの無料・低価格クラウドサービスは便利�
 - `vja.getCloudInfraCredential("AWS", "s3")` で取得、AI 生成コードでもそのまま使える
 - CDN で配布されている AWS SDK v3 をそのまま使え、S3 バケット側の CORS 設定は不要（AWS 宛ての通信は自動で `vja.fetch`（Bun 経由）になる）
 - クラウド設定に登録した AWS サービスは `vja.aws.s3.put(...)` のような関数でそのまま使える（S3 / DynamoDB / SQS / SNS / Lambda / SES / STS / Secrets Manager / CloudWatch Logs）。イベントの「拡張API」で ON にしたサービスだけを AI に渡す
+- クラウド設定に **Slack**（Incoming Webhook または Bot トークン）を登録すると、`vja.slack.send('メッセージ')` で Slack に通知できる
 
 ### ⚙️ 拡張ランタイム
 - プロジェクト固有の JavaScript ライブラリを定義

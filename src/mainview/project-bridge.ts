@@ -12,6 +12,7 @@ import {
     makeFetchProxy, AWS_HOST_REGEX,
 } from "./bridge-common";
 import { makeAwsRuntimes } from "./aws-runtime";
+import { makeSlackRuntime } from "./slack-runtime";
 
 // fetch は複数同時リクエスト対応のため fetchId ベースのMapで管理（bridge-common）
 const { fetchPendingMap: _fetchPendingMap, fetchAbortPendingMap: _fetchAbortPendingMap } = makeFetchMaps();
@@ -220,6 +221,13 @@ w.vja.aws = makeAwsRuntimes({
     listCloudInfras: () => w.vja.cloud.list(),
     getCredential: (infra: string, service: string) => w.vja.getCloudInfraCredential(infra, service),
     loadSdk: (url: string) => import(/* @vite-ignore */ url),
+});
+
+// vja.slack.*（クラウド設定に登録したSlackへメッセージを送る）。SDKは使わず、vja.fetch(Bun経由)でHTTPを送る
+w.vja.slack = makeSlackRuntime({
+    listCloudInfras: () => w.vja.cloud.list(),
+    getCredential: (infra: string, service: string) => w.vja.getCloudInfraCredential(infra, service),
+    fetch: (url: string, options?: any) => _vjaFetch.fetch(url, options),
 });
 
 // console.* を vja.log.* (RPC経由) に差し替え

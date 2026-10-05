@@ -1,6 +1,6 @@
 # クラウド（AWS）対応（2026-10-05時点）
 
-正式対応クラウドは**AWSのみ**。GCP/Azure等は今後対応予定（`CLOUD_INFRA_RAW`（init-params.js）のAWS以外はコメントアウトして画面に出していない。戻す時は実機で検証すること）。AWSのうちCognito（認証まわりでクライアント側の実装が面倒）と「カスタム」もコメントアウト済み。
+正式対応クラウドは**AWSのみ**（加えて、SDKを使わないSlack送信`vja.slack.send`。下記「Slack」節）。GCP/Azure等は今後対応予定（`CLOUD_INFRA_RAW`（init-params.js）のAWS以外はコメントアウトして画面に出していない。戻す時は実機で検証すること）。AWSのうちCognito（認証まわりでクライアント側の実装が面倒）と「カスタム」もコメントアウト済み。
 
 ## 全体の仕組み（webview前提）
 - イベントは全てwebview（プロジェクト実行ウィンドウ）で動く。AWS SDK v3は、クラウド設定の各サービスの`sdkUrl`（CDN `+esm`）から**webview内**へ動的importする。bun側にSDKは無い。
@@ -28,3 +28,9 @@
 ## 教訓
 - `getCloudInfraCredential`は保存データ(`name`)と食い違う`infra`で照合しており、常にnullだった。保存キーは`credDefs`の`name`（accessKeyId）で、利用側は`key`（AWS_ACCESS_KEY_ID）。リージョンは画面で既定表示されても操作しないと保存されない（選択肢の既定値で補う）。
 - 「簡略化した条件では動くが実機相当では動かない」ことがある。確認は実機相当のコンテキスト・実際のプロジェクトデータで行う。
+
+## Slack（`src/mainview/slack-runtime.ts`、`vja.slack.send(text, options?)`）
+- クラウド設定の「Slack」（infra名`Slack`、service`slack`、URLなし）。クレデンシャルは`method`（選択: webhook/bot、既定webhook）・`webhookUrl`・`botToken`・`channel`（key名は`SLACK_METHOD`/`SLACK_WEBHOOK_URL`/`SLACK_BOT_TOKEN`/`SLACK_CHANNEL`）。SDKは使わず`vja.fetch`でHTTPを送る（CORS無関係）。
+- Webhook方式: 送信先はWebhook側で固定のため、`options.channel`指定はエラー。Bot方式: `chat.postMessage`（`Authorization: Bearer`）。Slack APIは失敗してもHTTP 200で本文`ok:false`+`error`を返すので本文を確認する。戻り値なし、テキストのみ。
+- Webhookは**Slackアプリ経由**のものは現行サポート。非推奨なのは「レガシーのカスタム連携」で作った旧方式（公式ドキュメントで確認、2026-10-05）。
+- 拡張APIのカテゴリキーは`slack`（`aws_<service>`ではない）。`_isCloudApiCategoryAvailable`は、キー→(インフラ名,サービス名)で、クラウド設定に登録・有効な時だけ表示する。実Slackでの確認は未実施（偽fetchの単体テストまで）。

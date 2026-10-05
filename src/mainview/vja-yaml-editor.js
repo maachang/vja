@@ -368,13 +368,16 @@ const _API_OPT_DETECT_PATTERNS = {
     aws_sts: /\bvja\.aws\.sts\./,
     aws_secretsmanager: /\bvja\.aws\.secretsmanager\./,
     aws_cloudwatch: /\bvja\.aws\.cloudwatch\./,
+    slack: /\bvja\.slack\./,
 };
 // クラウドのサービス用カテゴリ（キーは aws_ + サービス名）は、クラウド設定に登録済みで有効な場合だけ選択肢に出す
 function _isCloudApiCategoryAvailable(key) {
+    // キー → クラウド設定の（インフラ名, サービス名）。aws_xxx は AWS の xxx、slack は Slack の slack
     const m = /^aws_(\w+)$/.exec(key);
-    if (!m) return true; // クラウド用ではない通常のカテゴリは常に出す
+    const target = m ? { infra: "aws", service: m[1] } : (key === "slack" ? { infra: "slack", service: "slack" } : null);
+    if (!target) return true; // クラウド用ではない通常のカテゴリは常に出す
     return (getProjectData().cloudInfras || []).some(c =>
-        c.enabled && String(c.name || "").toLowerCase() === "aws" && String(c.service || "").toLowerCase() === m[1]);
+        c.enabled && String(c.name || "").toLowerCase() === target.infra && String(c.service || "").toLowerCase() === target.service);
 }
 // 「event」カテゴリを常時有効（OFFにできない）扱いにするイベント名。
 // これらのイベントはvja.event.*（ev.type/getKey()等）を使わないと

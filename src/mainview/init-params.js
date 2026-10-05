@@ -122,7 +122,29 @@
                 }
             ]
         },
-        // 2026-10-05: 正式対応はまずAWSのみのため、AWS以外のクラウド定義は一旦コメントアウトして画面に表示しない
+        {
+            // Slack（SDKは使わず、vja.fetchでHTTPを送る。サービスのURLは無し）
+            "infra": "Slack",
+            "service": [
+                { "slack": { "url": "", "input": false } }
+            ],
+            "credential": [
+                {
+                    "method": {
+                        "key": "SLACK_METHOD",
+                        "secret": false,
+                        "select": [
+                            { "name": "Webhook", "value": "webhook", "selected": true },
+                            { "name": "Bot", "value": "bot", "selected": false }
+                        ]
+                    }
+                },
+                { "webhookUrl": { "key": "SLACK_WEBHOOK_URL", "secret": true } },
+                { "botToken": { "key": "SLACK_BOT_TOKEN", "secret": true } },
+                { "channel": { "key": "SLACK_CHANNEL", "secret": false } }
+            ]
+        },
+        // 2026-10-05: 正式対応はまずAWSとSlackのみのため、それ以外のクラウド定義は一旦コメントアウトして画面に表示しない
         // （使えない状態にしている）。GCP/Azure等を正式対応する時に、必要なものを戻して実機で検証すること。
         /*
         {

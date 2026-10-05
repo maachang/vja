@@ -582,6 +582,7 @@ function _buildFrontMock(evName, wtag, overrides, widgets) {
             secretsmanager: { getSecret: async () => "" },
             cloudwatch: { putLog: async () => {} },
         },
+        slack: { send: async () => {} },
         validate: {
             run: async () => true,
         },
