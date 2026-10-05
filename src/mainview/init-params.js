@@ -135,7 +135,11 @@
                 // 送信URL: Webhookは Webhook の URL（必須）、Slack Web API は送信先のURL（空なら既定の chat.postMessage）
                 { "url": { "key": "SLACK_URL", "secret": true } },
                 { "token": { "key": "SLACK_TOKEN", "secret": true, "when": { "$service": "Slack Web API" } } },
-                { "channel": { "key": "SLACK_CHANNEL", "secret": false, "when": { "$service": "Slack Web API" } } }
+                { "channel": { "key": "SLACK_CHANNEL", "secret": false, "when": { "$service": "Slack Web API" } } },
+                // 既定の表示名とアイコン（任意）。icon_emoji は前後の : が無ければ補う（smile → :smile:）。
+                // 変更には Slack アプリに chat:write.customize の権限が必要
+                { "username": { "key": "SLACK_USERNAME", "secret": false, "when": { "$service": "Slack Web API" } } },
+                { "icon_emoji": { "key": "SLACK_ICON_EMOJI", "secret": false, "when": { "$service": "Slack Web API" } } }
             ]
         },
         {

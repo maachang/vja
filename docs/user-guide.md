@@ -891,14 +891,17 @@ S3 と同じように、クラウド設定に登録して有効にしたサー�
 | url（送信URL） | Webhook 方式: Webhook の URL（必須。Slack アプリの Incoming Webhooks で作成）。Slack Web API 方式: 送信先の URL（省略可。空なら既定の `https://slack.com/api/chat.postMessage`）。暗号化して保存 |
 | token | Slack Web API 方式で使うトークン（`xoxb-...`。暗号化して保存） |
 | channel | Slack Web API 方式の既定の送信先チャンネル（例: `#general` またはチャンネル ID） |
+| username | Slack Web API 方式の、既定の表示名（任意） |
+| icon_emoji | Slack Web API 方式の、既定のアイコン絵文字（任意。`smile` のように書くと、`:smile:` に補います） |
 
 ```javascript
 await vja.slack.send('処理が完了しました');
 await vja.slack.send('在庫が少なくなりました', { channel: '#alerts' }); // Slack Web API 方式のみ
+await vja.slack.send('処理が完了しました', { username: '通知くん', icon_emoji: 'robot_face' }); // Slack Web API 方式のみ
 ```
 
-- **Webhook 方式**: URL を1つ入れるだけで使えます。送信先のチャンネルは Webhook を作るときに固定され、`channel` を指定するとエラーになります。送ったメッセージの削除やファイルの添付はできません。
-- **Slack Web API 方式**: 送信時に `channel` を指定できます。Slack アプリに `chat:write` の権限を付け、送信先のチャンネルにアプリを招待しておく必要があります。
+- **Webhook 方式**: URL を1つ入れるだけで使えます。送信先のチャンネル、表示名、アイコンは Webhook を作るときに固定され、`channel`、`username`、`icon_emoji` を指定するとエラーになります。送ったメッセージの削除やファイルの添付はできません。
+- **Slack Web API 方式**: 送信時に `channel`、`username`、`icon_emoji` を指定できます（省略すると、クラウド設定の既定値を使います）。`username` と `icon_emoji` を変更するには、Slack アプリに **`chat:write.customize`** の権限が必要です。Slack アプリに `chat:write` の権限を付け、送信先のチャンネルにアプリを招待しておく必要があります。
 - Webhook は、**Slack アプリ経由**で作ったものを使ってください（アプリを使わない旧方式の Webhook は、非推奨です）。
 - 送れるのはテキストのメッセージだけです（ファイル、ボタンなどは対象外）。
 - AI にこの関数を使わせるには、イベントの右パネル「🧩 拡張API（任意）」で **「Slack」を ON** にします。

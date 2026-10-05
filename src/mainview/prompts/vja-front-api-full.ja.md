@@ -847,7 +847,7 @@ getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ
   - 説明: Slackにテキストのメッセージを送る
   - 引数:
     - text: string - 送信するメッセージ
-    - options?: { channel?: string } - 送信先のチャンネル（Slack Web API方式のみ。省略時はクラウド設定の既定のチャンネル）。Webhook方式で指定するとエラーになる
+    - options?: { channel?: string, username?: string, icon_emoji?: string } - 送信先のチャンネル、表示名、アイコン絵文字（例: 'smile' または ':smile:'。前後の : が無ければ補う）。Slack Web API方式のみで、省略時はクラウド設定の既定値。Webhook方式で指定するとエラーになる
   - 戻り値: なし
   - 使用例: "await vja.slack.send('処理が完了しました');"
   - 使用例説明: Slackにメッセージを通知する

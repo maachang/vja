@@ -3,7 +3,7 @@
 // 偽のクラウド設定・クレデンシャル・fetchを注入して検証する。
 // 方式は、クラウド設定の「サービス」（Webhook / Slack Web API）で決まる。
 import { describe, test, expect } from "bun:test";
-import { makeSlackRuntime, SLACK_WEB_API_DEFAULT_URL } from "./slack-runtime";
+import { makeSlackRuntime, SLACK_WEB_API_DEFAULT_URL, normalizeSlackIconEmoji } from "./slack-runtime";
 
 const webhookEntry = { id: "w", name: "Slack", service: "Webhook", enabled: true };
 const apiEntry = { id: "a", name: "Slack", service: "Slack Web API", enabled: true };
@@ -61,9 +61,11 @@ describe("vja.slack.send Webhook（サービス: Webhook）", () => {
         expect(calls[0].options.headers["Content-Type"]).toBe("application/json");
         expect(JSON.parse(calls[0].options.body)).toEqual({ text: "完了しました" });
     });
-    test("channelを指定するとエラー（送信もしない）", async () => {
+    test("channel / username / icon_emoji を指定するとエラー（送信もしない）", async () => {
         const { rt, calls } = setup([webhookEntry], cred);
-        await expect(rt.send("a", { channel: "#x" })).rejects.toThrow("チャンネルを変更できません");
+        await expect(rt.send("a", { channel: "#x" })).rejects.toThrow("変更できません");
+        await expect(rt.send("a", { username: "bot" })).rejects.toThrow("変更できません");
+        await expect(rt.send("a", { icon_emoji: "smile" })).rejects.toThrow("変更できません");
         expect(calls.length).toBe(0);
     });
     test("送信URLが未設定ならエラー。送信失敗(HTTPエラー)は状態と本文を含む例外", async () => {
@@ -88,6 +90,27 @@ describe("vja.slack.send Slack Web API（サービス: Slack Web API）", () => 
         await rt.send("a");
         expect(calls[0].url).toBe("https://example.com/slack-proxy");
     });
+    test("username / icon_emoji は、指定がなければ本文に含めない", async () => {
+        const { rt, calls } = setup([apiEntry], cred);
+        await rt.send("a");
+        const body = JSON.parse(calls[0].options.body);
+        expect("username" in body).toBe(false);
+        expect("icon_emoji" in body).toBe(false);
+    });
+    test("クラウド設定の username / icon_emoji が既定で付き、icon_emojiは前後の : を補う", async () => {
+        const { rt, calls } = setup([apiEntry], { ...cred, SLACK_USERNAME: "通知くん", SLACK_ICON_EMOJI: "robot_face" });
+        await rt.send("a");
+        const body = JSON.parse(calls[0].options.body);
+        expect(body.username).toBe("通知くん");
+        expect(body.icon_emoji).toBe(":robot_face:");
+    });
+    test("options の username / icon_emoji が、クラウド設定の既定より優先される", async () => {
+        const { rt, calls } = setup([apiEntry], { ...cred, SLACK_USERNAME: "既定", SLACK_ICON_EMOJI: ":a:" });
+        await rt.send("a", { username: "個別", icon_emoji: "b" });
+        const body = JSON.parse(calls[0].options.body);
+        expect(body.username).toBe("個別");
+        expect(body.icon_emoji).toBe(":b:");
+    });
     test("options.channelが既定より優先される", async () => {
         const { rt, calls } = setup([apiEntry], cred);
         await rt.send("a", { channel: "#alerts" });
@@ -104,5 +127,25 @@ describe("vja.slack.send Slack Web API（サービス: Slack Web API）", () => 
     test("HTTPエラー自体もエラー", async () => {
         const ng = setup([apiEntry], cred, { ok: false, status: 500, json: async () => ({}) });
         await expect(ng.rt.send("a")).rejects.toThrow("500");
+    });
+});
+
+describe("normalizeSlackIconEmoji", () => {
+    test("前後の : が無ければ補い、あればそのまま", () => {
+        expect(normalizeSlackIconEmoji("smile")).toBe(":smile:");
+        expect(normalizeSlackIconEmoji(":smile")).toBe(":smile:");
+        expect(normalizeSlackIconEmoji("smile:")).toBe(":smile:");
+        expect(normalizeSlackIconEmoji(":smile:")).toBe(":smile:");
+        expect(normalizeSlackIconEmoji("  smile  ")).toBe(":smile:");
+    });
+    test("空・: だけ・未指定は、無し(undefined)", () => {
+        expect(normalizeSlackIconEmoji("")).toBeUndefined();
+        expect(normalizeSlackIconEmoji(":")).toBeUndefined();
+        expect(normalizeSlackIconEmoji("::")).toBeUndefined();
+        expect(normalizeSlackIconEmoji(undefined)).toBeUndefined();
+        expect(normalizeSlackIconEmoji(null)).toBeUndefined();
+    });
+    test("中の : は変えない（スキントーン付き等の絵文字名）", () => {
+        expect(normalizeSlackIconEmoji("+1::skin-tone-2")).toBe(":+1::skin-tone-2:");
     });
 });

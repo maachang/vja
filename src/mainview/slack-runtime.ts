@@ -18,6 +18,13 @@ export type SlackRuntimeDeps = {
 // Slack Web API の既定の送信URL（クラウド設定の送信URLが空の場合に使う）
 export const SLACK_WEB_API_DEFAULT_URL = "https://slack.com/api/chat.postMessage";
 
+// アイコン絵文字を :名前: の形にそろえる。前後の : が無ければ補い、空（: だけを含む）なら無し(undefined)にする
+//  例: "smile" → ":smile:" / ":smile" → ":smile:" / "smile:" → ":smile:" / ":smile:" → ":smile:"
+export const normalizeSlackIconEmoji = (v: any): string | undefined => {
+    const name = String(v ?? "").trim().replace(/^:+|:+$/g, "");
+    return name === "" ? undefined : `:${name}:`;
+};
+
 export const makeSlackRuntime = (deps: SlackRuntimeDeps) => {
     // 設定とクレデンシャルは毎回取得する（取得は軽く、キャッシュで古い値を持たないため）。
     // 登録されているSlackのサービス（Webhook / Slack Web API）のうち、有効な最初のものを使う
@@ -34,14 +41,17 @@ export const makeSlackRuntime = (deps: SlackRuntimeDeps) => {
     };
 
     return {
-        // メッセージ送信。options: { channel }（Slack Web API方式のみ。省略時はクラウド設定の既定のチャンネル）。戻り値なし
-        // Webhook方式では、チャンネルはWebhook側で固定のため、channelを指定するとエラーにする
-        send: async (text: string, options: { channel?: string } = {}): Promise<void> => {
+        // メッセージ送信。options: { channel, username, icon_emoji }（Slack Web API方式のみ。省略時はクラウド設定の既定値）。戻り値なし
+        // icon_emoji は前後の : が無ければ補う。username/icon_emoji の変更には、Slackアプリに chat:write.customize の権限が必要
+        // Webhook方式では、チャンネル・ユーザー名・アイコンはWebhook側で固定のため、指定するとエラーにする
+        send: async (text: string, options: { channel?: string; username?: string; icon_emoji?: string } = {}): Promise<void> => {
             if (typeof text !== "string" || text === "") throw new TypeError("text は空でない文字列で指定してください");
             const { method, cred } = await load();
 
             if (method === "webhook") {
-                if (options.channel) throw new Error("Webhook方式では送信先のチャンネルを変更できません（Webhookを作るときに決まっています）。チャンネルを指定するには、クラウド設定の方式を Slack Web API にしてください");
+                if (options.channel || options.username || options.icon_emoji) {
+                    throw new Error("Webhook方式では、チャンネル・ユーザー名・アイコン絵文字を変更できません（Webhookを作るときに決まっています）。変更するには、クラウド設定のサービスを Slack Web API にしてください");
+                }
                 if (!cred.SLACK_URL) throw new Error("Slack の送信URL（Webhook の URL）が設定されていません");
                 const res = await deps.fetch(cred.SLACK_URL, {
                     method: "POST",
@@ -59,7 +69,12 @@ export const makeSlackRuntime = (deps: SlackRuntimeDeps) => {
                 const res = await deps.fetch(cred.SLACK_URL || SLACK_WEB_API_DEFAULT_URL, {
                     method: "POST",
                     headers: { "Content-Type": "application/json; charset=utf-8", Authorization: "Bearer " + cred.SLACK_TOKEN },
-                    body: JSON.stringify({ channel, text }),
+                    body: JSON.stringify({
+                        channel, text,
+                        // 指定されたものだけ付ける（オプション > クラウド設定の既定値）
+                        username: options.username || cred.SLACK_USERNAME || undefined,
+                        icon_emoji: normalizeSlackIconEmoji(options.icon_emoji || cred.SLACK_ICON_EMOJI),
+                    }),
                 });
                 if (!res.ok) throw new Error(`Slackへの送信に失敗しました (${res.status})`);
                 // Slack APIは、失敗してもHTTPは200で、本文の ok:false と error（channel_not_found 等）で返す
