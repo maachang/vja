@@ -9,6 +9,7 @@ import { parseCsvLine } from "../shared/csv-utils";
 import {
     makeFetchMaps, makeVjaFetch, makeFetchResultHandlers,
     makeDbWrappers, makeFileWrappers, makeDirWrappers, makeDialogHelpers,
+    makeFetchProxy, AWS_HOST_REGEX,
 } from "./bridge-common";
 
 // fetch は複数同時リクエスト対応のため fetchId ベースのMapで管理（bridge-common）
@@ -201,6 +202,10 @@ w.vja.dir = makeDirWrappers(r);
 const _vjaFetch = makeVjaFetch(_fetchPendingMap, _fetchAbortPendingMap, s.fetchRequest, s.fetchAbortRequest);
 w.vja.fetch = _vjaFetch.fetch;
 w.vja.fetchAbort = _vjaFetch.fetchAbort;
+
+// AWS宛て(CDN版 AWS SDK等)のwindow.fetchだけをvja.fetch(Bun経由)に差し替え、CORS設定を不要にする。
+// AWS以外への通信は元のfetchのまま（詳細はbridge-common.tsのmakeFetchProxy）
+w.fetch = makeFetchProxy(w.fetch.bind(w), _vjaFetch.fetch, AWS_HOST_REGEX, _vjaFetch.fetchAbort);
 
 w.vja.cloud = w.vja.cloud || {};
 w.vja.cloud.list = () =>

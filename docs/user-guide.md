@@ -803,6 +803,28 @@ if (!cred) {
 // cred = { AWS_ACCESS_KEY_ID: '...', AWS_SECRET_ACCESS_KEY: '...', AWS_REGION: '...' }
 ```
 
+### AWS SDK の使い方（CDN版 AWS SDK）
+
+拡張ランタイムの JavaScript から、CDN で配布されている AWS SDK v3 を読み込んで、通常の書き方でそのまま使えます。**S3 バケットなどに CORS の設定は要りません。**
+
+```javascript
+// 拡張ランタイムに記述
+async function s3PutText(key, text) {
+    const sdk = await import('https://cdn.jsdelivr.net/npm/@aws-sdk/client-s3/+esm');
+    const cred = await vja.getCloudInfraCredential('AWS', 's3');
+    const client = new sdk.S3Client({
+        region: cred.AWS_REGION,
+        credentials: { accessKeyId: cred.AWS_ACCESS_KEY_ID, secretAccessKey: cred.AWS_SECRET_ACCESS_KEY },
+    });
+    await client.send(new sdk.PutObjectCommand({ Bucket: 'バケット名', Key: key, Body: text }));
+}
+```
+
+- vja は、プロジェクト実行時に、AWS 宛て（`*.amazonaws.com`、`*.amazonaws.com.cn`、`*.api.aws`）の通信だけを、`vja.fetch` 経由で送ります。ブラウザの CORS の制約を受けないため、バケット側の CORS 設定が不要です。
+- AWS 以外の宛先への通信は、これまでどおりブラウザの動作です。
+- 注意: AWS 宛ての通信は、AWS SDK 以外の `fetch`（自分で作った API Gateway の呼び出しなど）も対象です。逐次で受け取る通信（ストリーム）は、結果を全部受け取ってから返されます。
+- CDN から SDK を読み込むため、ネットワークに接続されている必要があります。
+
 ### アプリ側入力ファイル（~/vja/credential.json）
 
 ```json

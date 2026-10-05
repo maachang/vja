@@ -13,6 +13,8 @@ import {
     makeDialogHelpers,
     bytesToBase64,
     base64ToBytes,
+    makeFetchProxy,
+    AWS_HOST_REGEX,
 } from "./bridge-common";
 
 describe("makeDbWrappers", () => {
@@ -264,5 +266,132 @@ describe("makeVjaFetch バイナリ対応", () => {
         const { fetch } = setup((a, h) => h.fetchResult({ fetchId: a.fetchId, ok: true, status: 200, headers: {}, body: "", bodyBase64: Buffer.from(bytes).toString("base64") }));
         const res: any = await fetch("https://x", { responseType: "binary" });
         expect(await res.json()).toEqual({ a: "日本語" });
+    });
+});
+
+describe("AWS_HOST_REGEX", () => {
+    const ok = [
+        "s3.ap-northeast-1.amazonaws.com", "test-vja-s3.s3.ap-northeast-1.amazonaws.com",
+        "dynamodb.us-east-1.amazonaws.com", "sqs.us-west-2.amazonaws.com", "s3.ap-northeast-3.amazonaws.com",
+        "s3.amazonaws.com", "sts.amazonaws.com", "s3.cn-north-1.amazonaws.com.cn",
+        "test-vja-s3.s3.dualstack.ap-northeast-1.amazonaws.com",
+        "dynamodb.ap-northeast-1.api.aws", "sqs.us-east-1.api.aws",
+    ];
+    const ng = [
+        "amazonaws.com", "api.aws", "evilamazonaws.com", "amazonaws.com.evil.com", "x.api.aws.evil.com",
+        "example.com", "maachang.com", "yahoo.co.jp", "localhost", "",
+    ];
+    for (const h of ok) test("一致: " + h, () => expect(AWS_HOST_REGEX.test(h)).toBe(true));
+    for (const h of ng) test("不一致: " + (h || "(空)"), () => expect(AWS_HOST_REGEX.test(h)).toBe(false));
+});
+
+describe("makeFetchProxy", () => {
+    // 元のfetchと vja.fetch の呼び出しを記録するフェイク
+    const setup = (vjaRes: any = { status: 200, headers: { "x-a": "b" }, bytes: new Uint8Array([1, 2, 3]) }) => {
+        const orig: any[] = [];
+        const vja: any[] = [];
+        const origFetch = async (input: any, init?: any) => { orig.push({ input, init }); return new Response("orig"); };
+        const vjaFetch = (url: string, opts: any) => {
+            vja.push({ url, opts });
+            const p: any = Promise.resolve({ status: vjaRes.status, headers: vjaRes.headers, bytes: async () => vjaRes.bytes });
+            p.fetchId = "id1";
+            return p;
+        };
+        const f = makeFetchProxy(origFetch, vjaFetch, AWS_HOST_REGEX);
+        return { f, orig, vja };
+    };
+
+    test("AWS以外のURLは元のfetchへそのまま渡す", async () => {
+        const { f, orig, vja } = setup();
+        const r = await f("https://maachang.com/api", { method: "POST", body: "x" });
+        expect(await r.text()).toBe("orig");
+        expect(orig.length).toBe(1);
+        expect(vja.length).toBe(0);
+    });
+
+    test("相対パス/不正なURLも元のfetchへ渡す（アプリ内部の読み込みを壊さない）", async () => {
+        const { f, orig, vja } = setup();
+        await f("prompts/a.md");
+        await f("views://mainview/index.html");
+        expect(orig.length).toBe(2);
+        expect(vja.length).toBe(0);
+    });
+
+    test("AWS宛て(文字列URL)はvja.fetchへ渡し、応答はResponseで返る", async () => {
+        const { f, orig, vja } = setup();
+        const r = await f("https://s3.ap-northeast-1.amazonaws.com/b/k", { method: "GET", headers: { a: "1" } });
+        expect(orig.length).toBe(0);
+        expect(vja[0].url).toBe("https://s3.ap-northeast-1.amazonaws.com/b/k");
+        expect(vja[0].opts.method).toBe("GET");
+        expect(vja[0].opts.headers).toEqual({ a: "1" });
+        expect(vja[0].opts.responseType).toBe("binary");
+        expect(r.status).toBe(200);
+        expect(r.headers.get("x-a")).toBe("b");
+        expect(Array.from(new Uint8Array(await r.arrayBuffer()))).toEqual([1, 2, 3]);
+    });
+
+    test("Requestオブジェクト入力: メソッド/ヘッダー/バイナリ本文をRequestから取り出す", async () => {
+        const { f, vja } = setup();
+        const req = new Request("https://test-vja-s3.s3.ap-northeast-1.amazonaws.com/vja-test/a.bin", {
+            method: "PUT", headers: { "x-amz-date": "20261005T000000Z", authorization: "AWS4-HMAC-SHA256 x" },
+            body: new Uint8Array([0, 255, 128]),
+        });
+        await f(req);
+        expect(vja[0].opts.method).toBe("PUT");
+        expect(vja[0].opts.headers["x-amz-date"]).toBe("20261005T000000Z");
+        expect(vja[0].opts.headers["authorization"]).toBe("AWS4-HMAC-SHA256 x");
+        expect(Array.from(vja[0].opts.body)).toEqual([0, 255, 128]);
+    });
+
+    test("init.bodyが文字列/Uint8Array/Blob/ストリームでもvja.fetchが受け取れる形になる", async () => {
+        const { f, vja } = setup();
+        const url = "https://s3.us-east-1.amazonaws.com/b/k";
+        await f(url, { method: "PUT", body: "テキスト" });
+        await f(url, { method: "PUT", body: new Uint8Array([9, 8]) });
+        await f(url, { method: "PUT", body: new Blob([new Uint8Array([7, 6])]) });
+        await f(url, { method: "PUT", body: new Response(new Uint8Array([5, 4])).body });
+        expect(vja[0].opts.body).toBe("テキスト");
+        expect(Array.from(vja[1].opts.body)).toEqual([9, 8]);
+        expect(Array.from(vja[2].opts.body)).toEqual([7, 6]);
+        expect(Array.from(vja[3].opts.body)).toEqual([5, 4]);
+    });
+
+    test("204/304/HEADは本文なしのResponseを返す（Response生成で例外にならない）", async () => {
+        const a = setup({ status: 204, headers: {}, bytes: new Uint8Array(0) });
+        const r1 = await a.f("https://s3.ap-northeast-1.amazonaws.com/b/k", { method: "DELETE" });
+        expect(r1.status).toBe(204);
+        const b = setup({ status: 200, headers: { "content-length": "3" }, bytes: new Uint8Array(0) });
+        const r2 = await b.f("https://s3.ap-northeast-1.amazonaws.com/b/k", { method: "HEAD" });
+        expect(r2.status).toBe(200);
+    });
+
+    test("ネットワーク失敗はTypeErrorで返す（ブラウザのfetchと同じ）", async () => {
+        const f = makeFetchProxy(async () => new Response("o"), () => Promise.reject(new Error("network down")), AWS_HOST_REGEX);
+        await expect(f("https://s3.ap-northeast-1.amazonaws.com/b/k")).rejects.toBeInstanceOf(TypeError);
+    });
+
+    test("AbortSignal: 中断済みなら即AbortError、実行中に中断するとfetchAbortを呼ぶ", async () => {
+        const { f } = setup();
+        const ctrl0 = new AbortController(); ctrl0.abort();
+        await expect(f("https://s3.ap-northeast-1.amazonaws.com/b/k", { signal: ctrl0.signal })).rejects.toMatchObject({ name: "AbortError" });
+
+        const aborted: string[] = [];
+        let resolveP: any;
+        const vjaFetch = () => { const p: any = new Promise((res) => { resolveP = res; }); p.fetchId = "idX"; return p; };
+        const f2 = makeFetchProxy(async () => new Response("o"), vjaFetch as any, AWS_HOST_REGEX, async (id) => { aborted.push(id); });
+        const ctrl = new AbortController();
+        const pr = f2("https://s3.ap-northeast-1.amazonaws.com/b/k", { signal: ctrl.signal });
+        await Bun.sleep(0);
+        ctrl.abort();
+        expect(aborted).toEqual(["idX"]);
+        resolveP({ status: 200, headers: {}, bytes: async () => new Uint8Array(0) });
+        await pr;
+    });
+
+    test("FormDataは変換できないため元のfetchへ渡す", async () => {
+        const { f, orig, vja } = setup();
+        await f("https://s3.ap-northeast-1.amazonaws.com/b/k", { method: "POST", body: new FormData() });
+        expect(orig.length).toBe(1);
+        expect(vja.length).toBe(0);
     });
 });

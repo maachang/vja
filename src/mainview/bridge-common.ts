@@ -94,6 +94,69 @@ export const makeVjaFetch = (
     }),
 });
 
+// ── AWS宛てのwindow.fetchだけをvja.fetch(Bun経由)に差し替える（CORS回避） ──
+// webview内のCDN版 AWS SDK は window.fetch で通信するため、バケット側にCORS設定が無いと
+// ブラウザに遮断される。送り先がAWSの場合だけ vja.fetch に渡すことで、CORS設定を不要にする。
+// AWS以外への通信は元のfetchをそのまま呼ぶ（アプリの他の通信には影響しない）。
+// 対象: *.amazonaws.com / *.amazonaws.com.cn / *.api.aws（IPv6対応=デュアルスタック指定時の宛先）。
+// 先頭から完全一致のため evilamazonaws.com / amazonaws.com.evil.com は対象外。
+export const AWS_HOST_REGEX = /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+(?:amazonaws\.com(?:\.cn)?|api\.aws)$/;
+
+export const makeFetchProxy = (
+    origFetch: (input: any, init?: any) => Promise<any>,
+    vjaFetch: (url: string, options?: VjaFetchOptions) => Promise<any>,
+    hostRegex: RegExp,
+    vjaFetchAbort?: (fetchId: string) => Promise<any>,
+) => async (input: any, init: any = {}): Promise<any> => {
+    // SDK(FetchHttpHandler)は fetch(new Request(url, 設定)) の形で呼ぶため、
+    // メソッド/ヘッダー/本文は init ではなく Request オブジェクトからも取り出す
+    const isReq = typeof input === "object" && input !== null && typeof input.arrayBuffer === "function";
+    const url = typeof input === "string" ? input : (isReq ? input.url : String(input));
+    let hostname = "";
+    try { hostname = new URL(url).hostname; } catch { return origFetch(input, init); }
+    if (!hostRegex.test(hostname)) return origFetch(input, init);
+
+    const method: string = init.method || (isReq ? input.method : "GET");
+    const headers: Record<string, string> = {};
+    const h = init.headers || (isReq ? input.headers : undefined) || {};
+    if (typeof h.forEach === "function") h.forEach((v: string, k: string) => { headers[k] = v; });
+    else if (Array.isArray(h)) h.forEach(([k, v]: [string, string]) => { headers[k] = v; });
+    else Object.assign(headers, h);
+
+    // 本文: 文字列/バイナリ/Blob/ストリームをvja.fetchが受け取れる形(文字列またはバイト列)へ
+    let body: any = init.body;
+    if (body === undefined && isReq && method !== "GET" && method !== "HEAD") {
+        const ab = await input.clone().arrayBuffer();
+        body = ab.byteLength ? new Uint8Array(ab) : undefined;
+    } else if (body !== undefined && body !== null && typeof body !== "string"
+        && !(body instanceof Uint8Array) && !(body instanceof ArrayBuffer)) {
+        if (typeof body.getReader === "function") body = new Uint8Array(await new Response(body).arrayBuffer());
+        else if (typeof Blob !== "undefined" && body instanceof Blob) body = new Uint8Array(await body.arrayBuffer());
+        else if (typeof URLSearchParams !== "undefined" && body instanceof URLSearchParams) body = body.toString();
+        else return origFetch(input, init); // FormData等は変換できないため差し替えない
+    }
+    if (body === null) body = undefined;
+
+    const signal = init.signal || (isReq ? input.signal : undefined);
+    if (signal?.aborted) throw Object.assign(new Error("AbortError"), { name: "AbortError" });
+
+    const p: any = vjaFetch(url, { method, headers, body, responseType: "binary" });
+    if (signal && vjaFetchAbort && p.fetchId) {
+        signal.addEventListener("abort", () => { vjaFetchAbort(p.fetchId); }, { once: true });
+    }
+    let res: any;
+    try {
+        res = await p;
+    } catch (e: any) {
+        if (e?.name === "AbortError") throw e;
+        // ブラウザのfetchはネットワーク失敗をTypeErrorで返す
+        throw new TypeError(e?.message || "Failed to fetch");
+    }
+    const bytes = await res.bytes();
+    const noBody = [101, 204, 205, 304].includes(res.status) || method === "HEAD";
+    return new Response(noBody ? null : bytes, { status: res.status, headers: res.headers });
+};
+
 // ── fetchResult / fetchAbortResult ハンドラ生成ヘルパー ──
 export const makeFetchResultHandlers = (
     fetchPendingMap: Map<string, Pending<FetchResult>>,
