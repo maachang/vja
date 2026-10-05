@@ -285,7 +285,9 @@ export type VjaRPCType = {
             saveAiGlobalPresetsRequest: { presets: Array<{ id: string; name: string; config: Record<string, any> }> };
 
             // ── 汎用fetch（fetchIdで独自に相関管理済み） ──
-            fetchRequest: { fetchId: string; url: string; method?: string; headers?: Record<string, string>; body?: string };
+            // body: テキスト本文 / bodyBase64: バイナリ本文（base64。指定時はbodyより優先）
+            // responseType: "binary"でレスポンス本文をbodyBase64で返す（省略時"text"）
+            fetchRequest: { fetchId: string; url: string; method?: string; headers?: Record<string, string>; body?: string; bodyBase64?: string; responseType?: "text" | "binary" };
             fetchAbortRequest: { fetchId: string };
         };
     }>;
@@ -411,7 +413,7 @@ export type VjaRPCType = {
             loadScriptResult: { url: string };
 
             // ── 汎用fetch結果 ─────────────────────────────
-            fetchResult: { fetchId: string; ok: boolean; status: number; headers: Record<string, string>; body: string; error?: string };
+            fetchResult: { fetchId: string; ok: boolean; status: number; headers: Record<string, string>; body: string; bodyBase64?: string; error?: string };
             fetchAbortResult: { fetchId: string };
         };
     }>;

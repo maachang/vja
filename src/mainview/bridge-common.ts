@@ -7,28 +7,76 @@ type Rejecter = (e: Error) => void;
 export interface Pending<T> { resolve: Resolver<T>; reject: Rejecter; }
 
 // ── fetch Map 生成ヘルパー ────────────────────────────
-export type FetchResult = { ok: boolean; status: number; headers: Record<string, string>; body: string; error?: string };
+export type FetchResult = { ok: boolean; status: number; headers: Record<string, string>; body: string; bodyBase64?: string; error?: string };
 
 export const makeFetchMaps = () => ({
     fetchPendingMap:      new Map<string, Pending<FetchResult>>(),
     fetchAbortPendingMap: new Map<string, Pending<{}>>(),
 });
 
+// ── base64 ⇔ バイト列（vja.fetchのバイナリ送受信用） ──
+// 大きなバイト列でString.fromCharCode.applyの引数上限に当たらないよう分割して変換する
+export const bytesToBase64 = (bytes: Uint8Array): string => {
+    let s = "";
+    const CHUNK = 0x8000;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+        s += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)));
+    }
+    return btoa(s);
+};
+export const base64ToBytes = (b64: string): Uint8Array => {
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+};
+
+// vja.fetchのoptions.body: テキスト、またはバイナリ（Uint8Array/ArrayBuffer）
+export type VjaFetchBody = string | Uint8Array | ArrayBuffer;
+export type VjaFetchOptions = {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: VjaFetchBody;
+    // "binary"でレスポンス本文をバイナリのまま受け取る（省略時"text"）
+    responseType?: "text" | "binary";
+};
+
 // ── vja.fetch / vja.fetchAbort 生成ヘルパー ──────────
 export const makeVjaFetch = (
     fetchPendingMap: Map<string, Pending<FetchResult>>,
     fetchAbortPendingMap: Map<string, Pending<{}>>,
-    sendFetchRequest: (args: { fetchId: string; url: string; method?: string; headers?: Record<string, string>; body?: string }) => void,
+    sendFetchRequest: (args: { fetchId: string; url: string; method?: string; headers?: Record<string, string>; body?: string; bodyBase64?: string; responseType?: "text" | "binary" }) => void,
     sendFetchAbortRequest: (args: { fetchId: string }) => void,
 ) => ({
-    fetch: (url: string, options: { method?: string; headers?: Record<string, string>; body?: string } = {}) => {
+    fetch: (url: string, options: VjaFetchOptions = {}) => {
         const fetchId = crypto.randomUUID();
+        const { body, ...rest } = options;
+        // バイナリ本文はbase64でBunへ渡す（テキストはこれまでどおりbodyで渡す）
+        const bodyArgs: { body?: string; bodyBase64?: string } = {};
+        if (typeof body === "string") bodyArgs.body = body;
+        else if (body instanceof Uint8Array) bodyArgs.bodyBase64 = bytesToBase64(body);
+        else if (body instanceof ArrayBuffer) bodyArgs.bodyBase64 = bytesToBase64(new Uint8Array(body));
         const promise = new Promise<any>((res, rej) => {
             fetchPendingMap.set(fetchId, { resolve: res, reject: rej });
-            sendFetchRequest({ fetchId, url, ...options });
+            sendFetchRequest({ fetchId, url, ...rest, ...bodyArgs });
         }).then((r: any) => {
             if (r.error === "AbortError") throw Object.assign(new Error("AbortError"), { name: "AbortError" });
             if (r.error) throw new Error(r.error);
+            if (r.bodyBase64 !== undefined) {
+                // バイナリ応答: bytes()/arrayBuffer()/blob()で取得。text()/json()はUTF-8として解釈する
+                const bytes = base64ToBytes(r.bodyBase64);
+                const text = () => new TextDecoder().decode(bytes);
+                return {
+                    ok: r.ok,
+                    status: r.status,
+                    headers: r.headers,
+                    bytes: () => Promise.resolve(bytes),
+                    arrayBuffer: () => Promise.resolve(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)),
+                    blob: () => Promise.resolve(new Blob([bytes])),
+                    text: () => Promise.resolve(text()),
+                    json: () => Promise.resolve(JSON.parse(text())),
+                };
+            }
             return {
                 ok: r.ok,
                 status: r.status,

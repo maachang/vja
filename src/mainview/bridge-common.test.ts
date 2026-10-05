@@ -11,6 +11,8 @@ import {
     makeFileWrappers,
     makeDirWrappers,
     makeDialogHelpers,
+    bytesToBase64,
+    base64ToBytes,
 } from "./bridge-common";
 
 describe("makeDbWrappers", () => {
@@ -191,5 +193,76 @@ describe("makeFetchMaps / makeVjaFetch / makeFetchResultHandlers", () => {
         } catch (e: any) {
             expect(e.name).toBe("AbortError");
         }
+    });
+});
+
+describe("bytesToBase64 / base64ToBytes", () => {
+    test("全バイト値(0〜255)が往復で壊れない", () => {
+        const src = new Uint8Array(256).map((_, i) => i);
+        expect(Array.from(base64ToBytes(bytesToBase64(src)))).toEqual(Array.from(src));
+    });
+
+    test("チャンク境界(0x8000)をまたぐ大きさでも往復で壊れない", () => {
+        const src = new Uint8Array(0x8000 * 2 + 5).map((_, i) => (i * 7) & 0xff);
+        const back = base64ToBytes(bytesToBase64(src));
+        expect(back.length).toBe(src.length);
+        expect(Buffer.from(back).equals(Buffer.from(src))).toBe(true);
+    });
+
+    test("空配列", () => {
+        expect(bytesToBase64(new Uint8Array(0))).toBe("");
+        expect(base64ToBytes("").length).toBe(0);
+    });
+});
+
+describe("makeVjaFetch バイナリ対応", () => {
+    const setup = (onSend: (args: any, handlers: ReturnType<typeof makeFetchResultHandlers>) => void) => {
+        const { fetchPendingMap, fetchAbortPendingMap } = makeFetchMaps();
+        const handlers = makeFetchResultHandlers(fetchPendingMap, fetchAbortPendingMap);
+        const sent: any[] = [];
+        const { fetch } = makeVjaFetch(fetchPendingMap, fetchAbortPendingMap, (args: any) => { sent.push(args); onSend(args, handlers); }, () => {});
+        return { fetch, sent };
+    };
+
+    test("body:Uint8Array はbodyBase64で送られ、bodyは送られない", async () => {
+        const { fetch, sent } = setup((a, h) => h.fetchResult({ fetchId: a.fetchId, ok: true, status: 200, headers: {}, body: "" }));
+        await fetch("https://x", { method: "PUT", body: new Uint8Array([0, 255, 128]) });
+        expect(sent[0].bodyBase64).toBe(Buffer.from([0, 255, 128]).toString("base64"));
+        expect(sent[0].body).toBeUndefined();
+    });
+
+    test("body:ArrayBuffer もbodyBase64で送られる", async () => {
+        const { fetch, sent } = setup((a, h) => h.fetchResult({ fetchId: a.fetchId, ok: true, status: 200, headers: {}, body: "" }));
+        await fetch("https://x", { method: "PUT", body: new Uint8Array([1, 2, 3]).buffer });
+        expect(sent[0].bodyBase64).toBe(Buffer.from([1, 2, 3]).toString("base64"));
+    });
+
+    test("body:string は従来どおりbodyで送られる", async () => {
+        const { fetch, sent } = setup((a, h) => h.fetchResult({ fetchId: a.fetchId, ok: true, status: 200, headers: {}, body: "" }));
+        await fetch("https://x", { method: "POST", body: "text" });
+        expect(sent[0].body).toBe("text");
+        expect(sent[0].bodyBase64).toBeUndefined();
+    });
+
+    test("responseTypeがBunへ渡される", async () => {
+        const { fetch, sent } = setup((a, h) => h.fetchResult({ fetchId: a.fetchId, ok: true, status: 200, headers: {}, body: "" }));
+        await fetch("https://x", { responseType: "binary" });
+        expect(sent[0].responseType).toBe("binary");
+    });
+
+    test("バイナリ応答: bytes()/arrayBuffer()/blob()で取得でき、バイトが壊れない", async () => {
+        const src = new Uint8Array([0, 255, 128, 10, 13]);
+        const { fetch } = setup((a, h) => h.fetchResult({ fetchId: a.fetchId, ok: true, status: 200, headers: {}, body: "", bodyBase64: Buffer.from(src).toString("base64") }));
+        const res: any = await fetch("https://x", { responseType: "binary" });
+        expect(Array.from(await res.bytes())).toEqual(Array.from(src));
+        expect(Array.from(new Uint8Array(await res.arrayBuffer()))).toEqual(Array.from(src));
+        expect((await res.blob()).size).toBe(src.length);
+    });
+
+    test("バイナリ応答でもtext()/json()はUTF-8として読める", async () => {
+        const bytes = new TextEncoder().encode(JSON.stringify({ a: "日本語" }));
+        const { fetch } = setup((a, h) => h.fetchResult({ fetchId: a.fetchId, ok: true, status: 200, headers: {}, body: "", bodyBase64: Buffer.from(bytes).toString("base64") }));
+        const res: any = await fetch("https://x", { responseType: "binary" });
+        expect(await res.json()).toEqual({ a: "日本語" });
     });
 });

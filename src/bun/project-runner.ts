@@ -6,7 +6,7 @@ import { BrowserWindow, BrowserView, Utils } from "electrobun/bun";
 import { existsSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { writeLog } from "./logger";
-import { decompressGzip, parseCsvLine } from "./bun-utils";
+import { decompressGzip, parseCsvLine, execFetch } from "./bun-utils";
 import { initProjectDb, clearProjectDb, getProjectDb, closeProjectDb, backupProjectDb, restoreProjectDb } from "./db-manager";
 import type { VjaRPCType, TableDef } from "../shared/types";
 import {
@@ -431,18 +431,12 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
                 },
 
                 // ── 汎用fetch（WebKitタイムアウト回避） ──────────
-                fetchRequest: async ({ fetchId, url, method, headers, body }) => {
+                fetchRequest: async ({ fetchId, url, method, headers, body, bodyBase64, responseType }) => {
                     const ctrl = new AbortController();
                     _fetchAbortMap.set(fetchId, ctrl);
                     try {
-                        const res = await fetch(url, {
-                            method: method || "GET",
-                            headers: headers || {},
-                            body: body ?? undefined,
-                            signal: ctrl.signal,
-                        });
-                        const text = await res.text();
-                        _projectWindow?.webview.rpc.send.fetchResult({ fetchId, ok: res.ok, status: res.status, headers: Object.fromEntries(res.headers), body: text });
+                        const r = await execFetch({ url, method, headers, body, bodyBase64, responseType }, ctrl.signal);
+                        _projectWindow?.webview.rpc.send.fetchResult({ fetchId, ...r });
                     } catch (e: any) {
                         if (e.name === "AbortError") {
                             _projectWindow?.webview.rpc.send.fetchResult({ fetchId, ok: false, status: 0, headers: {}, body: "", error: "AbortError" });

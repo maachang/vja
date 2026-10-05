@@ -538,10 +538,11 @@ getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ
   - 説明: Bun経由でHTTPリクエストを送信する低レベルAPI（vja.http.*の内部でも使用）
   - 引数:
     - url: string - リクエスト先URL
-    - options?: { method?, headers?, body? } - リクエストオプション（省略可）
-  - 戻り値: { ok, status, headers, text(), json() } - fetchライクなレスポンスオブジェクト
+    - options?: { method?, headers?, body?, responseType? } - リクエストオプション（省略可）。bodyは文字列またはUint8Array/ArrayBuffer（バイナリ）。responseType: 'binary'でレスポンスをバイナリのまま受け取る（省略時はテキスト）
+  - 戻り値: { ok, status, headers, text(), json() } - fetchライクなレスポンスオブジェクト。responseType:'binary'の場合は bytes()（Uint8Array）/arrayBuffer()/blob() も使える（text()/json()はUTF-8として解釈）
   - 例外: ネットワークエラー時はエラーをスロー
   - 使用例: "const res = await vja.fetch('https://api.example.com/data', { method: 'GET' }); const data = await res.json();"
+  - 使用例（バイナリ取得）: "const res = await vja.fetch('https://example.com/a.png', { responseType: 'binary' }); const bytes = await res.bytes();"
   - 備考: vja.http.* で対応できない場合（独自ヘッダー等）に使用する
 
 - 関数名: await vja.http.get(url, headers?):

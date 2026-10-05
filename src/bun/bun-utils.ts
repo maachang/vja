@@ -28,3 +28,40 @@ export const decompressGzip = async (b64: string): Promise<string> => {
     return new TextDecoder().decode(result);
 };
 
+
+// ── 汎用fetch（vja.fetchのBun側実体。index.ts / project-runner.ts 共通） ──
+// bodyBase64が指定されていればバイナリ本文として送る（bodyより優先）。
+// responseType:"binary"の場合、レスポンス本文はテキスト変換せず、そのまま
+// base64（bodyBase64）で返す（text()でUTF-8解釈するとバイナリが壊れるため）。
+export type ExecFetchArgs = {
+    url: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    bodyBase64?: string;
+    responseType?: "text" | "binary";
+};
+export type ExecFetchResult = {
+    ok: boolean;
+    status: number;
+    headers: Record<string, string>;
+    body: string;
+    bodyBase64?: string;
+};
+export const execFetch = async (args: ExecFetchArgs, signal?: AbortSignal): Promise<ExecFetchResult> => {
+    const body = args.bodyBase64 !== undefined
+        ? Buffer.from(args.bodyBase64, "base64")
+        : (args.body ?? undefined);
+    const res = await fetch(args.url, {
+        method: args.method || "GET",
+        headers: args.headers || {},
+        body,
+        signal,
+    });
+    const headers = Object.fromEntries(res.headers);
+    if (args.responseType === "binary") {
+        const buf = Buffer.from(await res.arrayBuffer());
+        return { ok: res.ok, status: res.status, headers, body: "", bodyBase64: buf.toString("base64") };
+    }
+    return { ok: res.ok, status: res.status, headers, body: await res.text() };
+};

@@ -23,6 +23,7 @@ import { initLogger, writeLog } from "./logger";
 import electrobunPkg from "electrobun/package.json";
 import { copyCompileAssets, getVersion, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH, WEBVIEW_RUNTIME_LIBS, ELECTROBUN_PIN_VERSION, ELECTROBUN_BUN_VERSION, ELECTROBUN_PATCH_FILE } from "./copy-compile-assets";
 import { clearProjectDb, closeProjectDb } from "./db-manager";
+import { execFetch } from "./bun-utils";
 import {
     fileReadHandler, fileWriteHandler, fileReadBytesHandler, fileWriteBytesHandler,
     fileExistsHandler, fileDeleteHandler, fileCopyHandler,
@@ -658,18 +659,12 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
 
             // ══ 汎用fetch（WebKitタイムアウト回避） ══════════════════════════
 
-            fetchRequest: async ({ fetchId, url, method, headers, body }: { fetchId: string; url: string; method?: string; headers?: Record<string, string>; body?: string }) => {
+            fetchRequest: async ({ fetchId, url, method, headers, body, bodyBase64, responseType }: { fetchId: string; url: string; method?: string; headers?: Record<string, string>; body?: string; bodyBase64?: string; responseType?: "text" | "binary" }) => {
                 const ctrl = new AbortController();
                 _fetchAbortMap.set(fetchId, ctrl);
                 try {
-                    const res = await fetch(url, {
-                        method: method || "GET",
-                        headers: headers || {},
-                        body: body ?? undefined,
-                        signal: ctrl.signal,
-                    });
-                    const text = await res.text();
-                    browserWindow.webview.rpc.send.fetchResult({ fetchId, ok: res.ok, status: res.status, headers: Object.fromEntries(res.headers), body: text });
+                    const r = await execFetch({ url, method, headers, body, bodyBase64, responseType }, ctrl.signal);
+                    browserWindow.webview.rpc.send.fetchResult({ fetchId, ...r });
                 } catch (e: any) {
                     if (e.name === "AbortError") {
                         browserWindow.webview.rpc.send.fetchResult({ fetchId, ok: false, status: 0, headers: {}, body: "", error: "AbortError" });
