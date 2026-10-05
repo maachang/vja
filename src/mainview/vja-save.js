@@ -160,6 +160,9 @@ window._getProjectData = function () {
         constants: p.constants,
         tables: p.tables,
         extRuntime: p.extRuntime,
+        // 実行時のvja.getCloudInfraCredential等で使う。渡さないとBun側が空リストで上書きし、
+        // 実行中のアプリからクラウド設定が見えなくなる（bun/index.tsの_updateProjectData）
+        cloudInfras: p.cloudInfras,
     };
 };
 
