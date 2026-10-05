@@ -641,6 +641,48 @@ getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ
       // cred = { AWS_ACCESS_KEY_ID: 'xxx', AWS_SECRET_ACCESS_KEY: 'yyy', AWS_REGION: 'ap-northeast-1' }
   - 使用例説明: AWSのS3サービス向けクレデンシャルを取得する
 
+## AWS S3 (vja.aws.s3.*)
+
+- 前提: クラウド設定に AWS の s3 を登録して有効にしておく。イベントの「利用API（任意）」で「AWS S3」をONにしたときだけAIへ渡される
+- 関数名: await vja.aws.s3.put(bucket, key, body, options?):
+  - 説明: S3にオブジェクトを登録（アップロード）する。bodyが文字列の場合はUTF-8のテキストとして保存する
+  - 引数:
+    - bucket: string - バケット名
+    - key: string - オブジェクトのキー
+    - body: string | Uint8Array | ArrayBuffer - 保存する内容
+    - options?: { contentType?: string } - Content-Type（省略時、文字列はtext/plain; charset=utf-8）
+  - 戻り値: なし
+  - 使用例: "await vja.aws.s3.put('my-bucket', 'memo/a.txt', 'こんにちは');"
+  - 使用例説明: テキストファイルをS3に登録する
+
+- 関数名: await vja.aws.s3.get(bucket, key, options?):
+  - 説明: S3からオブジェクトを取得する。既定は文字列。バイナリで受け取るには options に { as: 'bytes' } を指定する
+  - 引数:
+    - bucket: string - バケット名
+    - key: string - オブジェクトのキー
+    - options?: { as?: 'text' | 'bytes' } - 取得形式
+  - 戻り値: "string | Uint8Array | null - キーが存在しない場合はnull"
+  - 使用例: "const text = await vja.aws.s3.get('my-bucket', 'memo/a.txt'); if (text === null) { vja.notify.toast('ファイルがありません'); }"
+  - 使用例説明: S3のテキストファイルを取得する
+
+- 関数名: await vja.aws.s3.list(bucket, options?):
+  - 説明: S3のオブジェクト一覧を取得する
+  - 引数:
+    - bucket: string - バケット名
+    - options?: { prefix?: string, maxKeys?: number } - キーの接頭辞（フォルダ指定）、最大件数（既定1000）
+  - 戻り値: "{ key: string, size: number, lastModified: string }[] - lastModifiedはISO形式の日付文字列"
+  - 使用例: "const items = await vja.aws.s3.list('my-bucket', { prefix: 'memo/' });"
+  - 使用例説明: memo/ 以下のオブジェクト一覧を取得する
+
+- 関数名: await vja.aws.s3.delete(bucket, key):
+  - 説明: S3のオブジェクトを削除する（存在しないキーを指定してもエラーにならない）
+  - 引数:
+    - bucket: string - バケット名
+    - key: string - オブジェクトのキー
+  - 戻り値: なし
+  - 使用例: "await vja.aws.s3.delete('my-bucket', 'memo/a.txt');"
+  - 使用例説明: S3のオブジェクトを削除する
+
 ## ログ出力 (vja.log.*)
 
 - 関数名: await vja.log.info(message):

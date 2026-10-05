@@ -571,6 +571,7 @@ function _buildFrontMock(evName, wtag, overrides, widgets) {
             sha512: async () => "0".repeat(128),
         },
         getCloudInfraCredential: async () => ({}),
+        aws: { s3: { put: async () => {}, get: async () => "", list: async () => [], delete: async () => {} } },
         validate: {
             run: async () => true,
         },

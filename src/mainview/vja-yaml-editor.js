@@ -359,7 +359,15 @@ const _API_OPT_DETECT_PATTERNS = {
     io: /\bvja\.io\./,
     dir: /\bvja\.dir\./,
     http: /\bvja\.http\.|\bvja\.fetch\s*\(/,
+    aws_s3: /\bvja\.aws\.s3\./,
 };
+// クラウドのサービス用カテゴリ（キーは aws_ + サービス名）は、クラウド設定に登録済みで有効な場合だけ選択肢に出す
+function _isCloudApiCategoryAvailable(key) {
+    const m = /^aws_(\w+)$/.exec(key);
+    if (!m) return true; // クラウド用ではない通常のカテゴリは常に出す
+    return (getProjectData().cloudInfras || []).some(c =>
+        c.enabled && String(c.name || "").toLowerCase() === "aws" && String(c.service || "").toLowerCase() === m[1]);
+}
 // 「event」カテゴリを常時有効（OFFにできない）扱いにするイベント名。
 // これらのイベントはvja.event.*（ev.type/getKey()等）を使わないと
 // イベントの中身自体を判別できないため、実質「必須」として扱う。
@@ -607,7 +615,7 @@ function _rpBuildApiOptSection(wid, evName) {
     const enabled = new Set(enabledArr);
     const locked = isEventCategoryLocked(evName);
     const labels = _PROMPT_DEF.VJA_FRONT_API_OPTIONAL_LABELS || {};
-    const rows = Object.keys(labels).map(key => {
+    const rows = Object.keys(labels).filter(_isCloudApiCategoryAvailable).map(key => {
         // 「event」カテゴリは、ロック対象イベント（KeyDown/KeyUp/RowClick/HeaderClick）
         // では常時有効固定とし、ON/OFF切り替え自体を出さない（vja.dbの注記と同じ扱い）。
         if (key === "event" && locked) {

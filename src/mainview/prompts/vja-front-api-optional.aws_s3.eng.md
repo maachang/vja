@@ -1,0 +1,4 @@
+await vja.aws.s3.put: { args: [bucket:string, key:string, body:string|Uint8Array, options?:{contentType?:string}], return: "void", desc: "Upload an object to AWS S3. A string body is stored as UTF-8 text." }
+await vja.aws.s3.get: { args: [bucket:string, key:string, options?:{as?:'text'|'bytes'}], return: "string|Uint8Array|null", desc: "Download an object from AWS S3. Returns text by default, Uint8Array with {as:'bytes'}. Returns null when the key does not exist." }
+await vja.aws.s3.list: { args: [bucket:string, options?:{prefix?:string, maxKeys?:number}], return: "{key:string, size:number, lastModified:string}[]", desc: "List objects in an AWS S3 bucket (up to maxKeys, default 1000). lastModified is an ISO date string." }
+await vja.aws.s3.delete: { args: [bucket:string, key:string], return: "void", desc: "Delete an object from AWS S3." }

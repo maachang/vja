@@ -11,6 +11,7 @@ import {
     makeDbWrappers, makeFileWrappers, makeDirWrappers, makeDialogHelpers,
     makeFetchProxy, AWS_HOST_REGEX,
 } from "./bridge-common";
+import { makeAwsS3Runtime } from "./aws-runtime";
 
 // fetch は複数同時リクエスト対応のため fetchId ベースのMapで管理（bridge-common）
 const { fetchPendingMap: _fetchPendingMap, fetchAbortPendingMap: _fetchAbortPendingMap } = makeFetchMaps();
@@ -212,6 +213,15 @@ w.vja.cloud.list = () =>
     r.getCloudInfrasRequest({}).then((res: any) => res.infras);
 w.vja.cloud.getCredential = (infraId: string, key: string) =>
     r.getDecryptedCredentialRequest({ infraId, key }).then((res: any) => res.value);
+
+// vja.aws.*（クラウド設定に登録したAWSサービス用のランタイム）。SDKはクラウド設定のURL(CDN)から読み込む。
+// 通信はAWS宛てとして上のmakeFetchProxyでvja.fetch(Bun経由)に差し替わる
+w.vja.aws = w.vja.aws || {};
+w.vja.aws.s3 = makeAwsS3Runtime({
+    listCloudInfras: () => w.vja.cloud.list(),
+    getCredential: (infra: string, service: string) => w.vja.getCloudInfraCredential(infra, service),
+    loadSdk: (url: string) => import(/* @vite-ignore */ url),
+});
 
 // console.* を vja.log.* (RPC経由) に差し替え
 const _origConsole = {

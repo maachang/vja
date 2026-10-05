@@ -827,6 +827,28 @@ async function s3PutText(key, text) {
 - 注意: AWS 宛ての通信は、AWS SDK 以外の `fetch`（自分で作った API Gateway の呼び出しなど）も対象です。逐次で受け取る通信（ストリーム）は、結果を全部受け取ってから返されます。
 - CDN から SDK を読み込むため、ネットワークに接続されている必要があります。
 
+### AWS S3 を簡単に使う（vja.aws.s3.*）
+
+クラウド設定に AWS の `s3` を登録して有効にすると、SDK を自分で読み込まなくても、次の関数でそのまま S3 を操作できます。
+
+| 関数 | 内容 |
+|------|------|
+| `await vja.aws.s3.put(bucket, key, body, options?)` | 登録。`body` は文字列（UTF-8）または `Uint8Array` / `ArrayBuffer`。`options.contentType` で Content-Type を指定 |
+| `await vja.aws.s3.get(bucket, key, options?)` | 取得。既定は文字列。`{ as: 'bytes' }` で `Uint8Array`。キーが存在しない場合は `null` |
+| `await vja.aws.s3.list(bucket, options?)` | 一覧。`{ prefix, maxKeys }`（`maxKeys` の既定は 1000）。`[{ key, size, lastModified }]`（`lastModified` は ISO 形式の文字列） |
+| `await vja.aws.s3.delete(bucket, key)` | 削除（存在しないキーを指定してもエラーにならない） |
+
+```javascript
+await vja.aws.s3.put('my-bucket', 'memo/a.txt', 'こんにちは');
+const text = await vja.aws.s3.get('my-bucket', 'memo/a.txt');
+const items = await vja.aws.s3.list('my-bucket', { prefix: 'memo/' });
+await vja.aws.s3.delete('my-bucket', 'memo/a.txt');
+```
+
+- SDK は、クラウド設定の「エンドポイント URL」（SDK の CDN URL）から自動で読み込まれます。
+- クラウド設定に登録されていない場合や、クレデンシャルが取得できない場合は、その旨のエラーになります。
+- AI にこの関数を使ったコードを生成させるには、イベントの右パネル「🔌 利用API（任意）」で **「AWS S3」を ON** にします（クラウド設定に AWS の s3 を登録して有効にしたときだけ表示されます）。
+
 ### アプリ側入力ファイル（~/vja/credential.json）
 
 ```json

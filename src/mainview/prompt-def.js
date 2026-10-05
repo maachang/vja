@@ -97,6 +97,8 @@
         io: _loadPromptTpl("vja-front-api-optional.io.eng.md").trim(),
         dir: _loadPromptTpl("vja-front-api-optional.dir.eng.md").trim(),
         http: _loadPromptTpl("vja-front-api-optional.http.eng.md").trim(),
+        // クラウド設定に登録済みのAWSサービス用（キー名は aws_ + サービス名）
+        aws_s3: _loadPromptTpl("vja-front-api-optional.aws_s3.eng.md").trim(),
     };
 
     // 任意カテゴリの表示名（チェックボックスUI用）
@@ -110,6 +112,7 @@
         io: "ファイルI/O ダイアログ (vja.io.*)",
         dir: "ディレクトリ操作 (vja.dir.*)",
         http: "外部API (vja.http.*)",
+        aws_s3: "AWS S3 (vja.aws.s3.*)",
     };
 
     // 互換用: 上記3つを結合した全量（ドキュメント自動生成・ホワイトリスト系の用途では未使用。
