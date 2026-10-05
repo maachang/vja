@@ -186,8 +186,10 @@ GAS や AWS Lambda などの無料・低価格クラウドサービスは便利�
 
 クラウドインフラと連動すれば、外部連携によりローカルを超えたアプリ作成も可能です。
 
-- AWS / GCP / Azure のクレデンシャルを安全に管理（AES-GCM 暗号化）
+- 現在の正式対応クラウドは **AWS のみ**（GCP / Azure などは今後対応予定）
+- AWS のクレデンシャルを安全に管理（AES-GCM 暗号化）
 - `vja.getCloudInfraCredential("AWS", "s3")` で取得、AI 生成コードでもそのまま使える
+- CDN で配布されている AWS SDK v3 をそのまま使え、S3 バケット側の CORS 設定は不要（AWS 宛ての通信は自動で `vja.fetch`（Bun 経由）になる）
 
 ### ⚙️ 拡張ランタイム
 - プロジェクト固有の JavaScript ライブラリを定義
