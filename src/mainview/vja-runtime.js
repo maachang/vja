@@ -1107,8 +1107,9 @@ import { parseCsvLine } from "../shared/csv-utils";
         const infras = await vja.cloud.list().catch(() => []);
 
         // infra名でフィルタ（大文字小文字無視）
+        // 保存データのインフラ名は name（以前は存在しない infra を見ていたため1件も一致せず null になっていた）
         const matched = infras.filter(i =>
-            i.enabled && i.infra?.toLowerCase() === infra?.toLowerCase()
+            i.enabled && i.name?.toLowerCase() === infra?.toLowerCase()
         );
         if (matched.length === 0) return null;
 
@@ -1126,12 +1127,23 @@ import { parseCsvLine } from "../shared/csv-utils";
         const result = {};
         const creds = target.credentials || {};
         const appInput = target.appInput || {};
+        // 保存されているクレデンシャルは credDefs の name（accessKeyId等）がキーのため、
+        // 利用側が使う key（AWS_ACCESS_KEY_ID等）へ変換して返す（ドキュメントの戻り値と一致させる）
+        const defs = target.credDefs || [];
+        const keyOf = (name) => (defs.find(d => d.name === name)?.key) || name;
 
         for (const [k, v] of Object.entries(creds)) {
             if (!appInput[k]) {
                 // vja側定義が優先
-                if (v) result[k] = v;
+                if (v) result[keyOf(k)] = v;
             }
+        }
+        // 保存されていない項目は、選択肢の既定値(selected)で補う（リージョン等。画面では既定値が
+        // 選択表示されるが、操作しないと値として保存されないため）
+        for (const d of defs) {
+            if (!d.select || result[d.key] || appInput[d.name]) continue;
+            const sel = d.select.find(o => o.selected && o.value);
+            if (sel) result[d.key] = sel.value;
         }
 
         // appInput=ON のキーはアプリ側入力ファイルから取得
@@ -1142,7 +1154,7 @@ import { parseCsvLine } from "../shared/csv-utils";
         if (appInputKeys.length > 0) {
             const appCreds = await _loadAppCredentials(infra);
             for (const k of appInputKeys) {
-                if (appCreds && appCreds[k]) result[k] = appCreds[k];
+                if (appCreds && appCreds[k]) result[keyOf(k)] = appCreds[k];
             }
         }
 
