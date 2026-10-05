@@ -108,6 +108,8 @@
         aws_secretsmanager: _loadPromptTpl("vja-front-api-optional.aws_secretsmanager.eng.md").trim(),
         aws_cloudwatch: _loadPromptTpl("vja-front-api-optional.aws_cloudwatch.eng.md").trim(),
         slack: _loadPromptTpl("vja-front-api-optional.slack.eng.md").trim(),
+        chatwork: _loadPromptTpl("vja-front-api-optional.chatwork.eng.md").trim(),
+        webhook: _loadPromptTpl("vja-front-api-optional.webhook.eng.md").trim(),
     };
 
     // 任意カテゴリの表示名（チェックボックスUI用）
@@ -131,12 +133,14 @@
         aws_secretsmanager: "AWS Secrets Manager (vja.aws.secretsmanager.*)",
         aws_cloudwatch: "AWS CloudWatch Logs (vja.aws.cloudwatch.*)",
         slack: "Slack (vja.slack.*)",
+        chatwork: "Chatwork (vja.chatwork.*)",
+        webhook: "汎用Webhook (vja.webhook.*)",
     };
 
     // 右パネルで「拡張API」セクションに表示するカテゴリのキー（クラウド設定のサービス用）。
     // それ以外のキーは「利用API」セクションに表示する。ON/OFFの状態の保存・AIへの説明・検証は
     // どちらも同じ仕組み（上記ENG/LABELS）を共有する。
-    const VJA_FRONT_API_EXTENSION_KEYS = ["aws_s3", "aws_dynamodb", "aws_sqs", "aws_sns", "aws_lambda", "aws_ses", "aws_sts", "aws_secretsmanager", "aws_cloudwatch", "slack"];
+    const VJA_FRONT_API_EXTENSION_KEYS = ["aws_s3", "aws_dynamodb", "aws_sqs", "aws_sns", "aws_lambda", "aws_ses", "aws_sts", "aws_secretsmanager", "aws_cloudwatch", "slack", "chatwork", "webhook"];
 
     // 互換用: 上記3つを結合した全量（ドキュメント自動生成・ホワイトリスト系の用途では未使用。
     // AIP説明用の日本語詳細版VJA_USE_FRONT_JS_INFOとは別物）

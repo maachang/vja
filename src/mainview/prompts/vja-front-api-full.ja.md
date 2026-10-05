@@ -852,6 +852,29 @@ getKey()/getKeyCode()/isEnter()等はKeyDown/KeyUpイベント専用で、それ
   - 使用例: "await vja.slack.send('処理が完了しました');"
   - 使用例説明: Slackにメッセージを通知する
 
+## Chatwork (vja.chatwork.*)
+
+- 前提: クラウド設定に Chatwork（APIトークンと、既定のルームID）を登録して有効にしておく。イベントの右パネル「拡張API（任意）」で「Chatwork」をONにしたときだけAIへ渡される
+- 関数名: await vja.chatwork.send(text, options?):
+  - 説明: Chatworkのルームにテキストのメッセージを送る
+  - 引数:
+    - text: string - 送信するメッセージ
+    - options?: { roomId?: string | number } - 送信先のルームID（省略時はクラウド設定の既定のルームID）
+  - 戻り値: なし
+  - 使用例: "await vja.chatwork.send('処理が完了しました');"
+  - 使用例説明: Chatworkにメッセージを通知する
+
+## 汎用Webhook (vja.webhook.*)
+
+- 前提: クラウド設定に 汎用Webhook（送信URL、任意で認証ヘッダー）を登録して有効にしておく。Zapier / Make / n8n など、URLにPOSTすると動くサービスへの橋渡しに使う。イベントの右パネル「拡張API（任意）」で「汎用Webhook」をONにしたときだけAIへ渡される
+- 関数名: await vja.webhook.post(payload):
+  - 説明: クラウド設定の送信URLへデータをPOSTする。オブジェクト・配列はJSONで、文字列はそのまま（text/plain）で送る
+  - 引数:
+    - payload: any - 送信するデータ
+  - 戻り値: "any - 応答の本文。JSONならオブジェクトに変換して返し、JSONでなければ文字列、空ならnull。2xx以外は例外"
+  - 使用例: "const result = await vja.webhook.post({ event: 'order', id: 123 });"
+  - 使用例説明: 外部サービスにデータを送る
+
 ## ログ出力 (vja.log.*)
 
 - 関数名: await vja.log.info(message):

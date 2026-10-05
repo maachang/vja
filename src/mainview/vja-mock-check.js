@@ -583,6 +583,8 @@ function _buildFrontMock(evName, wtag, overrides, widgets) {
             cloudwatch: { putLog: async () => {} },
         },
         slack: { send: async () => {} },
+        chatwork: { send: async () => {} },
+        webhook: { post: async () => ({}) },
         validate: {
             run: async () => true,
         },

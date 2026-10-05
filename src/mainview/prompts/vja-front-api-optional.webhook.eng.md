@@ -1,0 +1,1 @@
+await vja.webhook.post: { args: [payload:any], return: "any", desc: "POST data to the generic webhook URL in the cloud settings. An object/array is sent as JSON, a string as plain text. Returns the response body (parsed JSON when possible, otherwise text, or null when empty). Throws on non-2xx." }

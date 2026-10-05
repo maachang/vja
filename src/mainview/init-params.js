@@ -138,7 +138,31 @@
                 { "channel": { "key": "SLACK_CHANNEL", "secret": false, "when": { "$service": "Slack Web API" } } }
             ]
         },
-        // 2026-10-05: 正式対応はまずAWSとSlackのみのため、それ以外のクラウド定義は一旦コメントアウトして画面に表示しない
+        {
+            // Chatwork（SDKは使わず、vja.fetchでHTTPを送る。サービスのURLは無し）
+            "infra": "Chatwork",
+            "service": [
+                { "chatwork": { "url": "", "input": false } }
+            ],
+            "credential": [
+                { "token": { "key": "CHATWORK_TOKEN", "secret": true } },
+                // 既定の送信先のルームID（送信時に options.roomId で変更もできる）
+                { "roomId": { "key": "CHATWORK_ROOM_ID", "secret": false } }
+            ]
+        },
+        {
+            // 汎用Webhook（URLにPOSTする。Zapier / Make / n8n など）。インフラ名は、SlackのWebhookサービスと区別するため「汎用Webhook」
+            "infra": "汎用Webhook",
+            "service": [
+                { "POST": { "url": "", "input": false } }
+            ],
+            "credential": [
+                { "url": { "key": "WEBHOOK_URL", "secret": true } },
+                // 認証ヘッダー（任意。Authorization ヘッダーの値。例: Bearer xxxx）
+                { "authorization": { "key": "WEBHOOK_AUTHORIZATION", "secret": true } }
+            ]
+        },
+        // 2026-10-05: 正式対応はまずAWSとSlackのみ（以降、Chatwork・汎用Webhookを追加）のため、それ以外のクラウド定義は一旦コメントアウトして画面に表示しない
         // （使えない状態にしている）。GCP/Azure等を正式対応する時に、必要なものを戻して実機で検証すること。
         /*
         {

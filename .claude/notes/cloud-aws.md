@@ -36,3 +36,9 @@
 - Webhook: `url`=WebhookのURL（必須）。送信先はWebhook側で固定のため、`options.channel`指定はエラー。Slack Web API: `url`は省略可（既定`https://slack.com/api/chat.postMessage`）、`token`必須、`Authorization: Bearer`。Slack APIは失敗してもHTTP 200で本文`ok:false`+`error`を返すので本文を確認する。戻り値なし、テキストのみ。
 - Webhookは**Slackアプリ経由**のものは現行サポート。非推奨なのは「レガシーのカスタム連携」で作った旧方式（公式ドキュメントで確認、2026-10-05）。
 - 拡張APIのカテゴリキーは`slack`（`aws_<service>`ではない）。`_isCloudApiCategoryAvailable`は、キー→(インフラ名,サービス名)で、クラウド設定に登録・有効な時だけ表示する（slackはWebhook/Slack Web APIのどちらかが有効なら表示）。実Slackでの確認は未実施（偽fetchの単体テストまで）。
+
+## Chatwork・汎用Webhook（`chatwork-runtime.ts` / `webhook-runtime.ts`、2026-10-06）
+- いずれもSDKなし、`vja.fetch`でHTTPを送る。拡張APIのキーは`chatwork` / `webhook`（`_isCloudApiCategoryAvailable`の対応表`_OTHER`に、キー→(インフラ名,サービス名)を追加する。インフラ名の比較は小文字）。
+- Chatwork: infra`Chatwork`/service`chatwork`、クレデンシャル`token`(CHATWORK_TOKEN)・`roomId`(CHATWORK_ROOM_ID、既定のルーム)。`vja.chatwork.send(text, {roomId?})`は`POST https://api.chatwork.com/v2/rooms/{id}/messages`（ヘッダー`X-ChatWorkToken`、本文は`body=…`のフォーム形式）。戻り値なし、テキストのみ。ルームごとに10秒10リクエストの制限（Chatwork仕様）。
+- 汎用Webhook: infra`汎用Webhook`（Slackの「Webhook」サービスと紛らわしいため）/service`POST`、クレデンシャル`url`(WEBHOOK_URL)・`authorization`(WEBHOOK_AUTHORIZATION、任意)。`vja.webhook.post(payload)`は、オブジェクト/配列→JSON、文字列→text/plain。応答はJSONならオブジェクト、でなければ文字列、空ならnull、2xx以外は例外。登録は1つだけ（複数なら有効で先頭）。
+- 想定する使い手はVB6に近い層（社内の業務ツールを作る中小企業の担当者）。優先して入れた理由は、Chatworkが日本の中小企業向け・設定が少ない、汎用WebhookはZapier/Make/n8n経由で多くのサービスを間接的にカバーできるため。Teams（Workflowsの設定が必要）とLINE（公式アカウントと送信先IDが必要）は必要になってから。実Chatwork・実Webhookでの確認は未実施（偽fetchの単体テストまで）。

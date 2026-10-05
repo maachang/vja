@@ -13,6 +13,8 @@ import {
 } from "./bridge-common";
 import { makeAwsRuntimes } from "./aws-runtime";
 import { makeSlackRuntime } from "./slack-runtime";
+import { makeChatworkRuntime } from "./chatwork-runtime";
+import { makeWebhookRuntime } from "./webhook-runtime";
 
 // fetch は複数同時リクエスト対応のため fetchId ベースのMapで管理（bridge-common）
 const { fetchPendingMap: _fetchPendingMap, fetchAbortPendingMap: _fetchAbortPendingMap } = makeFetchMaps();
@@ -225,6 +227,20 @@ w.vja.aws = makeAwsRuntimes({
 
 // vja.slack.*（クラウド設定に登録したSlackへメッセージを送る）。SDKは使わず、vja.fetch(Bun経由)でHTTPを送る
 w.vja.slack = makeSlackRuntime({
+    listCloudInfras: () => w.vja.cloud.list(),
+    getCredential: (infra: string, service: string) => w.vja.getCloudInfraCredential(infra, service),
+    fetch: (url: string, options?: any) => _vjaFetch.fetch(url, options),
+});
+
+// vja.chatwork.*（クラウド設定に登録したChatworkのルームへメッセージを送る）。SDKは使わず、vja.fetch(Bun経由)でHTTPを送る
+w.vja.chatwork = makeChatworkRuntime({
+    listCloudInfras: () => w.vja.cloud.list(),
+    getCredential: (infra: string, service: string) => w.vja.getCloudInfraCredential(infra, service),
+    fetch: (url: string, options?: any) => _vjaFetch.fetch(url, options),
+});
+
+// vja.webhook.*（クラウド設定に登録した汎用WebhookへPOSTする。Zapier / Make / n8n など）
+w.vja.webhook = makeWebhookRuntime({
     listCloudInfras: () => w.vja.cloud.list(),
     getCredential: (infra: string, service: string) => w.vja.getCloudInfraCredential(infra, service),
     fetch: (url: string, options?: any) => _vjaFetch.fetch(url, options),

@@ -1,0 +1,1 @@
+await vja.chatwork.send: { args: [text:string, options?:{roomId?:string|number}], return: "void", desc: "Send a text message to a Chatwork room. The room defaults to the one in the Chatwork setting; options.roomId overrides it." }

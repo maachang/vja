@@ -369,13 +369,20 @@ const _API_OPT_DETECT_PATTERNS = {
     aws_secretsmanager: /\bvja\.aws\.secretsmanager\./,
     aws_cloudwatch: /\bvja\.aws\.cloudwatch\./,
     slack: /\bvja\.slack\./,
+    chatwork: /\bvja\.chatwork\./,
+    webhook: /\bvja\.webhook\./,
 };
 // クラウドのサービス用カテゴリ（キーは aws_ + サービス名）は、クラウド設定に登録済みで有効な場合だけ選択肢に出す
 function _isCloudApiCategoryAvailable(key) {
     // キー → クラウド設定の（インフラ名, サービス名）。aws_xxx は AWS の xxx、slack は Slack の Webhook / Slack Web API
     const m = /^aws_(\w+)$/.exec(key);
     // slack は、サービス（Webhook / Slack Web API）のどちらかが登録・有効なら出す
-    const target = m ? { infra: "aws", services: [m[1]] } : (key === "slack" ? { infra: "slack", services: ["webhook", "slack web api"] } : null);
+    const _OTHER = {
+        slack: { infra: "slack", services: ["webhook", "slack web api"] },
+        chatwork: { infra: "chatwork", services: ["chatwork"] },
+        webhook: { infra: "汎用webhook", services: ["post"] },
+    };
+    const target = m ? { infra: "aws", services: [m[1]] } : (_OTHER[key] || null);
     if (!target) return true; // クラウド用ではない通常のカテゴリは常に出す
     return (getProjectData().cloudInfras || []).some(c =>
         c.enabled && String(c.name || "").toLowerCase() === target.infra && target.services.includes(String(c.service || "").toLowerCase()));
