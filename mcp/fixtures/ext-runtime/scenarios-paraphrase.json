@@ -1,0 +1,224 @@
+{
+  "extJs": "// 税込金額を計算して返す（端数切り捨て）\nfunction calcTax(price, rate) {\n  return Math.floor(price * (1 + rate));\n}\n\n// 日付を指定書式の文字列にして返す\nfunction formatDate(date, fmt) {\n  const d = new Date(date); const p = (n) => String(n).padStart(2, '0'); return fmt.replace('YYYY', d.getFullYear()).replace('MM', p(d.getMonth() + 1)).replace('DD', p(d.getDate()));\n}\n\n// 郵便番号から住所を非同期で取得して返す\nasync function lookupAddress(zip) {\n  const res = await vja.fetch('https://zipcloud.ibsnet.co.jp/api/search?zipcode=' + zip); const json = await res.json(); return json.results ? json.results[0].address1 : null;\n}\n\n// メールアドレスの形式が正しいか判定する\nfunction isValidEmail(text) {\n  return /^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(text);\n}\n\n// 全角英数字を半角に変換して返す\nfunction toHalfWidth(text) {\n  return text.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));\n}\n\n// 誕生日から現在の年齢を計算して返す\nfunction calcAge(birthday) {\n  const b = new Date(birthday); const n = new Date(); let a = n.getFullYear() - b.getFullYear(); if (n < new Date(n.getFullYear(), b.getMonth(), b.getDate())) a--; return a;\n}\n\n// 通貨コードから対円の為替レートを非同期で取得して返す\nasync function fetchExchangeRate(currency) {\n  const res = await vja.fetch('https://example.com/rate/' + currency); const json = await res.json(); return json.rate;\n}\n\n// カード番号の下4桁以外を * で伏せて返す\nfunction maskCardNumber(cardNo) {\n  return cardNo.slice(-4).padStart(cardNo.length, '*');\n}\n\n// 通知を非同期で送信する\nasync function sendNotification(to, message) {\n  const res = await vja.fetch('https://example.com/notify', { method: 'POST', body: JSON.stringify({ to, message }) }); return res.ok;\n}\n\n// 数値を指定の小数桁で四捨五入して返す\nfunction roundTo(value, digits) {\n  const f = Math.pow(10, digits); return Math.round(value * f) / f;\n}\n\n",
+  "extFunctions": [
+    {
+      "name": "calcTax",
+      "async": false,
+      "args": [
+        "price",
+        "rate"
+      ],
+      "description": "税込金額を計算して返す（端数切り捨て）",
+      "argDescs": [
+        "number 税抜金額",
+        "number 税率（例: 0.1）"
+      ],
+      "returns": "number 税込金額"
+    },
+    {
+      "name": "formatDate",
+      "async": false,
+      "args": [
+        "date",
+        "fmt"
+      ],
+      "description": "日付を指定書式の文字列にして返す",
+      "argDescs": [
+        "Date|string 日付",
+        "string 書式（例: 'YYYY/MM/DD'）"
+      ],
+      "returns": "string 整形後の日付文字列"
+    },
+    {
+      "name": "lookupAddress",
+      "async": true,
+      "args": [
+        "zip"
+      ],
+      "description": "郵便番号から住所を非同期で取得して返す",
+      "argDescs": [
+        "string 郵便番号（ハイフン無し7桁）"
+      ],
+      "returns": "string 住所。見つからない場合は null"
+    },
+    {
+      "name": "isValidEmail",
+      "async": false,
+      "args": [
+        "text"
+      ],
+      "description": "メールアドレスの形式が正しいか判定する",
+      "argDescs": [
+        "string 判定する文字列"
+      ],
+      "returns": "boolean 正しければtrue"
+    },
+    {
+      "name": "toHalfWidth",
+      "async": false,
+      "args": [
+        "text"
+      ],
+      "description": "全角英数字を半角に変換して返す",
+      "argDescs": [
+        "string 変換する文字列"
+      ],
+      "returns": "string 半角にした文字列"
+    },
+    {
+      "name": "calcAge",
+      "async": false,
+      "args": [
+        "birthday"
+      ],
+      "description": "誕生日から現在の年齢を計算して返す",
+      "argDescs": [
+        "string 誕生日（YYYY-MM-DD）"
+      ],
+      "returns": "number 年齢（満年齢）"
+    },
+    {
+      "name": "fetchExchangeRate",
+      "async": true,
+      "args": [
+        "currency"
+      ],
+      "description": "通貨コードから対円の為替レートを非同期で取得して返す",
+      "argDescs": [
+        "string 通貨コード（例: USD）"
+      ],
+      "returns": "number 為替レート"
+    },
+    {
+      "name": "maskCardNumber",
+      "async": false,
+      "args": [
+        "cardNo"
+      ],
+      "description": "カード番号の下4桁以外を * で伏せて返す",
+      "argDescs": [
+        "string カード番号"
+      ],
+      "returns": "string 伏せ字にした番号"
+    },
+    {
+      "name": "sendNotification",
+      "async": true,
+      "args": [
+        "to",
+        "message"
+      ],
+      "description": "通知を非同期で送信する",
+      "argDescs": [
+        "string 宛先",
+        "string メッセージ本文"
+      ],
+      "returns": "boolean 送信できたらtrue"
+    },
+    {
+      "name": "roundTo",
+      "async": false,
+      "args": [
+        "value",
+        "digits"
+      ],
+      "description": "数値を指定の小数桁で四捨五入して返す",
+      "argDescs": [
+        "number 数値",
+        "number 小数の桁数"
+      ],
+      "returns": "number 丸めた数値"
+    }
+  ],
+  "events": [
+    {
+      "name": "tax",
+      "widgets": [
+        "txtPrice (inputtype)",
+        "txtTotal (inputtype)",
+        "btnCalc (button)"
+      ],
+      "wname": "btnCalc",
+      "wtag": "button",
+      "eventName": "Click",
+      "yaml": "description: 消費税込みの支払い額を出す\nvalidation: なし\nactions:\n  - txtPrice の値を数値で取得する\n  - 消費税を加えた支払い総額を求める（1円未満は切り捨て）\n  - txtTotal に表示する\non_success: なし\non_error: ログとトーストにエラーを出力\n",
+      "expectCalls": [
+        "calcTax"
+      ]
+    },
+    {
+      "name": "email",
+      "widgets": [
+        "txtMail (inputtype)",
+        "btnCheck (button)"
+      ],
+      "wname": "btnCheck",
+      "wtag": "button",
+      "eventName": "Click",
+      "yaml": "description: 連絡先アドレスの入力ミスを検出する\nvalidation: なし\nactions:\n  - txtMail の値を取得する\n  - @と . を含む正しい書き方かどうか判断する\n  - おかしい場合: 「入力を確認してください」とダイアログを表示して処理を終了する\non_success: なし\non_error: ログとトーストにエラーを出力\n",
+      "expectCalls": [
+        "isValidEmail"
+      ]
+    },
+    {
+      "name": "age",
+      "widgets": [
+        "txtBirth (inputtype)",
+        "lblAge (label)",
+        "btnAge (button)"
+      ],
+      "wname": "btnAge",
+      "wtag": "button",
+      "eventName": "Click",
+      "yaml": "description: 生年月日から今何歳かを表示する\nvalidation: なし\nactions:\n  - txtBirth の値を取得する\n  - 今日時点で何歳かを求める\n  - lblAge に表示する\non_success: なし\non_error: ログとトーストにエラーを出力\n",
+      "expectCalls": [
+        "calcAge"
+      ]
+    },
+    {
+      "name": "rate",
+      "widgets": [
+        "txtYen (inputtype)",
+        "txtUsd (inputtype)",
+        "btnConv (button)"
+      ],
+      "wname": "btnConv",
+      "wtag": "button",
+      "eventName": "Click",
+      "yaml": "description: 円で入力した金額をドル建てで表示する\nvalidation: なし\nactions:\n  - txtYen の値を数値で取得する\n  - ドルの対円相場を取得する\n  - 円をその相場で割って txtUsd に表示する\non_success: なし\non_error: ログとトーストにエラーを出力\n",
+      "expectCalls": [
+        "fetchExchangeRate"
+      ]
+    },
+    {
+      "name": "mask",
+      "widgets": [
+        "txtCard (inputtype)",
+        "lblMasked (label)",
+        "btnMask (button)"
+      ],
+      "wname": "btnMask",
+      "wtag": "button",
+      "eventName": "Click",
+      "yaml": "description: カード番号を人に見せても安全な表示にする\nvalidation: なし\nactions:\n  - txtCard の値を取得する\n  - 末尾4桁だけ残して他を隠す\n  - lblMasked に表示する\non_success: なし\non_error: ログとトーストにエラーを出力\n",
+      "expectCalls": [
+        "maskCardNumber"
+      ]
+    },
+    {
+      "name": "notify",
+      "widgets": [
+        "txtTo (inputtype)",
+        "txtMsg (inputtype)",
+        "btnSend (button)"
+      ],
+      "wname": "btnSend",
+      "wtag": "button",
+      "eventName": "Click",
+      "yaml": "description: 相手へお知らせを送る\nvalidation: なし\nactions:\n  - txtTo と txtMsg の値を取得する\n  - txtTo の相手へ txtMsg の内容を送る\n  - 失敗した場合: 「送信失敗」とトーストを表示する\non_success: なし\non_error: ログとトーストにエラーを出力\n",
+      "expectCalls": [
+        "sendNotification"
+      ]
+    }
+  ]
+}
