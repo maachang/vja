@@ -8,7 +8,7 @@ Your task is to analyze the provided JavaScript code, extract all publicly avail
 [YAML Schema]
 Strictly follow this structure. If there are multiple functions, repeat the list starting from the top-level "- function:" key.
 
-- function: await functionName(args1, args2, ...) # Include 'await' if the function is asynchronous; omit if synchronous.
+- function: await functionName(args1, args2, ...) # If the JavaScript declares this function with the `async` keyword (or it returns a Promise), this line MUST start with 'await ' (e.g. '- function: await lookupAddress(zip)'). Otherwise write it WITHOUT 'await'.
   description: "Brief Japanese explanation of the function's purpose and usage."
   arguments:
     - args1: "Type and Japanese description of args1."
