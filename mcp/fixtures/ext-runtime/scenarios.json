@@ -1,0 +1,92 @@
+{
+  "extJs": "// 税込金額を計算して返す（端数切り捨て）\nfunction calcTax(price, rate) {\n  if (typeof price !== 'number') throw new Error('priceは数値で指定してください');\n  return Math.floor(price * (1 + rate));\n}\n\n// 日付を指定書式の文字列にして返す。fmtは 'YYYY/MM/DD' など\nfunction formatDate(date, fmt) {\n  const d = new Date(date);\n  const p = (n) => String(n).padStart(2, '0');\n  return fmt.replace('YYYY', d.getFullYear()).replace('MM', p(d.getMonth() + 1)).replace('DD', p(d.getDate()));\n}\n\n// 郵便番号から住所を非同期で取得して返す\nasync function lookupAddress(zip) {\n  const res = await vja.fetch('https://zipcloud.ibsnet.co.jp/api/search?zipcode=' + zip);\n  const json = await res.json();\n  return json.results ? json.results[0].address1 + json.results[0].address2 + json.results[0].address3 : null;\n}\n",
+  "extFunctions": [
+    {
+      "name": "calcTax",
+      "async": false,
+      "args": [
+        "price",
+        "rate"
+      ],
+      "description": "税込金額を計算して返す（端数切り捨て）",
+      "argDescs": [
+        "number 税抜金額",
+        "number 税率（例: 0.1）"
+      ],
+      "returns": "number 税込金額"
+    },
+    {
+      "name": "formatDate",
+      "async": false,
+      "args": [
+        "date",
+        "fmt"
+      ],
+      "description": "日付を指定書式の文字列にして返す",
+      "argDescs": [
+        "Date|string 日付",
+        "string 書式（例: 'YYYY/MM/DD'）"
+      ],
+      "returns": "string 整形後の日付文字列"
+    },
+    {
+      "name": "lookupAddress",
+      "async": true,
+      "args": [
+        "zip"
+      ],
+      "description": "郵便番号から住所を非同期で取得して返す",
+      "argDescs": [
+        "string 郵便番号（ハイフン無し7桁）"
+      ],
+      "returns": "string 住所。見つからない場合は null"
+    }
+  ],
+  "events": [
+    {
+      "name": "tax",
+      "widgets": [
+        "txtPrice (inputtype)",
+        "txtTotal (inputtype)",
+        "btnCalc (button)"
+      ],
+      "wname": "btnCalc",
+      "wtag": "button",
+      "eventName": "Click",
+      "yaml": "description: 税込金額を計算して表示する\nvalidation: なし\nactions:\n  - txtPrice の値を数値で取得する\n  - 税率10%で税込金額を計算する\n  - 結果を txtTotal に表示する\non_success: なし\non_error: ログとトーストにエラーを出力\n",
+      "expectCalls": [
+        "calcTax"
+      ]
+    },
+    {
+      "name": "date",
+      "widgets": [
+        "txtDate (inputtype)",
+        "lblFormatted (label)",
+        "btnFormat (button)"
+      ],
+      "wname": "btnFormat",
+      "wtag": "button",
+      "eventName": "Click",
+      "yaml": "description: 入力された日付を YYYY/MM/DD 形式に整形して表示する\nvalidation: なし\nactions:\n  - txtDate の値を取得する\n  - YYYY/MM/DD 形式に整形する\n  - lblFormatted に表示する\non_success: なし\non_error: ログとトーストにエラーを出力\n",
+      "expectCalls": [
+        "formatDate"
+      ]
+    },
+    {
+      "name": "zip",
+      "widgets": [
+        "txtZip (inputtype)",
+        "txtAddress (inputtype)",
+        "btnSearch (button)"
+      ],
+      "wname": "btnSearch",
+      "wtag": "button",
+      "eventName": "Click",
+      "yaml": "description: 郵便番号から住所を検索して表示する\nvalidation: なし\nactions:\n  - txtZip の値を取得する\n  - 郵便番号から住所を取得する\n  - 住所が取得できた場合: txtAddress に表示する\n  - それ以外の場合: 「住所が見つかりません」とトーストを表示する\non_success: なし\non_error: ログとトーストにエラーを出力\n",
+      "expectCalls": [
+        "lookupAddress"
+      ]
+    }
+  ]
+}

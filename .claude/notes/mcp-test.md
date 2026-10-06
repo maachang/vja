@@ -73,3 +73,11 @@
 - 長時間実行の注意: Bashの`run_in_background`は既定30分で打ち切られる。全シナリオを流すときは`timeout`を2時間（7200000）にすること。`pkill -f`は自分自身のコマンド行にも一致して自殺するので使わない。結果JSONは完走時にしか書かれない（途中で落ちるとログの`[シナリオ #n]`行しか残らない）
 - 初回結果（1回ずつ）: 3シナリオ・14画面で必須ボタンの不足は0件。NGは1画面の重なり（datagridとラベル/textarea）のみ
 - 2026-10-03の改善後の結果: 全9シナリオ・各1回でNG 0件（ローカルLLM qwen2.5-coder-7bのみ。複数回の通し・実機での見え方・別モデルは未確認）。結果は`applyAiFormDesign`の補正前の値
+
+# 拡張ランタイムの実LLMテスト（2026-10-06）
+
+- `bun run mcp/ext-runtime-test.ts [--runs N] [--part doc|event]`: 画面/Electrobun不要。接続先は`mcp/fixtures/test-llm.local.json`（wizard-scenario-testと共通）、題材は`mcp/fixtures/ext-runtime/scenarios.json`。結果は`.claudeWork/ext-runtime-result.json`。bun testには含めない
+- doc: 拡張ランタイムJS→説明YAML（`generateExtRuntimeDoc`）。関数の抽出漏れ・asyncのawait・引数・日本語・YAMLパースを検査
+- event: 固定の説明YAMLを渡したイベントコード生成。拡張関数の呼び出し有無・await・引数個数・自前再実装・架空関数を検査（`buildGenPromptContext`は使わずプロンプト関数を直接呼ぶため、ウィジェット絞り込み等は対象外）
+- 教訓: ①asyncのawait指示は「`async`宣言なら必ず先頭にawait」と具体化しないと守られない（0/10→10/10）。②優先順位ルールは「同じ仕事をする拡張関数があれば、ロジックが簡単でも再実装せず必ず呼ぶ」と書かないと、7Bは説明の式を自前で再実装する（0/10→10/10）。③テストの固定YAMLの説明文が空疎だと誤判定の原因になる（題材側の不備を先に疑う）。④プロンプトの実験は、スクリプト内で読み込み文字列を差し替えて比較し、製品側は承認後に変更した
+- 未確認: 関数が多い場合、依頼文に関数名が出ない場合、他モデル。`text-to-yaml`には拡張関数の説明が渡っていない（YAMLに関数名が入らない）
