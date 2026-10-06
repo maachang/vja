@@ -6,7 +6,7 @@
 // 実ローカルLLMに対して画面なしで走らせて自動チェックする。精度改善の前後比較用（--runsで複数回）。
 //
 // 【使い方】
-//   bun run mcp/ext-runtime-test.ts [--runs N] [--part doc|event] [--out <json出力先>]
+//   bun run mcp/ext-runtime-test.ts [--runs N] [--part doc|event] [--fixture scenarios|scenarios-many] [--out <json出力先>]
 //   - 接続先は mcp/fixtures/test-llm.local.json（wizard-scenario-testと共通。無ければユーザーに確認）
 //   - 題材は mcp/fixtures/ext-runtime/scenarios.json
 //   - bun testには含めない（実LLMが必要で非決定的なため）
@@ -29,7 +29,7 @@ const OUT = opt("out", join(ROOT, ".claudeWork", "ext-runtime-result.json"));
 const cfgPath = join(ROOT, "mcp/fixtures/test-llm.local.json");
 if (!existsSync(cfgPath)) { console.error("接続先設定が無い: " + cfgPath); process.exit(2); }
 const LLM = JSON.parse(readFileSync(cfgPath, "utf-8"));
-const SC = JSON.parse(readFileSync(join(ROOT, "mcp/fixtures/ext-runtime/scenarios.json"), "utf-8"));
+const SC = JSON.parse(readFileSync(join(ROOT, "mcp/fixtures/ext-runtime/" + opt("fixture", "scenarios") + ".json"), "utf-8"));
 
 g.window = g;
 const lenient = (): any => new Proxy(function () { }, { get: (_t, p) => (p === Symbol.toPrimitive ? () => "" : lenient()), apply: () => lenient(), set: () => true });
