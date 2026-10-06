@@ -53,3 +53,4 @@ actions:
 
 [Available Database Tables Context]
 {{tablesCtx}}
+{{extRuntimeSection}}

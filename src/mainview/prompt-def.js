@@ -538,10 +538,15 @@ ${_safeYamlFence(yamlDef)}
     // 「✨ YAMLドラフト」タブ）。actionsは「手順をそのまま列挙する」だけで、
     // 画面デザイン側のfields/actionsのような分類判断が不要な単純な構造。
     // 出力は生YAMLのみ、コードブロック・説明文禁止。
-    const ENG_TEXT_TO_YAML_SYS_PROMPT = function ({ widgetsCtx, tablesCtx }) {
+    // extRuntimeDoc: [任意]拡張ランタイムのyaml定義。空なら拡張関数のセクション自体を出さない（従来と同一のプロンプトになる）。
+    const ENG_TEXT_TO_YAML_SYS_PROMPT = function ({ widgetsCtx, tablesCtx, extRuntimeDoc }) {
+        const extRuntimeSection = (extRuntimeDoc && extRuntimeDoc.trim())
+            ? _fillTpl(_loadPromptTpl("text-to-yaml.ext-runtime.eng.md"), { extRuntimeDoc: extRuntimeDoc.trim() })
+            : "";
         return _fillTpl(_loadPromptTpl("text-to-yaml.sys.eng.md"), {
             widgetsCtx: widgetsCtx || "(No widgets)",
             tablesCtx: tablesCtx || "(No DB tables)",
+            extRuntimeSection,
         }).trim() + "\n";
     };
 

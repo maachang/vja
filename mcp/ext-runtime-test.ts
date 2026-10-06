@@ -129,13 +129,11 @@ function checkEvent(ev: any, code: string | null): string[] {
     return ng;
 }
 
-// ---- ③ 依頼文→YAML→コード（text-to-yamlを通す。--ttyext 1 で拡張関数の説明をtext-to-yamlへ渡す実験） ----
+// ---- ③ 依頼文→YAML→コード（text-to-yamlを通す。--ttyext 1 で拡張ランタイムの説明をtext-to-yamlへ渡す（0=渡さない従来動作との比較用）） ----
 const TTY_EXT = opt("ttyext", "0") === "1";
-const TTY_EXT_SECTION = "\n\n[Extended Runtime Functions (project-specific, already implemented)]\n---\n" + FIXED_DOC + "\n---\n[RULE] If one of the functions above does the job a step needs (even a calculation, check or conversion the request describes), write that step in \"actions\" as 「<functionName> で〜する」 using the exact function name. Do not describe the calculation or check yourself.";
 async function pipelineOnce(ev: any): Promise<{ yaml: string | null; code: string | null }> {
     const widgetsCtx = ev.widgets.map((w: string) => "  - " + w).join("\n");
-    const sys0 = g._PROMPT_DEF.TEXT_TO_YAML_SYS_PROMPT({ widgetsCtx, tablesCtx: "  (none)" });
-    const sys = TTY_EXT ? sys0 + TTY_EXT_SECTION : sys0;
+    const sys = g._PROMPT_DEF.TEXT_TO_YAML_SYS_PROMPT({ widgetsCtx, tablesCtx: "  (none)", extRuntimeDoc: TTY_EXT ? FIXED_DOC : "" });
     const raw = await callLlm(sys, g._PROMPT_DEF.TEXT_TO_YAML_USER_PROMPT(ev.request));
     if (raw === null) return { yaml: null, code: null };
     const yaml = g._convertTextToYamlEngKeysToJp(raw.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim());
