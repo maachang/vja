@@ -144,7 +144,8 @@
       "yaml": "description: 消費税込みの支払い額を出す\nvalidation: なし\nactions:\n  - txtPrice の値を数値で取得する\n  - 消費税を加えた支払い総額を求める（1円未満は切り捨て）\n  - txtTotal に表示する\non_success: なし\non_error: ログとトーストにエラーを出力\n",
       "expectCalls": [
         "calcTax"
-      ]
+      ],
+      "request": "txtPrice に入力された金額に消費税を加えた支払い総額を求めて txtTotal に表示する。1円未満は切り捨てる。"
     },
     {
       "name": "email",
@@ -158,7 +159,8 @@
       "yaml": "description: 連絡先アドレスの入力ミスを検出する\nvalidation: なし\nactions:\n  - txtMail の値を取得する\n  - @と . を含む正しい書き方かどうか判断する\n  - おかしい場合: 「入力を確認してください」とダイアログを表示して処理を終了する\non_success: なし\non_error: ログとトーストにエラーを出力\n",
       "expectCalls": [
         "isValidEmail"
-      ]
+      ],
+      "request": "txtMail に入力された連絡先アドレスの入力ミスを検出する。@と . を含む正しい書き方でなければ「入力を確認してください」とダイアログを出して終了する。"
     },
     {
       "name": "age",
@@ -173,7 +175,8 @@
       "yaml": "description: 生年月日から今何歳かを表示する\nvalidation: なし\nactions:\n  - txtBirth の値を取得する\n  - 今日時点で何歳かを求める\n  - lblAge に表示する\non_success: なし\non_error: ログとトーストにエラーを出力\n",
       "expectCalls": [
         "calcAge"
-      ]
+      ],
+      "request": "txtBirth の生年月日から、今日時点で何歳かを lblAge に表示する。"
     },
     {
       "name": "rate",
@@ -188,7 +191,8 @@
       "yaml": "description: 円で入力した金額をドル建てで表示する\nvalidation: なし\nactions:\n  - txtYen の値を数値で取得する\n  - ドルの対円相場を取得する\n  - 円をその相場で割って txtUsd に表示する\non_success: なし\non_error: ログとトーストにエラーを出力\n",
       "expectCalls": [
         "fetchExchangeRate"
-      ]
+      ],
+      "request": "txtYen に入力した円の金額を、ドルの対円相場で換算して txtUsd に表示する。"
     },
     {
       "name": "mask",
@@ -203,7 +207,8 @@
       "yaml": "description: カード番号を人に見せても安全な表示にする\nvalidation: なし\nactions:\n  - txtCard の値を取得する\n  - 末尾4桁だけ残して他を隠す\n  - lblMasked に表示する\non_success: なし\non_error: ログとトーストにエラーを出力\n",
       "expectCalls": [
         "maskCardNumber"
-      ]
+      ],
+      "request": "txtCard のカード番号の末尾4桁だけを残して他を隠し、lblMasked に表示する。"
     },
     {
       "name": "notify",
@@ -218,7 +223,8 @@
       "yaml": "description: 相手へお知らせを送る\nvalidation: なし\nactions:\n  - txtTo と txtMsg の値を取得する\n  - txtTo の相手へ txtMsg の内容を送る\n  - 失敗した場合: 「送信失敗」とトーストを表示する\non_success: なし\non_error: ログとトーストにエラーを出力\n",
       "expectCalls": [
         "sendNotification"
-      ]
+      ],
+      "request": "txtTo の相手へ txtMsg の内容を送る。失敗したら「送信失敗」とトーストを出す。"
     }
   ]
 }

@@ -6,7 +6,7 @@
 // 実ローカルLLMに対して画面なしで走らせて自動チェックする。精度改善の前後比較用（--runsで複数回）。
 //
 // 【使い方】
-//   bun run mcp/ext-runtime-test.ts [--runs N] [--part doc|event] [--fixture scenarios|scenarios-many] [--out <json出力先>]
+//   bun run mcp/ext-runtime-test.ts [--runs N] [--part doc|event|pipeline] [--ttyext 1] [--fixture scenarios|scenarios-many] [--out <json出力先>]
 //   - 接続先は mcp/fixtures/test-llm.local.json（wizard-scenario-testと共通。無ければユーザーに確認）
 //   - 題材は mcp/fixtures/ext-runtime/scenarios.json
 //   - bun testには含めない（実LLMが必要で非決定的なため）
@@ -100,14 +100,22 @@ function checkEvent(ev: any, code: string | null): string[] {
     try { new Function("vja", "return (async()=>{" + code + "\n})"); } catch (e: any) { ng.push("構文エラー: " + String(e.message).slice(0, 80)); }
     for (const name of ev.expectCalls) {
         const fn = SC.extFunctions.find((f: any) => f.name === name);
-        const re = new RegExp("(await\\s+)?\\b" + name + "\\s*\\(([^)]*)\\)", "g");
-        const calls = [...code.matchAll(re)];
+        // 引数に入れ子の括弧(vja.widget.get('x')等)があっても数えられるよう、括弧の対応を追って引数文字列を取り出す
+        const calls: { 0: string; 1?: string; 2: string; index: number }[] = [];
+        for (const m of code.matchAll(new RegExp("(await\\s+)?\\b" + name + "\\s*\\(", "g"))) {
+            let depth = 1, i = m.index! + m[0].length;
+            const start = i;
+            while (i < code.length && depth > 0) { const ch = code[i++]; if (ch === "(") depth++; else if (ch === ")") depth--; }
+            calls.push({ 0: code.slice(m.index!, i), 1: m[1], 2: code.slice(start, i - 1), index: m.index! });
+        }
         if (calls.length === 0) { ng.push("拡張関数 " + name + " を呼んでいない"); continue; }
         if (new RegExp("function\\s+" + name + "\\b|(const|let|var)\\s+" + name + "\\b").test(code)) ng.push(name + " を自前で再定義している");
         if (/vja\.\w+/.test(calls[0][0].replace(/^await\s+/, "")) === false && /\bvja\.(ext|runtime)\.\w*\b/.test(code.slice(calls[0].index! - 20, calls[0].index!))) ng.push(name + " をvja.配下で呼んでいる");
         for (const c of calls) {
             if (!!c[1] !== fn.async) ng.push(name + ": await " + (fn.async ? "が無い" : "が付いている"));
-            const argc = c[2].trim() ? c[2].split(",").length : 0;
+            let argc = 0, d2 = 0, cur = "";
+            for (const ch of c[2]) { if ("([{".includes(ch)) d2++; else if (")]}".includes(ch)) d2--; if (ch === "," && d2 === 0) { argc++; cur = ""; } else cur += ch; }
+            if (c[2].trim()) argc++;
             if (argc !== fn.args.length) ng.push(name + ": 引数の個数が違う(" + argc + ")");
         }
     }
@@ -121,12 +129,41 @@ function checkEvent(ev: any, code: string | null): string[] {
     return ng;
 }
 
+// ---- ③ 依頼文→YAML→コード（text-to-yamlを通す。--ttyext 1 で拡張関数の説明をtext-to-yamlへ渡す実験） ----
+const TTY_EXT = opt("ttyext", "0") === "1";
+const TTY_EXT_SECTION = "\n\n[Extended Runtime Functions (project-specific, already implemented)]\n---\n" + FIXED_DOC + "\n---\n[RULE] If one of the functions above does the job a step needs (even a calculation, check or conversion the request describes), write that step in \"actions\" as 「<functionName> で〜する」 using the exact function name. Do not describe the calculation or check yourself.";
+async function pipelineOnce(ev: any): Promise<{ yaml: string | null; code: string | null }> {
+    const widgetsCtx = ev.widgets.map((w: string) => "  - " + w).join("\n");
+    const sys0 = g._PROMPT_DEF.TEXT_TO_YAML_SYS_PROMPT({ widgetsCtx, tablesCtx: "  (none)" });
+    const sys = TTY_EXT ? sys0 + TTY_EXT_SECTION : sys0;
+    const raw = await callLlm(sys, g._PROMPT_DEF.TEXT_TO_YAML_USER_PROMPT(ev.request));
+    if (raw === null) return { yaml: null, code: null };
+    const yaml = g._convertTextToYamlEngKeysToJp(raw.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim());
+    const ctx = { formName: "Form1", eventName: ev.eventName, wname: ev.wname, wtag: ev.wtag, wdescription: "", inputParamsCtx: "  (none)", allWidgetsCtx: widgetsCtx, formsCtx: "  - Form1", globalConstCtx: "  (none)", formConstCtx: "  (none)", tablesCtx: "  (none)", extRuntimeDoc: FIXED_DOC, yamlDef: yaml };
+    const sysJs = g._PROMPT_DEF.YAML_TO_JS_SYS_PROMPT(false, ctx);
+    const userJs = g._PROMPT_DEF.YAML_TO_JS_USER_PROMPT(false, yaml, "", { ...ctx, optionalApiDocCtx: "", learnedFixesCtx: "" });
+    const rawJs = await callLlm(sysJs, userJs);
+    const code = rawJs === null ? null : g.fixMissingAwaits(g.stripWidgetValueAccess ? g.stripWidgetValueAccess(g._unwrapAiFunctionWrapper(rawJs)) : g._unwrapAiFunctionWrapper(rawJs), false);
+    return { yaml, code };
+}
+
 const results: any[] = [];
 let totalNg = 0;
 const tally: Record<string, { ok: number; n: number }> = {};
 const note = (k: string, bad: boolean) => { (tally[k] ||= { ok: 0, n: 0 }).n++; if (!bad) tally[k].ok++; };
 
 for (let run = 1; run <= RUNS; run++) {
+    if (PART === "pipeline") {
+        for (const ev of SC.events) {
+            const { yaml, code } = await pipelineOnce(ev);
+            const ng = checkEvent(ev, code);
+            // YAMLの段階で関数名が入ったか（参考）
+            const named = ev.expectCalls.every((n: string) => (yaml || "").includes(n));
+            note("pipe:" + ev.name, ng.length > 0); note("yamlNamed:" + ev.name, !named); totalNg += ng.length;
+            results.push({ part: "pipeline", scenario: ev.name, run, yaml, code, ng, yamlHasFuncName: named });
+            console.log("[pipe " + ev.name + " #" + run + "] " + (ng.length ? "NG " + ng.length + "件" : "OK") + (named ? " (YAMLに関数名あり)" : "")); ng.forEach((m) => console.log("   - " + m));
+        }
+    }
     if (PART === "all" || PART === "doc") {
         g.getProjectData = () => ({ aiConfig: {}, extRuntime: { js: SC.extJs, doc: "" } });
         const doc = await g.generateExtRuntimeDoc(SC.extJs);
