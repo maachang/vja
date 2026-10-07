@@ -9,6 +9,7 @@
      - onRuntimeErrorReported(report) : bridge.tsから呼ばれる受信口（検証済みの報告）
      - clearRuntimeErrors() : 「実行」開始時に一覧を消す
      - openRuntimeErrors() / openRuntimeErrorEvent(i) : 一覧モーダルと、イベントへの移動
+     - aiFixRuntimeError(i) : 「AIで修正」。vja-mock-check.js の manualRetryAiFix へ実行時エラーを渡す（フェーズ2）
      - getRuntimeErrors() : 現在の一覧（テスト用MCPからも使う）
    【AIメモ】
      - 一覧はメモリのみ（保存しない）。次の実行開始でクリアする。
@@ -55,6 +56,7 @@ function openRuntimeErrors() {
             message: e.message,
             excerpt: e.excerpt || "（コード抜粋なし）",
             attrOpen: evtAttr("onclick", "openRuntimeErrorEvent(" + i + ")"),
+            attrFix: evtAttr("onclick", "aiFixRuntimeError(" + i + ")"),
         });
     });
     if (!rowsHtml) rowsHtml = render("re-tpl-empty", {});
@@ -66,7 +68,7 @@ function openRuntimeErrors() {
 }
 
 // 一覧の行から、該当フォーム・ウィジェットのイベントを開き、JavaScriptタブのエラー行へ移動する
-function openRuntimeErrorEvent(i) {
+function openRuntimeErrorEvent(i, thenAiFix) {
     const e = _runtimeErrors[i];
     if (!e) return;
     const forms = getProjectData().forms;
@@ -87,9 +89,15 @@ function openRuntimeErrorEvent(i) {
         ta.setSelectionRange(pos, pos + lines[ln - 1].length);
         ta.scrollTop = Math.max(0, (ln - 3)) * parseFloat(getComputedStyle(ta).lineHeight || 18);
     }
+    // 「AIで修正」: イベントを開いた状態で、実行時エラーを添えて既存のAI修正を実行する（結果はエディタ欄へ入るだけで、保存は利用者が行う）
+    if (thenAiFix) manualRetryAiFix(w.id, e.eventName, false, false, e);
+}
+
+function aiFixRuntimeError(i) {
+    openRuntimeErrorEvent(i, true);
 }
 
 Object.assign(window, {
     getRuntimeErrors, onRuntimeErrorReported, clearRuntimeErrors,
-    openRuntimeErrors, openRuntimeErrorEvent,
+    openRuntimeErrors, openRuntimeErrorEvent, aiFixRuntimeError,
 });

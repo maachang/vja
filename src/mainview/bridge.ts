@@ -511,10 +511,10 @@ const _testExtRtGenDoc = async (p: { js: string }) => {
 // 読み書き・タブ切替・モーダル再描画)を介さず、DOM非依存版のretryAiFix()を直接
 // 呼び出す。currentCodeが既存検証に通れば{alreadyOk:true}を返し、AIは呼ばない。
 // 通らない場合のみtestSetAiMockQueueでモック応答（修正後のJSコード）を積んでおく必要がある。
-const _testManualRetryAiFix = async (p: { wid: number | string; evName: string; isAppEvent?: boolean; isFormEvent?: boolean; currentCode: string }) => {
+const _testManualRetryAiFix = async (p: { wid: number | string; evName: string; isAppEvent?: boolean; isFormEvent?: boolean; currentCode: string; runtimeError?: any }) => {
     const g = window as any;
     try {
-        const result = await g.retryAiFix(p.wid, p.evName, !!p.isAppEvent, !!p.isFormEvent, p.currentCode || "");
+        const result = await g.retryAiFix(p.wid, p.evName, !!p.isAppEvent, !!p.isFormEvent, p.currentCode || "", p.runtimeError ? normalizeRuntimeError(p.runtimeError) : undefined);
         if (!result) return { ok: false, error: "生成に失敗しました" };
         return { ok: true, ...result };
     } catch (e: any) {

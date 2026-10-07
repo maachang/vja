@@ -4,7 +4,10 @@
 <span style="font-size:11px; padding:2px 6px; border-radius:4px; background:var(--bg3); color:<%= kindColor %>;"><%= kindLabel %></span>
 <span style="font-size:13px; font-weight:bold;"><%= formName %> / <%= widgetName %> / <%= eventName %></span>
 <span style="font-size:11px; color:var(--text2);"><%= lineLabel %><%= countLabel %></span>
-<button class="tb-btn" style="margin-left:auto; padding:2px 8px; font-size:12px;" <%- attrOpen %>>イベントを開く</button>
+<span style="margin-left:auto; display:flex; gap:6px;">
+<button class="tb-btn" style="padding:2px 8px; font-size:12px;" <%- attrOpen %>>イベントを開く</button>
+<button class="tb-btn" style="padding:2px 8px; font-size:12px; background:var(--accent); color:#fff;" <%- attrFix %>>🤖 AIで修正</button>
+</span>
 </div>
 <div style="font-size:12px; color:#ff5f56; word-break:break-all;"><%= message %></div>
 <pre style="margin:0; padding:6px 8px; font-size:11px; background:var(--bg); border:1px solid var(--border); border-radius:4px; overflow-x:auto;"><%= excerpt %></pre>

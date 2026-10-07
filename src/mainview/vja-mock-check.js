@@ -1050,6 +1050,7 @@ function formatValidationIssuesForLog(validation) {
     validation.missingAwaits.forEach(({ line, api }) => parts.push(line + "行目: await漏れ " + api));
     validation.unknownWidgets.forEach(({ line, api, name }) => parts.push(line + "行目: 未知のウィジェット名 " + name + "（" + api + "）"));
     if (validation.mockError) parts.push((validation.mockError.caught ? "モック実行(catchで捕捉): " : "モック実行例外: ") + (validation.mockError.line ? validation.mockError.line + "行目: " : "") + validation.mockError.message);
+    if (validation.runtimeError) parts.push("実行時エラー(" + (validation.runtimeError.kind === "swallowed" ? "握りつぶし" : "例外") + "): " + (validation.runtimeError.line ? validation.runtimeError.line + "行目: " : "") + validation.runtimeError.message);
     return parts.length > 0 ? parts.join(" / ") : "(詳細なし)";
 }
 
@@ -1081,6 +1082,14 @@ function buildAiFixPrompt(originalUserPrompt, code, validation) {
             ? "モック実行時、try/catchで捕捉されconsole.error()に渡されたエラーが検出されました: "
             : "モック実行時に例外が発生しました: ";
         issues.push("- " + caughtNote + lineNote + validation.mockError.message + "（ダミー値での試験実行のため、実際の実行結果とは異なる場合がありますが、コードの構造に問題がある可能性が高いです）");
+    }
+    // 実行時エラー（実際の実行で発生したもの。入力値は含めず、メッセージ・行・コード抜粋のみ）
+    if (validation.runtimeError) {
+        const re = validation.runtimeError;
+        issues.push("- 実際にアプリを実行したところ、" + (re.line ? re.line + "行目付近で" : "") +
+            (re.kind === "swallowed" ? "try/catchで捕捉されconsole.errorに渡されたエラーが発生しました: " : "例外が発生しました: ") + re.message);
+        if (re.excerpt) issues.push("  エラー付近のコード（行番号付き）:\n" + re.excerpt);
+        issues.push("  コードの誤りが原因なら修正してください。通信・DB・入力データなど外部要因が原因と考えられる場合は、処理の内容は変えず、必要な場合だけ失敗時の処理（エラーメッセージの表示等）を補ってください。");
     }
     return originalUserPrompt +
         "\n\n[自動検証で以下の問題が検出されました。問題を修正し、修正後のコードのみを出力してください]\n" +
@@ -1369,7 +1378,9 @@ async function manualMockCheck(isAppEvent, evName, wtag, wid) {
 // 意味のあるコンテキストで検証したい場合は事前にopenYaml等でエディタを開いておく必要がある
 // （テスト用: wizardGenerateFormYaml等と同様、この間接的なDOM依存はテスト時も許容する）。
 // 戻り値: { alreadyOk, normalizedCode, code, revalidated? }（revalidatedはAI修正を実行した場合のみ）。
-async function retryAiFix(wid, evName, isAppEvent, isFormEvent, currentCode) {
+// runtimeError: 実行時エラー一覧（vja-runtime-errors.js）から呼ぶ場合の報告。指定時は、静的検証・モック実行がOKでも
+// 修正依頼を行い、実行時エラーを「問題の1種」としてプロンプトへ加える。
+async function retryAiFix(wid, evName, isAppEvent, isFormEvent, currentCode, runtimeError) {
     const { sysPrompt, userPrompt, validationName, wtag } = buildGenPromptContext(wid, evName, isAppEvent, isFormEvent);
     let code = _stripValidationWrapper(currentCode || "", validationName);
     code = fixMissingAwaits(stripWidgetValueAccess(code), isAppEvent);
@@ -1377,7 +1388,8 @@ async function retryAiFix(wid, evName, isAppEvent, isFormEvent, currentCode) {
     let validation = validateGeneratedJs(code, isAppEvent, evName, wtag, wid);
     validation = await augmentWithMockCheck(validation, code, isAppEvent, evName, wtag, wid);
     const normalizedCode = validation.code || code;
-    if (validation.ok) {
+    if (runtimeError) validation = { ...validation, runtimeError };
+    if (validation.ok && !runtimeError) {
         return { alreadyOk: true, normalizedCode, code: normalizedCode };
     }
 
@@ -1399,7 +1411,8 @@ async function retryAiFix(wid, evName, isAppEvent, isFormEvent, currentCode) {
             window.vja?.log?.debug?.(revalidated.ok
                 ? "[AI検証] 手動修正で解消しました。"
                 : "[AI検証] 手動修正後も未解消: " + formatValidationIssuesForLog(revalidated));
-            if (revalidated.ok) {
+            // 実行時エラーは再検証で解消を判定できないため、学習履歴には記録しない
+            if (revalidated.ok && !runtimeError) {
                 // AIが自力で直せた＝「効いた」学習内容として記録する。
                 _recordLearnedFix(wid, evName, formatValidationIssuesForLog(validation));
             }
@@ -1420,10 +1433,10 @@ async function retryAiFix(wid, evName, isAppEvent, isFormEvent, currentCode) {
     return result;
 }
 
-async function manualRetryAiFix(wid, evName, isAppEvent, isFormEvent) {
+async function manualRetryAiFix(wid, evName, isAppEvent, isFormEvent, runtimeError) {
     const jsTa = $("js-ta");
     const currentCode = jsTa?.value || "";
-    const result = await retryAiFix(wid, evName, isAppEvent, isFormEvent, currentCode);
+    const result = await retryAiFix(wid, evName, isAppEvent, isFormEvent, currentCode, runtimeError);
     if (!result) return;
 
     if (result.normalizedCode !== currentCode && jsTa) {
