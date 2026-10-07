@@ -15,6 +15,9 @@ import {
     base64ToBytes,
     makeFetchProxy,
     AWS_HOST_REGEX,
+    normalizeRuntimeError,
+    addRuntimeError,
+    RUNTIME_ERRORS_MAX,
 } from "./bridge-common";
 
 describe("makeDbWrappers", () => {
@@ -393,5 +396,71 @@ describe("makeFetchProxy", () => {
         await f("https://s3.ap-northeast-1.amazonaws.com/b/k", { method: "POST", body: new FormData() });
         expect(orig.length).toBe(1);
         expect(vja.length).toBe(0);
+    });
+});
+
+describe("normalizeRuntimeError", () => {
+    const base = { widgetName: "btn", eventName: "Click", message: "boom" };
+    test("必須項目が無い・オブジェクトでなければnull", () => {
+        expect(normalizeRuntimeError(null)).toBeNull();
+        expect(normalizeRuntimeError("x")).toBeNull();
+        expect(normalizeRuntimeError({ ...base, widgetName: "" })).toBeNull();
+        expect(normalizeRuntimeError({ ...base, eventName: undefined })).toBeNull();
+        expect(normalizeRuntimeError({ ...base, message: "" })).toBeNull();
+    });
+    test("既定値: kindはthrown、line/columnはnull、timeは補われる", () => {
+        const r = normalizeRuntimeError(base)!;
+        expect(r.kind).toBe("thrown");
+        expect(r.line).toBeNull();
+        expect(r.column).toBeNull();
+        expect(typeof r.time).toBe("number");
+    });
+    test("kind: swallowedのみ許可、不正値はthrown", () => {
+        expect(normalizeRuntimeError({ ...base, kind: "swallowed" })!.kind).toBe("swallowed");
+        expect(normalizeRuntimeError({ ...base, kind: "evil" })!.kind).toBe("thrown");
+    });
+    test("長さの上限で切り詰め、数値でないlineはnull", () => {
+        const r = normalizeRuntimeError({ ...base, message: "m".repeat(900), stack: "s".repeat(3000), excerpt: "e".repeat(3000), line: "3", column: NaN })!;
+        expect(r.message.length).toBe(500);
+        expect(r.stack.length).toBe(2000);
+        expect(r.excerpt.length).toBe(2000);
+        expect(r.line).toBeNull();
+        expect(r.column).toBeNull();
+    });
+});
+
+describe("addRuntimeError", () => {
+    const mk = (over: any = {}) => normalizeRuntimeError({ widgetName: "btn", eventName: "Click", message: "boom", line: 3, ...over })!;
+    test("新規は先頭に追加され、count=1", () => {
+        const l = addRuntimeError(addRuntimeError([], mk({ message: "a" })), mk({ message: "b" }));
+        expect(l.map((x) => x.message)).toEqual(["b", "a"]);
+        expect(l[0].count).toBe(1);
+    });
+    test("同じ（ウィジェット・イベント・種別・メッセージ・行）は件数を増やして先頭へ移す", () => {
+        let l = addRuntimeError([], mk({ message: "a" }));
+        l = addRuntimeError(l, mk({ message: "b" }));
+        l = addRuntimeError(l, mk({ message: "a" }));
+        expect(l.map((x) => x.message)).toEqual(["a", "b"]);
+        expect(l[0].count).toBe(2);
+        expect(l).toHaveLength(2);
+    });
+    test("行・種別が違えば別のエントリ", () => {
+        let l = addRuntimeError([], mk());
+        l = addRuntimeError(l, mk({ line: 4 }));
+        l = addRuntimeError(l, mk({ kind: "swallowed" }));
+        expect(l).toHaveLength(3);
+    });
+    test(`上限(${RUNTIME_ERRORS_MAX})を超えたら古いものから捨てる`, () => {
+        let l: any[] = [];
+        for (let i = 0; i < RUNTIME_ERRORS_MAX + 5; i++) l = addRuntimeError(l, mk({ message: "m" + i }));
+        expect(l).toHaveLength(RUNTIME_ERRORS_MAX);
+        expect(l[0].message).toBe("m" + (RUNTIME_ERRORS_MAX + 4));
+        expect(l.some((x) => x.message === "m0")).toBe(false);
+    });
+    test("元の配列は変更しない", () => {
+        const orig = addRuntimeError([], mk());
+        const copy = JSON.stringify(orig);
+        addRuntimeError(orig, mk({ message: "other" }));
+        expect(JSON.stringify(orig)).toBe(copy);
     });
 });

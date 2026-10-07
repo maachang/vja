@@ -238,3 +238,40 @@ export const makeDialogHelpers = (w: any) => ({
 });
 
 
+
+// ── 実行時エラー（実行ウィンドウ→デザイナーへ報告される内容。2026-10-07追加） ──
+// 【AIメモ】実行側の生成コードは src/bun/runtime-error-snippet.ts。ここはデザイナー側の受け取り・一覧管理。
+export type RuntimeErrorReport = {
+    kind: "thrown" | "swallowed"; formName: string; widgetName: string; eventName: string;
+    name: string; message: string; line: number | null; column: number | null;
+    stack: string; excerpt: string; time: number;
+};
+export type RuntimeErrorEntry = RuntimeErrorReport & { count: number };
+export const RUNTIME_ERRORS_MAX = 50;
+
+// 受け取った生データを検証・整形する。必須項目（widgetName/eventName/message）が無ければnull。
+export const normalizeRuntimeError = (raw: any): RuntimeErrorReport | null => {
+    if (!raw || typeof raw !== "object") return null;
+    const s = (v: any, max: number) => String(v ?? "").slice(0, max);
+    const widgetName = s(raw.widgetName, 200), eventName = s(raw.eventName, 100), message = s(raw.message, 500);
+    if (!widgetName || !eventName || !message) return null;
+    const num = (v: any) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+    return {
+        kind: raw.kind === "swallowed" ? "swallowed" : "thrown",
+        formName: s(raw.formName, 200), widgetName, eventName, name: s(raw.name, 100), message,
+        line: num(raw.line), column: num(raw.column),
+        stack: s(raw.stack, 2000), excerpt: s(raw.excerpt, 2000),
+        time: num(raw.time) ?? Date.now(),
+    };
+};
+
+// 一覧へ追加する。同じ（フォーム・ウィジェット・イベント・種別・メッセージ・行）は新規にせず、
+// 件数を増やして先頭へ移す。上限を超えたら古いものから捨てる。
+export const addRuntimeError = (list: RuntimeErrorEntry[], r: RuntimeErrorReport, max = RUNTIME_ERRORS_MAX): RuntimeErrorEntry[] => {
+    const k = (x: RuntimeErrorReport) => [x.formName, x.widgetName, x.eventName, x.kind, x.message, x.line].join("\u0000");
+    const i = list.findIndex((x) => k(x) === k(r));
+    const next: RuntimeErrorEntry[] = i >= 0
+        ? [{ ...r, count: list[i].count + 1 }, ...list.slice(0, i), ...list.slice(i + 1)]
+        : [{ ...r, count: 1 }, ...list];
+    return next.slice(0, max);
+};
