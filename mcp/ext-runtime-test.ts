@@ -6,7 +6,7 @@
 // 実ローカルLLMに対して画面なしで走らせて自動チェックする。精度改善の前後比較用（--runsで複数回）。
 //
 // 【使い方】
-//   bun run mcp/ext-runtime-test.ts [--runs N] [--part doc|event|pipeline] [--ttyext 1] [--fixture scenarios|scenarios-many] [--out <json出力先>]
+//   bun run mcp/ext-runtime-test.ts [--runs N] [--part doc|event|pipeline] [--ttyext 1] [--preset <共通プリセット名の一部>] [--fixture scenarios|scenarios-many] [--out <json出力先>]
 //   - 接続先は mcp/fixtures/test-llm.local.json（wizard-scenario-testと共通。無ければユーザーに確認）
 //   - 題材は mcp/fixtures/ext-runtime/scenarios.json
 //   - bun testには含めない（実LLMが必要で非決定的なため）
@@ -29,6 +29,22 @@ const OUT = opt("out", join(ROOT, ".claudeWork", "ext-runtime-result.json"));
 const cfgPath = join(ROOT, "mcp/fixtures/test-llm.local.json");
 if (!existsSync(cfgPath)) { console.error("接続先設定が無い: " + cfgPath); process.exit(2); }
 const LLM = JSON.parse(readFileSync(cfgPath, "utf-8"));
+// --preset <名前の一部>: アプリの共通AIプリセット(~/.vja-designer/ai-global-presets.json)の設定で接続する。
+// apiKeyありのプリセットは、アプリ(vja-modal.jsのrunAiGenerate)と同じくOpenAI公式APIへ送る
+// （endpointはhttps://api.openai.com固定、temperature/max_tokensは送らない）。キーは表示・保存しない。
+const PRESET = opt("preset", "");
+let API_KEY = "";
+if (PRESET) {
+    const pf = join(process.env.HOME || "", ".vja-designer/ai-global-presets.json");
+    const list: any[] = existsSync(pf) ? (JSON.parse(readFileSync(pf, "utf-8")).presets || []) : [];
+    const hit = list.filter((p) => (p.name || "").includes(PRESET));
+    if (hit.length !== 1) { console.error("共通プリセットが一意に決まらない: " + PRESET + "（該当" + hit.length + "件）"); process.exit(2); }
+    const c = hit[0].config || {};
+    if (c.apiKey) { API_KEY = c.apiKey; LLM.endpoint = "https://api.openai.com"; LLM.model = c.model || "gpt-4o-mini"; LLM.temperature = undefined; }
+    else { LLM.endpoint = c.endpoint; LLM.model = c.model || ""; LLM.temperature = c.temperature; }
+    LLM.thinking = c.thinking;
+    console.log("接続: プリセット「" + hit[0].name + "」 endpoint=" + LLM.endpoint + " model=" + LLM.model + (API_KEY ? " (APIキーあり)" : ""));
+}
 const SC = JSON.parse(readFileSync(join(ROOT, "mcp/fixtures/ext-runtime/" + opt("fixture", "scenarios") + ".json"), "utf-8"));
 
 g.window = g;
@@ -43,10 +59,13 @@ g.XMLHttpRequest = class { status = 200; responseText = ""; u = ""; open(_m: str
 g.showToast = () => { };
 
 async function callLlm(system: string, user: string): Promise<string | null> {
-    const res = await fetch(LLM.endpoint + "/v1/chat/completions", {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ model: LLM.model, temperature: LLM.temperature ?? 0, stream: false, messages: [{ role: "system", content: system }, { role: "user", content: user }] }),
-    });
+    const headers: any = { "content-type": "application/json" };
+    if (API_KEY) headers["Authorization"] = "Bearer " + API_KEY;
+    const body: any = { model: LLM.model, stream: false, messages: [{ role: "system", content: system }, { role: "user", content: user }] };
+    if (!API_KEY) body.temperature = LLM.temperature ?? 0; // 公式APIはtemperatureの任意値を受け付けない(アプリと同じ)
+    if (LLM.thinking === false) { body.think = false; body.reasoning_effort = "none"; body.chat_template_kwargs = { enable_thinking: false }; } // vja-modal.jsと同じ
+    const res = await fetch(LLM.endpoint + "/v1/chat/completions", { method: "POST", headers, body: JSON.stringify(body) });
+    if (!res.ok && API_KEY) console.error("HTTP " + res.status);
     if (!res.ok) return null;
     const data: any = await res.json();
     const msg = data.choices?.[0]?.message || {};

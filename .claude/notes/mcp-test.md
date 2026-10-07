@@ -87,5 +87,6 @@
 - 教訓: 引数個数のチェックは入れ子の括弧（`vja.widget.get('x')`）を数え誤りやすい。括弧対応で数えること（notifyが偽NGになった）
 - **実機E2E（2026-10-07）**: `mcp/ext-runtime-e2e.ts`。`bun run mcp`でテストモードのvjaを起動→`bun run mcp/ext-runtime-e2e.ts [--runs N]`でHTTP(4570)経由に、拡張ランタイム設定→YAMLドラフト生成→イベントJS生成を実アプリの経路（YAMLエディタを開いた状態）で確認する。実際に送られたプロンプトは`.claudeWork/ext-runtime-e2e-lastprompt.json`へ出る。結果: 拡張なしでは拡張関数のセクションが出ず、ありではYAMLに`calcTax`が入り、生成コードも`calcTax(amount, 0.1)`と呼ぶ（6回とも全項目OK）。依頼文に税率を書かないと、モデルが0.08を創作し同期関数に`await`を付けた（テストの依頼文の不備で、製品の問題ではない。引数の値が依頼に無いと崩れる）
 - 教訓: テスト用vjaを止める時、`pkill -f`はそのコマンド自身の文字列にも一致して実行中のシェルごと落ちる。PIDを指定して`kill`すること
-- 未確認: 他モデル（gpt系）
+- **gpt系の確認（2026-10-07）**: `--preset <共通AIプリセット名の一部>`（例: `--preset gpt6luna`）。`~/.vja-designer/ai-global-presets.json`のプリセットで接続し、apiKeyありはアプリ(vja-modal.js)と同じくapi.openai.comへ送る（temperature/max_tokensは送らない、キーは表示しない）。gpt-6-luna、各5回: doc 5/5、event(言い換え6シナリオ)全5/5、pipeline現行25/30（isValidEmailのみ0/5。YAMLに関数名が入った例は0）→ 案B 30/30。モデルを問わず現行ではYAMLに関数名が入らず、案Bで解消する
+- 未確認: gpt-5.6-luna、各シナリオ10回以上の統計
 - 実行時間: pipelineの6シナリオ×10回は約24分。`nohup ... &`で動かしログをファイルへ出し、終了は「テスト本体のプロセス」で判定する（起動コマンドの完了通知は本体の終了ではない）。待ち監視の期限は30分以上にする
