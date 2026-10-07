@@ -227,7 +227,6 @@ GAS や AWS Lambda などの無料・低価格クラウドサービスは便利�
 | OS | macOS / Linux / Windows |
 
 > 💡 **Windows on Snapdragon X（ARM64）** でも動作します。
-> bun.js の Windows11（x64）ランタイム zip をダウンロード・展開し、展開先を環境変数 PATH に追加してください。
 
 ---
 
