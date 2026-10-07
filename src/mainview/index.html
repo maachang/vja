@@ -167,6 +167,7 @@
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
             </svg>停止
         </button>
+        <button id="btn-runtime-errors" class="tb-btn" onmousedown="openRuntimeErrors()" title="実行時エラーの一覧" style="display:none;color:#ff5f56"></button>
         <button id="btn-compile" class="tb-btn" onmousedown="actCompileProject()" title="プロジェクトをコンパイル">
             <svg viewBox="0 0 24 24">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -482,6 +483,7 @@
     <script src="./form-layout-patterns.js"></script>
     <script src="./vja-yaml-editor.js"></script>
     <script src="./vja-mock-check.js"></script>
+    <script src="./vja-runtime-errors.js"></script>
     <script src="./vja-form-design-ai.js"></script>
     <script src="./vja-ai-gen-core.js"></script>
     <script src="./vja-editor-search.js"></script>

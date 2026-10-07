@@ -213,6 +213,7 @@ async function actRunProject() {
     const stopBtn = $("btn-stop-project");
     if (runBtn) runBtn.disabled = true;
     showToast("プロジェクトをビルド中…");
+    clearRuntimeErrors(); // 前回実行分のエラー一覧は新しい実行の開始で消す
     try {
         const result = await vja.project.run();
         if (result.ok) {

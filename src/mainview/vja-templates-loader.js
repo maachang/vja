@@ -29,6 +29,7 @@
         "templates/wizard.html",
         "templates/widget-preview.html",
         "templates/editor-utils.html",
+        "templates/runtime-errors.html",
     ];
 
     function loadTemplateFileSync(path) {

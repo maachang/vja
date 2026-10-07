@@ -1,0 +1,25 @@
+<script type="text/vja-tpl" id="re-tpl-row">
+<div style="padding:10px 12px; border-bottom:1px solid var(--border); display:flex; flex-direction:column; gap:6px;">
+<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+<span style="font-size:11px; padding:2px 6px; border-radius:4px; background:var(--bg3); color:<%= kindColor %>;"><%= kindLabel %></span>
+<span style="font-size:13px; font-weight:bold;"><%= formName %> / <%= widgetName %> / <%= eventName %></span>
+<span style="font-size:11px; color:var(--text2);"><%= lineLabel %><%= countLabel %></span>
+<button class="tb-btn" style="margin-left:auto; padding:2px 8px; font-size:12px;" <%- attrOpen %>>イベントを開く</button>
+</div>
+<div style="font-size:12px; color:#ff5f56; word-break:break-all;"><%= message %></div>
+<pre style="margin:0; padding:6px 8px; font-size:11px; background:var(--bg); border:1px solid var(--border); border-radius:4px; overflow-x:auto;"><%= excerpt %></pre>
+</div>
+</script>
+
+<script type="text/vja-tpl" id="re-tpl-empty">
+<div style="padding:24px; text-align:center; color:var(--text2); font-size:13px;">実行時エラーはありません</div>
+</script>
+
+<script type="text/vja-tpl" id="re-tpl-body">
+<div style="padding:16px; display:flex; flex-direction:column; gap:12px;">
+<p style="font-size:12px; color:var(--text2); margin:0;">
+実行中のプロジェクトで発生したエラーの一覧です（次に「実行」を押すと消えます）。「握りつぶし」は、イベント内で捕捉されて処理が続行されたエラーです。
+</p>
+<div style="background:var(--bg); border:1px solid var(--border); border-radius:6px; max-height:420px; overflow-y:auto;"><%- rowsHtml %></div>
+</div>
+</script>

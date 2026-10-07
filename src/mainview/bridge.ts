@@ -5,7 +5,11 @@ import { Electroview } from "electrobun/view";
 import {
     makeFetchMaps, makeVjaFetch, makeFetchResultHandlers,
     makeDbWrappers, makeFileWrappers, makeDirWrappers, makeDialogHelpers,
+    normalizeRuntimeError, addRuntimeError,
 } from "./bridge-common";
+
+// 一覧UI（素の<script>のvja-runtime-errors.js）から使うため、一覧への追加ロジックをwindowへ公開する
+(window as any).vjaAddRuntimeError = addRuntimeError;
 
 // fetch は複数同時リクエスト対応のため fetchId ベースのMapで管理（bridge-common）
 const { fetchPendingMap: _fetchPendingMap, fetchAbortPendingMap: _fetchAbortPendingMap } = makeFetchMaps();
@@ -199,7 +203,7 @@ const _testRenderCloudModal = () => {
 // 引数無しでモーダルを開く関数を安全に呼び出し、描画結果のHTMLを返す
 // （jhtmlテンプレート移行の検証用。任意コード実行を避けるためホワイトリスト方式）
 const _TEST_OPEN_MODAL_FNS = [
-    "openProjectInfo", "openAppEvents", "openExtRuntime",
+    "openProjectInfo", "openAppEvents", "openExtRuntime", "openRuntimeErrors",
     "openFormConstEditor", "openCloudInfraConfig", "openFontConfig",
     "openDebugTools", "openApiRef", "openAiValidationDetailModal", "openFormDesignAi",
     "openAiConfig", "openConstEditor", "openTableManager", "openValidationEditor",
@@ -595,6 +599,19 @@ const _testYamlAiGenerateFull = async (p: { wid: number | string; evName: string
 // 「AIが書いたテストをAIが確認する」こと自体の限界を踏まえ、単一の判定基準
 // （生成が成功したか/サイズが0でないか等）に頼らず、データモデル上の正解
 // （保存済みYAML本文そのもの）との直接突き合わせを主軸に据えている。
+// 実行時エラー一覧のテスト用（実行ウィンドウを使わず、報告の受信→一覧→バッジを検証する）
+const _testReportRuntimeError = (p: { report: any }) => {
+    const g = window as any;
+    const r = normalizeRuntimeError(p.report);
+    if (!r) return { ok: false, error: "報告が不正です" };
+    g.onRuntimeErrorReported?.(r);
+    return { ok: true };
+};
+const _testGetRuntimeErrors = () => {
+    const g = window as any;
+    const btn = document.getElementById("btn-runtime-errors");
+    return { ok: true, errors: g.getRuntimeErrors?.() ?? [], badge: btn ? { display: btn.style.display, text: btn.textContent } : null };
+};
 const _testVerifyPromptIntegrity = async (p: { wid: number | string; evName: string; temperatureOverride?: number }) => {
     const g = window as any;
     try {
@@ -731,12 +748,17 @@ const rpc = Electroview.defineRPC({
             testGetLastPrompt: _testGetLastPrompt,
             testYamlAiGenerateFull: _testYamlAiGenerateFull,
             testVerifyPromptIntegrity: _testVerifyPromptIntegrity,
+            testReportRuntimeError: _testReportRuntimeError,
+            testGetRuntimeErrors: _testGetRuntimeErrors,
             testFormDesignAiGenerate: _testFormDesignAiGenerate,
         },
         messages: {
             loadScriptResult: (v: any) => { /* フロント側で処理 */ },
-            // 実行時エラーの通知（一覧UI側の onRuntimeErrorReported で処理する。未実装の間は何もしない）
-            runtimeErrorReported: ({ report }: any) => { (window as any).onRuntimeErrorReported?.(report); },
+            // 実行時エラーの通知。検証・整形してから一覧UI（vja-runtime-errors.js）の onRuntimeErrorReported へ渡す
+            runtimeErrorReported: ({ report }: any) => {
+                const r = normalizeRuntimeError(report);
+                if (r) (window as any).onRuntimeErrorReported?.(r);
+            },
             stopProjectResult: (v: any) => {
                 const waiters = _stopProjectWaiters;
                 _stopProjectWaiters = [];
