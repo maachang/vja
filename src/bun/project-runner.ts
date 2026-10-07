@@ -258,7 +258,9 @@ const _onProjectWindowClosed = (): void => {
 };
 
 // ── プロジェクトウィンドウを開く ──────────────────────
-export const openProjectWindow = async (htmlPath: string, w: number, h: number, onStop?: () => void): Promise<void> => {
+export const openProjectWindow = async (htmlPath: string, w: number, h: number, onStop?: () => void,
+    // 実行ウィンドウから報告された実行時エラーを、デザイナーへ中継するコールバック
+    onRuntimeError?: (report: Record<string, any>) => void): Promise<void> => {
     _session.clear();
 
     _projectRPC = BrowserView.defineRPC<VjaRPCType>({
@@ -421,6 +423,11 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
             messages: {
                 logRequest: ({ level, message }) => {
                     writeLog(level, `[proj] ${message}`);
+                },
+                // 実行ウィンドウからの実行時エラー報告 → デザイナーへ中継する
+                reportRuntimeErrorRequest: ({ report }) => {
+                    try { onRuntimeError?.(report); }
+                    catch (e: any) { console.error("[project] 実行時エラーの中継に失敗:", e.message); }
                 },
                 pageLoadedRequest: () => {
                     // ページ読み込み完了 → 遷移をロック

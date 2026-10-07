@@ -735,6 +735,8 @@ const rpc = Electroview.defineRPC({
         },
         messages: {
             loadScriptResult: (v: any) => { /* フロント側で処理 */ },
+            // 実行時エラーの通知（一覧UI側の onRuntimeErrorReported で処理する。未実装の間は何もしない）
+            runtimeErrorReported: ({ report }: any) => { (window as any).onRuntimeErrorReported?.(report); },
             stopProjectResult: (v: any) => {
                 const waiters = _stopProjectWaiters;
                 _stopProjectWaiters = [];

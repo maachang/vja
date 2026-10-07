@@ -75,7 +75,8 @@ export type AppInfo = {
 //   に対応済みのため、変更不要。
 // - closeAppRequest/toggleDevToolsRequest/openFolderRequest/
 //   saveUiConfigRequest/logRequest/pageLoadedRequest/appDialogRequest/
-//   loadScriptRequest: 応答を必要としない一方向の通知。
+//   loadScriptRequest/reportRuntimeErrorRequest/runtimeErrorReported: 応答を必要としない一方向の通知。
+//   （reportRuntimeErrorRequest = 実行ウィンドウ→Bun、runtimeErrorReported = Bun→デザイナー。実行時エラーの報告）
 export type VjaRPCType = {
     // ════════════════════════════════════════════════
     // Bun 側で実行される関数
@@ -267,6 +268,10 @@ export type VjaRPCType = {
                 message: string;
             };
 
+            // ── 実行時エラーの報告（実行ウィンドウ→Bun。Bunがデザイナーへ中継する） ──
+            // report の中身は src/mainview/bridge-common.ts の RuntimeErrorReport
+            reportRuntimeErrorRequest: { report: Record<string, any> };
+
             // ── ダイアログ ────────────────────────────────
             appDialogRequest: {
                 type: "alert" | "confirm";
@@ -403,6 +408,9 @@ export type VjaRPCType = {
         messages: {
             // ── プロジェクト停止結果（詳細はbun.messagesのコメント参照） ──
             stopProjectResult: { ok: boolean };
+
+            // ── 実行時エラーの通知（Bun→デザイナー。実行ウィンドウの報告を中継したもの） ──
+            runtimeErrorReported: { report: Record<string, any> };
 
             // ── ログ結果 ──────────────────────────────────
             logResult: { ok: boolean };

@@ -24,6 +24,7 @@ import electrobunPkg from "electrobun/package.json";
 import { copyCompileAssets, getVersion, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH, WEBVIEW_RUNTIME_LIBS, ELECTROBUN_PIN_VERSION, ELECTROBUN_BUN_VERSION, ELECTROBUN_PATCH_FILE } from "./copy-compile-assets";
 import { clearProjectDb, closeProjectDb } from "./db-manager";
 import { execFetch } from "./bun-utils";
+import { RUNTIME_ERROR_SNIPPET } from "./runtime-error-snippet";
 import {
     fileReadHandler, fileWriteHandler, fileReadBytesHandler, fileWriteBytesHandler,
     fileExistsHandler, fileDeleteHandler, fileCopyHandler,
@@ -523,6 +524,8 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                     }
                     await openProjectWindow(result.startFormPath!, result.startFormW!, result.startFormH!, () => {
                         browserWindow.webview.rpc.send.stopProjectResult({ ok: true });
+                    }, (report) => {
+                        browserWindow.webview.rpc.send.runtimeErrorReported({ report });
                     });
                     return { ok: true };
                 } catch (e: any) {
@@ -1274,6 +1277,9 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     const lines: string[] = ["// ── ウィジェットイベント ──"];
     // タイトルバーのクローズボタン用: vja.app.closeWindow のラッパー
     lines.push('window._vjaClose = function() { window.vja?.app?.closeWindow?.(); };');
+    // 実行時エラー報告（デザイナーの実行エラー一覧向け）。フォーム名と報告用関数を埋め込む
+    lines.push('window._vjaFormName = ' + JSON.stringify(form.cfg.name || form.cfg.title || "") + ';');
+    lines.push(RUNTIME_ERROR_SNIPPET);
 
     // ── バリデーション定義を静的埋め込み ──────────────────────────
     // フォームに定義されたバリデーションルールをJSに静的に埋め込む。
@@ -1309,6 +1315,8 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     lines.push('  window._vjaCurrentEventData = eventData !== undefined');
     lines.push('    ? eventData');
     lines.push('    : { type: eventName.charAt(0).toLowerCase() + eventName.slice(1) };');
+    // 実行時エラー報告用に、実行するコード本文を先にデコードしておく（catch内でも参照するため）
+    lines.push('  const decoded = decodeURIComponent(escape(atob(_vjaB64[key])));');
     lines.push('  try {');
     lines.push('    if (_vjaRunningKeys[key]) {');
     lines.push('      throw new Error("無限ループの可能性を検知したため処理を中断しました。" + label + " の実行中に、同じウィジェット・同じイベントが vja.trigger 等によって再度呼び出されました。イベントJS内の自己再発火（例: 自分自身と同じウィジェット名・同じイベントに対する vja.trigger 呼び出し）を見直してください。");');
@@ -1316,7 +1324,7 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     lines.push('    _vjaRunningKeys[key] = true;');
     lines.push('    if (!_vjaCache[key]) {');
     lines.push('      const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;');
-    lines.push('      const code = decodeURIComponent(escape(atob(_vjaB64[key])));');
+    lines.push('      const code = decoded;');
     lines.push('      _vjaCache[key] = new AsyncFunction("vja", "event", code + "\\n//# sourceURL=vja://" + key);');
     lines.push('    }');
 
@@ -1325,6 +1333,7 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     lines.push('    if (window._vjaLastError) {');
     lines.push('      window.vja?.log?.debug?.(_vjaErrDetail(label, key, window._vjaLastError));');
     lines.push('      window.vja?.log?.warn?.(label + " 実行失敗（エラーあり）");');
+    lines.push('      window.vja?.app?.reportRuntimeError?.(_vjaBuildErrReport(widgetName, eventName, window._vjaLastError, "swallowed", decoded));');
     lines.push('    } else {');
     lines.push('');
     lines.push('    }');
@@ -1333,6 +1342,7 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
     lines.push('    window.vja?.log?.error?.(label + " 実行エラー: " + msg);');
     lines.push('    // エラー終了時: スローエラーを優先してdebugで詳細出力');
     lines.push('    window.vja?.log?.debug?.(_vjaErrDetail(label, key, e));');
+    lines.push('    window.vja?.app?.reportRuntimeError?.(_vjaBuildErrReport(widgetName, eventName, e, "thrown", decoded));');
     lines.push('    await window.vja?.app?.showDialog?.("イベントエラー:\\n" + msg)?.catch(() => {});');
     lines.push('  } finally {');
     lines.push('    delete _vjaRunningKeys[key];');

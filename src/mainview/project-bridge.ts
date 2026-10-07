@@ -78,6 +78,8 @@ w.vja.app = {
     // showDialog / showConfirm はフロント側 #dialog-root ダイアログで処理
     ...makeDialogHelpers(w),
     closeWindow: () => s.stopProjectRequest({}),
+    // 実行時エラーをデザイナーへ報告する（_vjaRunが呼ぶ。報告の失敗でイベント処理を止めない）
+    reportRuntimeError: (report: any) => { try { s.reportRuntimeErrorRequest({ report }); } catch { /* 報告は補助機能 */ } },
     loadScript: (url: string) =>
         new Promise<void>((resolve, reject) => {
             if (document.querySelector(`script[src="${url}"]`)) { resolve(); return; }
