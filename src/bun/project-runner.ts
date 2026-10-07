@@ -14,6 +14,7 @@ import {
     fileExistsHandler, fileDeleteHandler, fileCopyHandler,
     dirCreateHandler, dirDeleteHandler, dirListHandler, dirExistsHandler,
 } from "./fs-rpc-handlers";
+import { buildRuntimeErrorReport } from "./runtime-error-snippet";
 
 // 実行フォームのHTML内に自前描画しているカスタムタイトルバーの高さ(px)。
 // index.ts の buildFormHtml() 内 #vja-custom-titlebar の height:28px と必ず一致させること。
@@ -126,6 +127,9 @@ const _dbExecute = (sql: string, params?: any[]): any => {
     catch (e: any) { console.error("[db] execute failed:", e.message); return null; }
 };
 
+// 実行時エラーをデザイナーへ報告するコールバック（openProjectWindowで設定。OnExitはウィンドウが閉じた後に動くため、設定は保持する）
+let _onRuntimeError: ((report: Record<string, any>) => void) | undefined;
+
 const _runAppEventCode = async (name: string, code: string): Promise<void> => {
     try {
         const vja = {
@@ -153,6 +157,10 @@ const _runAppEventCode = async (name: string, code: string): Promise<void> => {
         console.log(`[app] ${name} 実行完了`);
     } catch (e: any) {
         console.error(`[app] ${name} 実行エラー:`, e.message);
+        // デザイナーの「実行エラー」一覧へ報告する（widgetName="appev"がアプリイベントの印。実行ウィンドウ側のイベントと同じ報告形式）。
+        // 先頭に`"use strict";\n`を足しているため行補正は3（runtime-error-snippet.tsのAIメモ参照）
+        try { _onRuntimeError?.(buildRuntimeErrorReport({ widgetName: "appev", eventName: name, e, kind: "thrown", code, lineOffset: 3 })); }
+        catch (e2: any) { console.error("[app] 実行時エラーの報告に失敗:", e2.message); }
     }
 };
 
@@ -262,6 +270,7 @@ export const openProjectWindow = async (htmlPath: string, w: number, h: number, 
     // 実行ウィンドウから報告された実行時エラーを、デザイナーへ中継するコールバック
     onRuntimeError?: (report: Record<string, any>) => void): Promise<void> => {
     _session.clear();
+    _onRuntimeError = onRuntimeError;
 
     _projectRPC = BrowserView.defineRPC<VjaRPCType>({
         // タイムアウト無し（Infinity）。理由はsrc/bun/index.tsの同項目コメント参照。

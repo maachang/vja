@@ -2,7 +2,7 @@
 // 実行ウィンドウへ埋め込む実行時エラー報告コード（runtime-error-snippet.ts）のテスト。
 // 文字列を new Function で読み込み、行番号の補正・抜粋・種別を検証する。
 import { describe, test, expect } from "bun:test";
-import { RUNTIME_ERROR_SNIPPET } from "./runtime-error-snippet";
+import { RUNTIME_ERROR_SNIPPET, buildRuntimeErrorReport } from "./runtime-error-snippet";
 
 const load = (formName = "Form1") => {
     const win: any = { _vjaFormName: formName };
@@ -57,5 +57,31 @@ describe("_vjaBuildErrReport", () => {
     test("stackは2000文字で切る", () => {
         const r = load().build("btn", "Click", { message: "m", stack: "x".repeat(5000) }, "thrown", CODE);
         expect(r.stack.length).toBe(2000);
+    });
+});
+
+describe("buildRuntimeErrorReport（Bun側・アプリイベント用）", () => {
+    test("実行ウィンドウ側の文字列JSと同じ入力なら同じ出力になる（補正2）", () => {
+        const cases: any[] = [
+            { message: "m", name: "TypeError", line: 5, column: 5, stack: "s" },
+            { message: "m", stack: "TypeError: x\n    at eval (vja://btn_Click:5:7)" },
+            { message: "m", line: 2, column: 1 },
+            { message: "m" },
+            "文字列で投げた",
+        ];
+        for (const e of cases) {
+            const a = load("F").build("btn", "Click", e, "thrown", CODE);
+            const b = buildRuntimeErrorReport({ formName: "F", widgetName: "btn", eventName: "Click", e, kind: "thrown", code: CODE, lineOffset: 2 });
+            expect({ ...b, time: 0 }).toEqual({ ...a, time: 0 });
+        }
+    });
+    test("Bun(JSC)で実際にAsyncFunctionを実行して、コード3行目の例外が3行目と報告される（補正3）", async () => {
+        const AF = Object.getPrototypeOf(async function () { }).constructor;
+        const code = "var a = 1;\nvar b = 2;\nthrow new Error('boom');\nvar c = 3;";
+        let err: any;
+        try { await new AF("vja", `"use strict";\n${code}`)({}); } catch (e) { err = e; }
+        const r = buildRuntimeErrorReport({ widgetName: "appev", eventName: "onStart", e: err, kind: "thrown", code, lineOffset: 3 });
+        expect(r).toMatchObject({ widgetName: "appev", eventName: "onStart", message: "boom", line: 3 });
+        expect(r.excerpt).toContain(" >   3: throw new Error('boom');");
     });
 });

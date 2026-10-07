@@ -4,6 +4,7 @@
 // バグ入りコード＋実行時エラー報告を渡し、修正後コードを機械判定する。
 //   S1 コードの誤り(thrown)   : 戻り値(配列)を誤ったプロパティで読んでいる → 修正されること
 //   S2 握りつぶし(swallowed)  : 存在しないテーブル名でqueryしcatchでconsole.errorのみ → テーブル名が直ること
+//   S4 アプリイベント(thrown) : OnStart(Bun側実行)で存在しないAPIを呼んでいる → 実在のAPIへ直ること
 //   S3 外部要因(thrown)       : vja.fetchの失敗 → 通信呼び出し(vja.fetchまたは同じhttpカテゴリのvja.http.get)は残し、失敗時の処理(try/catch)が加わること
 //
 // 【使い方】
@@ -65,10 +66,20 @@ const SCENARIOS = [
         apiOpt: ["http"], // 実際にvja.fetchを使うイベントでは、任意API「http」が有効化されている
         ok: (c: string) => /vja\.(fetch|http\.get)\s*\(\s*['"]https:\/\/api\.example\.com\/items['"]/.test(c) && /\btry\b/.test(c) && /\bcatch\b/.test(c),
     },
+    {
+        // アプリイベント(OnStart。Bun側で実行)。報告はwidgetName="appev"
+        id: "S4-アプリイベント(存在しないAPI)",
+        isApp: true,
+        code: "var rows = vja.db.queryAll('SELECT COUNT(*) AS cnt FROM test_items');\nvja.session.set('itemCount', String(rows[0].cnt));",
+        yaml: "説明: 起動時にtest_itemsテーブルの件数を数え、セッションの itemCount に文字列で保存する\n入力チェック: なし\nアクション:\n  - test_itemsの件数をSELECT COUNTで取得する\n  - 件数を文字列にしてセッション itemCount へ保存する\n正常終了: なし\nエラー終了: ログに出力",
+        rt: { kind: "thrown", formName: "", widgetName: "appev", eventName: "onStart", message: "vja.db.queryAll is not a function. (In 'vja.db.queryAll(\"SELECT COUNT(*) AS cnt FROM test_items\")', 'vja.db.queryAll' is undefined)", line: 1, column: 12, excerpt: " >   1: var rows = vja.db.queryAll('SELECT COUNT(*) AS cnt FROM test_items');\n     2: vja.session.set('itemCount', String(rows[0].cnt));" },
+        ok: (c: string) => !/queryAll/.test(c) && /vja\.db\.query\s*\(/.test(c) && /session\.set\s*\(\s*['"]itemCount['"]/.test(c),
+    },
 ];
 
-const setup = async (apiOpt: string[] | undefined) => {
+const setup = async (apiOpt: string[] | undefined, appYaml?: string) => {
     const d = JSON.parse(JSON.stringify(base));
+    if (appYaml) d.projectInfo = { ...(d.projectInfo || {}), appEvents: { onStart_yaml: appYaml } };
     d.apiOptOverrides = apiOpt ? { "2_Click": apiOpt } : {};
     let r = await call("testApplyProjectData", { data: d });
     if (!r.ok) throw new Error("applyProjectData: " + r.error);
@@ -80,14 +91,17 @@ const setup = async (apiOpt: string[] | undefined) => {
 const stat: Record<string, number> = {};
 for (const sc of SCENARIOS) {
     stat[sc.id] = 0;
-    await setup((sc as any).apiOpt);
+    await setup((sc as any).apiOpt, (sc as any).isApp ? (sc as any).yaml : undefined);
     // 説明(YAML)はAI修正プロンプトの元になるため、シナリオごとにコードと整合したものへ差し替える（指定が無ければ題材のまま）
     const ev = (base.forms[0].widgets.find((w: any) => w.id === 2).events || {}).Click;
-    await call("testSaveYaml", { wid: 2, evName: "Click", yaml: (sc as any).yaml || ev });
+    if (!(sc as any).isApp) await call("testSaveYaml", { wid: 2, evName: "Click", yaml: (sc as any).yaml || ev });
     for (let i = 1; i <= RUNS; i++) {
         // AI修正のプロンプトはYAMLをエディタ欄(DOM)から読む。修正実行中のローディング表示でエディタが閉じるため、毎回開き直す（実際の「AIで修正」と同じ状態）
-        await call("testOpenYamlEditor", { wid: 2, evName: "Click" });
-        const res = await call("testManualRetryAiFix", { wid: 2, evName: "Click", currentCode: sc.code, runtimeError: sc.rt });
+        if ((sc as any).isApp) await call("testOpenModal", { fn: "openAppEvents" });
+        else await call("testOpenYamlEditor", { wid: 2, evName: "Click" });
+        const res = await call("testManualRetryAiFix", (sc as any).isApp
+            ? { wid: "appev", evName: "onStart", isAppEvent: true, currentCode: sc.code, runtimeError: sc.rt }
+            : { wid: 2, evName: "Click", currentCode: sc.code, runtimeError: sc.rt });
         const code: string = res.normalizedCode && res.code ? res.code : "";
         const judged = res.ok && !res.alreadyOk && sc.ok(code);
         if (judged) stat[sc.id]++;

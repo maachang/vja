@@ -44,3 +44,36 @@ function _vjaBuildErrReport(widgetName, eventName, e, kind, code) {
   };
 }
 `;
+
+// Bun側（アプリイベント OnStart/OnExit。project-runner.ts の _runAppEventCode）で実行時エラーを報告形式にする。
+// 上の RUNTIME_ERROR_SNIPPET（実行ウィンドウ側の文字列JS）と同じロジックの純粋関数版。両者の出力が一致することは
+// runtime-error-snippet.test.ts で確認している（片方を直したらもう片方も直すこと）。
+// 【AIメモ】行補正lineOffsetは、実行コードの先頭に足した行数＋AsyncFunction自身の2行。Bun(JSC)で実測:
+//   `"use strict";\n` + コード のとき、コード3行目の例外 → e.line=6（補正3）。実行ウィンドウ側は先頭2行足しなので補正2。
+export const buildRuntimeErrorReport = (o: {
+    formName?: string; widgetName: string; eventName: string; e: any; kind: "thrown" | "swallowed"; code: string; lineOffset: number;
+}): Record<string, any> => {
+    const e = o.e;
+    let line: number | null = null, col: number | null = null;
+    if (e && typeof e.line === "number") { line = e.line; col = typeof e.column === "number" ? e.column : null; }
+    else if (e && typeof e.stack === "string") {
+        const m = e.stack.match(/vja:\/\/[^\s:)]+:(\d+):(\d+)/);
+        if (m) { line = parseInt(m[1], 10); col = parseInt(m[2], 10); }
+    }
+    if (line !== null) { line -= o.lineOffset; if (line < 1) line = null; }
+    const lines = String(o.code || "").split("\n");
+    let excerpt = "";
+    if (line) {
+        const s = Math.max(0, line - 4), t = Math.min(lines.length - 1, line);
+        excerpt = lines.slice(s, t + 1).map((l, i) => {
+            const no = s + i + 1;
+            return (no === line ? " > " : "   ") + String(no).padStart(3) + ": " + l;
+        }).join("\n");
+    }
+    return {
+        kind: o.kind, formName: o.formName || "", widgetName: o.widgetName, eventName: o.eventName,
+        name: (e && e.name) || "", message: String((e && e.message) || e),
+        line, column: col,
+        stack: String((e && e.stack) || "").slice(0, 2000), excerpt, time: Date.now(),
+    };
+};

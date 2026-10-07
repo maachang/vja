@@ -101,3 +101,4 @@
   - 任意API（`vja.fetch`等）を使うシナリオは`apiOptOverrides["<wid>_<ev>"]=["http"]`で有効化しておく。無効だと「無効化されたAPI」として回避され、別の実装に書き換えられる。
   - gpt系は、バグ箇所だけでなくYAMLに沿ってイベント全体を書き直すことがある。判定は「バグの除去」を見て、特定の書き方（`rows.length`等）まで要求しない。
 - 一覧のボタン操作（`openRuntimeErrorEvent`/`aiFixRuntimeError`）と、実行ウィンドウからの実際の通知経路は、自動テスト未対応。手元で1回確認すること。
+- フェーズ4（アプリイベント＝Bun側のOnStart/OnExit）: 報告は`widgetName="appev"`、`eventName=onStart/onExit`。Bun側の行補正は3（`"use strict";\n`を足した AsyncFunction、Bun(JSC)実測）。S4（OnStartで存在しないAPIを呼ぶ）は qwen 10/10、gpt-6-luna 10/10。握りつぶし（swallowed）はBun側では未対応（`_vjaLastError`相当が無い）。

@@ -16,6 +16,7 @@
      - 実行ウィンドウ→Bun→bridge.ts→ここ、の経路。報告の生成は src/bun/runtime-error-snippet.ts、
        検証・同一エラーの集約は src/mainview/bridge-common.ts（normalizeRuntimeError/addRuntimeError）。
      - 実際の入力値は報告に含めない（メッセージ・stack・コード抜粋のみ）。
+   - アプリイベント（Bun側のOnStart/OnExit）の報告は widgetName="appev"、eventName=onStart/onExit（フェーズ4）。
    2026-10-07、実行時エラーをAIが修正対応できる形にする作業のフェーズ1として追加。
 ═══════════════════════════════════════════════════════════════ */
 
@@ -50,7 +51,7 @@ function openRuntimeErrors() {
         rowsHtml += render("re-tpl-row", {
             kindLabel: e.kind === "swallowed" ? "握りつぶし" : "例外",
             kindColor: e.kind === "swallowed" ? "#e0a030" : "#ff5f56",
-            formName: e.formName, widgetName: e.widgetName, eventName: e.eventName,
+            title: e.widgetName === "appev" ? "アプリイベント / " + e.eventName : e.formName + " / " + e.widgetName + " / " + e.eventName,
             lineLabel: e.line != null ? e.line + "行目" : "",
             countLabel: e.count > 1 ? " ・" + e.count + "回" : "",
             message: e.message,
@@ -71,14 +72,23 @@ function openRuntimeErrors() {
 function openRuntimeErrorEvent(i, thenAiFix) {
     const e = _runtimeErrors[i];
     if (!e) return;
-    const forms = getProjectData().forms;
-    let fi = forms.findIndex((f) => f.cfg?.name === e.formName && (f.widgets || []).some((w) => w.name === e.widgetName));
-    if (fi < 0) fi = forms.findIndex((f) => (f.widgets || []).some((w) => w.name === e.widgetName));
-    if (fi < 0) { showToast("該当するウィジェット「" + e.widgetName + "」が見つかりません", 4000); return; }
-    const w = forms[fi].widgets.find((x) => x.name === e.widgetName);
-    closeModal();
-    switchForm(fi);
-    openYaml(w.id, e.eventName);
+    // widgetName="appev" はアプリイベント（OnStart/OnExit。Bun側で実行）。実行ウィンドウ側のイベントとは開き方が異なる
+    const isAppEvent = e.widgetName === "appev";
+    let wid = "appev";
+    if (isAppEvent) {
+        closeModal();
+        openAppEvents(e.eventName);
+    } else {
+        const forms = getProjectData().forms;
+        let fi = forms.findIndex((f) => f.cfg?.name === e.formName && (f.widgets || []).some((w) => w.name === e.widgetName));
+        if (fi < 0) fi = forms.findIndex((f) => (f.widgets || []).some((w) => w.name === e.widgetName));
+        if (fi < 0) { showToast("該当するウィジェット「" + e.widgetName + "」が見つかりません", 4000); return; }
+        const w = forms[fi].widgets.find((x) => x.name === e.widgetName);
+        wid = w.id;
+        closeModal();
+        switchForm(fi);
+        openYaml(w.id, e.eventName);
+    }
     yamlTabSwitch("js");
     const ta = $("js-ta");
     if (ta && e.line != null) {
@@ -90,7 +100,7 @@ function openRuntimeErrorEvent(i, thenAiFix) {
         ta.scrollTop = Math.max(0, (ln - 3)) * parseFloat(getComputedStyle(ta).lineHeight || 18);
     }
     // 「AIで修正」: イベントを開いた状態で、実行時エラーを添えて既存のAI修正を実行する（結果はエディタ欄へ入るだけで、保存は利用者が行う）
-    if (thenAiFix) manualRetryAiFix(w.id, e.eventName, false, false, e);
+    if (thenAiFix) manualRetryAiFix(wid, e.eventName, isAppEvent, false, e);
 }
 
 function aiFixRuntimeError(i) {
