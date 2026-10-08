@@ -842,6 +842,19 @@ function _getEventDocText(wid, evName) {
     return (w && w.docCode && w.docCode[evName]) || "";
 }
 
+// 生成したイベントYAMLの「アクション:」に手順が1つも無いか（`アクション: []`や見出しだけ）を判定する。
+function isYamlActionsEmpty(yamlText) {
+    const lines = yamlText.split("\n");
+    const i = lines.findIndex(l => /^アクション\s*:/.test(l));
+    if (i < 0) return true;
+    if (/^アクション\s*:\s*\S/.test(lines[i]) && !/^アクション\s*:\s*\[\s*\]\s*$/.test(lines[i])) return false;
+    for (let j = i + 1; j < lines.length; j++) {
+        if (/^\S/.test(lines[j])) break; // 次のトップレベルキー
+        if (/^\s*-\s+\S/.test(lines[j])) return false;
+    }
+    return true;
+}
+
 // JSコード中に（識別子として）出現するウィジェット名を、コードで機械抽出する。
 // 小さいモデルは名前を日本語へ言い換えてしまうため、AIには探させず確定した名前を渡す。
 function findWidgetNamesInCode(code) {
@@ -934,6 +947,10 @@ async function jsToYamlGenerate(wid, evName) {
         yamlTabSwitch("yaml");
         // コードに出てくるウィジェット名がYAMLに無ければ警告する（自動書き換えはしない）
         const missing = findWidgetNamesInCode(jsCode).filter(name => !stripped.includes(name));
+        if (isYamlActionsEmpty(stripped)) {
+            showToast("📖 YAMLを作成しましたが、「アクション」が空です。内容を確認してください");
+            return;
+        }
         showToast(missing.length > 0
             ? "📖 YAMLを作成しましたが、ウィジェット名 " + missing.join(", ") + " がYAMLに出ていません。確認してください"
             : "📖 JSコードからYAMLを作成・反映しました（📋 YAMLタブを確認）");
@@ -945,5 +962,5 @@ Object.assign(window, {
     findMissingAwaits, fixMissingAwaits, findUnknownWidgetNames, formatJsCode, escapeRegExp,
     generateEventJs, yamlAiGenerate,
     generateTextToYaml, textToYamlGenerate,
-    generateJsToYaml, jsToYamlGenerate, findWidgetNamesInCode,
+    generateJsToYaml, jsToYamlGenerate, findWidgetNamesInCode, isYamlActionsEmpty,
 });
