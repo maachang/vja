@@ -30,6 +30,7 @@
         "templates/widget-preview.html",
         "templates/editor-utils.html",
         "templates/runtime-errors.html",
+        "templates/help.html",
     ];
 
     function loadTemplateFileSync(path) {

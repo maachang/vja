@@ -43,6 +43,7 @@ document.addEventListener("keydown", (e) => {
     // 以下は入力フィールド内では無効
     if (inInput) return;
 
+    if (e.key === "F1") { e.preventDefault(); openHelp(); }
     if (e.ctrlKey && e.key === "z") { e.preventDefault(); actUndo(); }
     if (e.ctrlKey && e.key === "y") { e.preventDefault(); actRedo(); }
     if (e.ctrlKey && e.key === "s") { e.preventDefault(); actSave(); }

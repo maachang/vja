@@ -206,6 +206,12 @@
                     d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" />
             </svg>AI設定
         </button>
+        <button class="tb-btn" onmousedown="openHelp()" title="ヘルプ（F1）">
+            <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01" />
+            </svg>ヘルプ
+        </button>
         <button class="tb-btn" onmousedown="openCloudInfraConfig()" title="クラウドインフラ設定">
             <svg viewBox="0 0 24 24">
                 <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
@@ -484,6 +490,7 @@
     <script src="./vja-yaml-editor.js"></script>
     <script src="./vja-mock-check.js"></script>
     <script src="./vja-runtime-errors.js"></script>
+    <script src="./vja-help.js"></script>
     <script src="./vja-form-design-ai.js"></script>
     <script src="./vja-ai-gen-core.js"></script>
     <script src="./vja-editor-search.js"></script>

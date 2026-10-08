@@ -203,7 +203,7 @@ const _testRenderCloudModal = () => {
 // 引数無しでモーダルを開く関数を安全に呼び出し、描画結果のHTMLを返す
 // （jhtmlテンプレート移行の検証用。任意コード実行を避けるためホワイトリスト方式）
 const _TEST_OPEN_MODAL_FNS = [
-    "openProjectInfo", "openAppEvents", "openExtRuntime", "openRuntimeErrors",
+    "openProjectInfo", "openAppEvents", "openExtRuntime", "openRuntimeErrors", "openHelp",
     "openFormConstEditor", "openCloudInfraConfig", "openFontConfig",
     "openDebugTools", "openApiRef", "openAiValidationDetailModal", "openFormDesignAi",
     "openAiConfig", "openConstEditor", "openTableManager", "openValidationEditor",

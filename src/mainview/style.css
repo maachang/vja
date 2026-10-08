@@ -2625,3 +2625,16 @@ select.pv-input option {
     outline: 1px solid var(--accent);
     box-sizing: border-box;
 }
+
+/* ヘルプ画面（vja-help.js）の本文（marked.parse()の出力）の見た目 */
+.help-md h1 { font-size: 20px; margin: 0 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.help-md h2 { font-size: 16px; margin: 22px 0 8px; }
+.help-md h3 { font-size: 14px; margin: 16px 0 6px; }
+.help-md p, .help-md ul, .help-md ol { margin: 8px 0; }
+.help-md ul, .help-md ol { padding-left: 22px; }
+.help-md code { font-family: monospace; font-size: 12px; background: var(--bg3); padding: 1px 4px; border-radius: 3px; }
+.help-md pre { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; overflow-x: auto; }
+.help-md pre code { background: none; padding: 0; }
+.help-md table { border-collapse: collapse; margin: 10px 0; }
+.help-md th, .help-md td { border: 1px solid var(--border); padding: 4px 10px; text-align: left; }
+.help-md th { background: var(--bg3); }

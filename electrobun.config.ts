@@ -93,6 +93,12 @@ if (process.argv.includes("build") || process.argv.includes("dev")) {
     // テンプレート（.md）。上のtemplates/ディレクトリと全く同じ理由・配信経路
     // （views://mainview/...）で明示的なコピー登録が必要。
     target[join("src", "mainview", "prompts")] = join("views", "mainview", "prompts");
+    // ヘルプ画面（vja-help.js）が同期XHRで読み込むヘルプ文書（.md）。templates/prompts/と同じ理由・配信経路。
+    target[join("src", "mainview", "help")] = join("views", "mainview", "help");
+    // index.htmlの<script src="./marked.umd.js">等はバンドラ(Bun)がCommonJSモジュールとして取り込み、
+    // window.markedとして公開されない。そのため、ヘルプ画面（vja-help.js）は素の<script>として
+    // 動的に読み込む。そのための実体をviews/mainview/へコピーする。
+    target[join("src", "mainview", "marked.umd.js")] = join("views", "mainview", "marked.umd.js");
 }
 
 // バージョンを取得して差し替える.
