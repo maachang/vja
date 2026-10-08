@@ -558,6 +558,24 @@ ${_safeYamlFence(yamlDef)}
     o.TEXT_TO_YAML_SYS_PROMPT = ENG_TEXT_TO_YAML_SYS_PROMPT;
     o.TEXT_TO_YAML_USER_PROMPT = ENG_TEXT_TO_YAML_USER_PROMPT;
 
+    // [日本語対訳メモ]（AIには送られない）イベントのJSコードを読み、実際にやっていることを
+    // イベントYAML（TEXT_TO_YAMLと同じ形式）へ書き起こさせるプロンプト（＝「📖 JSからYAML化」）。
+    const ENG_JS_TO_YAML_SYS_PROMPT = function ({ widgetsCtx, tablesCtx }) {
+        return _fillTpl(_loadPromptTpl("js-to-yaml.sys.eng.md"), {
+            widgetsCtx: widgetsCtx || "(No widgets)",
+            tablesCtx: tablesCtx || "(No DB tables)",
+        }).trim() + "\n";
+    };
+    // usedWidgetNames: コード中に出てくるウィジェット名の配列（コードで機械抽出したもの）
+    const ENG_JS_TO_YAML_USER_PROMPT = function (jsCode, usedWidgetNames) {
+        return _fillTpl(_loadPromptTpl("js-to-yaml.user.eng.md"), {
+            jsCode: jsCode.trim(),
+            usedWidgets: (usedWidgetNames && usedWidgetNames.length > 0) ? usedWidgetNames.join(", ") : "(none)",
+        });
+    };
+    o.JS_TO_YAML_SYS_PROMPT = ENG_JS_TO_YAML_SYS_PROMPT;
+    o.JS_TO_YAML_USER_PROMPT = ENG_JS_TO_YAML_USER_PROMPT;
+
     // [プロンプト]自然言語要求からフォームデザインYAMLを生成
     // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
     // 「画面デザインYAMLドラフト生成」（✨ YAMLドラフト生成ボタン）用プロンプト。

@@ -572,6 +572,33 @@ const _testSetAutoConfirm = (p: { value: boolean | null }) => {
 // 入力を正しく反映しているか」をサイズ・内容の両面から直接検証するために使う
 // （2026-09-21、yamlAiGenerate等でDOM読み取りタイミングの回帰が発生した際の教訓。
 //  詳細は.claude/notes/mcp-test.mdの当該不具合の記録を参照）。
+// jsToYamlGenerate()（「📖 JSからYAML化」ボタン本体）の実機確認用。JSを対象ウィジェットへ
+// 書き込み、YAMLエディタを開いてから、実際のボタン操作フロー全体を実行する。
+// 事前にtestSetAutoConfirmで自動応答を有効にしておく必要がある（上書き確認ダイアログのため）。
+// 戻り値: 実際にデータモデルへ書き込まれたYAML・依頼文と、送信されたプロンプト。
+const _testJsToYamlGenerateFull = async (p: { wid: number; evName: string; js: string }) => {
+    const g = window as any;
+    try {
+        const w = g.getWidget(p.wid);
+        if (!w) return { ok: false, error: `ウィジェットが見つかりません: id=${p.wid}` };
+        if (!w.jsCode) w.jsCode = {};
+        w.jsCode[p.evName] = p.js;
+        g.openYaml(p.wid, p.evName);
+        await g.jsToYamlGenerate(p.wid, p.evName);
+        // 生成後のエディタ反映(requestAnimationFrame×2)を待つ
+        await new Promise((r) => setTimeout(r, 300));
+        const w2 = g.getWidget(p.wid);
+        return {
+            ok: true,
+            yaml: (w2.events && w2.events[p.evName]) || "",
+            doc: (w2.docCode && w2.docCode[p.evName]) || "",
+            yamlTa: (document.getElementById("yaml-ta") as HTMLTextAreaElement | null)?.value ?? null,
+            prompt: g.__vjaLastPrompt || null,
+        };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
 const _testGetLastPrompt = () => {
     const g = window as any;
     return { ok: true, prompt: g.__vjaLastPrompt || null };
@@ -716,6 +743,7 @@ const rpc = Electroview.defineRPC({
             testGetWidgetHtml: _testGetWidgetHtml,
             testGetPropsHtml: _testGetPropsHtml,
             testOpenYamlEditor: _testOpenYamlEditor,
+            testJsToYamlGenerateFull: _testJsToYamlGenerateFull,
             testOpenTableEdit: _testOpenTableEdit,
             testOpenValidationEdit: _testOpenValidationEdit,
             testRenderCloudModal: _testRenderCloudModal,

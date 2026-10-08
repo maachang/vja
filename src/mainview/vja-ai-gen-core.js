@@ -469,7 +469,7 @@ function buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowConte
         }
     );
 
-    return { sysPrompt, userPrompt, validationName, wtag: w?.tag };
+    return { sysPrompt, userPrompt, validationName, wtag: w?.tag, allWidgetsCtx, tablesCtx };
 }
 
 // async function handleXxx() { ... } のラッパーを自動除去
@@ -701,6 +701,34 @@ function _convertTextToYamlEngKeysToJp(yamlText) {
     return result;
 }
 
+// 生成したイベントYAML（と依頼文）をデータモデルへ書き込み、エディタを開き直す。
+// generateTextToYaml()とgenerateJsToYaml()で共用。docText===undefinedなら依頼文は変更しない。
+function _applyGeneratedEventYaml(wid, evName, yamlText, docText) {
+    const isAppEvent = (wid === "appev");
+    const isFormEvent = (wid === "form");
+    if (isFormEvent) {
+        const f = getProjectData().forms[getProjectData().curFormIdx];
+        if (!f.events) f.events = {};
+        f.events[evName] = yamlText;
+        if (docText !== undefined) f.events["_doc_" + evName] = docText;
+        openFormYaml(evName);
+    } else if (isAppEvent) {
+        if (!getProjectData().projectInfo.appEvents) getProjectData().projectInfo.appEvents = {};
+        getProjectData().projectInfo.appEvents[evName + "_yaml"] = yamlText;
+        if (docText !== undefined) getProjectData().projectInfo.appEvents[evName + "_doc"] = docText;
+        openAppEvents(evName);
+    } else {
+        const w = getWidget(wid);
+        if (w) {
+            if (!w.events) w.events = {};
+            if (!w.docCode) w.docCode = {};
+            w.events[evName] = yamlText;
+            if (docText !== undefined) w.docCode[evName] = docText;
+        }
+        openYaml(wid, evName);
+    }
+}
+
 // イベントYAMLドラフト自動生成（Text to YAML）のロジック本体（DOM非依存）。
 // 自動テスト用（bridge.tsのtestTextToYamlGenerateハンドラ）に、DOM読み書きと
 // 分離してある。プロンプト生成→AI呼び出し→マークダウン除去・キー変換→
@@ -735,27 +763,7 @@ async function generateTextToYaml(wid, evName, inputText, domOverride = null) {
             const stripped = _convertTextToYamlEngKeysToJp(stripped0);
 
             // モーダルを再表示する前にデータモデルに新YAMLと依頼テキストを書き込み
-            if (isFormEvent) {
-                const f = getProjectData().forms[getProjectData().curFormIdx];
-                if (!f.events) f.events = {};
-                f.events[evName] = stripped;
-                f.events["_doc_" + evName] = inputText;
-                openFormYaml(evName);
-            } else if (isAppEvent) {
-                if (!getProjectData().projectInfo.appEvents) getProjectData().projectInfo.appEvents = {};
-                getProjectData().projectInfo.appEvents[evName + "_yaml"] = stripped;
-                getProjectData().projectInfo.appEvents[evName + "_doc"] = inputText;
-                openAppEvents(evName);
-            } else {
-                const w = getWidget(wid);
-                if (w) {
-                    if (!w.events) w.events = {};
-                    if (!w.docCode) w.docCode = {};
-                    w.events[evName] = stripped;
-                    w.docCode[evName] = inputText;
-                }
-                openYaml(wid, evName);
-            }
+            _applyGeneratedEventYaml(wid, evName, stripped, inputText);
             result = stripped;
         },
         onCancel: async () => {},
@@ -823,9 +831,119 @@ async function textToYamlGenerate(wid, evName) {
     }));
 }
 
+// 既存の依頼文（docCode）を取得する（フォーム/アプリイベント/ウィジェット共通）。
+function _getEventDocText(wid, evName) {
+    if (wid === "form") {
+        const f = getProjectData().forms[getProjectData().curFormIdx];
+        return (f && f.events && f.events["_doc_" + evName]) || "";
+    }
+    if (wid === "appev") return (getProjectData().projectInfo.appEvents || {})[evName + "_doc"] || "";
+    const w = getWidget(wid);
+    return (w && w.docCode && w.docCode[evName]) || "";
+}
+
+// JSコード中に（識別子として）出現するウィジェット名を、コードで機械抽出する。
+// 小さいモデルは名前を日本語へ言い換えてしまうため、AIには探させず確定した名前を渡す。
+function findWidgetNamesInCode(code) {
+    return getProjectData().widgets
+        .map(ww => ww.name)
+        .filter(name => name && new RegExp("(^|[^A-Za-z0-9_$])" + escapeRegExp(name) + "($|[^A-Za-z0-9_$])").test(code));
+}
+
+// イベントのJSコードからイベントYAMLを書き起こす（JS→YAML）のロジック本体（DOM非依存）。
+// jsCode: 呼び出し元がrunAiGenerate()のshowLoadingModal()より前に取得したJS本文。
+// 依頼文（docCode）は空の場合のみ、生成YAMLの「説明」で補う（既にあれば変更しない）。
+// 戻り値: 生成されたYAML文字列（失敗時はnull）。
+async function generateJsToYaml(wid, evName, jsCode, domOverride = null) {
+    const isAppEvent = (wid === "appev");
+    const isFormEvent = (wid === "form");
+    // 全ウィジェット・全テーブルを渡す（コードに出てくる名前の絞り込みはAI任せ）
+    const { allWidgetsCtx, tablesCtx } = buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, false, domOverride);
+
+    const sysPrompt = _PROMPT_DEF.JS_TO_YAML_SYS_PROMPT({ widgetsCtx: allWidgetsCtx, tablesCtx: tablesCtx });
+    const userPrompt = _PROMPT_DEF.JS_TO_YAML_USER_PROMPT(jsCode, findWidgetNamesInCode(jsCode));
+
+    let result = null;
+    await runAiGenerate({
+        systemPrompt: sysPrompt,
+        userPrompt: userPrompt,
+        loadingMsg: "JSコードからYAML作成中…",
+        onSuccess: async (cleanYaml) => {
+            const stripped0 = cleanYaml.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+            const stripped = _convertTextToYamlEngKeysToJp(stripped0);
+            let docText;
+            if (!_getEventDocText(wid, evName).trim()) {
+                const m = stripped.match(/^説明[ \t]*:[ \t]*(.+)$/m);
+                if (m) docText = m[1].trim();
+            }
+            _applyGeneratedEventYaml(wid, evName, stripped, docText);
+            result = stripped;
+        },
+        onCancel: async () => {},
+        onError: async () => {},
+    });
+    return result;
+}
+
+async function jsToYamlGenerate(wid, evName) {
+    if (!getProjectData().aiConfig.enabled) {
+        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
+            closeModal();
+            openAiConfig();
+        }
+        return;
+    }
+
+    const jsTa = $("js-ta");
+    const jsCode = jsTa?.value?.trim() || "";
+    if (!jsCode) {
+        showToast("JSタブにコードがありません（先にJSコードを生成または記述してください）");
+        return;
+    }
+
+    // AI生成操作の前に現在のエディタ内容（依頼・YAML・JS）を即時保存
+    await saveYamlData(wid, evName);
+
+    const yamlTaCur = $("yaml-ta");
+    if (yamlTaCur && yamlTaCur.value.trim().length > 0) {
+        const ok = await vja.app.showConfirm(
+            "YAMLエディタに既存の記述があります。\n" +
+            "JSコードから作成するYAMLで上書きしますか？\n" +
+            "（上書き前に「📌 記録」しておくと、後で戻せます）"
+        );
+        if (!ok) return;
+    }
+
+    // showLoadingModal()でYAMLエディタのDOMが消える前に、必要なDOM値を確保する
+    // （詳細はgenerateEventJs()のAIメモ参照）。
+    const domOverride = { yamlCur: yamlTaCur?.value || "", addPrompt: $("ai-prompt-in")?.value || "" };
+
+    showLoadingModal("JSコードからYAML作成中…");
+
+    const stripped = await generateJsToYaml(wid, evName, jsCode, domOverride);
+    if (stripped === null) return;
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        const newYamlTa = $("yaml-ta");
+        if (newYamlTa) {
+            newYamlTa.value = stripped;
+            yamlHlUpdate();
+            editorUpdateGutter("yaml-ta", "yaml-gutter");
+        }
+        if (typeof saveYamlData === "function") saveYamlData(wid, evName);
+        yamlTabSwitch("yaml");
+        // コードに出てくるウィジェット名がYAMLに無ければ警告する（自動書き換えはしない）
+        const missing = findWidgetNamesInCode(jsCode).filter(name => !stripped.includes(name));
+        showToast(missing.length > 0
+            ? "📖 YAMLを作成しましたが、ウィジェット名 " + missing.join(", ") + " がYAMLに出ていません。確認してください"
+            : "📖 JSコードからYAMLを作成・反映しました（📋 YAMLタブを確認）");
+    }));
+}
+
 Object.assign(window, {
     buildTablesCtxText, getVjaApiWhitelist, narrowTablesByRequest, buildGenPromptContext,
     findMissingAwaits, fixMissingAwaits, findUnknownWidgetNames, formatJsCode, escapeRegExp,
     generateEventJs, yamlAiGenerate,
     generateTextToYaml, textToYamlGenerate,
+    generateJsToYaml, jsToYamlGenerate, findWidgetNamesInCode,
 });

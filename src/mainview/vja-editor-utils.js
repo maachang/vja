@@ -355,6 +355,7 @@ function openFormYaml(evName) {
     const curDoc = f.events["_doc_" + evName] || "";
     pvRegister("yamlSave", () => saveFormYaml(evName));
     pvRegister("yamlTextToYaml", () => textToYamlGenerate("form", evName));
+    pvRegister("yamlJsToYaml", () => jsToYamlGenerate("form", evName));
     pvRegister("yamlAiGen", () => yamlAiGenerate("form", evName));
     pvRegister("yamlAiGenRandom", () => yamlAiGenerate("form", evName, _getBoostedTemperature()));
     pvRegister("yamlMockCheck", () => manualMockCheck(false, evName, undefined, "form"));

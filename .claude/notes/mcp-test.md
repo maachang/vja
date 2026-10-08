@@ -102,3 +102,8 @@
   - gpt系は、バグ箇所だけでなくYAMLに沿ってイベント全体を書き直すことがある。判定は「バグの除去」を見て、特定の書き方（`rows.length`等）まで要求しない。
 - 一覧のボタン操作（`openRuntimeErrorEvent`/`aiFixRuntimeError`）と、実行ウィンドウからの実際の通知経路は、自動テスト未対応。手元で1回確認すること。
 - フェーズ4（アプリイベント＝Bun側のOnStart/OnExit）: 報告は`widgetName="appev"`、`eventName=onStart/onExit`。Bun側の行補正は3（`"use strict";\n`を足した AsyncFunction、Bun(JSC)実測）。S4（OnStartで存在しないAPIを呼ぶ）は qwen 10/10、gpt-6-luna 10/10。握りつぶし（swallowed）はBun側では未対応（`_vjaLastError`相当が無い）。
+
+# JSからYAML化の実機E2E（2026-10-08）
+
+- `bun run mcp/js-to-yaml-e2e.ts [--runs N] [--preset <共通AIプリセット名の一部>]`。テスト用ハンドラ`testJsToYamlGenerateFull`（`bridge.ts`、要`testSetAutoConfirm`）がボタン操作フロー全体を実行する。条件分岐/繰り返し/単純の3シナリオ＋ウィジェット名の保持を判定
+- **起動中のアプリはprompts/*.mdを起動時のコピーで使う**。プロンプトを直したら`bun run mcp`を再起動しないと反映されない。停止は`ps`でPIDを取って`kill`（`pkill -f`/`pgrep -f`は自分のシェルに一致して自殺する）

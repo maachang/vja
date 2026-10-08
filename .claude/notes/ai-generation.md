@@ -93,3 +93,12 @@ vjaの中核コンセプトである「AIに雛形を作ってもらい、それ
 
 - **AI接続設定のプリセット**: 「🤖 AI接続設定」モーダルの「💾 プリセット保存」で、AI接続設定（エンドポイント/モデル/APIキー等）を「📁 プロジェクト固有」（`.vjaproj`に同梱保存）または「🌐 プロジェクト共通」（`~/.vja-designer/ai-global-presets.json`、`loadAiGlobalPresetsRequest`/`saveAiGlobalPresetsRequest`経由、他プロジェクトからも選択可能）のどちらかに保存先を選んで保存できる。同名・同区分のプリセットへ保存すると上書き更新される
 - **無限ループ対策**: AI生成コードが自分自身と同じウィジェット・同じイベントを`vja.trigger.*`で再度発火させる「自己再発火」を、AI生成直後の検証（`_findSelfTriggerRecursion`、生成時にAIへ再生成を促す）と、実行時ランタイム（`src/bun/index.ts`の`_vjaRun`内の`_vjaRunningKeys`による再入検知、検知時はエラーで処理を中断）の二段構えで防止している
+
+# JSからYAML化（JS→イベントYAML、2026-10-08）
+
+- イベントYAMLエディタのAI操作バーの**`📖 JSからYAML化`**ボタン。JSタブの内容から📋 YAMLタブへイベントYAMLを書き起こす（`jsToYamlGenerate`／DOM非依存本体`generateJsToYaml`、`vja-ai-gen-core.js`）。フォーム/ウィジェット/アプリイベント共通。既存YAMLがあれば上書き確認、依頼文(docCode)は空のときだけYAMLの「説明」で補う
+- プロンプトは`prompts/js-to-yaml.{sys,user}.eng.md`。出力キーは英語指示→`_convertTextToYamlEngKeysToJp`で日本語化（text-to-yamlと同じ）。書き込みは共通の`_applyGeneratedEventYaml`
+- コードで機械抽出したウィジェット名（`findWidgetNamesInCode`）をユーザープロンプトへ渡し、生成後にYAMLに無い名前があればトーストで警告（自動書き換えはしない）
+- **既存不具合を修正**: `buildGenPromptContext()`が`allWidgetsCtx`/`tablesCtx`を返しておらず、「✨ YAMLドラフト生成」にウィジェット・テーブル情報が一度も渡っていなかった（初期実装から）。戻り値へ追加済み
+- 実機測定（`mcp/js-to-yaml-e2e.ts`）: gpt-6-luna 9/9。qwen2.5-coder-7bは繰り返し・単純は5/5だが、条件分岐＋showLoading＋DB検索の長めのコードでウィジェット名を日本語へ言い換える（プロンプト文言の追加や名前一覧の受け渡しでは直らず、単一の原因は特定できていない。トースト警告で検知）
+- 未確認: アプリイベント側の実機、YAML→JS再生成の往復

@@ -155,6 +155,7 @@ function openYaml(wid, evName) {
     const isAppEvent = (wid === "appev");
     pvRegister("yamlSave", () => saveYaml(wid, evName));
     pvRegister("yamlTextToYaml", () => textToYamlGenerate(wid, evName));
+    pvRegister("yamlJsToYaml", () => jsToYamlGenerate(wid, evName));
     pvRegister("yamlAiGen", () => yamlAiGenerate(wid, evName));
     pvRegister("yamlAiGenRandom", () => yamlAiGenerate(wid, evName, getBoostedTemperature()));
     pvRegister("yamlMockCheck", () => manualMockCheck(false, evName, getWidget(wid)?.tag, wid));
@@ -900,6 +901,7 @@ function buildYamlEditorHTML(cur, curJs, showWidgets = true, headerHTML = "", ex
     });
     const aiBar = render("ye-tpl-default-ai-bar", {
         attrGenYaml: evtAttr("onmousedown", "pvCall(\"yamlTextToYaml\")"),
+        attrJsToYaml: evtAttr("onmousedown", "pvCall(\"yamlJsToYaml\")"),
         attrGenRandom: evtAttr("onmousedown", "pvCall(\"yamlAiGenRandom\")"),
         attrGen: evtAttr("onmousedown", "pvCall(\"yamlAiGen\")"),
         genLabel: aiEnabled ? "🤖 JSコード生成" : "🤖 JSコード生成（設定要）",

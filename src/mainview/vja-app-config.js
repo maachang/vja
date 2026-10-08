@@ -74,6 +74,7 @@ function openAppEvents(evKey) {
     })).join("");
     pvRegister("yamlSave", saveAppEvent);
     pvRegister("yamlTextToYaml", () => textToYamlGenerate("appev", evKey));
+    pvRegister("yamlJsToYaml", () => jsToYamlGenerate("appev", evKey));
     pvRegister("yamlAiGen", () => yamlAiGenerate("appev", evKey));
     pvRegister("yamlAiGenRandom", () => yamlAiGenerate("appev", evKey, _getBoostedTemperature()));
     pvRegister("yamlMockCheck", () => manualMockCheck(true, evKey, undefined, "appev"));
