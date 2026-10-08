@@ -5,6 +5,8 @@
 //   S1 条件分岐   : if/elseを持つ検索 → 「〜の場合:」「それ以外の場合:」が出ること
 //   S2 繰り返し   : 全行ループ → 「繰り返し:」が出ること
 //   S3 単純        : 1行トースト → 余計な手順が増えないこと
+//   S4 アプリイベント: OnStart(Bun側実行)のJS → アプリイベントのエディタでも動くこと
+// --roundtrip: 生成したYAMLから、実際のボタン操作でJSを再生成し、元のJSの要点（API・名前・構造）が残るかも判定する
 // 共通判定: コードブロック/英語キーが残っていない、「説明:」「アクション:」がある、
 //   JS由来の識別子(vja./await/function等)をYAMLへ書いていない、ウィジェット名・表名が出る、依頼文(docCode)が説明で補われる
 //
@@ -21,6 +23,7 @@ const ROOT = join(import.meta.dir, "..");
 const PORT = process.env.VJA_TEST_PORT || "4570";
 const argv = process.argv.slice(2);
 const opt = (k: string, d: string) => { const i = argv.indexOf("--" + k); return i >= 0 ? argv[i + 1] : d; };
+const ROUNDTRIP = argv.includes("--roundtrip");
 const RUNS = Math.max(1, parseInt(opt("runs", "1"), 10) || 1);
 const LLM = JSON.parse(readFileSync(join(ROOT, "mcp/fixtures/test-llm.local.json"), "utf-8"));
 let API_KEY = "";
@@ -47,12 +50,14 @@ const SCENARIOS = [
         names: ["testSearchInput", "testSearchSelect", "testResultGrid"],
         js: "vja.notify.showLoading();\nvar kw = vja.widget.getValue('testSearchInput');\nvar rows;\nif (kw !== '') {\n    var col = vja.widget.getValue('testSearchSelect');\n    rows = await vja.db.query('SELECT * FROM test_items WHERE ' + col + ' LIKE ?', ['%' + kw + '%']);\n} else {\n    rows = await vja.db.query('SELECT * FROM test_items');\n}\nvja.widget.setValue('testResultGrid', rows);\nvja.notify.hideLoading();",
         ok: (y: string) => (y.match(/場合\s*:/g) || []).length >= 2 && /testSearchInput/.test(y) && /test_items/.test(y),
+        regen: (j: string) => /testSearchInput/.test(j) && /testSearchSelect/.test(j) && /test_items/.test(j) && /\bif\b/.test(j) && /testResultGrid/.test(j),
     },
     {
         id: "S2-繰り返し",
         names: ["testResultGrid"],
         js: "var rows = vja.widget.getValue('testResultGrid');\nfor (const row of rows) {\n    if (row.category === '未分類') {\n        await vja.db.query('UPDATE test_items SET category = ? WHERE id = ?', ['その他', row.id]);\n    }\n}\nvja.notify.toast('更新しました');",
         ok: (y: string) => /繰り返(し|す)\s*:/.test(y) && /の場合\s*:/.test(y) && /test_items/.test(y) && /testResultGrid/.test(y),
+        regen: (j: string) => /\b(for|forEach)\b/.test(j) && /UPDATE\s+test_items/i.test(j) && /testResultGrid/.test(j),
     },
     {
         id: "S3-単純",
@@ -60,6 +65,15 @@ const SCENARIOS = [
         js: "vja.notify.toast('こんにちは');",
         // 単純なコードに、分岐など存在しない手順が足されていないこと（利用テーブルは右パネルの状態で入るため判定しない）
         ok: (y: string) => /こんにちは/.test(y) && !/の場合\s*:/.test(y),
+        regen: (j: string) => /toast\s*\(/.test(j) && /こんにちは/.test(j),
+    },
+    {
+        id: "S4-アプリイベント",
+        wid: "appev", evName: "onStart",
+        names: [] as string[],
+        js: "var rows = await vja.db.query('SELECT COUNT(*) AS cnt FROM test_items');\nvja.session.set('itemCount', String(rows[0].cnt));",
+        ok: (y: string) => /test_items/.test(y) && /itemCount/.test(y),
+        regen: (j: string) => /test_items/.test(j) && /session\.set\s*\(\s*['"]itemCount['"]/.test(j),
     },
 ];
 
@@ -87,15 +101,18 @@ for (const sc of SCENARIOS) {
     stat[sc.id] = 0;
     for (let i = 1; i <= RUNS; i++) {
         await setup(); // 毎回、題材を初期状態（依頼文が空）へ戻す
-        const res = await call("testJsToYamlGenerateFull", { wid: 2, evName: "Click", js: sc.js });
+        const wid = (sc as any).wid ?? 2, evName = (sc as any).evName ?? "Click";
+        const res = await call("testJsToYamlGenerateFull", { wid, evName, js: sc.js, roundtrip: ROUNDTRIP });
         const y: string = res.ok ? res.yaml : "";
         const why = !res.ok ? res.error : (commonNg(y, res.doc || "") || ((sc as any).names as string[]).filter((n) => !y.includes(n)).map((n) => "ウィジェット名が言い換えられた: " + n).join(",") || (sc.ok(y) ? "" : "シナリオ固有の判定NG"));
         const synced = res.ok && res.yamlTa === y;
-        const judged = !why && synced;
+        let rt = "";
+        if (ROUNDTRIP && !why && synced) rt = (sc as any).regen(res.regenJs || "") ? "" : "往復NG（再生成JSに要点が残っていない）";
+        const judged = !why && synced && !rt;
         if (judged) stat[sc.id]++;
-        console.log("[" + sc.id + " #" + i + "] " + (judged ? "OK" : "NG") + (judged ? "" : " — " + (why || "エディタ表示とデータモデルが不一致"))
+        console.log("[" + sc.id + " #" + i + "] " + (judged ? "OK" : "NG") + (judged ? "" : " — " + (why || rt || "エディタ表示とデータモデルが不一致"))
             + (judged && process.env.J2Y_SHOW ? "\n" + y : ""));
-        if (!judged && res.ok) console.log(y.split("\n").map((l: string) => "    | " + l).join("\n"));
+        if (!judged && res.ok) console.log(y.split("\n").map((l: string) => "    | " + l).join("\n") + (rt ? "\n  -- 再生成JS --\n" + (res.regenJs || "").split("\n").map((l: string) => "    > " + l).join("\n") : ""));
     }
 }
 await call("testSetAutoConfirm", { value: null });

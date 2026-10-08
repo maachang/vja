@@ -576,25 +576,48 @@ const _testSetAutoConfirm = (p: { value: boolean | null }) => {
 // 書き込み、YAMLエディタを開いてから、実際のボタン操作フロー全体を実行する。
 // 事前にtestSetAutoConfirmで自動応答を有効にしておく必要がある（上書き確認ダイアログのため）。
 // 戻り値: 実際にデータモデルへ書き込まれたYAML・依頼文と、送信されたプロンプト。
-const _testJsToYamlGenerateFull = async (p: { wid: number; evName: string; js: string }) => {
+const _testJsToYamlGenerateFull = async (p: { wid: number | string; evName: string; js: string; roundtrip?: boolean }) => {
     const g = window as any;
     try {
-        const w = g.getWidget(p.wid);
-        if (!w) return { ok: false, error: `ウィジェットが見つかりません: id=${p.wid}` };
-        if (!w.jsCode) w.jsCode = {};
-        w.jsCode[p.evName] = p.js;
-        g.openYaml(p.wid, p.evName);
+        const isApp = p.wid === "appev";
+        if (isApp) {
+            const pi = g.getProjectData().projectInfo;
+            if (!pi.appEvents) pi.appEvents = {};
+            pi.appEvents[p.evName] = p.js;
+            pi.appEvents[p.evName + "_yaml"] = "";
+            pi.appEvents[p.evName + "_doc"] = "";
+            g.openAppEvents(p.evName);
+        } else {
+            const w = g.getWidget(p.wid);
+            if (!w) return { ok: false, error: `ウィジェットが見つかりません: id=${p.wid}` };
+            if (!w.jsCode) w.jsCode = {};
+            w.jsCode[p.evName] = p.js;
+            g.openYaml(p.wid, p.evName);
+        }
         await g.jsToYamlGenerate(p.wid, p.evName);
         // 生成後のエディタ反映(requestAnimationFrame×2)を待つ
         await new Promise((r) => setTimeout(r, 300));
-        const w2 = g.getWidget(p.wid);
-        return {
-            ok: true,
-            yaml: (w2.events && w2.events[p.evName]) || "",
-            doc: (w2.docCode && w2.docCode[p.evName]) || "",
+        const read = () => {
+            if (isApp) {
+                const ae = g.getProjectData().projectInfo.appEvents || {};
+                return { yaml: ae[p.evName + "_yaml"] || "", doc: ae[p.evName + "_doc"] || "" };
+            }
+            const w2 = g.getWidget(p.wid);
+            return { yaml: (w2.events && w2.events[p.evName]) || "", doc: (w2.docCode && w2.docCode[p.evName]) || "" };
+        };
+        const { yaml, doc } = read();
+        const out: any = {
+            ok: true, yaml, doc,
             yamlTa: (document.getElementById("yaml-ta") as HTMLTextAreaElement | null)?.value ?? null,
             prompt: g.__vjaLastPrompt || null,
         };
+        // 往復確認: 生成したYAMLからJSを再生成し、再生成後のJS（エディタ上）を返す
+        if (p.roundtrip) {
+            await g.yamlAiGenerate(p.wid, p.evName);
+            await new Promise((r) => setTimeout(r, 300));
+            out.regenJs = (document.getElementById("js-ta") as HTMLTextAreaElement | null)?.value ?? null;
+        }
+        return out;
     } catch (e: any) {
         return { ok: false, error: e.message };
     }
