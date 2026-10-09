@@ -5,3 +5,5 @@
 05-project.md
 06-widget-placement.md
 07-widget-types.md
+08-constants.md
+09-tables.md
