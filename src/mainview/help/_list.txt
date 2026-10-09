@@ -9,3 +9,4 @@
 09-tables.md
 10-validation.md
 11-app-events.md
+12-run-compile.md
