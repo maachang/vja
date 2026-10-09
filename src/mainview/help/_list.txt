@@ -7,3 +7,5 @@
 07-widget-types.md
 08-constants.md
 09-tables.md
+10-validation.md
+11-app-events.md
