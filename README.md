@@ -11,7 +11,7 @@
 > さらに **🧙 プロジェクト新規作成ウィザード** が、この4要素をまとめて束ね、AIとの対話だけでプロジェクト全体の雛形（複数フォーム＋DBテーブル）を一括生成します。
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="VJA Form Designer Screenshot" width="800"/>
+  <img src="docs/screenshot.jpg" alt="VJA Form Designer Screenshot" width="800"/>
 </p>
 
 ---
