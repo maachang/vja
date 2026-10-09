@@ -1173,6 +1173,21 @@ function evtAttr(eventName, jsCode) {
     return " " + eventName + '="' + jsCode.replace(/"/g, "&quot;") + '"';
 }
 
+// 素の<script>としてライブラリを読み込む（読み込み済み=globalNameが定義済みなら即解決）。
+// index.htmlの<script src>はバンドラ(Bun)がモジュール化し、window.marked/window.QRCodeが
+// 定義されないため、デザイナーではこの関数で読み込む（実体はelectrobun.config.tsで
+// views/mainview/へコピー）。失敗してもresolveする（呼び出し側はグローバルの有無で判断する）。
+function ensureWebviewLib(src, globalName) {
+    if (window[globalName]) return Promise.resolve();
+    return new Promise((resolve) => {
+        const sc = document.createElement("script");
+        sc.src = src;
+        sc.onload = () => resolve();
+        sc.onerror = () => { console.error("[ensureWebviewLib] 読み込み失敗:", src); resolve(); };
+        document.head.appendChild(sc);
+    });
+}
+
 // フォームのテーマ設定を取得する（既存プロジェクト＝theme*未保存の場合は規定値を補完）
 function getFormTheme() {
     const cfg = getProjectData().formCfg || {};
@@ -1227,6 +1242,7 @@ function showToast(msg, duration = 2500) {
     個別の window.widgets 等は不要。getProjectData().widgets の形で参照する）
 ═══════════════════════════════════════════ */
 Object.assign(window, {
+    ensureWebviewLib,
     // 状態管理オブジェクト・getter
     CTX,
     getDesignerState, getProjectData, getEditHistory,

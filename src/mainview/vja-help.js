@@ -9,8 +9,8 @@
      - openHelpTopic(file) : 開いているヘルプ画面で、右の本文を切り替える
    【AIメモ】
      - デザイナーでは index.html の <script src="./marked.umd.js"> がバンドラにCommonJS化され window.marked が
-       定義されない（2026-10-09に実機で確認）。そのため _helpEnsureMarked() が素の<script>として動的に読み込む
-       （実体は electrobun.config.ts で views/mainview/ へコピー）。
+       定義されない（2026-10-09に実機で確認）。そのため ensureWebviewLib()（vja-defs.js）で素の<script>として
+       動的に読み込む（実体は electrobun.config.ts で views/mainview/ へコピー）。
      - ヘルプ本文は src/mainview/help/*.md（1ファイル=1トピック）。help/_list.txt に表示順でファイル名を並べる。
        配信は prompts/・templates/ と同じ（electrobun.config.tsで views/mainview/help へコピー、同期XHR）。
      - 各mdの先頭 `<!-- summary: ... -->` は、将来のAI問い合わせ（目次としてAIへ渡す）用。表示時は無視される。
@@ -46,20 +46,8 @@ function _helpGetTopics() {
     return _helpTopics;
 }
 
-// window.markedが無ければ、素の<script>として読み込む（読み込み済みなら即解決）
-function _helpEnsureMarked() {
-    if (window.marked) return Promise.resolve();
-    return new Promise((resolve) => {
-        const sc = document.createElement("script");
-        sc.src = "./marked.umd.js";
-        sc.onload = () => resolve();
-        sc.onerror = () => { console.error("[vja-help] marked.umd.js の読み込みに失敗"); resolve(); };
-        document.head.appendChild(sc);
-    });
-}
-
 async function openHelp(file) {
-    await _helpEnsureMarked();
+    await ensureWebviewLib("./marked.umd.js", "marked");
     const topics = _helpGetTopics();
     if (topics.length === 0) { showToast("ヘルプ文書を読み込めませんでした"); return; }
     const cur = file || topics[0].file;

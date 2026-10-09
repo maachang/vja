@@ -331,3 +331,14 @@ window.addEventListener("resize", () =>
 pushUndo();
 getEditHistory().savedSnapshot = JSON.stringify(snapshot());
 renderProps();
+// markdown/QRコードウィジェットが使うライブラリ（window.marked/window.QRCode）は、バンドラ経由だと
+// 定義されないため、素の<script>として読み込み、読み込み後にそれらのウィジェットを描画し直す
+// （詳細はvja-defs.jsのensureWebviewLib参照）。
+Promise.all([
+    ensureWebviewLib("./marked.umd.js", "marked"),
+    ensureWebviewLib("./qrcode.js", "QRCode"),
+]).then(() => {
+    getProjectData().widgets.forEach((w) => {
+        if (w.tag === "markdown" || w.tag === "qrcode") renderWidget(w, false);
+    });
+});

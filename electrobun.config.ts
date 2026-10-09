@@ -97,8 +97,9 @@ if (process.argv.includes("build") || process.argv.includes("dev")) {
     target[join("src", "mainview", "help")] = join("views", "mainview", "help");
     // index.htmlの<script src="./marked.umd.js">等はバンドラ(Bun)がCommonJSモジュールとして取り込み、
     // window.markedとして公開されない。そのため、ヘルプ画面（vja-help.js）は素の<script>として
-    // 動的に読み込む。そのための実体をviews/mainview/へコピーする。
+    // 動的に読み込む（vja-defs.jsのensureWebviewLib）。そのための実体（marked.umd.js/qrcode.js）をviews/mainview/へコピーする。
     target[join("src", "mainview", "marked.umd.js")] = join("views", "mainview", "marked.umd.js");
+    target[join("src", "mainview", "qrcode.js")] = join("views", "mainview", "qrcode.js");
 }
 
 // バージョンを取得して差し替える.

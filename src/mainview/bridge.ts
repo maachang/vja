@@ -132,7 +132,8 @@ const _testSwitchTab = (p: { tab: "p" | "e" }) => {
 const _testGetWidgetHtml = (p: { id: number }) => {
     try {
         const el = document.getElementById("w" + p.id);
-        return { ok: true, html: el?.innerHTML ?? "" };
+        // libs: markdown/QRコードウィジェットが使うライブラリがwindowに定義されているか（デザイナーのバンドル事情の確認用）
+        return { ok: true, html: el?.innerHTML ?? "", libs: { marked: !!(window as any).marked, QRCode: !!(window as any).QRCode } };
     } catch (e: any) {
         return { ok: false, error: e.message };
     }
