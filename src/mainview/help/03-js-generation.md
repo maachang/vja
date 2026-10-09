@@ -1,4 +1,4 @@
-<!-- summary: YAMLからJavaScriptコードをAIで生成する手順、YAMLの書き方のコツ、再生成・やり直し -->
+<!-- summary: YAMLからAIでJavaScriptコードを生成する手順。YAMLドラフト生成、JSコード生成ボタン、再生成、記録と履歴（ロールバック）、YAMLの書き方のコツ -->
 # JSコード生成
 
 イベントのYAMLから、AIがJavaScriptコードを作ります。

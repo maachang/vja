@@ -1,4 +1,4 @@
-<!-- summary: クラウド設定の開き方と項目、AWS（S3・DynamoDB・SQS・SNS・Lambda・SES・STS・Secrets Manager・CloudWatch Logs）をvja.aws.*で使う方法、クレデンシャルの暗号化保存 -->
+<!-- summary: クラウド設定とAWS。vja.aws.*（S3・DynamoDB・SQS・SNS・Lambda・SES・STS・Secrets Manager・CloudWatch Logs）の使い方、認証情報の暗号化保存、CORS設定が不要な理由 -->
 # クラウド設定とAWS
 
 AWSの認証情報と、Slack・Chatwork・汎用Webhookの送信設定を、ツールバーの「クラウド」で管理します。認証情報などの秘密の値は、暗号化して保存されます。

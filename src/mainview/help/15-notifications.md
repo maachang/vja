@@ -1,4 +1,4 @@
-<!-- summary: Slack(Webhook/Web API)・Chatwork・汎用Webhookへメッセージを送る vja.slack.send / vja.chatwork.send / vja.webhook.post の設定と使い方 -->
+<!-- summary: 通知の送信。Slack(Webhook・Web API)へのvja.slack.send、Chatworkへのvja.chatwork.send、汎用Webhook(Zapier・Make・n8n)へのvja.webhook.post -->
 # 通知の送信（Slack・Chatwork・Webhook）
 
 「クラウド」設定に登録すると、外部サービスへメッセージを送れます。どれもSDKは使わず、通信はVJAが代わりに送ります。AIに使わせるときは、イベントの右パネル「🧩 拡張API（任意）」でそのサービスをONにします。

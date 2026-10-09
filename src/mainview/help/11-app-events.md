@@ -1,4 +1,4 @@
-<!-- summary: アプリの起動時(OnStart)・終了時(OnExit)に自動実行される処理の定義、バックエンド側で使えるAPI（vja.db・vja.session・vja.log） -->
+<!-- summary: アプリイベント。起動時(OnStart)と終了時(OnExit)に自動実行される処理。Bun側のTypeScriptで実行、vja.db・vja.session・vja.logの使い方、importCsv・importJson、await の付け方 -->
 # アプリイベント（起動・終了処理）
 
 アプリの起動時と終了時に、自動で実行される処理を定義できます。

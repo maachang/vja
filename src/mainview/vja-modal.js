@@ -78,34 +78,9 @@ function cancelAiGenerate() {
     if (getAiContext().fetchId) { window.vja?.fetchAbort?.(getAiContext().fetchId); getAiContext().fetchId = null; }
 }
 
-// AI生成共通実行関数。
-// OpenAI互換API（ローカルLLM / OpenAI API）への fetch を共通化する。
-// options: { systemPrompt, userPrompt, onSuccess(result), onCancel?, onError?, loadingMsg? }
-// - onSuccess: 生成完了時に呼ばれる。引数に生成テキスト（コードブロック除去済み）が渡る。
-// - onCancel: キャンセル時のコールバック（省略可）
-// - onError: エラー時のコールバック（省略可）
-async function runAiGenerate(options) {
-    const { systemPrompt, userPrompt, onSuccess, onCancel, onError, loadingMsg, temperatureOverride } = options;
-    // テスト自動化用フック: 実際に組み立てられたsystemPrompt/userPromptを、モック/実AI
-    // どちらの経路でも必ず記録する。呼び出し経路（showLoadingModal等のDOM破壊処理を
-    // 経由するかどうか）に関わらず「実際に送信される内容」を検証できるようにするため
-    // （2026-09-21、yamlAiGenerate等でDOM読み取りタイミングの回帰が発生した際の教訓）。
-    window.__vjaLastPrompt = { systemPrompt, userPrompt, systemLen: systemPrompt.length, userLen: userPrompt.length };
-    // テスト自動化用フック: VJA_TEST_MODEでwindow.__vjaTestAiMockQueue（配列）に
-    // モック応答が積まれている場合、実際のAI API呼び出しをスキップしてそれを使う。
-    // FIFOで1回の呼び出しにつき先頭を1つ取り出す。キューが空なら従来通り実APIを叩く
-    // （通常起動時はこのキュー自体をセットしないため無害）。
-    if (Array.isArray(window.__vjaTestAiMockQueue) && window.__vjaTestAiMockQueue.length > 0) {
-        const generated = window.__vjaTestAiMockQueue.shift();
-        window.vja?.log?.debug?.("[AI][MOCK] mocked response used. remain=" + window.__vjaTestAiMockQueue.length);
-        try {
-            if (onSuccess) await onSuccess(generated);
-        } catch (e) {
-            window.vja?.log?.error?.("[AI][MOCK] onSuccess failed: " + e.message);
-            if (onError) await onError(e);
-        }
-        return;
-    }
+// AIへのリクエスト（エンドポイント・モデル名・ヘッダー・本文）を、AI接続設定から組み立てる。
+// runAiGenerate（ローディング表示あり）と aiChatOnce（画面操作なし）で共通に使う。
+function buildAiRequest(systemPrompt, userPrompt, temperatureOverride) {
     const hasApiKey = !!getProjectData().aiConfig.apiKey;
     const isRouterOn = !!getProjectData().aiConfig.routerMode;
     const endpoint = hasApiKey ? "https://api.openai.com" : getProjectData().aiConfig.endpoint;
@@ -141,6 +116,63 @@ async function runAiGenerate(options) {
         body.reasoning_effort = "none";
         body.chat_template_kwargs = { enable_thinking: false };
     }
+    return { endpoint, modelName, headers, body };
+}
+
+// 画面操作（ローディングモーダル等）を一切行わずにAIへ1回問い合わせ、返答テキストを返す。
+// ヘルプ画面の質問応答のように、開いているモーダルを閉じたくない場面で使う。
+// 返答は <think> ブロックとチャットテンプレートの特殊トークンを除去して trim したもの
+// （コードブロックの抽出はしない）。失敗時は例外を投げる。
+async function aiChatOnce(systemPrompt, userPrompt, temperatureOverride) {
+    // テスト自動化用: runAiGenerate と同じモックキューを使う
+    if (Array.isArray(window.__vjaTestAiMockQueue) && window.__vjaTestAiMockQueue.length > 0) {
+        return String(window.__vjaTestAiMockQueue.shift());
+    }
+    const { endpoint, headers, body } = buildAiRequest(systemPrompt, userPrompt, temperatureOverride);
+    const res = await window.vja.fetch(endpoint + "/v1/chat/completions", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        throw new Error("HTTP " + res.status + (errText ? " — " + errText.slice(0, 120) : ""));
+    }
+    const data = await res.json();
+    const msg = data.choices?.[0]?.message || {};
+    const raw = (msg.content || msg.reasoning_content || "");
+    return raw.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/<\|[a-zA-Z0-9_]+\|>/g, "").trim();
+}
+
+// AI生成共通実行関数。
+// OpenAI互換API（ローカルLLM / OpenAI API）への fetch を共通化する。
+// options: { systemPrompt, userPrompt, onSuccess(result), onCancel?, onError?, loadingMsg? }
+// - onSuccess: 生成完了時に呼ばれる。引数に生成テキスト（コードブロック除去済み）が渡る。
+// - onCancel: キャンセル時のコールバック（省略可）
+// - onError: エラー時のコールバック（省略可）
+async function runAiGenerate(options) {
+    const { systemPrompt, userPrompt, onSuccess, onCancel, onError, loadingMsg, temperatureOverride } = options;
+    // テスト自動化用フック: 実際に組み立てられたsystemPrompt/userPromptを、モック/実AI
+    // どちらの経路でも必ず記録する。呼び出し経路（showLoadingModal等のDOM破壊処理を
+    // 経由するかどうか）に関わらず「実際に送信される内容」を検証できるようにするため
+    // （2026-09-21、yamlAiGenerate等でDOM読み取りタイミングの回帰が発生した際の教訓）。
+    window.__vjaLastPrompt = { systemPrompt, userPrompt, systemLen: systemPrompt.length, userLen: userPrompt.length };
+    // テスト自動化用フック: VJA_TEST_MODEでwindow.__vjaTestAiMockQueue（配列）に
+    // モック応答が積まれている場合、実際のAI API呼び出しをスキップしてそれを使う。
+    // FIFOで1回の呼び出しにつき先頭を1つ取り出す。キューが空なら従来通り実APIを叩く
+    // （通常起動時はこのキュー自体をセットしないため無害）。
+    if (Array.isArray(window.__vjaTestAiMockQueue) && window.__vjaTestAiMockQueue.length > 0) {
+        const generated = window.__vjaTestAiMockQueue.shift();
+        window.vja?.log?.debug?.("[AI][MOCK] mocked response used. remain=" + window.__vjaTestAiMockQueue.length);
+        try {
+            if (onSuccess) await onSuccess(generated);
+        } catch (e) {
+            window.vja?.log?.error?.("[AI][MOCK] onSuccess failed: " + e.message);
+            if (onError) await onError(e);
+        }
+        return;
+    }
+    const { endpoint, modelName, headers, body } = buildAiRequest(systemPrompt, userPrompt, temperatureOverride);
     getAiContext().fetchId = null;
     showLoadingModal(loadingMsg || "AI生成中…");
     const startTime = Date.now(); // 開始時間.
@@ -448,7 +480,7 @@ function actDuplicate() {
    window へのエクスポート（他ファイルから参照される関数のみ）
 ═══════════════════════════════════════════ */
 Object.assign(window, {
-    showModal, closeModal, mhdrHTML, mfootHTML, showLoadingModal, cancelAiGenerate, runAiGenerate,
+    showModal, closeModal, mhdrHTML, mfootHTML, showLoadingModal, cancelAiGenerate, runAiGenerate, aiChatOnce,
     showCtx, hideCtx, ctxYaml, ctxFront, ctxBack,
     deepEqual, snapshot, pushUndo, commitAndPush, renderEventsAndPush,
     applyProjectData, restoreSnap, actUndo, actRedo, actDelete, actDuplicate,

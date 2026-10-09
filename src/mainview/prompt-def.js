@@ -789,4 +789,18 @@ ${_safeYamlFence(yamlDef)}
 
     o.VALIDATION_SCHEMA_GEN_SYS_PROMPT = ENG_VALIDATION_SCHEMA_GEN_SYS_PROMPT;
     o.VALIDATION_SCHEMA_GEN_USER_PROMPT = ENG_VALIDATION_SCHEMA_GEN_USER_PROMPT;
+    // [プロンプト]ヘルプ画面のAI質問応答（2026-10-09追加）。
+    // [日本語対訳メモ] 段階1（採点）: 1つのヘルプトピックのキーワード（各mdの先頭summary）を渡し、利用者の質問が
+    // そのトピックでどれだけ答えられるかを0〜10の数字だけで答えさせる（トピックごとに1回呼ぶ）。
+    // 段階2（回答）: 採点で選ばれたトピックの本文だけを資料として渡し、資料だけを根拠に日本語で答えさせる。
+    // 採点プロンプトの文言は、qwen2.5-coder-7bで質問63問を測定した（.claude/notes/remaining-issues.md）ものと同一。
+    // 文言を変えると精度が変わるため、変更する時は測り直すこと。
+    const HELP_SCORE_SYS_PROMPT = function ({ keywords }) {
+        return _fillTpl(_loadPromptTpl("help-score.sys.ja.md"), { keywords }).trim() + "\n";
+    };
+    const HELP_ANSWER_SYS_PROMPT = function ({ docs }) {
+        return _fillTpl(_loadPromptTpl("help-answer.sys.ja.md"), { docs }).trim() + "\n";
+    };
+    o.HELP_SCORE_SYS_PROMPT = HELP_SCORE_SYS_PROMPT;
+    o.HELP_ANSWER_SYS_PROMPT = HELP_ANSWER_SYS_PROMPT;
 })();

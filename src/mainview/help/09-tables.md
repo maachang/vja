@@ -1,4 +1,4 @@
-<!-- summary: アプリ内蔵のSQLiteテーブルの作成、カラム設定（型・NOT NULL・KEY・表示系/管理系）、マスターCSV、コードからのDB操作 vja.db.query/execute/transaction -->
+<!-- summary: データベースのテーブル。テーブル管理、カラム設定（型・NOT NULL・KEY・インデックス・DEFAULT）、表示系と管理系（作成日時・更新日時など）、マスターCSV（初期データ）、vja.db.query / execute / transaction によるSQL操作 -->
 # テーブル（データベース）
 
 VJAのアプリには、SQLiteのデータベースを内蔵できます。

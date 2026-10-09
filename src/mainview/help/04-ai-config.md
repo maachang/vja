@@ -1,4 +1,4 @@
-<!-- summary: AI接続設定の開き方と設定項目（エンドポイント・APIキー・ルーターモード等）、ローカルLLM・OpenAIの使い分け -->
+<!-- summary: AI接続設定。AI設定ボタン、エンドポイント、API Key、ルーターモード、ローカルLLM(llama.cpp・ollama)、OpenAI、Max Tokens、temperature、推論モード、モック実行検証、使い分け -->
 # AI接続設定
 
 ## 開き方

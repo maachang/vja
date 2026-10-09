@@ -1,4 +1,4 @@
-<!-- summary: 配置できるウィジェットの種類一覧、全ウィジェット共通のプロパティ、フォームテーマとの連動と「テーマに戻す」、textウィジェットの入力タイプ -->
+<!-- summary: ウィジェットの種類の一覧（button・label・text・textarea・checkbox・radioButton・selectBox・listBox・テーブル・progress・groupBox・image・QRコード・マークダウン・日付・スライダー・scroll）、共通プロパティ（名前・座標・サイズ・表示）、フォームテーマとの連動、テーマに戻す、textの入力タイプ(password・number・email) -->
 # ウィジェットの種類とプロパティ
 
 ## ウィジェット一覧
