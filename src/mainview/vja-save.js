@@ -158,6 +158,7 @@ window._getProjectData = function () {
         projectInfo: p.projectInfo,
         forms: p.forms,
         constants: p.constants,
+        startFormId: p.startFormId, // 起動フォーム（★）。実行時の最初の画面に使う
         tables: p.tables,
         extRuntime: p.extRuntime,
         // 実行時のvja.getCloudInfraCredential等で使う。渡さないとBun側が空リストで上書きし、
@@ -294,37 +295,101 @@ function updateStartBtn() {
     btn.style.borderColor = isStart ? "#f5a623" : "";
 }
 
-// カスタムドロップダウンを再構築
+// 画面一覧パネルを再構築する（フォームの追加・削除・切り替え・並べ替え・名前変更のたびに呼ばれる）
 function buildFormSelect() {
-    const list = $("fdd-list");
-    list.innerHTML = "";
-    getProjectData().forms.forEach((f, i) => {
-        const item = document.createElement("div");
-        item.className =
-            "fdd-item" + (i === getProjectData().curFormIdx ? " fdd-active" : "");
-        // 初期フォームに★マークを付ける
-        item.textContent = (f.id === getProjectData().startFormId ? "★ " : "") + `[${i + 1}] ${f.cfg.name || f.cfg.title}`;
-        item.onclick = (e) => {
-            e.stopPropagation();
-            switchForm(i);
-            closeFdd();
-        };
-        list.appendChild(item);
-    });
-    // ボタンラベル更新
-    const cur = getProjectData().forms[getProjectData().curFormIdx];
-    $("fdd-label").textContent = cur
-        ? `[${getProjectData().curFormIdx + 1}] ${cur.cfg.name || cur.cfg.title}`
-        : "";
+    const list = $("form-list");
+    if (!list) return;
+    const pd = getProjectData();
+    const kw = ($("form-filter")?.value || "").trim().toLowerCase();
+    const filtering = kw !== "";
+    // 絞り込み中は、番号（並び順）が見た目と一致しなくなるため、ドラッグでの並べ替えは無効にする
+    const html = pd.forms.map((f, i) => {
+        const name = f.cfg.name || f.cfg.title;
+        if (filtering && !String(name).toLowerCase().includes(kw)) return "";
+        return render("fl-tpl-item", {
+            cls: i === pd.curFormIdx ? "fl-active" : "",
+            draggable: filtering ? "false" : "true",
+            star: f.id === pd.startFormId ? "★" : "",
+            no: i + 1,
+            name,
+            attrs: evtAttr("onclick", "formSelectIdx(" + i + ")")
+                + evtAttr("ondblclick", "formSelectIdx(" + i + "); formRename()")
+                + evtAttr("ondragstart", "formDragStart(" + i + ", event)")
+                + evtAttr("ondragover", "formDragOver(" + i + ", event)")
+                + evtAttr("ondragleave", "formDragLeave(event)")
+                + evtAttr("ondrop", "formDrop(" + i + ", event)")
+                + evtAttr("ondragend", "formDragEnd()"),
+        });
+    }).join("");
+    list.innerHTML = html || render("fl-tpl-empty", {});
+    list.querySelector(".fl-active")?.scrollIntoView({ block: "nearest" });
+    // 上へ/下へ: 先頭・末尾では無効にする
+    const up = $("btn-form-up"), down = $("btn-form-down");
+    if (up) up.disabled = pd.curFormIdx <= 0;
+    if (down) down.disabled = pd.curFormIdx >= pd.forms.length - 1;
     updateStartBtn();
 }
 
-function toggleFdd(e) {
-    e.stopPropagation();
-    $("fdd-list").classList.toggle("open");
+// 一覧の項目をクリックして画面を切り替える
+function formSelectIdx(i) {
+    switchForm(i);
 }
-function closeFdd() {
-    $("fdd-list").classList.remove("open");
+
+// 画面の並び順を変える。from番目のフォームを、移動後にto番目になる位置へ動かす。
+// 現在選択中の画面は、並べ替えても選択されたまま（番号ではなくidで追従する）。
+function formMoveTo(from, to) {
+    const pd = getProjectData();
+    const n = pd.forms.length;
+    if (from === to || from < 0 || to < 0 || from >= n || to >= n) return;
+    commitCurrentInput();
+    commitAndPush(); // 元に戻せるようにする（スナップショットはフォームの並びと選択位置を含む）
+    const curId = pd.forms[pd.curFormIdx]?.id;
+    const [m] = pd.forms.splice(from, 1);
+    pd.forms.splice(to, 0, m);
+    const idx = pd.forms.findIndex((f) => f.id === curId);
+    pd.curFormIdx = idx >= 0 ? idx : 0;
+    refreshAll();
+}
+
+// 現在の画面を、1つ上(-1)/下(+1)へ動かす
+function formMoveStep(delta) {
+    const cur = getProjectData().curFormIdx;
+    formMoveTo(cur, cur + delta);
+}
+
+// ── ドラッグでの並べ替え ──
+let _formDragFrom = -1; // ドラッグ中の画面の番号（-1=ドラッグ中ではない）
+
+function formDragStart(i, e) {
+    if ($("form-filter")?.value.trim()) { e.preventDefault(); return; }
+    _formDragFrom = i;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(i)); // WebKitではデータを設定しないとドラッグが始まらない
+    e.currentTarget.classList.add("fl-dragging");
+}
+
+function formDragOver(i, e) {
+    if (_formDragFrom < 0) return;
+    e.preventDefault(); // dropを受け付ける
+    e.dataTransfer.dropEffect = "move";
+    document.querySelectorAll("#form-list .fl-drop").forEach((el) => el.classList.remove("fl-drop"));
+    if (i !== _formDragFrom) e.currentTarget.classList.add("fl-drop");
+}
+
+function formDragLeave(e) {
+    e.currentTarget.classList.remove("fl-drop");
+}
+
+function formDrop(i, e) {
+    e.preventDefault();
+    const from = _formDragFrom;
+    _formDragFrom = -1;
+    formMoveTo(from, i);
+}
+
+function formDragEnd() {
+    _formDragFrom = -1;
+    document.querySelectorAll("#form-list .fl-drop, #form-list .fl-dragging").forEach((el) => el.classList.remove("fl-drop", "fl-dragging"));
 }
 
 // フォームを切り替え
@@ -406,5 +471,6 @@ Object.assign(window, {
     actCompileProject, actRunProject, actClearProjectDb,
     actShowVersion, actStopProject,
     setStartForm, updateStartBtn, buildFormSelect,
-    toggleFdd, closeFdd, switchForm, formNew, formDelete, formRename,
+    formSelectIdx, formMoveTo, formMoveStep, formDragStart, formDragOver, formDragLeave, formDrop, formDragEnd,
+    switchForm, formNew, formDelete, formRename,
 });

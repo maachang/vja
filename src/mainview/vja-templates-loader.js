@@ -31,6 +31,7 @@
         "templates/editor-utils.html",
         "templates/runtime-errors.html",
         "templates/help.html",
+        "templates/form-list.html",
     ];
 
     function loadTemplateFileSync(path) {

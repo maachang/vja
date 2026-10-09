@@ -80,3 +80,8 @@ export const buildConstInitScript = (globalConsts: any, formConsts: any): string
         .replace(/\u2029/g, "\\u2029");
     return `window.vja?.const?.init?.(${lit(pick(globalConsts))}, ${lit(pick(formConsts))});`;
 };
+
+// 起動フォームを選ぶ。デザイナーの★（startFormId）のフォームを返し、無い・見つからない場合は先頭のフォーム。
+// 以前は常に先頭のフォーム（forms[0]）を起動していたため、★の設定が実行時に効いていなかった。
+export const pickStartForm = <T extends { id?: string }>(forms: T[], startFormId?: string): T | undefined =>
+    (startFormId ? forms.find((f) => f && f.id === startFormId) : undefined) ?? forms[0];

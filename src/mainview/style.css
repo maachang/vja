@@ -248,7 +248,7 @@ body {
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
-    overflow-y: auto;
+    overflow: hidden;
 }
 
 #toolbox h3 {
@@ -263,8 +263,12 @@ body {
 .tool-grid {
     display: grid;
     grid-template-columns: 1fr;
+    grid-auto-rows: max-content;
     gap: 1px;
     padding: 4px;
+    flex: 1 1 auto;
+    min-height: 90px;
+    overflow-y: auto;
 }
 
 .tool-item {
@@ -1288,95 +1292,107 @@ textarea.yaml:focus {
     color: var(--text2);
 }
 
-/* ── フォームセレクタ（カスタムドロップダウン） ── */
-#form-selector-area {
+/* ── 画面一覧パネル（左側、ツールボックスの下） ── */
+#form-panel {
+    flex: 0 0 auto;
+    height: 240px;
     display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 0 4px;
+    flex-direction: column;
+    border-top: 1px solid var(--border);
+    background: var(--bg2);
 }
 
-#form-label {
-    font-size: var(--ui-font-size);
-    color: var(--text3);
-    white-space: nowrap;
-}
-
-/* カスタムドロップダウン本体 */
-#fdd-wrap {
-    position: relative;
-    display: inline-block;
-}
-
-#fdd-btn {
-    height: 24px;
-    min-width: 130px;
-    max-width: 200px;
-    background: #2d2d45;
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    color: #e0e0f0;
-    font-size: var(--ui-font-size);
-    padding: 0 24px 0 8px;
-    cursor: pointer;
-    text-align: left;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+#form-panel .fp-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 4px;
-    user-select: none;
-}
-
-#fdd-btn:hover {
-    border-color: var(--accent);
-}
-
-#fdd-btn .fdd-arrow {
-    flex-shrink: 0;
-    opacity: 0.6;
+    padding: 5px 6px 4px 10px;
     font-size: var(--ui-font-size);
+    color: var(--text3);
+    letter-spacing: 0.8px;
+    border-bottom: 1px solid var(--border);
 }
 
-#fdd-list {
-    position: absolute;
-    top: 26px;
-    left: 0;
-    min-width: 100%;
-    max-height: 200px;
-    overflow-y: auto;
-    background: #252535;
-    border: 1px solid var(--accent);
-    border-radius: 3px;
-    z-index: 500;
-    display: none;
-    flex-direction: column;
-    box-shadow: 0 4px 16px #000c;
-}
-
-#fdd-list.open {
+#form-panel .fp-btns {
     display: flex;
+    gap: 2px;
 }
 
-.fdd-item {
-    padding: 5px 10px;
+#form-filter {
+    margin: 4px 6px;
+    padding: 3px 6px;
     font-size: var(--ui-font-size);
-    color: var(--text2);
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+#form-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.fl-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: var(--ui-font-size);
     cursor: pointer;
+    color: var(--text2);
+    border-top: 2px solid transparent;
+    user-select: none;
     white-space: nowrap;
+    overflow: hidden;
 }
 
-.fdd-item:hover {
-    background: #363652;
-    color: #fff;
+.fl-item:hover {
+    background: var(--bg3);
 }
 
-.fdd-item.fdd-active {
-    background: var(--accent);
-    color: #fff;
+.fl-item.fl-active {
+    background: var(--bg3);
+    color: var(--accent);
     font-weight: bold;
+}
+
+.fl-item.fl-drop {
+    border-top-color: var(--accent);
+}
+
+.fl-item.fl-dragging {
+    opacity: 0.4;
+}
+
+.fl-item .fl-star {
+    width: 14px;
+    flex-shrink: 0;
+    color: #f5a623;
+}
+
+.fl-item .fl-no {
+    color: var(--text3);
+    flex-shrink: 0;
+}
+
+.fl-item .fl-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#form-list .fl-empty {
+    padding: 8px 10px;
+    font-size: var(--ui-font-size);
+    color: var(--text3);
+}
+
+.fs-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
 }
 
 /* アイコンボタン群 */

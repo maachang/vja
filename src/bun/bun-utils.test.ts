@@ -1,7 +1,7 @@
 // src/bun/bun-utils.test.ts
 // parseCsvLine / decompressGzip の純粋ロジックに対するユニットテスト。
 import { describe, test, expect } from "bun:test";
-import { parseCsvLine, decompressGzip, execFetch, buildConstInitScript } from "./bun-utils";
+import { parseCsvLine, decompressGzip, execFetch, buildConstInitScript, pickStartForm } from "./bun-utils";
 
 describe("parseCsvLine", () => {
     test("単純なカンマ区切り", () => {
@@ -150,5 +150,20 @@ describe("buildConstInitScript", () => {
 
     test("vja.constが無い環境でも例外を出さない", () => {
         expect(() => new Function("window", buildConstInitScript([{ name: "a", value: "1" }], []))({})).not.toThrow();
+    });
+});
+
+describe("pickStartForm", () => {
+    const forms = [{ id: "a", n: 1 }, { id: "b", n: 2 }, { id: "c", n: 3 }];
+    test("startFormIdのフォームを返す（先頭ではない）", () => {
+        expect(pickStartForm(forms, "c")?.n).toBe(3);
+    });
+    test("startFormIdが空・未指定・見つからない場合は先頭のフォーム", () => {
+        expect(pickStartForm(forms, "")?.n).toBe(1);
+        expect(pickStartForm(forms, undefined)?.n).toBe(1);
+        expect(pickStartForm(forms, "zzz")?.n).toBe(1);
+    });
+    test("フォームが無ければundefined", () => {
+        expect(pickStartForm([], "a")).toBeUndefined();
     });
 });

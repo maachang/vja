@@ -5,6 +5,7 @@
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { initLogger } from "./logger";
+import { pickStartForm } from "./bun-utils";
 // 実際にインストール(ビルド)されているElectrobunのバージョンを取得する（ビルド時にバンドルされる）.
 import electrobunPkg from "electrobun/package.json";
 import {
@@ -35,6 +36,7 @@ setFormHtmlPathResolver((formTitle: string) =>
 // ── .vjaproj の読み込み ───────────────────────────────
 const _projFile = join(import.meta.dir, "..", "project.vjaproj");
 
+let _startFormId = ""; // 起動フォームのid（デザイナーの★）
 const loadProject = async (): Promise<boolean> => {
     try {
         if (!existsSync(_projFile)) {
@@ -49,6 +51,7 @@ const loadProject = async (): Promise<boolean> => {
             catch (e) { console.debug("[vja] vjaPass decrypt failed:", e); }
         }
 
+        _startFormId = proj.startFormId || "";
         // 互換: nameがなければtitleをnameとして補完
         const forms = (proj.forms || []).map((f: any) => ({
             ...f,
@@ -78,7 +81,8 @@ if (!await loadProject()) {
     process.exit(1);
 }
 
-const startFormTitle = _currentProjectForms[0]?.cfg?.name || _currentProjectForms[0]?.cfg?.title || "";
+const startForm = pickStartForm(_currentProjectForms, _startFormId);
+const startFormTitle = startForm?.cfg?.name || startForm?.cfg?.title || "";
 const startResult = getProjectFormPath(startFormTitle);
 
 if (!startResult.ok || !startResult.path) {

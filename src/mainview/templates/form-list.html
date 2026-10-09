@@ -1,0 +1,12 @@
+<!--
+    templates/form-list.html
+    左側の「画面一覧」パネル（vja-save.js の buildFormSelect）用テンプレート。
+    詳細は templates/pinput.html のAIメモを参照。
+-->
+<script type="text/vja-tpl" id="fl-tpl-item">
+<div class="fl-item <%= cls %>" draggable="<%= draggable %>" <%- attrs %>><span class="fl-star"><%= star %></span><span class="fl-no">[<%= no %>]</span><span class="fl-name"><%= name %></span></div>
+</script>
+
+<script type="text/vja-tpl" id="fl-tpl-empty">
+<div class="fl-empty">該当する画面がありません</div>
+</script>

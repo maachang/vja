@@ -105,7 +105,6 @@ document.addEventListener("mousedown", (e) => {
     if (!e.target.closest(".menu-item")) closeAllMenus();
     if (!e.target.closest("#ctx") && !e.target.closest(".widget"))
         hideCtx();
-    if (!e.target.closest("#fdd-wrap")) closeFdd();
     if (!e.target.closest(".pv-sel") && !e.target.closest(".pv-sel-list")) document.querySelectorAll(".pv-sel-list.open").forEach(el => el.classList.remove("open"));
     if (!e.target.closest(".col-type-btn") && !e.target.closest("#col-type-float")) {
         const f = $("col-type-float");

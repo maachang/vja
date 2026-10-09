@@ -23,7 +23,7 @@ import { initLogger, writeLog } from "./logger";
 import electrobunPkg from "electrobun/package.json";
 import { copyCompileAssets, getVersion, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH, WEBVIEW_RUNTIME_LIBS, ELECTROBUN_PIN_VERSION, ELECTROBUN_BUN_VERSION, ELECTROBUN_PATCH_FILE } from "./copy-compile-assets";
 import { clearProjectDb, closeProjectDb } from "./db-manager";
-import { execFetch, buildConstInitScript } from "./bun-utils";
+import { execFetch, buildConstInitScript, pickStartForm } from "./bun-utils";
 import { RUNTIME_ERROR_SNIPPET } from "./runtime-error-snippet";
 import {
     fileReadHandler, fileWriteHandler, fileReadBytesHandler, fileWriteBytesHandler,
@@ -139,6 +139,8 @@ const encryptCredential = async (plain: string): Promise<string> => {
 let _currentProjectExtRuntime: string = "";
 // 現在のプロジェクトの全体（グローバル）定数。フォームの定数は各フォームのデータ(form.constants)にある
 let _currentProjectConstants: any[] = [];
+// 起動フォームのid（デザイナーの★）。実行・コンパイル時に先頭ではなくこのフォームを起動する
+let _currentProjectStartFormId: string = "";
 let _devToolsOpen: boolean = false;
 let _fetchAbortMap = new Map<string, AbortController>();
 
@@ -754,6 +756,7 @@ const _updateProjectData = async (jsonStr: string, filePath?: string, keepPass: 
         _currentProjectDbDir = join(_projectWorkDir, name, "db");
         _currentProjectExtRuntime = proj.extRuntime?.js || "";
         _currentProjectConstants = Array.isArray(proj.constants) ? proj.constants : [];
+        _currentProjectStartFormId = proj.startFormId || "";
         // vjaPass を読み込む（setProjectDataに渡す前に確定させる）
         if (!keepPass) {
             _vjaPass = await _loadVjaPass(proj);
@@ -831,7 +834,7 @@ const buildProjectFiles = async (): Promise<{
             await Bun.write(join(outDir, fileName), html);
         }
 
-        const startForm = _currentProjectForms[0];
+        const startForm = pickStartForm(_currentProjectForms, _currentProjectStartFormId)!;
         const startFileName = (startForm.cfg.name || startForm.cfg.title) + ".html";
         return {
             ok: true,
