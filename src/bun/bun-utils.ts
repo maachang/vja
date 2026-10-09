@@ -65,3 +65,18 @@ export const execFetch = async (args: ExecFetchArgs, signal?: AbortSignal): Prom
     }
     return { ok: res.ok, status: res.status, headers, body: await res.text() };
 };
+
+// 実行用/コンパイル用のフォームHTMLに埋め込む「定数の初期化」スクリプトの本文を作る。
+// 全体の定数とそのフォームの定数を vja.const.init に渡す（呼び出しが無いと vja.const.get が常に既定値を返す）。
+// 値に「</script>」や改行コード(U+2028/2029)が含まれてもHTMLが壊れないよう、「<」等をエスケープする。
+export const buildConstInitScript = (globalConsts: any, formConsts: any): string => {
+    const pick = (list: any): { name: string; value: any }[] =>
+        (Array.isArray(list) ? list : [])
+            .filter((c: any) => c && typeof c.name === "string" && c.name !== "")
+            .map((c: any) => ({ name: c.name, value: c.value ?? "" }));
+    const lit = (v: any): string => JSON.stringify(v)
+        .replace(/</g, "\\u003c")
+        .replace(/\u2028/g, "\\u2028")
+        .replace(/\u2029/g, "\\u2029");
+    return `window.vja?.const?.init?.(${lit(pick(globalConsts))}, ${lit(pick(formConsts))});`;
+};

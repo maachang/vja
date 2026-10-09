@@ -89,9 +89,6 @@
                     <div class="dd-item" onmousedown="openConstEditor()">
                         定数の編集…
                     </div>
-                    <div class="dd-item" onmousedown="openFormConstEditor()">
-                        フォーム定数の編集…
-                    </div>
                     <div class="dd-item" onmousedown="openValidationEditor()">
                         バリデーション定義…
                     </div>
@@ -176,22 +173,13 @@
             </svg>コンパイル
         </button>
         <div class="tb-sep"></div>
-        <button class="tb-btn" onmousedown="openConstEditor()" title="グローバル定数の編集">
+        <button class="tb-btn" onmousedown="openConstEditor()" title="定数の編集（全体・現在のフォーム）">
             <svg viewBox="0 0 24 24">
                 <line x1="4" y1="9" x2="20" y2="9" />
                 <line x1="4" y1="15" x2="20" y2="15" />
                 <line x1="10" y1="3" x2="8" y2="21" />
                 <line x1="16" y1="3" x2="14" y2="21" />
-            </svg>定数(G)
-        </button>
-        <button class="tb-btn" onmousedown="openFormConstEditor()" title="フォーム定数の編集（現在のフォームに紐づく定数）">
-            <svg viewBox="0 0 24 24">
-                <rect x="3" y="3" width="7" height="7" />
-                <line x1="4" y1="12" x2="20" y2="12" />
-                <line x1="4" y1="16" x2="20" y2="16" />
-                <line x1="10" y1="10" x2="8" y2="22" />
-                <line x1="16" y1="10" x2="14" y2="22" />
-            </svg>定数(F)
+            </svg>定数
         </button>
         <button class="tb-btn" onmousedown="openValidationEditor()" title="バリデーション定義（現在のフォームに紐づくバリデーション）">
             <svg viewBox="0 0 24 24">

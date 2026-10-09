@@ -19,7 +19,7 @@
 <script type="text/vja-tpl" id="tv-tpl-const-row">
 <tr>
 <td><%= no %></td>
-<td><input type="text" value="<%= name %>" <%- attrName %> placeholder="定数名"></td>
+<td><input type="text" value="<%= name %>" <%- attrName %> placeholder="定数名"><div class="const-warn" style="display:none; font-size:11px; color:#e5a33d; margin-top:2px;"></div></td>
 <td><input type="text" value="<%= value %>" <%- attrValue %> placeholder="値"></td>
 <td><button class="del-btn" <%- attrDel %> title="削除">✕</button></td>
 </tr>
@@ -240,6 +240,7 @@
 <script type="text/vja-tpl" id="tv-tpl-const-modal">
 <div id="const-modal">
 <%- header %>
+<div class="yaml-tab-bar"><%- tabsHtml %></div>
 <div class="mbody" style="gap:6px">
 <div class="infobox"><%= infoText %></div>
 <div class="const-scroll">
@@ -252,4 +253,8 @@
 </div>
 <div class="mfoot"><%- footBtns %><button class="pri" <%- attrSave %>>保存</button></div>
 </div>
+</script>
+
+<script type="text/vja-tpl" id="tv-tpl-const-tab">
+<div class="yaml-tab <%= active %>" <%- attr %>><%= label %></div>
 </script>

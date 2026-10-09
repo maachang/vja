@@ -5,8 +5,9 @@
    【依存】vja-defs.js, vja-designer.js, vja-modal.js, vja-yaml-editor.js
    【提供するもの】
      - isDirty() / showCloseConfirm() / hideCloseConfirm()（閉じる確認）
-     - openConstEditor() / renderConstModal() / renderRowListModal()
-       （定数編集・行リストモーダル共通テンプレート）
+     - openConstEditor(tab?) / renderConstModal() / constSwitchTab() / constSave()
+       （定数編集。全体定数とフォーム定数を1つのモーダルのタブで編集する）
+     - renderRowListModal()（行リストモーダル共通テンプレート）
      - openTableManager() / renderTableEditModal() / tblXxx 系
        （SQLiteテーブル定義の管理）
      - openValidationEditor() / renderValidationEditModal()
@@ -81,95 +82,139 @@ async function doClose() {
 }
 // Escキーで確認ダイアログを閉じる
 
-/* ── 定数エディタ ── */
-function openConstEditor() {
-    CONST_MODAL.rows = getProjectData().constants.map(c => ({ name: c.name || "", value: c.value || "" }));
-    if (CONST_MODAL.rows.length === 0) CONST_MODAL.rows.push({ name: "", value: "" });
+/* ── 定数エディタ ──
+   全体（グローバル）定数と、現在のフォームの定数を、1つのモーダルのタブで編集する（2026-10-09に統合）。
+   両方の編集中の内容を CONST_MODAL.rowsG / rowsF に持ち、「保存」で一度に反映する。 */
+
+// 表示中のタブの行配列
+function _constRows() {
+    return CONST_MODAL.tab === "f" ? CONST_MODAL.rowsF : CONST_MODAL.rowsG;
+}
+
+// 現在のフォーム（無ければundefined）
+function _constCurForm() {
+    return getProjectData().forms[getProjectData().curFormIdx];
+}
+
+// tab: "g"=全体（既定）, "f"=現在のフォーム
+function openConstEditor(tab) {
+    const f = _constCurForm();
+    CONST_MODAL.rowsG = (getProjectData().constants || []).map(c => ({ name: c.name || "", value: c.value || "" }));
+    CONST_MODAL.rowsF = ((f && f.constants) || []).map(c => ({ name: c.name || "", value: c.value || "" }));
+    if (CONST_MODAL.rowsG.length === 0) CONST_MODAL.rowsG.push({ name: "", value: "" });
+    if (CONST_MODAL.rowsF.length === 0) CONST_MODAL.rowsF.push({ name: "", value: "" });
+    CONST_MODAL.tab = (tab === "f" && f) ? "f" : "g";
     renderConstModal();
 }
 
 function renderConstModal() {
-    renderConstModalBase(
-        "📌 定数エディタ",
-        "イベントのYAMLから参照できる定数を定義します。プロジェクトファイルに保存されます。",
-        "constAddRow()",
-        "constSave()",
-        "renderConstModal"
-    );
-}
-
-function renderConstModalBase(title, infoText, addAction, saveAction, delRenderFn) {
-    const rows = CONST_MODAL.rows || [];
+    const f = _constCurForm();
+    const formTitle = f?.cfg?.title || "フォーム";
+    const isForm = CONST_MODAL.tab === "f";
+    const rows = _constRows();
     const tbody = rows.map((r, i) => render("tv-tpl-const-row", {
         no: i + 1,
         name: r.name,
         attrName: evtAttr("oninput", "constUpdate(" + i + ",'name',this.value)"),
         value: r.value,
         attrValue: evtAttr("oninput", "constUpdate(" + i + ",'value',this.value)"),
-        attrDel: evtAttr("onmousedown", "constDelRow(" + i + ",'" + delRenderFn + "')"),
+        attrDel: evtAttr("onmousedown", "constDelRow(" + i + ")"),
+    })).join("");
+    const tabDefs = [{ key: "g", label: "🌐 全体（全フォーム共通）" }];
+    if (f) tabDefs.push({ key: "f", label: "📄 このフォーム: " + formTitle });
+    const tabsHtml = tabDefs.map(t => render("tv-tpl-const-tab", {
+        active: CONST_MODAL.tab === t.key ? "active" : "",
+        attr: evtAttr("onmousedown", "constSwitchTab('" + t.key + "')"),
+        label: t.label,
     })).join("");
     showModal(render("tv-tpl-const-modal", {
-        header: mhdrHTML(title),
-        infoText,
+        header: mhdrHTML("📌 定数"),
+        tabsHtml,
+        infoText: isForm
+            ? "このフォーム（" + formTitle + "）専用の定数です。全体の定数と同じ名前にすると、このフォームではこちらが優先されます。"
+            : "イベントのYAMLから参照できる、全フォーム共通の定数です。プロジェクトファイルに保存されます。",
         tbody,
-        attrAdd: evtAttr("onmousedown", addAction),
+        attrAdd: evtAttr("onmousedown", "constAddRow()"),
         footBtns: mfootHTML([{ label: "キャンセル", action: "closeModal()" }]),
-        attrSave: evtAttr("onmousedown", saveAction),
+        attrSave: evtAttr("onmousedown", "constSave()"),
     }));
+    _constRefreshWarn();
 }
 
-// DOM から現在の入力値を CONST_MODAL.rows に同期する
+// フォームのタブで、全体の定数と同じ名前の行に注意を出す（入力のたびに更新する）
+function _constRefreshWarn() {
+    const trs = document.querySelectorAll("#const-modal .const-table tbody tr");
+    const globalNames = new Set(CONST_MODAL.rowsG.map(r => r.name.trim()).filter(Boolean));
+    trs.forEach((tr, i) => {
+        const el = tr.querySelector(".const-warn");
+        if (!el) return;
+        const name = (_constRows()[i]?.name || "").trim();
+        const dup = CONST_MODAL.tab === "f" && name && globalNames.has(name);
+        el.style.display = dup ? "" : "none";
+        el.textContent = dup ? "⚠ 全体の同名の定数を、このフォームでは上書きします" : "";
+    });
+}
+
+// タブを切り替える。入力中の内容は、切り替え前に保持する
+function constSwitchTab(tab) {
+    if (tab === CONST_MODAL.tab) return;
+    if (tab === "f" && !_constCurForm()) return;
+    syncConstFromDOM();
+    CONST_MODAL.tab = tab;
+    renderConstModal();
+}
+
+// DOM から現在の入力値を、表示中のタブの行配列に同期する
 function syncConstFromDOM() {
     const tbody = document.querySelector("#const-modal .const-table tbody");
-    if (!tbody || !CONST_MODAL.rows) return;
-    const rows = tbody.querySelectorAll("tr");
-    rows.forEach((tr, i) => {
+    const rows = _constRows();
+    if (!tbody || !rows) return;
+    tbody.querySelectorAll("tr").forEach((tr, i) => {
         const inputs = tr.querySelectorAll("input");
-        if (inputs.length >= 2 && CONST_MODAL.rows[i]) {
-            CONST_MODAL.rows[i].name = inputs[0].value;
-            CONST_MODAL.rows[i].value = inputs[1].value;
+        if (inputs.length >= 2 && rows[i]) {
+            rows[i].name = inputs[0].value;
+            rows[i].value = inputs[1].value;
         }
     });
 }
 
 function constUpdate(idx, key, val) {
-    if (CONST_MODAL.rows) CONST_MODAL.rows[idx][key] = val;
+    const rows = _constRows();
+    if (rows && rows[idx]) rows[idx][key] = val;
+    if (key === "name") _constRefreshWarn();
 }
 
 function constAddRow() {
-    if (!CONST_MODAL.rows) return;
     syncConstFromDOM(); // 現在の入力値を先に保存
-    CONST_MODAL.rows.push({ name: "", value: "" });
+    _constRows().push({ name: "", value: "" });
     renderConstModal();
 }
 
-function constDelRow(idx, renderFnName) {
-    if (!CONST_MODAL.rows) return;
+function constDelRow(idx) {
     syncConstFromDOM(); // 現在の入力値を先に保存
-    CONST_MODAL.rows.splice(idx, 1);
-    if (CONST_MODAL.rows.length === 0) CONST_MODAL.rows.push({ name: "", value: "" });
-    (renderFnName ? window[renderFnName] : renderConstModal)();
+    const rows = _constRows();
+    rows.splice(idx, 1);
+    if (rows.length === 0) rows.push({ name: "", value: "" });
+    renderConstModal();
 }
 
-// ── 定数保存共通ヘルパー ──────────────────────────────────
-// target=null → グローバル定数、target=フォームオブジェクト → フォーム定数
-function constSaveBase(target) {
+// 全体とフォームの両方を検証して一度に保存する
+function constSave() {
     syncConstFromDOM();
-    const valid = (CONST_MODAL.rows || []).filter(r => r.name.trim());
-    const names = valid.map(r => r.name.trim());
-    const dup = names.find((n, i) => names.indexOf(n) !== i);
-    if (dup) { showVjaAlert("定数名「" + dup + "」が重複しています"); return; }
-    const saved = valid.map(r => ({ name: r.name.trim(), value: r.value }));
-    if (target === null) {
-        getProjectData().constants = saved;
-    } else {
-        target.constants = saved;
-        showToast("フォーム定数を保存しました（" + saved.length + "件）");
-    }
+    const clean = (rows) => (rows || []).filter(r => r.name.trim()).map(r => ({ name: r.name.trim(), value: r.value }));
+    const savedG = clean(CONST_MODAL.rowsG);
+    const savedF = clean(CONST_MODAL.rowsF);
+    const dupOf = (list) => list.map(r => r.name).find((n, i, a) => a.indexOf(n) !== i);
+    const dupG = dupOf(savedG), dupF = dupOf(savedF);
+    if (dupG) { showVjaAlert("全体の定数名「" + dupG + "」が重複しています"); return; }
+    if (dupF) { showVjaAlert("このフォームの定数名「" + dupF + "」が重複しています"); return; }
+    const f = _constCurForm();
+    getProjectData().constants = savedG;
+    if (f) f.constants = savedF;
+    showToast("定数を保存しました（全体" + savedG.length + "件・フォーム" + savedF.length + "件）");
     closeModal();
     pushUndo();
 }
-function constSave() { constSaveBase(null); }
 
 /* ── プロパティパネル カスタムセレクト ── */
 // ── pv-sel 生成共通ヘルパー ─────────────────────────────
@@ -1267,9 +1312,9 @@ Object.assign(window, {
     commitCurrentInput, isDirty, confirmClose,
     showCloseConfirm, hideCloseConfirm, onConfirmOk, doClose,
     // 定数編集・行リストモーダル共通テンプレート
-    openConstEditor, renderConstModal, renderConstModalBase,
+    openConstEditor, renderConstModal,
     syncConstFromDOM, constUpdate, constAddRow, constDelRow,
-    constSaveBase, constSave,
+    constSwitchTab, constSave,
     makePvSel, pvSelOpen, pvSelPick,
     rowAdd, rowInsert, rowDel, renderRowListModal, renderListManagerModal,
     // テーブル管理

@@ -6,7 +6,7 @@
    【依存】vja-defs.js, vja-designer.js, vja-modal.js, vja-yaml-editor.js,
            vja-table-validation.js（renderRowListModal等）
    【提供するもの】
-     - openFormConstEditor() / renderFormConstModal()（フォーム定数）
+     - openFormConstEditor()（フォーム定数。統合した定数モーダルのフォームタブを開く入口のみ）
      - openAppEvents() / saveAppEvent()（OnStart/OnExit）
      - openProjectInfo()（プロジェクト情報モーダル）
      - openExtRuntime()（拡張ランタイムJS）
@@ -18,38 +18,10 @@
    vja-yaml-editor.js / vja-table-validation.js に依存する。
 ═══════════════════════════════════════════════════════════════ */
 
+// フォーム定数の編集は、全体の定数と1つのモーダルに統合した（vja-table-validation.js の openConstEditor）。
+// ここは「フォームのタブを開いた状態で呼ぶ」入口だけを残す（テスト用の呼び出し一覧 bridge.ts が名前で参照するため）。
 function openFormConstEditor() {
-    const f = getProjectData().forms[getProjectData().curFormIdx];
-    if (!f) return;
-    if (!f.constants) f.constants = [];
-    CONST_MODAL.rows = f.constants.map(c => ({ name: c.name || "", value: c.value || "" }));
-    if (CONST_MODAL.rows.length === 0) CONST_MODAL.rows.push({ name: "", value: "" });
-    renderFormConstModal();
-}
-
-function renderFormConstModal() {
-    const f = getProjectData().forms[getProjectData().curFormIdx];
-    const formTitle = f?.cfg?.title || "フォーム";
-    renderConstModalBase(
-        "📌 フォーム定数 — " + esc(formTitle),
-        "このフォーム（" + esc(formTitle) + "）専用の定数を定義します。グローバル定数と合わせてYAMLから参照できます。",
-        "formConstAddRow()",
-        "saveFormConst()",
-        "renderFormConstModal"
-    );
-}
-
-function formConstAddRow() {
-    if (!CONST_MODAL.rows) return;
-    syncConstFromDOM(); // 現在の入力値を先に保存
-    CONST_MODAL.rows.push({ name: "", value: "" });
-    renderFormConstModal();
-}
-
-function saveFormConst() {
-    const f = getProjectData().forms[getProjectData().curFormIdx];
-    if (!f) return;
-    constSaveBase(f);
+    openConstEditor("f");
 }
 
 
@@ -890,7 +862,7 @@ function closeAllMenus() {
 ═══════════════════════════════════════════ */
 Object.assign(window, {
     // フォーム定数・アプリイベント・プロジェクト情報・拡張ランタイム
-    openFormConstEditor, renderFormConstModal, formConstAddRow, saveFormConst,
+    openFormConstEditor,
     openAppEvents, saveAppEvent,
     openProjectInfo, piVerStep, saveProjectInfo, piCancel,
     openExtRuntime, saveExtRuntime, extRtGenDoc, generateExtRuntimeDoc,

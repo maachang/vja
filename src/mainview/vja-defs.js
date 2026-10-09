@@ -1048,8 +1048,12 @@ var COLDEF_MODAL = {
     maxRows: 0,
 };
 // 定数編集モーダル専用の一時状態
+// rowsG=全体（グローバル）定数、rowsF=現在のフォームの定数、tab="g"|"f"（表示中のタブ）。
+// 両方を保持するのは、タブを切り替えても未保存の編集が失われないようにするため。
 var CONST_MODAL = {
-    rows: [],
+    rowsG: [],
+    rowsF: [],
+    tab: "g",
 };
 // バリデーション編集モーダル専用の一時状態
 var VALID_MODAL = {

@@ -23,7 +23,7 @@ import { initLogger, writeLog } from "./logger";
 import electrobunPkg from "electrobun/package.json";
 import { copyCompileAssets, getVersion, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH, WEBVIEW_RUNTIME_LIBS, ELECTROBUN_PIN_VERSION, ELECTROBUN_BUN_VERSION, ELECTROBUN_PATCH_FILE } from "./copy-compile-assets";
 import { clearProjectDb, closeProjectDb } from "./db-manager";
-import { execFetch } from "./bun-utils";
+import { execFetch, buildConstInitScript } from "./bun-utils";
 import { RUNTIME_ERROR_SNIPPET } from "./runtime-error-snippet";
 import {
     fileReadHandler, fileWriteHandler, fileReadBytesHandler, fileWriteBytesHandler,
@@ -137,6 +137,8 @@ const encryptCredential = async (plain: string): Promise<string> => {
 
 // 現在のプロジェクト拡張ランタイム
 let _currentProjectExtRuntime: string = "";
+// 現在のプロジェクトの全体（グローバル）定数。フォームの定数は各フォームのデータ(form.constants)にある
+let _currentProjectConstants: any[] = [];
 let _devToolsOpen: boolean = false;
 let _fetchAbortMap = new Map<string, AbortController>();
 
@@ -751,6 +753,7 @@ const _updateProjectData = async (jsonStr: string, filePath?: string, keepPass: 
         if (filePath) _currentProjectFilePath = filePath;
         _currentProjectDbDir = join(_projectWorkDir, name, "db");
         _currentProjectExtRuntime = proj.extRuntime?.js || "";
+        _currentProjectConstants = Array.isArray(proj.constants) ? proj.constants : [];
         // vjaPass を読み込む（setProjectDataに渡す前に確定させる）
         if (!keepPass) {
             _vjaPass = await _loadVjaPass(proj);
@@ -823,7 +826,7 @@ const buildProjectFiles = async (): Promise<{
         // 各フォームのHTMLを生成
         const extRuntimeJs = (_currentProjectExtRuntime || "").trim();
         for (const form of _currentProjectForms) {
-            const html = buildFormHtml(form, _currentProjectForms, extRuntimeJs);
+            const html = buildFormHtml(form, _currentProjectForms, extRuntimeJs, _currentProjectConstants);
             const fileName = (form.cfg.name || form.cfg.title) + ".html";
             await Bun.write(join(outDir, fileName), html);
         }
@@ -922,7 +925,7 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
         }
         for (const form of _currentProjectForms) {
             const htmlFileName = `${form.cfg.name || form.cfg.title}.html`;
-            const html = buildFormHtml(form, _currentProjectForms, extRuntimeJs);
+            const html = buildFormHtml(form, _currentProjectForms, extRuntimeJs, _currentProjectConstants);
             await Bun.write(join(srcMainviewDir, htmlFileName), html);
             copyEntries[`src/mainview/${htmlFileName}`] = `views/mainview/${htmlFileName}`;
         }
@@ -1041,7 +1044,7 @@ export default {
 };
 
 // フォームのHTMLを生成
-const buildFormHtml = (form: any, allForms: any[], extRuntimeJs: string = ""): string => {
+const buildFormHtml = (form: any, allForms: any[], extRuntimeJs: string = "", globalConsts: any[] = []): string => {
     const cfg = form.cfg;
     const widgets = form.widgets || [];
     const events = form.events || {};
@@ -1137,6 +1140,7 @@ ${widgetsHtml}
 <script src="./qrcode.js"></script>
 <script src="./marked.umd.js"></script>
 <script src="./project-bridge.js"></script>
+<script>${buildConstInitScript(globalConsts, form.constants)}</script>
 ${extRuntimeJs ? `<script>\n${extRuntimeJs}\n</script>` : ""}
 <script>
 ${eventsJs}

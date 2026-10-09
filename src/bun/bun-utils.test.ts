@@ -1,7 +1,7 @@
 // src/bun/bun-utils.test.ts
 // parseCsvLine / decompressGzip の純粋ロジックに対するユニットテスト。
 import { describe, test, expect } from "bun:test";
-import { parseCsvLine, decompressGzip, execFetch } from "./bun-utils";
+import { parseCsvLine, decompressGzip, execFetch, buildConstInitScript } from "./bun-utils";
 
 describe("parseCsvLine", () => {
     test("単純なカンマ区切り", () => {
@@ -118,5 +118,37 @@ describe("execFetch", () => {
             ctrl.abort();
             await expect(p).rejects.toMatchObject({ name: "AbortError" });
         } finally { server.stop(true); }
+    });
+});
+
+describe("buildConstInitScript", () => {
+    // 生成したスクリプトを、偽のvja.constに対して実際に実行し、渡る値を確認する
+    const run = (g: any, f: any) => {
+        const calls: any[] = [];
+        const w: any = { vja: { const: { init: (a: any, b: any) => calls.push([a, b]) } } };
+        new Function("window", buildConstInitScript(g, f))(w);
+        return calls;
+    };
+
+    test("全体の定数とフォームの定数がvja.const.initへ渡る", () => {
+        const calls = run([{ name: "hoge", value: "1" }], [{ name: "moge", value: "2" }]);
+        expect(calls).toEqual([[[{ name: "hoge", value: "1" }], [{ name: "moge", value: "2" }]]]);
+    });
+
+    test("配列でない・名前が空の定数は除外し、値が無ければ空文字にする", () => {
+        const calls = run(undefined, [{ name: "", value: "x" }, { name: "a" }, null]);
+        expect(calls).toEqual([[[], [{ name: "a", value: "" }]]]);
+    });
+
+    test("値に</script>や改行コードを含んでもHTMLを壊さず、値は元のまま渡る", () => {
+        const v = 'a</script><script>alert(1)</script>  "\\';
+        const src = buildConstInitScript([{ name: "k", value: v }], []);
+        expect(src.includes("</script>")).toBe(false);
+        expect(src.includes("<")).toBe(false);
+        expect(run([{ name: "k", value: v }], [])[0][0][0].value).toBe(v);
+    });
+
+    test("vja.constが無い環境でも例外を出さない", () => {
+        expect(() => new Function("window", buildConstInitScript([{ name: "a", value: "1" }], []))({})).not.toThrow();
     });
 });
