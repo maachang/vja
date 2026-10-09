@@ -10,9 +10,21 @@
   - **バージョン表示**: vja起動ログ・コンパイル済みアプリの起動ログ・「ファイル→バージョン情報」に、実行中のbun（`Bun.version`）と実際にインストールされたElectrobun（`electrobun/package.json`のimport）のバージョンを出す。想定外のbunで動いていないかの確認に使う
   - **注意（運用）**:
     - Electrobunのバージョンを上げるとパッチは当たらなくなる（ファイル名も`@1.18.1`固定）。新しいElectrobunがbun 1.4系に対応済みならパッチ不要、未対応なら作り直す。`bunVersion`を上げる場合も同様にJSCallbackの型変更に対応済みか確認すること
-    - `node_modules/electrobun`のファイルをその場で直接編集してはならない。bunのキャッシュ（`~/.bun/install/cache/electrobun@1.18.1@@@1`）とハードリンクされており、同じバージョンを使う他プロジェクト（`~/.vja-apps/VJAFormDesigner/dist/*/node_modules`等）のファイルまで書き換わる（実際に発生し、原本に戻して復旧した）。修正は`bun patch electrobun`→編集→`bun patch --commit 'node_modules/electrobun'`の手順で行う
+    - `node_modules/electrobun`のファイルをその場で直接編集してはならない。bunのキャッシュ（`~/.bun/install/cache/electrobun@1.18.1@@@1`）とハードリンクされており、同じバージョンを使う他プロジェクト（コンパイル先プロジェクトの`node_modules`等）のファイルまで書き換わる（実際に発生し、原本に戻して復旧した）。修正は`bun patch electrobun`→編集→`bun patch --commit 'node_modules/electrobun'`の手順で行う
     - `bun.lock`はgit管理外
   - 検証状況: vja本体（dev）は1.4.2で起動しエラー無し・`bun test`全件通過。1.3.13でも同様に動作。コンパイル先プロジェクトの同梱bunが1.4.2になることはユーザー実機で確認済み
+
+- **Electrobun 2.0.1は起動不能のため使わない（1.18.1に固定）**（2026-08-27確認、2026-09-29にも再確認）: `electrobun@2.0.1`は、ビルドツールが`Hutch`（内部JSランタイム`Cottontail`）に刷新されており、`electrobun.config.ts`から**別のローカル`.ts`ファイルを1つでもimportすると、内容を問わず`error: SyntaxError`（詳細メッセージなし）で起動できない**。`export const A = 1;`だけの空に近いファイルのimportでも再現し、`~/.hutch`を削除してクリーン再インストールしても再現する（キャッシュ破損ではない）。vjaの`electrobun.config.ts`は`./src/bun/copy-compile-assets`をimportしており該当する。config内へ全設定を直書きしてimportを使わなければ動く。Linuxだけでなく、Windows x64でも同様に起動しなかった（2026-08-28報告）。2026-08-27に`bun update`で1.18.1から2.0.1へ意図せず上がって発覚したため、`package.json`の`electrobun`は`"latest"`ではなく`"1.18.1"`へ明示固定している
+  - **運用**: バージョンを上げる場合は、事前に動作確認してから明示的に切り替える（latest追従はしない）。Electrobun関連のエラー調査では、まず`node_modules/electrobun/package.json`のバージョンを確認し、既知の不具合パターンと照合する
+  - **旧`build/`の残骸**: 一度Electrobun 2で実行してから1.18.1へ戻し`bun install`しても、`bun x electrobun dev`が`error: SyntaxError`のままになる事象があった（`node_modules`側は1.18.1に戻っていた）。Electrobun 2の実行時に生成された`build/`配下（`build/dev-linux-x64`等、gitignore対象の生成物）が残り、1.18.1のdevがそれを読んで失敗したと推定される（原因は未確定）。`build/`を削除して再実行すると解消した
+
+- **Linuxで起動しない時は、Electrobunを疑う前に環境側の破損も切り分ける**（2026-09-24）: vjaがLinuxで起動しなくなった事象の原因は、Electrobunのバグではなく**フォントファイルの破損**だった。再構築（再インストール等）で起動を確認できた。同様の事象では、Electrobunのバージョン起因を疑う前に、フォントファイル等の環境側の破損も切り分けの候補に含めること
+
+- **M2 Mac Air（macOS 27系）で`bun x electrobun dev`がログも出さず即終了する（未解決・原因未特定）**（2026-09-24時点）: メッセージが出た直後にアプリが終了し、エラーログも出ない。動作確認済みはWindows 11とM1 Mac（macOS Sonoma）で、問題が出るのはM2 Mac Air（macOS 27系）のみ。他機との違いとして、bunを`brew install bun`（Homebrew経由）で入れている点も挙がっている（他機の導入方法は未確認）。Electrobunは1.18.1固定。**上の「macOSで`bun run dev`が何も出力せず即終了する（CLIバイナリの署名破損）」と同一の事象かは未確認**。M1 Macで問題がないことから、Apple Siliconの世代差よりOSバージョンの違いが疑わしいが、決め打ちせず、実際のログ・再現手順を確認してから原因を特定すること
+
+- **Foundry Localは0.8.119.102に固定する**（2026-09-26）: Windows/Snapdragon X向けローカルLLMのセットアップ手順`docs/localLlm/win-foundry-setup.md`は、Foundry Local 0.8.119.102を対象バージョンとして固定している（`winget install Microsoft.FoundryLocal --version 0.8.119.102`で明示指定）。0.10.3では、NPUで動作しない・ドキュメント記載のコマンド体系（`foundry model`/`foundry service`等）が変更されている、という問題を確認済み。そのため、検証結果が出るまでは最新版への更新を案内せず、手順書・案内は0.8.119.102のままにする
+
+- **Snapdragon X（Win11 ARM64）では動作する**（2026-10-07再確認）: 以前はElectrobunのBunがx64版（エミュレーション）で動くことに起因する不安定さがあったが、最近のWin11 ARM64では解消しており、何度起動・操作しても再現しない（2026-09-25報告、2026-10-07再確認）。x86版Bunの導入手順も不要。**ドキュメントや説明に、不安定さ・未対応・エミュレーション問題を欠点として書かない**（過去の経緯も含む。AIがドキュメントを読んで過去の不安定さを欠点として拾うのを避けるため）。README.mdの「動作環境」は「Snapdragon X（ARM64）でも動作します」の1行のみ
 
 - **macOSで`bun run dev`が何も出力せず即終了する（Electrobun CLIバイナリの署名破損）**（2026-09-24、macOS 27.0で確認）: npm配布のElectrobun(v1.18.1)のCLIバイナリ（`node_modules/electrobun/bin/electrobun`）は、GitHubリリース物（`electrobun-cli-darwin-arm64.tar.gz`）自体のコード署名が壊れており（`codesign --verify`で`invalid signature`）、起動直後にOSからSIGKILL(exit 137)される。`bun run dev`側はこれを拾えずexit 0で終了するため原因が見えにくい。ad-hoc再署名（`codesign --force --sign -`）で起動できることを確認済み。Macでは`bun install`の代わりにプロジェクト直下の`setup-mac.sh`でセットアップする（bun install→CLIバイナリ未ダウンロードなら取得→`bin/`と`.cache/`の両方を再署名→起動確認）
   - CLIバイナリはnpmパッケージに含まれず、`electrobun`コマンド初回実行時に`electrobun.cjs`が`bin/`・`.cache/`へダウンロードする（`bin/electrobun`が存在すれば再ダウンロードしない）。そのため`node_modules/electrobun`が入れ直された場合（再インストール・electrobunのバージョン変更等）は再署名が消えるので、`setup-mac.sh`を再実行すること

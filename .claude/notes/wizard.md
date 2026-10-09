@@ -34,7 +34,7 @@
 - **後付けの増改築でウィザードの記述が矛盾しやすい**: ヘッダーコメントの通し番号（丸数字）は全廃しステップ名を直接書く。ステップを巻き戻す処理では`WIZARD_STATE.step`の更新漏れに注意（インジケーター表示がズレる実バグがあった）
 - **一覧画面のdatagrid欠落**: 一覧スロットのdocDraft本文に「一覧」という語が入らないと、後工程（`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`のdatagrid必須ルール）が発動しない。docDraftには必ず「一覧」を含める、一覧スロットには「新規登録」ボタン、入力スロットには「戻る」ボタンを含める、と`ENG_WIZARD_DECOMPOSE_FORMS_SYS_PROMPT`に明記している。あわせて`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`に「一覧＋入力」「一覧オンリー」のFew-Shot例（正しい例/誤った例の対比）を追加した
 - **`layout_pattern`の同期漏れ**（AI/モデルの問題ではなかった）: `layout_pattern:`行の抽出・`formLayoutPattern`への反映は、UI手動操作版にしか実装されておらず、ウィザード版（`wizardGenerateFormYaml()`）は`{ yaml, layoutPatternId }`を返す形にし、`wizardConfirmAndGenerate()`のループ内でも`formLayoutPattern`を`formDesignDraft`等と同じパターンで同期するよう修正した。モデルのせいにする前に、実データ（生成結果）を確認すること
-- 実LLM(192.168.0.235)での検証は、8システムモデル全パターン・3テーブル構成で実施済み（欠落・実在しないカラムの混入なし）。実機（`bun run dev`）でのUI操作込みの全体再テストは、当時は未実施
+- ローカルのllama-server（開発用LLMサーバー）の実LLMでの検証は、8システムモデル全パターン・3テーブル構成で実施済み（欠落・実在しないカラムの混入なし）。実機（`bun run dev`）でのUI操作込みの全体再テストは、当時は未実施
 
 ## 画面種別ごとの必須ボタンのコード補完（2026-10-02）
 
@@ -58,3 +58,30 @@
 - **カラムの表示系/管理系**: カラム定義の`managed`（true=管理系。作成日時・更新日時・削除フラグ等）。テーブル編集の「表示系」列のチェックONが表示系で、データは`managed`のまま反転して保持する（属性なしの既存テーブル=表示系でON）。DDLには影響しない。画面生成（YAML・レイアウト・ウィザードの画面構成分解）は`buildTablesCtxText(tables, true)`で管理系を除いて渡す。**イベントJS生成は全カラムのまま**（INSERT/UPDATEで管理系も扱うため）。AI生成のカラムは常に表示系
 - 未対応: 依頼文に管理系カラム名が明示された場合の除外、「一覧には出すが入力はさせない」等の3つ目の区別、入力スロット数を超える多項目の一覧用パターン（今のところ不要と判断。`leftInputRightDisplay`は入力3行）
 - 単体テスト: `vja-form-layout-fix.test.ts`/`form-layout-patterns.test.ts`/`vja-wizard-actions.test.ts`/`vja-table-validation.test.ts`/`vja-ai-gen-core.test.ts`
+
+## レイアウトイメージ選択（`form-layout-patterns.js`、2026-08-15〜17実装）
+
+画面生成（ウィザード・手動の「🤖 AIでフォーム設計」の両方）が使う、画面の大まかな配置構造の選択機能。px座標制約への強化（2026-09-14）の詳細は`ai-generation.md`を参照。ここには構造とID一覧だけを記す。
+
+- **方針**: 入力・表示・ボタンエリアの配置構造のみを示す、業務テンプレート名ではない構造ベースの6パターン。選択結果はYAML本文へ書き込まず、`getProjectData().formLayoutPattern`（フォーム単位。`syncCurForm()`/`commitFormDesignDraft()`で同期）にのみ保持し、`formDesignAiGenerate()`がAIへの補足として注入する。YAML本文に「フォームレイアウト:」を書く旧方式は、YAMLにdatagrid等の定義が無いのにテンプレート選択で表示されてしまう問題があったため廃止した
+- **`FORM_LAYOUT_PATTERNS`のid**: `topInputBottomDisplay`（上:入力+ボタン/下:表示）、`leftInputRightDisplay`（左:入力/右:表示）、`stackedInputBottomButtons`（縦並び入力+右下ボタン。表示エリアなし。ログイン画面等）、`centerInputBottomButtons`（中央:入力+下部中央ボタン。表示欄ありのダイアログ）、`topMultiDisplayBottomDisplay`（上部複数表示+下部表示。入力エリアなし）、`topInputMidMultiDisplayBottomDisplay`（上:入力+ボタン/中:複数表示/下:表示。ダッシュボード的）。このほか`stackedButtonsOnly`（下記）がある
+- **UI**: 「🤖 AIでフォーム設計」モーダルの「🖼 レイアウト」タブ。SVGの箱型ダイアグラム（`buildLayoutPatternDiagramSvg`）のカード一覧（先頭に「指定なし」）
+- **AIにパターンを選ばせる時は番号選択方式（1〜6、該当なしは0）**: `layout_pattern: <camelCase id>`形式で選ばせると、ローカルLLMが複数のIDを混ぜた実在しない文字列（例: `topInputBottomButtons`）を生成した。IDを文字列で書かせない。選定精度（どの番号が選ばれやすいか）は検証途中
+- **旧テンプレートとの統合**: `form-design-templates.js`の各テンプレートから「フォームレイアウト:」ブロックを削除し、`layoutPatternId`を持たせた（search→`topInputBottomDisplay`、form→`stackedInputBottomButtons`、dialog→`centerInputBottomButtons`、dashboard→`topInputMidMultiDisplayBottomDisplay`）。`insertFormDesignTemplate()`が反映時に対応パターンを`formLayoutPattern`へ自動設定する
+
+## 手動用のメニュー画面テンプレート（2026-09-15）
+
+- 注意: ここでの「メニュー画面テンプレート」は手動の「🤖 AIでフォーム設計」用で、上記「現行の設計」にあるウィザード内部の`kind:"menu"`スロット（`_wizardBuildScreenSkeleton()`が機械生成するメニュー画面）とは別物。後者は手動のテンプレート一覧からは選べなかったため、VB6でいう「各画面への遷移ボタンのみが並ぶ起点画面」の雛形として追加した
+- `form-layout-patterns.js`: パターン`stackedButtonsOnly`（「📋 縦並びボタンのみ」。中央にボタンエリアを縦4段、入力欄・表示欄なし）
+- `form-design-templates.js`: テンプレート`menu`（「🗂️ メニュー画面」。入力項目なし、アクション項目のみ＝画面遷移ボタン×2＋終了ボタンのプレースホルダ文言。`layoutPatternId: "stackedButtonsOnly"`）
+- 「メニュー画面」「起点画面」の要望はこのテンプレートを起点にする。実機（`bun run dev`）でのUI確認（テンプレート選択→反映）は未実施（コミット625d3ef）
+
+## ウィザードの初期構想（2026-08-09合意）のうち現行にも通じる点
+
+初期構想は動的Q&A・AIによるテーブル候補抽出を前提としており、それらは上記のとおり廃止済み（旧設計）。次の点だけが現行にも当てはまる。
+
+- **MVPスコープ**: ウィザードの役割は「プロジェクトの雛形（複数フォームの骨組み）を作るだけ」。フォーム間の画面遷移・連携は自動化せず、ユーザーが後から個別イベントのYAMLドラフトで書く。基本フローが機能してから個別に拡張する（スコープを最初から広げない）
+- **生成フロー**: 各フォームを既存の3段エンジン（`✨ YAMLドラフト`→`📋 YAML`→`🤖 画面反映`、実体は`formDesignTextToYamlGenerate`/`formDesignAiGenerate`相当）で順に自動実行する。進捗表示（例:「フォーム2/5: LoginForm 生成中…」）を出し、中断可能。一部のフォームだけ失敗したらそのフォームだけ空で残して継続（全体ロールバックしない）。生成後のYAMLレビューは挟まない（修正は事後に個別フォームのYAMLドラフトで行う）
+- **UI要件**: 複数ステップの「入力→次へ」形式で、各ステップ間の「戻る」は必須。戻っても入力内容は保持する
+- **起動導線**: 開いているプロジェクトがある場合は新規作成の確認（未保存なら保存確認、キャンセルでウィザード中止）→AI接続設定が未設定/無効なら先に設定→プロジェクト設定が未入力なら入力、の順で前提を確認する
+- **完成ラインと到達点（2026-09-20）**: 「プロジェクトの雛形が作れる」＋「生成後にウィジェット配置をある程度手動で整理できる」を最低限の目標とする（配置変更が全く不要なレベルは目指さない）。実LLM(qwen2.5-coder-7b)で3パターンのフルパイプライン（`wizardDecomposeForms`〜`wizardGenerateFormYaml`/`wizardGenerateFormLayout`）を検証し、画面数・テーブル紐付けの欠落なし、見つかった3件（参照テーブル欠落、「編集」の語によるlayout_pattern誤選択、fields件数少でのdatagrid脱落）は修正済み。この範囲でウィザード対応を区切りとした。datagrid脱落は温度依存の揺らぎとして対応不要と判断。実機でのUI込みの通し確認は未実施

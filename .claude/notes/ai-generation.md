@@ -31,7 +31,7 @@
   - `formDesignDraft`/`formDesignDocDraft`は各フォーム（`getProjectData().forms[idx]`）ごとに保持され、他フォームの内容が混入しないよう`syncCurForm()`/`commitFormDesignDraft()`で同期・書き戻しされる
   - **`参照テーブル:`（YAML中の`tables:`）は必須項目**（2026-09-13明記）: 以前は「関係があれば含める」という任意扱いの文言だったため、フィールドはテーブルのカラムから正しく導出されているのに`tables:`が空のまま生成されるケースがあった。`tables:`が無いと、後工程（画面レイアウト生成・実際のウィジェット配置）で「その画面がどのテーブルを読み書きする入力画面なのか、単なるテーブル一覧表示なのか」の区別があいまいになる。`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`に`[What Goes In "tables"]`節を追加し、「fieldsのいずれかがテーブルのカラムに由来する場合、tablesにそのテーブル名を含めるのは必須（省略可能な飾りではない）」と明記した
   - プロンプト定義: `prompt-def.js` の `ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT` / `ENG_FORM_DESIGN_TEXT_TO_YAML_USER_PROMPT`
-- **「🖼 レイアウト」タブ（レイアウトイメージ選択）を厳格なpx座標制約として反映**（2026-09-14）: 従来、選択したレイアウトパターン（`form-layout-patterns.js`の`FORM_LAYOUT_PATTERNS`）は「配置構造を言葉で説明した1文」をAIへの補足指示に足すだけで、実際の反映精度がAIの解釈に左右され「設定しても反映が微妙」という指摘があった。各パターンが元々持つ`boxes`（SVGダイアグラム描画用の0-100割合座標、役割=入力/表示/ボタン）を、`buildLayoutRegionsPromptText(patternId, formW, formH)`（`form-layout-patterns.js`）でフォーム実サイズのpx座標バウンディングボックスへ変換し、「この役割のウィジェットは必ずこの矩形内に収めよ」という具体的な数値制約として渡すよう変更した（UI手動操作版`formDesignAiGenerate()`・ウィザード版`_wizardGenerateFormLayout()`の両方に適用。ウィザード側は従来この指示自体を一切渡していなかった実装漏れもあわせて修正）。実LLM(192.168.0.235)で検証し、全ウィジェットが指定領域内に正確に収まることを確認済み
+- **「🖼 レイアウト」タブ（レイアウトイメージ選択）を厳格なpx座標制約として反映**（2026-09-14）: 従来、選択したレイアウトパターン（`form-layout-patterns.js`の`FORM_LAYOUT_PATTERNS`）は「配置構造を言葉で説明した1文」をAIへの補足指示に足すだけで、実際の反映精度がAIの解釈に左右され「設定しても反映が微妙」という指摘があった。各パターンが元々持つ`boxes`（SVGダイアグラム描画用の0-100割合座標、役割=入力/表示/ボタン）を、`buildLayoutRegionsPromptText(patternId, formW, formH)`（`form-layout-patterns.js`）でフォーム実サイズのpx座標バウンディングボックスへ変換し、「この役割のウィジェットは必ずこの矩形内に収めよ」という具体的な数値制約として渡すよう変更した（UI手動操作版`formDesignAiGenerate()`・ウィザード版`_wizardGenerateFormLayout()`の両方に適用。ウィザード側は従来この指示自体を一切渡していなかった実装漏れもあわせて修正）。ローカルのllama-server（開発用LLMサーバー）の実LLMで検証し、全ウィジェットが指定領域内に正確に収まることを確認済み
 
 # イベントYAMLドラフト自動生成機能 (Text to YAML)
 
@@ -102,3 +102,35 @@ vjaの中核コンセプトである「AIに雛形を作ってもらい、それ
 - **既存不具合を修正**: `buildGenPromptContext()`が`allWidgetsCtx`/`tablesCtx`を返しておらず、「✨ YAMLドラフト生成」にウィジェット・テーブル情報が一度も渡っていなかった（初期実装から）。戻り値へ追加済み
 - 実機測定（`mcp/js-to-yaml-e2e.ts`）: gpt-6-luna 9/9。qwen2.5-coder-7bは繰り返し・単純は5/5だが、条件分岐＋showLoading＋DB検索の長めのコードでウィジェット名を日本語へ言い換える（プロンプト文言の追加や名前一覧の受け渡しでは直らず、単一の原因は特定できていない。トースト警告で検知）
 - 未確認: アプリイベント側の実機、YAML→JS再生成の往復
+
+# Mockスモークテストの意図的Error誤検知の修正（2026-08-15）
+
+- `src/mainview/vja-yaml-editor.js`の`_getMockWorkerUrl()`（Web Worker内でAI生成コードを1回実行するスモークテスト）は、生成コードが`try/catch`で例外を捕まえても、`console.error(e.message, e)`のようにErrorオブジェクトをログへ渡していれば「握りつぶされた本物のバグ」として失敗判定していた
+- ログイン処理のように「わざと`throw new Error('パスワードが間違っています')`して自分でcatchし、ダイアログ表示する」書き方（`vja.app.showDialog`の使用例が推奨する書き方）が、Mockのダミーデータ（`vja.db.query`が常に`[{}]`を返す等）によって必ず異常系分岐を通るため、機械的に必ず失敗判定→AI再生成ループになっていた
+- 修正: Worker内で生成コードを実行するスコープだけ`Error`をシャドーイングし、生成コードの`new Error(...)`を専用サブクラス`_VjaMockThrownError`へ置き換えた。`console.error`の捕捉判定は「本物の`TypeError`/`ReferenceError`等（`_VjaMockThrownError`ではないError）のみ失敗、生成コードが自分で`new Error()`したものは合格」。`try/catch`されずに外へ漏れた例外は、意図的な`Error`でも従来通り失敗扱い（投げっぱなしはバグとして検知を継続）
+- 教訓: Mockでの誤検知に遭遇したら、まずMockのダミーデータが分岐をどちらに倒すか（今回は`db.query`の`[{}]`固定値）を疑う
+
+# AIモデル接続まわりの制約と所感
+
+- **OpenAI公式API（`hasApiKey`）の制約**（2026-08-07）: `runAiGenerate`（`vja-modal.js`）で`aiConfig.apiKey`設定時（`hasApiKey`フラグ＝OpenAI公式API利用と判定）、`max_tokens`（非サポート。`max_completion_tokens`を使えとエラーになる）と、デフォルト値(1)以外の`temperature`（0等）でHTTP 400になる。gpt-5系がchat completions APIの一部パラメータを制限しているため。対応は「`hasApiKey`の場合は`max_tokens`/`temperature`ともリクエストボディに含めない」（API側の既定値任せ）。ローカルLLM（Ollama等のOpenAI互換API）では従来通り送れる。他のパラメータでも同様の制約が出たら同じ`hasApiKey`分岐で対応する。モデル名がgpt-5系かどうかでの厳密な判定は見送っている
+- **GPT-6 Luna（OpenAIの低コストモデル）の正式名称と料金**: 正しい名称は「GPT-6 Luna」（旧表記「GPT-5.6 Luna」は誤りで、README.md/docs/user-guide.mdは2026-09-25に訂正済み）。料金（2026-09-25時点）は入力$0.10/出力$0.50（いずれも100万トークンあたり）。プロンプトの実測（イベントJS自動生成）はフロントイベントでシステム約10,057字＋ユーザー約1,200字、バックエンドイベントでシステム約6,566字＋ユーザー約1,200字。この条件の試算では1イベントのコード生成あたり約0.1円、中規模アプリ全体でも数円程度（詳細はREADME.mdの「GPT-6 Lunaでのコスト試算」節）。コスト試算・モデル名に言及する際はこの表記・料金を使う。ソース中の`gpt-5.6-luna`は当時実際に使ったモデルIDの記録なので書き換えない
+- **品質の所感**（2026-08-10）: イベントJS生成では、速度以外はローカルLLM（qwen2.5-coder等）と同等。SHA256を`vja.crypto.sha256`を使わず独自実装する、といったローカルLLMと同種の生成ミスも起きるため、モデル種別によらずコード生成後の自動検証（`_FORBIDDEN_PATTERNS`等、`vja-yaml-editor.js`）で拾う設計が引き続き重要
+- **画面デザインYAMLドラフトでfields/actionsが空になる不具合（原因はモデルではなくプロンプト）**（2026-08-10）: OpenAI(gpt-5.6-luna)で`入力項目: []`/`アクション項目: []`になる事象は、モデルの限界ではなかった。OpenAI APIへ直接何十回もリクエストして条件を1つずつ切り分けた結果、真因は`[Existing Widgets On This Form]`（既存ウィジェット一覧）のコンテキストと「既存ウィジェットと重複させるな」というルールだった。同じフォームで画面反映を繰り返すと既存ウィジェットが配置済みになり、AIは指示通りfieldsを省略していた。YAMLドラフト生成は配置前の仕様書作成ステップで、重複回避は後工程の「🤖 画面反映」の責務のため、このプロンプトから既存ウィジェットのコンテキストを削除して解決（`ENG_FORM_DESIGN_TEXT_TO_YAML_SYS_PROMPT`、`formDesignTextToYamlGenerate()`）。修正後は同条件で10/10安定。教訓: 一部の機能・状況でだけ再現性が低い場合は、「モデルの限界」と結論する前に、実APIへの複数回リクエストで条件を1つずつ切り分け、プロンプトと渡しているコンテキストを疑う
+
+# 実行時エラーのAI修正機能（構成と未確認事項）
+
+- 構成（2026-10-07、コミット`b6b666e`）: 実行ウィンドウの`_vjaRun`（`src/bun/index.ts`、生成JSに`RUNTIME_ERROR_SNIPPET`を埋め込み）→`reportRuntimeErrorRequest`→`project-runner.ts`の`onRuntimeError`→`runtimeErrorReported`→`bridge.ts`（`normalizeRuntimeError`）→`vja-runtime-errors.js`（一覧とバッジ「⚠ 実行エラー(N)」）。一覧の「🤖 AIで修正」→`manualRetryAiFix(…, runtimeError)`→`retryAiFix`/`buildAiFixPrompt`（`vja-mock-check.js`）。結果はエディタ欄に入るだけで、保存は利用者が行う。エラー種別はthrown/swallowed。アプリイベント（Bun側OnStart/OnExit）は`widgetName="appev"`でthrownのみ（行補正3。フロントは補正2）。Bun側の握りつぶしは未対応
+- テストは`mcp/runtime-error-fix-e2e.ts`（詳細と教訓は`mcp-test.md`の該当節）
+- 未確認が3点: 実行ウィンドウ/OnStartから実際にデザイナーへ届くか、一覧ボタンのクリック操作、Windows(V8)/Macのエラー行番号。確認は`null.foo`を書いたプロジェクトを実行して行う。`bun run mcp`の前に旧プロセスが4570番ポートを握っていないか`ss -ltnp | grep 4570`で確認する
+
+# YAMLドラフトタブでEnter/Backspaceが効かなかった不具合（Undo状態の遅延初期化）
+
+- 症状（2026-09-25修正、コミット`db35898`）: 「YAMLドラフト」タブ（`prompt-ta`/`ta-fd-doc`）でEnterが常に効かず、Backspaceはカーソルが末尾にある時だけ効かなかった（「📋 YAML」「JS」タブは無事）
+- 原因: `editorKeyHandler()`（`vja-editor-completion.js`）は、Enter押下時と末尾のBackspace押下時（AUTO_PAIRSのペア削除判定が末尾では`undefined === undefined`で誤成立する既存の境界バグ経由）に必ず`editorUndoPush(state, ...)`を呼ぶ。`state`は`prompt-ta`では`getEditorContext().pu`、`ta-fd-doc`では`FORMDESIGN_EDITOR.docUndo`だが、これらは`vja-defs.js`のCTX初期値に無く、モーダルを開く処理内の遅延初期化に依存していた。初期化前に`editorUndoPush`が呼ばれると`state.stack`で例外になり、`preventDefault()`は済んでいるため入力が完全に無効化されて見えた。`yu`/`ju`は最初から静的定義だったため影響を受けなかった
+- 修正: `CTX._editor.pu`と`FORMDESIGN_EDITOR.docUndo`を`yu`/`ju`/`taUndo`と同じく静的初期化へ統一（`vja-defs.js`）。`vja-yaml-editor.js`/`vja-form-design-ai.js`の遅延初期化ガード行は削除
+- 教訓: CTXやFORMDESIGN_EDITOR等の共有状態へ新しいUndo状態を足す時は、遅延初期化にせず最初から静的に定義する。「特定のUI操作だけキーが効かない」系は、静的読解（末尾Backspaceは数式上は無害に見えた）では原因を特定できなかった。`vja-defs.js`/`vja-editor-utils.js`/`vja-editor-completion.js`を結合してtextareaをスタブ化し、`editorKeyHandler`を直接実行する最小再現スクリプトで、修正前は例外・修正後は正常動作を確認した。実機でも確認済み
+
+# イベントごとの設定キーとsnapshot/restore
+
+- イベントごとの設定は`getProjectData()`配下の`apiOptOverrides["wid_evName"]`（任意APIカテゴリ）、`tableOptOverrides`、`validationOverrides`、`mockCheckOverrides`、`learnedFixes`、`mockOverrides`、`snapshotHistory`などに`wid_evName`キー方式で持つ
+- `getProjectData()`配下に新しく持たせるデータは、`vja-modal.js`の`snapshot()`/`applyProjectData()`へ必ず登録する（漏れると保存・再読込で黙って失われる）。ウィジェット/イベント削除時の自動クリーンアップが必要なものは`OVERRIDE_MAP_NAMES`にも追加する

@@ -12,3 +12,33 @@
 - 実例: 9/21の分割(6f01d2b)で`_editorCompletionOnInput`を`vja-yaml-editor.js`から呼ぶようになったが公開漏れで、バンドル時に**定義が削除**され`ReferenceError: Can't find variable`になった（約2週間気付かれなかった）。
 - 検出: `bun build src/mainview/index.html --outdir out`（`node_modules`が必要）でバンドルし、`out/*.js`に`function 関数名`の定義が残っているか`grep`する（過去のコミットを`git archive`して同じ方法で比較すれば、いつ壊れたかも特定できる）。
 - 機械的な洗い出し: 各`src/mainview/*.js`のトップレベルの`_`始まりの定義（function/const/let/var）を集め、定義と別のファイルで使われているものを探す（コメント内の言及は除いて判断する）。
+
+## 検証手法の整理（vja-yaml-editor.js 7分割・prompt-def.js外部ファイル化で確立）
+- 上の各項目に加え、次の2点も検証フローに組み込む。
+- **文字列の内容が変わっていないことは回帰ハーネスで保証する**: prompt-def.jsのような「出力文字列を作る関数」をリファクタする際は、リファクタ前後のコードを両方ロードし、代表的な引数パターン（front/back・hint有無・空値等）で出力を突き合わせるNode.jsスクリプトを作り、差分が0件になることを1箇所直すたびに確認する
+- **テンプレートリテラルのエスケープ文字は抽出時にアンエスケープする**: `\"`/`` \` ``/`\${`をそのまま.md等の生テキストへコピーすると、不要なバックスラッシュが残る
+- 分割で`vja-yaml-editor.js`（当初4915行→968行）から切り出した7ファイルの一覧は「ディレクトリ構成」表を参照。`vja-ai-gen-core.js`は2026-09-21のDOM読み取りタイミングの事故（`mcp-test.md`参照）の現場そのものなので最後に回した
+
+## DOM読み取りの切り出し時の注意（2026-09-20〜21の回帰事故、詳細は`mcp-test.md`）
+- DOMの現在の状態（`$("yaml-ta")`等）を読むコードを別の関数（DOM非依存のコア関数）へ切り出す際は、依存関係（どの変数をどこへ渡すか）だけでなく、**呼び出し元で発生するDOM副作用との前後関係**を確認する。実際に、`buildGenPromptContext()`の呼び出しを`showLoadingModal()`（`#modal-root`＝YAMLエディタのDOMを丸ごと破壊する）より後ろへ移動してしまい、生成のたびに依頼内容（YAML本文）が空でAIへ渡る回帰が起きた
+- `showModal`/`closeModal`/`showLoadingModal`等、共有コンテナのinnerHTMLを丸ごと差し替える処理を含む関数から切り出す場合は、必要な値をDOM破壊処理より**前**に読み取り、コア関数へパラメータとして渡す（VJAでは`domOverride`引数パターン）
+- DOM非依存のコア関数を直接呼ぶテストが通っても、実際のボタン操作（DOM破壊処理を経由する経路）で正常に動く証明にはならない。この種の回帰は、実際の呼び出し経路を通すテスト（`testVerifyPromptIntegrity`等）か、経路の分岐点を意識したレビューでしか検出できない
+
+## 網羅調査は複数の手がかりで裏取りする
+- 「全ファイルを洗い出した」「移行完了」と報告する前に、最低2つ以上の異なる検索手がかり（特定関数の呼び出しの有無、文字列リテラルの構造、DOM操作APIの呼び出し等）で同じ対象を検索し、結果が一致するか確認する
+- 実例（2026-09-06、JS内文字列としてのHTML組み立ての洗い出し）: `evtAttr()`の有無だけを手がかりに全ファイルを検索して「移行完了」としたが、クリックイベントを持たない静的プレビュー系（`vja-defs.js`の`WIDGET_DEFS[tag].preview`、全18ウィジェットタグ）は`evtAttr()`を使わないため原理的に検索に掛からず、`renderLearnedFixesModal`等とあわせて見落としていた。バッククォート文字列内のHTMLタグを正規表現で直接検索する別の手がかりに切り替えて初めて発見できた
+
+## JS内のHTML文字列の分離（jhtml.browser.js由来のテンプレート機構、2026-09-06）
+- **目的**: VJA本体（`src/mainview/`、開発ツール自身の実装）に`+`連結でHTMLを組み立てるコードが大量にあり、AIによる保守作業でのハルシネーション要因になっていた。対象はVJA本体であり、ユーザーアプリ用ランタイム（`vja-runtime.js`/`vja.*`）ではない
+- **設計判断**:
+  - `html`/`raw`（自動エスケープのタグ付きテンプレートリテラル）だけでは「`+`連結が1つのテンプレートリテラルにまとまっただけ」で、HTMLがJS関数内の文字列として居座る構造は変わらない。エスケープの自動化にとどめず、HTMLをJSファイルの外（別ファイル）へ物理的に分離するところまで進める
+  - `vja-html.js`に**同期版**の`compile`/`render`/`renderTo`を実装した（jhtml本家はAsyncFunctionだが、`renderProps→makeProw→pinput`の呼び出しチェーンは同期で、カラーピッカー等タイミング依存の実装があるため非同期化できない）。テンプレートは`src/mainview/templates/*.html`（`<script type="text/vja-tpl" id="...">`ブロック群）に機能ごとに分割して置き、`vja-templates-loader.js`の`TEMPLATE_FILES`配列に列挙して同期XHRで読み込む（ビルド時結合は複雑性が高いため見送り）。`electrobun.config.ts`の`COPY_BUILD_FILES`に`templates`ディレクトリを含める必要がある
+  - 属性クォートは`"`に統一（`evtAttr()`の設計と整合）。style属性の値（色・フォント名・border等）は`<%- %>`（raw、エスケープなし）、要素のテキストは`<%= %>`（自動エスケープ）と使い分ける（`'Yu Gothic UI'`を自動エスケープすると`&#39;`になりCSSが壊れる）。シンタックスハイライトのように1トークンごとに高頻度で呼ばれ、インライン連結される箇所のテンプレートは、前後に改行を含めない1行形式にする（改行が混入するとレイアウトが崩れる）
+  - jhtml.browser.jsの`$`/`on`/`state`/`poll`/`storage`等のDOM操作系は、vjaの既存ウィジェット抽象化と競合するため移植していない（再検討の要否は`remaining-issues.md`）
+- **方針: 既存コードも含めた段階的な全面移行**: 「既存コードはそのまま、新規追加分だけ新パターンを使う」方式は採らない。既存の問題箇所が残るため動機（既存コードの構造的な問題の解消）が満たされず、新旧2記法の混在が判断コストを増やす。1ファイルずつ確実に完結させ、都度動作確認する
+- **移行結果（2026-09-06完了）**: `vja-designer.js`（`pinput()`全ケース等）→`vja-modal.js`→`vja-app-config.js`→`vja-yaml-editor.js`→`vja-table-validation.js`→`vja-wizard.js`の順に移行した。テンプレートは`templates/{pinput,status,events,modal,cloud-modal,app-config,yaml-editor,table-validation,wizard,widget-preview}.html`等。`+`連結の外枠だけ（既にrender()済みのコンテンツを単純にラップする箇所）は実害が無いため残している
+- **検証手段**: `bridge.ts`のテスト用ハンドラ（`testSelectWidget`/`testSwitchTab`/`testGetPropsHtml`/`testGetWidgetHtml`等、MCPツールは`vja_*`）で、画面を目視せずに実際の描画HTMLを取得して検証する。`_`始まり関数はテスト用にもグローバル公開せず、Node単体検証で済ませる
+
+## バンドルでの`_`関数の定義消失の切り分け
+- `Can't find variable: _xxx`系のエラーでは、まずビルド成果物（`build/dev-linux-x64/.../chunk-*.js`）またはバンドルの再現（`bun build src/mainview/index.html --outdir out`）で、定義が残っているかを確認する。コミット間で`git archive`して比較すれば、いつ壊れたかも特定できる（上の「`_`始まりの関数を別ファイルから呼ぶ漏れの検出」節の手順）
+- `_`始まりの名前を他ファイルから呼ぶ場合は、`_`を外して`Object.assign(window,{...})`へ追加する（`CLAUDE.md`の規約）

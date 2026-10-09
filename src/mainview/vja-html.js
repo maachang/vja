@@ -9,7 +9,7 @@
  *   ハルシネーション（構造の誤認識、エスケープ漏れ）が起きやすいための対策。
  * - VJAが生成するユーザーアプリのランタイム（vja-runtime.js）とは無関係。
  *   あくまでVJA本体の開発ツールコード向け。
- * - 参考: ~/project/maachang/public/jhtml.browser.js の html/raw/escapeHtml/
+ * - 参考: jhtml.browser.js（別リポジトリ）の html/raw/escapeHtml/
  *   compile/render/renderTo を移植。$/on/state/api等のDOM操作・状態管理系は
  *   既存のvja.widget.*等と役割が重複・競合するため採用していない。
  * - 属性値は必ず " (ダブルクォート) で統一すること。escapeHtml() は ' も &#39; に

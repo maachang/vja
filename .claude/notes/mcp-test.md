@@ -36,7 +36,7 @@
   | `formDesignAiGenerate()` | `generateFormDesignAiLayout(rawText, addPromptExtra)` ＋ 共有`generateFormLayoutRaw(designText, extraPrompt, allTables)`（ウィザード版`wizardGenerateFormLayout()`と共通化。既存ウィジェット全削除＋`fullRedraw()`を伴う） | `_testFormDesignAiGenerate` |
   - `textToYamlGenerate`/`manualRetryAiFix`/`yamlAiGenerate`は内部で`$("yaml-ta")`等を読むため、意味のある入力で検証する場合は事前に`testSaveYaml`→`testOpenYamlEditor`でエディタへYAMLを読み込ませておく（`showLoadingModal()`を経由する実フローの検証は、下記「AI生成フローのテスト基盤」の`testVerifyPromptIntegrity`を使う）
 - MCPクライアント経由の実疎通テストは実装時点では未実施（ビルド/起動が通ることと`bun test`の通過のみ確認済み）
-- **実LLMへの実接続テスト**（2026-09-19〜20実施）: 上記のモック方式とは別に、`_testSetAiConfig({endpoint, model, apiKey, temperature})`（`bridge.ts`）で`aiConfig`を実LLM（例: `http://192.168.0.235:8080`、llama.cpp）へ差し替えた上で、モックキューを積まずに`_testWizardDecomposeForms`等をそのまま呼ぶことで、実際のAI応答に対する動作検証ができる。この方法で`wizardDecomposeForms`/`wizardGenerateFormYaml`/`wizardGenerateFormLayout`のパイプライン全体を実LLM(qwen2.5-coder-7b)で検証し、「画面デザインYAMLの参照テーブル欠落の機械的補完」（`ai-generation.md`の「AI生成コードの機械的な後処理」の節を参照）の不具合発見・修正確認に使った。**組織のエンタープライズポリシーでMCPサーバー(`vja-test`)自体が`/mcp`に接続できない環境では、HTTPテストサーバー（`bun run mcp`、ポート4570）へ直接curlでリクエストする方式で代替できる**（下記「実行手順」参照）
+- **実LLMへの実接続テスト**（2026-09-19〜20実施）: 上記のモック方式とは別に、`_testSetAiConfig({endpoint, model, apiKey, temperature})`（`bridge.ts`）で`aiConfig`を実LLM（例: `ローカルのllama-server（開発用LLMサーバー））へ差し替えた上で、モックキューを積まずに`_testWizardDecomposeForms`等をそのまま呼ぶことで、実際のAI応答に対する動作検証ができる。この方法で`wizardDecomposeForms`/`wizardGenerateFormYaml`/`wizardGenerateFormLayout`のパイプライン全体を実LLM(qwen2.5-coder-7b)で検証し、「画面デザインYAMLの参照テーブル欠落の機械的補完」（`ai-generation.md`の「AI生成コードの機械的な後処理」の節を参照）の不具合発見・修正確認に使った。**組織のエンタープライズポリシーでMCPサーバー(`vja-test`)自体が`/mcp`に接続できない環境では、HTTPテストサーバー（`bun run mcp`、ポート4570）へ直接curlでリクエストする方式で代替できる**（下記「実行手順」参照）
 
 ## 実行手順
 
@@ -71,6 +71,7 @@
 - シナリオは9件（2026-10-03時点）: 基本3件に加え、`library-3tables`/`shop-4tables`（多テーブル）、`employee-wide-many-columns`（12カラム・1024×600）、`memo-small-form`（480×360）、`no-label-english`（日本語名なし）、`managed-columns-2tables`（管理系カラム入り）。全9件を1回流すと約45分
 - 追加チェック: 管理系カラム（`managed:true`のカラムのnameとlabelJa）が、画面YAMLの入力項目・レイアウトのlabel/datagrid列に出ていないこと。除外を外した対照実験で4件NGになることを確認済み（検査が有効な根拠）
 - 長時間実行の注意: Bashの`run_in_background`は既定30分で打ち切られる。全シナリオを流すときは`timeout`を2時間（7200000）にすること。`pkill -f`は自分自身のコマンド行にも一致して自殺するので使わない。結果JSONは完走時にしか書かれない（途中で落ちるとログの`[シナリオ #n]`行しか残らない）
+- バックグラウンド実行の完了判定: 完了通知の対象は起動コマンド（即終了する）であり、テスト本体の終了ではない。本体の終了は、プロセス（`ps`でPIDを確認。`pgrep -f`は自分のシェルに一致しうる）か、完了時にDONEファイルを作るラッパースクリプトで判定する。Monitorの期限は見込みの2倍以上にする。所要時間は「前回は約◯分」と実績で伝え、結果が出るまで成否は断言しない（実際に約24分かかり、断言した所要時間より大幅に長く、監視も期限切れになった）。進捗は件数（`grep -c "^\["`）で確認する。待ち用のwhileループをBashの前景に置かない（10分で打ち切られ、残骸プロセスが残る）
 - 初回結果（1回ずつ）: 3シナリオ・14画面で必須ボタンの不足は0件。NGは1画面の重なり（datagridとラベル/textarea）のみ
 - 2026-10-03の改善後の結果: 全9シナリオ・各1回でNG 0件（ローカルLLM qwen2.5-coder-7bのみ。複数回の通し・実機での見え方・別モデルは未確認）。結果は`applyAiFormDesign`の補正前の値
 
