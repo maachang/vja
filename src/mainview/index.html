@@ -15,8 +15,8 @@
         <button id="titlebar-close" class="electrobun-webkit-app-region-no-drag" onmousedown="confirmClose()"
             title="閉じる">✕</button>
     </div>
-    <!-- ■ TOOLBAR -->
-    <div id="toolbar">
+    <!-- ■ メニュー行（1段目） -->
+    <div id="menu-row">
         <div id="menu-bar">
             <div class="menu-item" onmousedown="toggleMenu('mf', event)">
                 ファイル
@@ -38,19 +38,8 @@
                         名前を付けて保存…
                     </div>
                     <div class="dd-sep"></div>
-                    <div class="dd-item" onmousedown="openProjectInfo()">
-                        プロジェクト情報…
-                    </div>
-                    <div class="dd-item" onmousedown="openAppEvents()">
-                        アプリイベント…
-                    </div>
-                    <div class="dd-sep"></div>
                     <div class="dd-item" onmousedown="actClearProjectDb()">
                         DBデータをクリア…
-                    </div>
-                    <div class="dd-sep"></div>
-                    <div class="dd-item" onmousedown="actShowVersion()">
-                        バージョン情報…
                     </div>
                 </div>
             </div>
@@ -85,13 +74,35 @@
                     <div class="dd-item" onmousedown="openDebugTools()">
                         デバッグ表示
                     </div>
+                </div>
+            </div>
+            <div class="menu-item" onmousedown="toggleMenu('mp', event)">
+                プロジェクト
+                <div class="dropdown" id="mp">
+                    <div class="dd-item" onmousedown="openProjectInfo()">
+                        プロジェクト情報…
+                    </div>
+                    <div class="dd-item" onmousedown="openAppEvents()">
+                        アプリイベント…
+                    </div>
                     <div class="dd-sep"></div>
                     <div class="dd-item" onmousedown="openConstEditor()">
                         定数の編集…
                     </div>
+                    <div class="dd-item" onmousedown="openTableManager()">
+                        テーブル管理…
+                    </div>
                     <div class="dd-item" onmousedown="openValidationEditor()">
                         バリデーション定義…
                     </div>
+                    <div class="dd-item" onmousedown="openExtRuntime()">
+                        拡張ランタイム…
+                    </div>
+                </div>
+            </div>
+            <div class="menu-item" onmousedown="toggleMenu('ms', event)">
+                設定
+                <div class="dropdown" id="ms">
                     <div class="dd-item" onmousedown="openAiConfig()">
                         AI接続設定…
                     </div>
@@ -101,20 +112,28 @@
                     <div class="dd-item" onmousedown="openCloudInfraConfig()">
                         クラウドインフラ設定…
                     </div>
-                    <div class="dd-item" onmousedown="openTableManager()">
-                        テーブル管理…
-                    </div>
-                    <div class="dd-item" onmousedown="openExtRuntime()">
-                        拡張ランタイム…
-                    </div>
                     <div class="dd-sep"></div>
                     <div class="dd-item" onmousedown="openFontConfig()">
                         フォント設定…
                     </div>
                 </div>
             </div>
+            <div class="menu-item" onmousedown="toggleMenu('mh', event)">
+                ヘルプ
+                <div class="dropdown" id="mh">
+                    <div class="dd-item" onmousedown="openHelp()">
+                        ヘルプ<span class="sc">F1</span>
+                    </div>
+                    <div class="dd-sep"></div>
+                    <div class="dd-item" onmousedown="actShowVersion()">
+                        バージョン情報…
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="tb-sep"></div>
+    </div>
+    <!-- ■ TOOLBAR（2段目: よく使うボタン） -->
+    <div id="toolbar">
         <button class="tb-btn" onmousedown="actNew()" title="新規">
             <svg viewBox="0 0 24 24">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -147,13 +166,6 @@
             </svg>
         </button>
         <div class="tb-sep"></div>
-        <button class="tb-btn" onmousedown="openProjectInfo()" title="プロジェクト情報">
-            <svg viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="8" stroke-width="2" stroke-linecap="round" />
-                <line x1="12" y1="12" x2="12" y2="16" stroke-width="2" stroke-linecap="round" />
-            </svg>情報
-        </button>
         <button id="btn-run-project" class="tb-btn" onmousedown="actRunProject()" title="プロジェクトを実行">
             <svg viewBox="0 0 24 24">
                 <polygon points="5 3 19 12 5 21 5 3" />
@@ -173,51 +185,11 @@
             </svg>コンパイル
         </button>
         <div class="tb-sep"></div>
-        <button class="tb-btn" onmousedown="openConstEditor()" title="定数の編集（全体・現在のフォーム）">
-            <svg viewBox="0 0 24 24">
-                <line x1="4" y1="9" x2="20" y2="9" />
-                <line x1="4" y1="15" x2="20" y2="15" />
-                <line x1="10" y1="3" x2="8" y2="21" />
-                <line x1="16" y1="3" x2="14" y2="21" />
-            </svg>定数
-        </button>
-        <button class="tb-btn" onmousedown="openValidationEditor()" title="バリデーション定義（現在のフォームに紐づくバリデーション）">
-            <svg viewBox="0 0 24 24">
-                <polyline points="9 11 12 14 22 4" />
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-            </svg>検証(V)
-        </button>
-        <button class="tb-btn" onmousedown="openAiConfig()" title="AI接続設定">
-            <svg viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="3" />
-                <path
-                    d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" />
-            </svg>AI設定
-        </button>
         <button class="tb-btn" onmousedown="openHelp()" title="ヘルプ（F1）">
             <svg viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01" />
             </svg>ヘルプ
-        </button>
-        <button class="tb-btn" onmousedown="openCloudInfraConfig()" title="クラウドインフラ設定">
-            <svg viewBox="0 0 24 24">
-                <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
-            </svg>クラウド
-        </button>
-        <button class="tb-btn" onmousedown="openTableManager()" title="テーブル管理">
-            <svg viewBox="0 0 24 24">
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <line x1="3" y1="9" x2="21" y2="9" />
-                <line x1="3" y1="15" x2="21" y2="15" />
-                <line x1="9" y1="3" x2="9" y2="21" />
-            </svg>テーブル
-        </button>
-        <button class="tb-btn" onmousedown="openExtRuntime()" title="拡張ランタイム">
-            <svg viewBox="0 0 24 24">
-                <polyline points="16 18 22 12 16 6" />
-                <polyline points="8 6 2 12 8 18" />
-            </svg>拡張
         </button>
         <div class="tb-sep"></div>
         <div id="form-selector-area">

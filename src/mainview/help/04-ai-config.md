@@ -1,9 +1,9 @@
-<!-- summary: AI接続設定。AI設定ボタン、エンドポイント、API Key、ルーターモード、ローカルLLM(llama.cpp・ollama)、OpenAI、Max Tokens、temperature、推論モード、モック実行検証、使い分け -->
+<!-- summary: AI接続設定。設定メニューのAI接続設定、エンドポイント、API Key、ルーターモード、ローカルLLM(llama.cpp・ollama)、OpenAI、Max Tokens、temperature、推論モード、モック実行検証、使い分け -->
 # AI接続設定
 
 ## 開き方
 
-ツールバーの **「AI設定」** ボタンを押します。
+メニュー［設定］→ **「AI接続設定…」** を選びます。
 
 ## 設定項目
 
