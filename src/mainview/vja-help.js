@@ -121,19 +121,22 @@ function helpPickTopics(scores) {
     return scores.filter(x => x.score === max).slice(0, 3).map(x => x.file);
 }
 
-// 質問に答える。onProgress(i, n) で採点の進み具合を通知する。
+// 質問に答える。onProgress(info) で進み具合を通知する。
+//   採点中: { phase: "score", done: 採点済み数, total: 全トピック数, title: いま採点しているトピック名 }
+//   回答作成中: { phase: "answer", files: 選ばれたトピックのfile配列 }
 // 戻り値: { files: 回答に使ったトピックのfile配列（空=見つからない）, answer: 回答テキスト }
 async function helpAnswerQuestion(question, onProgress) {
     const topics = _helpGetTopics();
     const scores = [];
     for (let i = 0; i < topics.length; i++) {
-        if (onProgress) onProgress(i + 1, topics.length);
+        if (onProgress) onProgress({ phase: "score", done: i, total: topics.length, title: topics[i].title });
         const sys = _PROMPT_DEF.HELP_SCORE_SYS_PROMPT({ keywords: topics[i].keywords });
         const text = await aiChatOnce(sys, "質問: " + question, 0);
         scores.push({ file: topics[i].file, score: helpParseScore(text) });
     }
     const files = helpPickTopics(scores);
     if (files.length === 0) return { files: [], answer: "" };
+    if (onProgress) onProgress({ phase: "answer", files });
     const docs = files.map(f => {
         const t = topics.find(x => x.file === f);
         return "■ " + t.title + "\n" + _helpBodyOf(_helpMdCache[f] || "");
@@ -144,6 +147,23 @@ async function helpAnswerQuestion(question, onProgress) {
 
 let _helpAskSeq = 0; // 質問応答の世代番号（古い処理の結果で、新しい表示を上書きしないための印）
 let _helpAsking = false; // 質問応答の処理中（二重送信を防ぐ。世代番号とは別に管理する）
+
+// 検索中の表示（hp-tpl-running）を、進み具合に合わせて更新する。画面が切り替わっていれば何もしない
+function _helpShowProgress(info, topics) {
+    const set = (id, text) => { const el = $(id); if (el) el.textContent = text; };
+    if (info.phase === "score") {
+        const bar = $("help-run-bar");
+        if (bar) bar.style.width = Math.round(info.done / info.total * 100) + "%";
+        set("help-run-count", (info.done + 1) + " / " + info.total);
+        set("help-run-now", "いま確認中: " + info.title);
+    } else {
+        const bar = $("help-run-bar");
+        if (bar) bar.style.width = "100%";
+        set("help-run-title", "🤖 回答を作成しています");
+        set("help-run-count", "");
+        set("help-run-now", "選ばれたトピック: " + info.files.map(f => topics.find(t => t.file === f)?.title || f).join("、"));
+    }
+}
 
 // 質問欄の内容をAIに質問し、結果を右側の本文エリアに表示する
 async function helpAsk() {
@@ -156,18 +176,25 @@ async function helpAsk() {
     }
     const seq = ++_helpAskSeq;
     _helpAsking = true;
-    const btn = $("help-ask-btn"), status = $("help-status");
-    if (btn) btn.disabled = true;
+    const btn = $("help-ask-btn");
+    const topics = _helpGetTopics();
+    // 検索中は本文エリアを専用の表示にして、AIが調べていることを分かりやすくする
+    if (input) input.disabled = true;
+    if (btn) { btn.disabled = true; btn.textContent = "調べています…"; }
+    const box0 = $("help-content");
+    if (box0) { box0.innerHTML = render("hp-tpl-running", { question: q }); box0.scrollTop = 0; }
+    _helpHighlight(null);
+    let sec = 0;
+    const timer = setInterval(() => { const el = $("help-run-timer"); if (el) el.textContent = (++sec) + "秒"; }, 1000);
     try {
-        const r = await helpAnswerQuestion(q, (i, n) => {
-            if (seq === _helpAskSeq && status) status.textContent = "調べています… " + i + "/" + n;
+        const r = await helpAnswerQuestion(q, (info) => {
+            if (seq === _helpAskSeq) _helpShowProgress(info, topics);
         });
         if (seq !== _helpAskSeq || !$("help-content")) return; // 途中で別の操作があった/画面が閉じられた
         const box = $("help-content");
         if (r.files.length === 0) {
             box.innerHTML = render("hp-tpl-notfound", { question: q });
         } else {
-            const topics = _helpGetTopics();
             const srcHtml = r.files.map(f => render("hp-tpl-src", {
                 title: topics.find(t => t.file === f)?.title || f,
                 attrOpen: evtAttr("onclick", "openHelpTopic(" + JSON.stringify(f) + "); return false;"),
@@ -179,13 +206,18 @@ async function helpAsk() {
             });
         }
         box.scrollTop = 0;
-        _helpHighlight(null);
     } catch (e) {
-        if (seq === _helpAskSeq) showToast("AI質問エラー: " + e.message);
+        if (seq === _helpAskSeq) {
+            const box = $("help-content");
+            if (box) box.innerHTML = render("hp-tpl-error", { question: q, message: e.message });
+            showToast("AI質問エラー: " + e.message);
+        }
     } finally {
+        clearInterval(timer);
         _helpAsking = false;
-        if (btn) btn.disabled = false;
-        if (status) status.textContent = "";
+        const inp = $("help-q"), b = $("help-ask-btn");
+        if (inp) { inp.disabled = false; inp.focus(); }
+        if (b) { b.disabled = false; b.textContent = "🤖 質問する"; }
     }
 }
 

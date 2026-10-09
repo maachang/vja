@@ -2635,6 +2635,9 @@ select.pv-input option {
 .help-md code { font-family: monospace; font-size: 12px; background: var(--bg3); padding: 1px 4px; border-radius: 3px; }
 .help-md pre { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; overflow-x: auto; }
 .help-md pre code { background: none; padding: 0; }
+/* AI質問応答の出典リンク。ダークテーマで既定の青が見えにくいため、アクセント色のボタン風にする */
+.help-src { display: inline-block; margin: 2px 8px 2px 0; padding: 3px 12px; background: var(--bg3); color: var(--accent); border: 1px solid var(--border2); border-radius: 12px; text-decoration: none; font-size: 12px; }
+.help-src:hover { background: var(--bg4); border-color: var(--accent); }
 .help-md table { border-collapse: collapse; margin: 10px 0; }
 .help-md th, .help-md td { border: 1px solid var(--border); padding: 4px 10px; text-align: left; }
 .help-md th { background: var(--bg3); }
