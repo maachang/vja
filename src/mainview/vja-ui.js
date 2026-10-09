@@ -202,7 +202,10 @@ function drawRulers() {
     // ── 水平ルーラー ──
     const rh = $("ruler-h");
     const hCanvas = $("ruler-h-canvas");
-    const hW = wrapRect.width;
+    // ルーラーはキャンバス内に position:absolute で置くため、大きさは外枠(getBoundingClientRect、スクロールバーを含む)ではなく、
+    // スクロールバーを除いた中身の領域(clientWidth/clientHeight)から決める。外枠で決めると、スクロールバーの太さ(5px)の分だけ
+    // ルーラーがはみ出し、そのはみ出しでスクロールバーが出て、出たままになる（2026-10-10、表示直後にキャンバスが縦に5px動く不具合）。
+    const hW = wrap.clientWidth;
     rh.style.width = hW + "px";
     hCanvas.width = hW;
     hCanvas.height = 16;
@@ -216,7 +219,7 @@ function drawRulers() {
     // ── 垂直ルーラー ──
     const rv = $("ruler-v");
     const vCanvas = $("ruler-v-canvas");
-    const vH = wrapRect.height - 16;
+    const vH = wrap.clientHeight - 16;
     rv.style.height = vH + "px";
     vCanvas.width = 16;
     vCanvas.height = vH;
