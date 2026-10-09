@@ -11,3 +11,5 @@
 11-app-events.md
 12-run-compile.md
 13-ext-runtime.md
+14-cloud-aws.md
+15-notifications.md
