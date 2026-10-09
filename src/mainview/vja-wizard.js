@@ -664,6 +664,9 @@ async function wizardConfirmAndGenerate() {
         return nf;
     });
     getProjectData().curFormIdx = 0;
+    // 起動フォーム（★）を先頭の画面にする。forms を新しいidで作り直したため、更新しないと startFormId が
+    // どのフォームにも一致せず、★の印が出ない（実行時は見つからない時に先頭へ戻る）
+    getProjectData().startFormId = getProjectData().forms[0]?.id ?? "";
     refreshAll();
 
     // 生成ループに入る前に、フォームの雛形が作られたことを一区切り伝える
