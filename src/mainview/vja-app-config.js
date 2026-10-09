@@ -799,9 +799,9 @@ function applyEditorConfig() {
 }
 
 // 画面一覧パネル（ツールボックスの下）の高さを、ツールボックス全体に収まる範囲へ丸める。
-// 最小100px（見出し・検索欄・数行分）。ウィジェット一覧が最低でも約60px残るよう、最大も制限する。
+// 最小150px（2段の見出し・検索欄・一覧の数行分。見出しはボタンが折り返す狭い幅で最大になる）。ウィジェット一覧が最低でも約60px残るよう、最大も制限する。
 function clampFormPanelH(h) {
-    const MIN_H = 100, KEEP_TOOLS = 60, SPLITTER = 4;
+    const MIN_H = 150, KEEP_TOOLS = 60, SPLITTER = 4;
     const tb = $("toolbox");
     let max = 600;
     if (tb && tb.clientHeight > 0) {
