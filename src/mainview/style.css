@@ -1292,6 +1292,20 @@ textarea.yaml:focus {
     color: var(--text2);
 }
 
+/* ツールボックスと画面一覧パネルの境のリサイズバー（左右のパネルの境と同じ見た目・操作） */
+#resize-form-panel {
+    height: 4px;
+    flex-shrink: 0;
+    background: transparent;
+    cursor: row-resize;
+    transition: background 0.15s;
+    z-index: 10;
+}
+
+#resize-form-panel:hover {
+    background: var(--accent);
+}
+
 /* ── 画面一覧パネル（左側、ツールボックスの下） ── */
 #form-panel {
     flex: 0 0 auto;

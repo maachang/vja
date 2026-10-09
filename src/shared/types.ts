@@ -239,6 +239,7 @@ export type VjaRPCType = {
                     uiFontSize: number; uiFontFamily: string;
                     editorFontSize: number; editorFontFamily: string;
                     leftPanelW: number; rightPanelW: number;
+                    formPanelH: number; // 画面一覧パネルの高さ
                 };
             };
 
@@ -284,7 +285,7 @@ export type VjaRPCType = {
             openFolderRequest: { path: string };
 
             // ── UI設定保存 ───────────────────────────────
-            saveUiConfigRequest: { uiFontSize: number; uiFontFamily: string; editorFontSize: number; editorFontFamily: string; leftPanelW: number; rightPanelW: number };
+            saveUiConfigRequest: { uiFontSize: number; uiFontFamily: string; editorFontSize: number; editorFontFamily: string; leftPanelW: number; rightPanelW: number; formPanelH: number };
 
             // ── AI接続設定「プロジェクト共通」プリセット保存 ──
             saveAiGlobalPresetsRequest: { presets: Array<{ id: string; name: string; config: Record<string, any> }> };

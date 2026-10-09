@@ -613,7 +613,7 @@ function saveFontConfig() {
     Object.assign(getUiConfig(), { editorFontSize: editorSize, editorFontFamily: edFont, uiFontSize: uiSize, uiFontFamily: uiFont });
     applyEditorConfig();
     applyUiConfig();
-    window.bunSaveUiConfig?.(uiSize, uiFont, editorSize, edFont, getUiConfig().leftPanelW, getUiConfig().rightPanelW);
+    window.bunSaveUiConfig?.(uiSize, uiFont, editorSize, edFont, getUiConfig().leftPanelW, getUiConfig().rightPanelW, getUiConfig().formPanelH);
     closeModal();
     pushUndo();
     showToast("フォント設定を保存しました");
@@ -769,6 +769,7 @@ window._onLoadUiConfigResult = function (cfg) {
         editorFontFamily: cfg.editorFontFamily || "'Courier New', Courier, monospace",
         leftPanelW: cfg.leftPanelW || 110,
         rightPanelW: cfg.rightPanelW || 420,
+        formPanelH: cfg.formPanelH || 240,
     });
     applyUiConfig();
     applyEditorConfig();
@@ -800,6 +801,25 @@ function applyEditorConfig() {
     });
 }
 
+// 画面一覧パネル（ツールボックスの下）の高さを、ツールボックス全体に収まる範囲へ丸める。
+// 最小100px（見出し・検索欄・数行分）。ウィジェット一覧が最低でも約60px残るよう、最大も制限する。
+function clampFormPanelH(h) {
+    const MIN_H = 100, KEEP_TOOLS = 60, SPLITTER = 4;
+    const tb = $("toolbox");
+    let max = 600;
+    if (tb && tb.clientHeight > 0) {
+        const h3 = tb.querySelector("h3");
+        max = tb.clientHeight - (h3 ? h3.offsetHeight : 0) - KEEP_TOOLS - SPLITTER;
+    }
+    return Math.max(MIN_H, Math.min(max, Math.round(h || 240)));
+}
+
+// 保存されている高さを画面一覧パネルへ反映する（起動時・ウィンドウサイズ変更時）
+function applyFormPanelH() {
+    const fp = $("form-panel");
+    if (fp) fp.style.height = clampFormPanelH(getUiConfig().formPanelH || 240) + "px";
+}
+
 function applyViewSettings() {
     // パネル幅を復元
     const lw = getUiConfig().leftPanelW || 110;
@@ -809,6 +829,7 @@ function applyViewSettings() {
     const tb = $("toolbox"), pp = $("props-panel");
     if (tb) tb.style.width = lw + "px";
     if (pp) pp.style.width = rw + "px";
+    applyFormPanelH();
     applyEditorConfig();
     applyProjectInfo();
     // グリッド
@@ -881,6 +902,6 @@ Object.assign(window, {
     openItemsDefEditor, renderItemsDefModal,
     itemsdefAddRow, itemsdefInsertRow, itemsdefDelRow, itemsdefSave,
     // 各種反映・トグル
-    applyProjectInfo, applyUiConfig, applyEditorConfig, applyViewSettings,
+    applyProjectInfo, applyUiConfig, applyEditorConfig, applyViewSettings, clampFormPanelH, applyFormPanelH,
     toggleGrid, toggleSnap, updateCount, toggleMenu, closeAllMenus,
 });

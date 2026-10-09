@@ -6,6 +6,7 @@
    【提供するもの】
      - グローバルキーボードショートカット（Ctrl+Z/Y/S/F/D等）
      - startPanelResize()（左右パネルのリサイズ）
+     - startFormPanelResize()（ツールボックスと画面一覧パネルの境のリサイズ）
      - 座標ルーラー（initRuler / drawRulers）
      - initFormResize()（フォーム枠のドラッグリサイズ）
      - 【重要】ファイル末尾の INIT 実行コード
@@ -147,7 +148,7 @@ function startPanelResize(e, side) {
         window.bunSaveUiConfig?.(
             getUiConfig().uiFontSize, getUiConfig().uiFontFamily,
             getUiConfig().editorFontSize, getUiConfig().editorFontFamily,
-            getUiConfig().leftPanelW, getUiConfig().rightPanelW
+            getUiConfig().leftPanelW, getUiConfig().rightPanelW, getUiConfig().formPanelH
         );
         pushUndo();
     };
@@ -156,6 +157,38 @@ function startPanelResize(e, side) {
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
 }
+
+// ツールボックスと画面一覧パネルの境（横のバー）を上下にドラッグして、画面一覧パネルの高さを変える。
+// ウィジェット一覧は、狭くなるとスクロールする。高さは ui-config.json に保存する。
+function startFormPanelResize(e) {
+    e.preventDefault();
+    const fp = $("form-panel");
+    if (!fp) return;
+    const startY = e.clientY, startH = fp.offsetHeight;
+    const onMove = (me) => {
+        const h = clampFormPanelH(startH - (me.clientY - startY));
+        fp.style.height = h + "px";
+        getUiConfig().formPanelH = h;
+    };
+    const onUp = () => {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        window.bunSaveUiConfig?.(
+            getUiConfig().uiFontSize, getUiConfig().uiFontFamily,
+            getUiConfig().editorFontSize, getUiConfig().editorFontFamily,
+            getUiConfig().leftPanelW, getUiConfig().rightPanelW, getUiConfig().formPanelH
+        );
+    };
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+}
+
+// ウィンドウの大きさが変わったとき、画面一覧パネルの高さを収まる範囲に直す
+window.addEventListener("resize", () => applyFormPanelH());
 
 function initRuler() {
     drawRulers();
@@ -307,7 +340,7 @@ function syncFormPropWH() {
    window へのエクスポート（他ファイルから参照される関数のみ）
 ═══════════════════════════════════════════ */
 Object.assign(window, {
-    startPanelResize, initRuler, drawRulers, drawRulerH, drawRulerV,
+    startPanelResize, startFormPanelResize, initRuler, drawRulers, drawRulerH, drawRulerV,
     initFormResize, syncFormPropWH,
 });
 

@@ -997,6 +997,7 @@ var CTX = {
             editorFontFamily: "'Courier New', Courier, monospace",
             leftPanelW: 110,
             rightPanelW: 420,
+            formPanelH: 240, // 画面一覧パネル（ツールボックスの下）の高さ
         },
     },
 };

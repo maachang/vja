@@ -561,13 +561,14 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                             editorFontFamily: cfg.editorFontFamily || "'Courier New', Courier, monospace",
                             leftPanelW:       cfg.leftPanelW       || 110,
                             rightPanelW:      cfg.rightPanelW      || 420,
+                            formPanelH:       cfg.formPanelH       || 240,
                         };
                     }
                 } catch (e) { console.error("[vja] loadUiConfig failed:", e); }
                 return {
                     uiFontSize: 13, uiFontFamily: "",
                     editorFontSize: 16, editorFontFamily: "'Courier New', Courier, monospace",
-                    leftPanelW: 110, rightPanelW: 420,
+                    leftPanelW: 110, rightPanelW: 420, formPanelH: 240,
                 };
             },
 
@@ -709,11 +710,11 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
             },
 
             // ── UI設定保存 ───────────────────────────────
-            saveUiConfigRequest: async ({ uiFontSize, uiFontFamily, editorFontSize, editorFontFamily, leftPanelW, rightPanelW }) => {
+            saveUiConfigRequest: async ({ uiFontSize, uiFontFamily, editorFontSize, editorFontFamily, leftPanelW, rightPanelW, formPanelH }) => {
                 try {
                     const configPath = join(_configDir, "ui-config.json");
                     if (!existsSync(_configDir)) mkdirSync(_configDir, { recursive: true });
-                    await Bun.write(configPath, JSON.stringify({ uiFontSize, uiFontFamily, editorFontSize, editorFontFamily, leftPanelW, rightPanelW }, null, 2));
+                    await Bun.write(configPath, JSON.stringify({ uiFontSize, uiFontFamily, editorFontSize, editorFontFamily, leftPanelW, rightPanelW, formPanelH }, null, 2));
                 } catch (e) { console.error("[vja] saveUiConfig failed:", e); }
             },
 

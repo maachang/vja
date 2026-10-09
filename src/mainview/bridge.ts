@@ -846,8 +846,8 @@ w.bunGetDecryptedCredential = (infraId: string, key: string) =>
     r.getDecryptedCredentialRequest({ infraId, key });
 w.bunOpenFolder = (path: string) => s.openFolderRequest({ path });
 w.bunGetVersion = () => r.getVersionRequest({});
-w.bunSaveUiConfig = (uiFontSize: number, uiFontFamily: string, editorFontSize: number, editorFontFamily: string, leftPanelW: number, rightPanelW: number) =>
-    s.saveUiConfigRequest({ uiFontSize, uiFontFamily, editorFontSize, editorFontFamily, leftPanelW, rightPanelW });
+w.bunSaveUiConfig = (uiFontSize: number, uiFontFamily: string, editorFontSize: number, editorFontFamily: string, leftPanelW: number, rightPanelW: number, formPanelH: number) =>
+    s.saveUiConfigRequest({ uiFontSize, uiFontFamily, editorFontSize, editorFontFamily, leftPanelW, rightPanelW, formPanelH });
 w.bunLoadUiConfig = () => r.loadUiConfigRequest({});
 w.bunLoadAiGlobalPresets = () => r.loadAiGlobalPresetsRequest({});
 w.bunSaveAiGlobalPresets = (presets: any[]) => s.saveAiGlobalPresetsRequest({ presets });
