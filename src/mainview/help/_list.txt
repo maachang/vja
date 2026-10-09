@@ -2,3 +2,6 @@
 02-event-editor.md
 03-js-generation.md
 04-ai-config.md
+05-project.md
+06-widget-placement.md
+07-widget-types.md
