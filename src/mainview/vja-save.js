@@ -278,7 +278,8 @@ function setStartForm() {
     const f = getProjectData().forms[getProjectData().curFormIdx];
     if (!f) return;
     getProjectData().startFormId = f.id;
-    updateStartBtn();
+    buildFormSelect(); // 画面一覧の★の印とボタンの状態を、すぐ更新する
+    renderProps();     // フォームのプロパティ（「全体に反映」/「トップに合わせる」）も、すぐ更新する
     pushUndo();
     showToast("「" + f.cfg.title + "」を初期表示フォームに設定しました");
 }
