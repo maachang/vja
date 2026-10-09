@@ -62,6 +62,7 @@ function _helpGetTopics() {
 }
 
 async function openHelp(file) {
+    _helpLastResult = null; // 前回開いた時の検索結果は持ち越さない
     await ensureWebviewLib("./marked.umd.js", "marked");
     const topics = _helpGetTopics();
     if (topics.length === 0) { showToast("ヘルプ文書を読み込めませんでした"); return; }
@@ -121,10 +122,20 @@ function helpPickTopics(scores) {
     return scores.filter(x => x.score === max).slice(0, 3).map(x => x.file);
 }
 
+// 回答に使わなかったトピックのうち、点が1以上のものを、点の高い順（同点は目次の順）に最大3つ返す
+function helpPickRelated(scores, pickedFiles) {
+    return scores
+        .map((x, i) => ({ ...x, i }))
+        .filter(x => x.score > 0 && !pickedFiles.includes(x.file))
+        .sort((a, b) => b.score - a.score || a.i - b.i)
+        .slice(0, 3)
+        .map(x => x.file);
+}
+
 // 質問に答える。onProgress(info) で進み具合を通知する。
 //   採点中: { phase: "score", done: 採点済み数, total: 全トピック数, title: いま採点しているトピック名 }
 //   回答作成中: { phase: "answer", files: 選ばれたトピックのfile配列 }
-// 戻り値: { files: 回答に使ったトピックのfile配列（空=見つからない）, answer: 回答テキスト }
+// 戻り値: { files: 回答に使ったトピックのfile配列（空=見つからない）, answer: 回答テキスト, related: 回答に使わなかった関連候補のfile配列 }
 async function helpAnswerQuestion(question, onProgress) {
     const topics = _helpGetTopics();
     const scores = [];
@@ -135,14 +146,34 @@ async function helpAnswerQuestion(question, onProgress) {
         scores.push({ file: topics[i].file, score: helpParseScore(text) });
     }
     const files = helpPickTopics(scores);
-    if (files.length === 0) return { files: [], answer: "" };
+    if (files.length === 0) return { files: [], answer: "", related: [] };
     if (onProgress) onProgress({ phase: "answer", files });
     const docs = files.map(f => {
         const t = topics.find(x => x.file === f);
         return "■ " + t.title + "\n" + _helpBodyOf(_helpMdCache[f] || "");
     }).join("\n\n");
     const answer = await aiChatOnce(_PROMPT_DEF.HELP_ANSWER_SYS_PROMPT({ docs }), "質問: " + question, 0);
-    return { files, answer };
+    return { files, answer, related: helpPickRelated(scores, files) };
+}
+
+let _helpLastResult = null; // 直近の検索結果（回答画面）のHTML。出典リンクで開いたページから「検索結果に戻る」ために覚えておく
+
+// 検索結果の出典リンクからトピックを開く。上部に「← 検索結果に戻る」を付ける
+function openHelpFromResult(file) {
+    openHelpTopic(file);
+    const box = $("help-content");
+    if (!box || !_helpLastResult) return;
+    box.innerHTML = render("hp-tpl-back", { attrBack: evtAttr("onclick", "helpBackToResult(); return false;") }) + box.innerHTML;
+}
+
+// 覚えておいた検索結果の画面に戻る（AIへの再問い合わせはしない）
+function helpBackToResult() {
+    const box = $("help-content");
+    if (!box || !_helpLastResult) return;
+    _helpAskSeq++; // 処理中の質問応答があっても、あとから本文を上書きさせない
+    box.innerHTML = _helpLastResult;
+    box.scrollTop = 0;
+    _helpHighlight(null);
 }
 
 let _helpAskSeq = 0; // 質問応答の世代番号（古い処理の結果で、新しい表示を上書きしないための印）
@@ -195,15 +226,17 @@ async function helpAsk() {
         if (r.files.length === 0) {
             box.innerHTML = render("hp-tpl-notfound", { question: q });
         } else {
-            const srcHtml = r.files.map(f => render("hp-tpl-src", {
+            const linksOf = (files) => files.map(f => render("hp-tpl-src", {
                 title: topics.find(t => t.file === f)?.title || f,
-                attrOpen: evtAttr("onclick", "openHelpTopic(" + JSON.stringify(f) + "); return false;"),
+                attrOpen: evtAttr("onclick", "openHelpFromResult(" + JSON.stringify(f) + "); return false;"),
             })).join("");
             box.innerHTML = render("hp-tpl-answer", {
                 question: q,
                 answerHtml: window.marked ? window.marked.parse(r.answer) : "<pre>" + esc(r.answer) + "</pre>",
-                srcHtml,
+                srcHtml: linksOf(r.files),
+                relatedHtml: r.related.length ? render("hp-tpl-related", { linksHtml: linksOf(r.related) }) : "",
             });
+            _helpLastResult = box.innerHTML; // 「検索結果に戻る」用
         }
         box.scrollTop = 0;
     } catch (e) {
@@ -221,4 +254,4 @@ async function helpAsk() {
     }
 }
 
-Object.assign(window, { openHelp, openHelpTopic, helpAsk, helpParseScore, helpPickTopics, helpAnswerQuestion });
+Object.assign(window, { openHelp, openHelpTopic, openHelpFromResult, helpBackToResult, helpAsk, helpParseScore, helpPickTopics, helpPickRelated, helpAnswerQuestion });

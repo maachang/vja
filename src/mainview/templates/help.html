@@ -32,6 +32,16 @@
 <div><%- answerHtml %></div>
 <div style="margin-top:16px; padding-top:8px; border-top:1px solid var(--border); font-size:12px; color:var(--text2);">📖 出典（クリックで開く）:</div>
 <div style="margin-top:6px;"><%- srcHtml %></div>
+<%- relatedHtml %>
+</script>
+
+<script type="text/vja-tpl" id="hp-tpl-related">
+<div style="margin-top:12px; font-size:12px; color:var(--text2);">🔎 他にも関連するかもしれないページ:</div>
+<div style="margin-top:6px;"><%- linksHtml %></div>
+</script>
+
+<script type="text/vja-tpl" id="hp-tpl-back">
+<div style="margin-bottom:12px;"><a href="#" class="help-src" <%- attrBack %>>← 検索結果に戻る</a></div>
 </script>
 
 <script type="text/vja-tpl" id="hp-tpl-src">
