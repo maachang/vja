@@ -16,7 +16,11 @@
      - 各mdの先頭 `<!-- summary: ... -->` は、将来のAI問い合わせ（目次としてAIへ渡す）用。表示時は無視される。
      - 表示は marked.parse() の出力を innerHTML へ入れる。同梱mdのみを表示し、利用者の入力は混ざらないため
        エスケープしない（vja-defs.js のmarkdownウィジェットと同じ扱い）。
-   2026-10-09 追加（最小版: トピック4本）。
+     - AI質問応答（helpAsk等）: 全トピックを1つずつ0〜10で採点→最高点の本文だけで回答。経緯・測定結果・やって効果が
+       無かったことは .claude/notes/remaining-issues.md のヘルプ節。採点プロンプト（prompts/help-score.sys.ja.md）と
+       各mdのsummary（採点のキーワード）の文言を変えると精度が変わるため、変える時は測り直すこと。
+       AI呼び出しは aiChatOnce（vja-modal.js）。runAiGenerate はローディングモーダルがヘルプ画面を閉じるため使えない。
+   2026-10-09 追加。
 ═══════════════════════════════════════════════════════════════ */
 
 let _helpTopics = null; // [{file, title}]
