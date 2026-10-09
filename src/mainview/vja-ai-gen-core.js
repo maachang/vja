@@ -603,13 +603,7 @@ async function yamlAiGenerate(wid, evName, temperatureOverride) {
     const isFormEvent = (wid === "form");
     const w = (isAppEvent || isFormEvent) ? null : getWidget(wid);
     if (!isAppEvent && !isFormEvent && !w) return;
-    if (!getProjectData().aiConfig.enabled) {
-        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
-            closeModal();
-            openAiConfig();
-        }
-        return;
-    }
+    if (!(await ensureAiEnabled())) return;
 
     // YAML本文が空のままAI生成を実行すると、依頼内容が丸ごとAIに渡らず
     // （ENG_YAML_TO_JS_USER_PROMPTは"[The Following YAML]"ブロック自体を省略する）、
@@ -773,13 +767,7 @@ async function generateTextToYaml(wid, evName, inputText, domOverride = null) {
 }
 
 async function textToYamlGenerate(wid, evName) {
-    if (!getProjectData().aiConfig.enabled) {
-        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
-            closeModal();
-            openAiConfig();
-        }
-        return;
-    }
+    if (!(await ensureAiEnabled())) return;
 
     const promptTa = $("prompt-ta");
     const aiPromptIn = $("ai-prompt-in");
@@ -899,13 +887,7 @@ async function generateJsToYaml(wid, evName, jsCode, domOverride = null) {
 }
 
 async function jsToYamlGenerate(wid, evName) {
-    if (!getProjectData().aiConfig.enabled) {
-        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
-            closeModal();
-            openAiConfig();
-        }
-        return;
-    }
+    if (!(await ensureAiEnabled())) return;
 
     const jsTa = $("js-ta");
     const jsCode = jsTa?.value?.trim() || "";

@@ -213,10 +213,7 @@ async function generateExtRuntimeDoc(js) {
 }
 
 async function extRtGenDoc() {
-    if (!getProjectData().aiConfig.enabled) {
-        showToast("AI接続設定が有効になっていません");
-        return;
-    }
+    if (!(await ensureAiEnabled())) return;
     const js = $("ta-extrt-js")?.value || "";
     if (!js.trim()) { showToast("JavaScriptコードを入力してください"); return; }
     const existsDoc = (getProjectData().extRuntime.doc || $("ta-extrt-doc")?.value || "").trim();

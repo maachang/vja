@@ -149,9 +149,7 @@ function openFormDesignAi() {
     // 複数選択中にAI設計ボタンを操作した場合は選択を解除する
     if (getDesignerState().selIds.length > 1) deselect();
     if (!getProjectData().aiConfig.enabled) {
-        vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？").then((yes) => {
-            if (yes) openAiConfig();
-        });
+        ensureAiEnabled(); // 設定画面を開くか確認する（反映後は、このままデザイナーの画面に戻る）
         return;
     }
     const template = getProjectData().formDesignDraft || "";
@@ -306,13 +304,7 @@ async function generateFormDesignYaml(inputText, allTables) {
 }
 
 async function formDesignTextToYamlGenerate() {
-    if (!getProjectData().aiConfig.enabled) {
-        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
-            closeModal();
-            openAiConfig();
-        }
-        return;
-    }
+    if (!(await ensureAiEnabled())) return;
 
     const docEl = $("ta-fd-doc");
     const promptInEl = $("fd-prompt-in");

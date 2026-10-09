@@ -7,7 +7,7 @@
    【依存】vja-defs.js（getProjectData/deepEqual等）、
    vja-modal.js（showModal/closeModal/pushUndo）、vja-html.js（render/evtAttr/makePvSel）
    【提供するもの】
-     - openAiConfig() / aiCfgCancel() / aiCfgConfirm()
+     - openAiConfig(opts?) / aiCfgRender() / ensureAiEnabled(resume?) / aiCfgCancel() / aiCfgConfirm()
      - aiCfgSelectPreset() / aiCfgSaveAsPreset() / aiCfgDoSaveAsPreset() / aiCfgDeletePreset()
      - aiCfgModelListHtml() / aiCfgToggleRouter() / aiCfgToggleEnabled() / aiCfgFetchModels()
    2026-09-21、肥大化したvja-yaml-editor.js（当時4915行）から分割した
@@ -69,7 +69,33 @@ function _getAllAiPresets() {
     return [...projectPresets, ...globalPresets];
 }
 
-function openAiConfig() {
+// AI接続設定モーダルを表示する層と、反映後に呼ぶ「続きの処理」。
+// 他の画面から「AI設定が無効」で呼ばれた時は、その画面を閉じずに上へ重ねて開き（overlay）、
+// 反映・キャンセルで重ねた層だけを閉じて元の画面へ戻る。resumeがあれば反映後に呼ぶ。
+let _aiCfgLayer = "modal-root";
+let _aiCfgResume = null;
+
+// AI接続設定を開く。opts: { overlay: true=今のモーダルの上へ重ねて開く, resume: 反映後に呼ぶ関数 }
+// ツールバー・メニューからの通常の呼び出し（引数なし）は、従来どおり単独のモーダルで開く。
+function openAiConfig(opts) {
+    _aiCfgLayer = (opts && opts.overlay === true) ? "modal-layer-1" : "modal-root";
+    _aiCfgResume = (opts && typeof opts.resume === "function") ? opts.resume : null;
+    aiCfgRender();
+}
+
+// AI接続設定が有効か確認する（全AI機能共通）。有効ならtrue。
+// 無効なら「設定画面を開きますか？」と確認し、「はい」なら今の画面の上にAI設定を重ねて開く（falseを返すので、
+// 呼び出し側は処理を中断すること）。反映後は元の画面に戻る。resumeを渡すと、反映後にそれも呼ぶ。
+async function ensureAiEnabled(resume) {
+    if (getProjectData().aiConfig.enabled === true) return true;
+    if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
+        openAiConfig({ overlay: true, resume });
+    }
+    return false;
+}
+
+// AI接続設定モーダルの描画（プリセット操作などの再描画でも、層と続きの処理を保ったまま呼ぶ）
+function aiCfgRender() {
     _initAiPresets();
 
     // getProjectData().aiConfig の初期値保証
@@ -94,7 +120,7 @@ function openAiConfig() {
     const modelListHtml = aiCfgModelListHtml(getProjectData().aiConfig.models, getProjectData().aiConfig.model, isRouter);
 
     showModal(
-        mhdrHTML("🤖 AI接続設定") +
+        mhdrHTML("🤖 AI接続設定", _aiCfgLayer) +
         render("ye-tpl-ai-config-body", {
             presetSel: makePvSel("ai-preset-sel", presetOpts, curPresetId, "aiCfgSelectPreset({value})"),
             enaSel: makePvSel("ai-ena-sel", ["ON", "OFF"], isEnabled ? "ON" : "OFF", "aiCfgToggleEnabled({value})"),
@@ -114,14 +140,16 @@ function openAiConfig() {
         render("ye-tpl-ai-config-footer", {
             footBtns: mfootHTML([{ label: "キャンセル", action: "aiCfgCancel()" }]),
             attrConfirm: evtAttr("onmousedown", "aiCfgConfirm()"),
-        })
+        }),
+        "", _aiCfgLayer
     );
 }
 // AI接続設定モーダルのキャンセル。ウィザードから遷移中だった場合は、
 // 保留していた次ステップへの継続コールバックも破棄し、ウィザードを中断する
 function aiCfgCancel() {
     if (typeof WIZARD_STATE !== "undefined") WIZARD_STATE.resumeAfterAiConfig = null;
-    closeModal();
+    _aiCfgResume = null;
+    closeModal(_aiCfgLayer);
 }
 
 async function aiCfgSelectPreset(presetId) {
@@ -151,7 +179,7 @@ async function aiCfgSelectPreset(presetId) {
     if (!p) return;
     getProjectData().currentAiPresetId = p.id;
     getProjectData().aiConfig = { ...getProjectData().aiConfig, ...p.config };
-    openAiConfig();
+    aiCfgRender();
 }
 
 // AI接続設定モーダルの入力欄から、現在編集中の内容をaiConfig形式で読み取る
@@ -190,13 +218,14 @@ function aiCfgSaveAsPreset() {
     const curScope = curPreset?.scope || "project";
 
     showModal(
-        mhdrHTML("💾 AI設定をプリセット保存") +
+        mhdrHTML("💾 AI設定をプリセット保存", _aiCfgLayer) +
         render("ye-tpl-ai-preset-save-body", {
             curName,
             scopeSel: makePvSel("ai-preset-scope-sel", _AI_PRESET_SCOPE_OPTS, curScope, ""),
-            footBtns: mfootHTML([{ label: "キャンセル", action: "openAiConfig()" }]),
+            footBtns: mfootHTML([{ label: "キャンセル", action: "aiCfgRender()" }]),
             attrSave: evtAttr("onclick", "aiCfgDoSaveAsPreset()"),
-        })
+        }),
+        "", _aiCfgLayer
     );
 }
 
@@ -255,7 +284,7 @@ function aiCfgDoSaveAsPreset() {
     getProjectData().currentAiPresetId = id;
     pushUndo();
     showToast(toastMsg);
-    openAiConfig();
+    aiCfgRender();
 }
 
 function aiCfgDeletePreset() {
@@ -280,7 +309,7 @@ function aiCfgDeletePreset() {
     getProjectData().aiConfig = { ...getProjectData().aiConfig, ...(remaining[0]?.config || {}) };
     pushUndo();
     showToast("プリセット「" + deletedName + "」を削除しました");
-    openAiConfig();
+    aiCfgRender();
 }
 
 // モデルリストのHTML生成
@@ -356,7 +385,7 @@ async function aiCfgConfirm() {
     }
 
     getProjectData().aiConfig = newCfg;
-    closeModal();
+    closeModal(_aiCfgLayer);
     pushUndo();
     showToast("AI設定を反映しました");
     // ウィザードからの遷移中であれば、保存完了を受けてウィザードの次ステップへ戻る
@@ -365,9 +394,15 @@ async function aiCfgConfirm() {
         WIZARD_STATE.resumeAfterAiConfig = null;
         resume();
     }
+    // 他の画面から重ねて開かれていた場合、反映後に続きの処理を呼ぶ（元の画面は閉じていないので、そのまま戻る）
+    if (_aiCfgResume) {
+        const resume = _aiCfgResume;
+        _aiCfgResume = null;
+        resume();
+    }
 }
 
 Object.assign(window, {
-    openAiConfig, aiCfgModelListHtml, aiCfgToggleRouter, aiCfgToggleEnabled,
+    openAiConfig, aiCfgRender, ensureAiEnabled, aiCfgModelListHtml, aiCfgToggleRouter, aiCfgToggleEnabled,
     aiCfgFetchModels, aiCfgConfirm, aiCfgCancel, aiCfgSelectPreset, aiCfgSaveAsPreset, aiCfgDoSaveAsPreset, aiCfgDeletePreset,
 });

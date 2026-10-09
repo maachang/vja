@@ -768,13 +768,7 @@ function sanitizeAiTableColumns(cols) {
 // テーブル名は他の画面・YAML定義から参照される重要なキーのため、既に名前が
 // 入力済みの場合は上書き確認を挟む。
 async function tblAiGenerateName() {
-    if (!getProjectData().aiConfig.enabled) {
-        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
-            closeModal();
-            openAiConfig();
-        }
-        return;
-    }
+    if (!(await ensureAiEnabled())) return;
 
     tblSyncFromDOM();
     const tbl = TABLE_MODAL.edit;
@@ -813,13 +807,7 @@ async function tblAiGenerateName() {
 }
 
 async function tblAiGenerateSchema() {
-    if (!getProjectData().aiConfig.enabled) {
-        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
-            closeModal();
-            openAiConfig();
-        }
-        return;
-    }
+    if (!(await ensureAiEnabled())) return;
 
     tblSyncFromDOM();
     const tbl = TABLE_MODAL.edit;
@@ -1195,13 +1183,7 @@ function validDelRow(idx) {
 
 // AIに依頼して、定義名・説明・自由記述の依頼文からバリデーションルール一覧の雛形を生成する
 async function validAiGenerateRules() {
-    if (!getProjectData().aiConfig.enabled) {
-        if (await vja.app.showConfirm("AI接続設定が有効になっていません。設定画面を開きますか？")) {
-            closeModal();
-            openAiConfig();
-        }
-        return;
-    }
+    if (!(await ensureAiEnabled())) return;
 
     const v = VALID_MODAL.edit;
     if (!v) return;

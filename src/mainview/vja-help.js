@@ -201,10 +201,8 @@ async function helpAsk() {
     const input = $("help-q");
     const q = (input?.value || "").trim();
     if (!q || _helpAsking) return;
-    if (getProjectData().aiConfig.enabled !== true) {
-        showToast("AI設定が無効です。ツールバーの「AI設定」で有効にしてください");
-        return;
-    }
+    // AI設定が無効なら、ヘルプの上にAI設定を重ねて開く。反映後は、入力欄に残した質問をそのまま実行する
+    if (!(await ensureAiEnabled(() => helpAsk()))) return;
     const seq = ++_helpAskSeq;
     _helpAsking = true;
     const btn = $("help-ask-btn");
