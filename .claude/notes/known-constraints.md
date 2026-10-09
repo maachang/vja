@@ -27,3 +27,8 @@
   - `build.win.icon`（Electrobun本体のアイコン設定）は、壊れている処理を通らないよう引き続きコメントアウトのままにする（`electrobun.config.ts`・`compileProject`の生成config）。これらのコメントにある「Electrobun側修正後に復活させること」は、Electrobun本体が修正された場合に、フックを廃止して`build.win.icon`へ戻すという意味
   - **Macは`build.mac.icons`（`icon/icon.iconset`）を有効化するだけで対応済み**（2026-09-29、Mac実機でアイコン表示を確認済み）: Electrobun本体がmacOS上のビルド時に`iconutil`で`.iconset`を`AppIcon.icns`へ変換して埋め込む（`rcedit`は使わないためWindowsのバグの影響を受けない）。vja本体（`electrobun.config.ts`）と`compileProject`の生成config（`icon/icon.iconset`も生成先へコピー）の両方で有効。`build.copy`で`icon/icon.iconset`を`Resources/app/`へ同梱している。Linuxからのクロスビルドでは`iconutil`が無く警告のみでアイコン無しになる
   - Linuxのアイコンは対応しない方針（下記の「Linuxのアイコン対応は行わない方針」を参照）
+
+- **デザイナーでは`window.marked`/`window.QRCode`が未定義になる（Bunバンドラがライブラリをモジュール化するため）**（2026-10-09）: `index.html`の`<script src="marked.umd.js">`・`qrcode.js`は、Electrobunのビルド/devでBunのバンドラがモジュール化し、グローバルに公開されない。その結果markdownウィジェットは生のmdのまま、QRウィジェットは🔲プレースホルダのままだった。
+  - **対策**: `vja-defs.js`の`ensureWebviewLib(src, globalName)`が素の`<script>`を動的に追加して読み込む（失敗しても解決する）。`vja-ui.js`のINIT末尾で`marked`/`qrcode`を読み込み、終わったらmarkdown/QRウィジェットを`renderWidget`で再描画。`vja-help.js`の`openHelp`も同関数を使う。`electrobun.config.ts`の`build.copy`に`marked.umd.js`と`qrcode.js`の両方を登録する。
+  - 新しい外部ライブラリをwebviewのグローバルとして使う時も同様に`ensureWebviewLib`経由にすること。`ensureWebviewLib`は`Object.assign(window,{...})`への追加が必要（コメント中の同名文字列を置換して公開漏れを起こした実例あり。`openHelp`が無言でハングした）。
+  - 確認: `testGetWidgetHtml`が`libs:{marked,QRCode}`を返す
