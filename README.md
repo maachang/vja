@@ -152,7 +152,8 @@ try {
 
 ### 🎨 フォームデザイナー
 - VB スタイルのドラッグ＆ドロップ UI
-- 複数フォーム（画面）管理・切り替え
+- 複数フォーム（画面）を、左側の「画面一覧」で管理（検索・ドラッグ/↑↓での並べ替え・起動フォーム★の設定）
+- メニューとよく使うボタンを2段表示。ツールボックスと画面一覧の境はドラッグで高さを変更可能
 - リアルタイムプレビュー
 - **AI 画面デザイン自動生成**: 「✨ YAMLドラフト」タブに日本語で要望を書くだけで、AIが画面デザインYAML（説明/入力項目/アクション）のドラフトを生成 → そのYAMLからウィジェット配置（x, y, w, h）を自動計算。4pxグリッドスナップ・自動整列補正も搭載
 - **🖼 レイアウトイメージ選択**: 「上に入力＋ボタン、下に一覧」のような画面の大まかな構成を、文章ではなく箱型の図（イメージ）から選ぶだけで指定できる機能。YAMLドラフト生成時にはAIが依頼文の内容から最も近い構成を自動選択し、YAML本文（ウィジェット定義）とは完全に分離して保持されるため、「どんなウィジェットを配置するか」と「どこに配置するか」を混同しない設計になっている
@@ -197,10 +198,15 @@ GAS や AWS Lambda などの無料・低価格クラウドサービスは便利�
 - プロジェクト固有の JavaScript ライブラリを定義
 - AI がその API を理解してコード生成に活用
 
+### ❓ ヘルプ・AI 質問応答
+- アプリ内にヘルプ（F1）。画面構成からクラウド連携まで15トピック
+- ヘルプ画面の質問欄に日本語で質問すると、AIが関連するトピックを選び、その内容だけを根拠に回答（出典のページへのリンク付き、ドキュメントに無いことは「見つかりませんでした」と答える）
+- ローカル LLM（Qwen2.5-Coder-7B）でも動くよう、トピックごとに関連度を採点する方式（質問63問の測定で約89%）
+
 ### ✅ バリデーション定義
 - 入力チェックルールを GUI でフォーム単位に定義・管理
 - **AI バリデーションルール自動生成**: 「✨ AI生成」で、依頼文＋定義名/説明＋フォーム内の入力系ウィジェット一覧からルール一覧（対象ウィジェット・チェック種別・エラーメッセージ等）の雛形を自動生成
-- YAML に `検証: 定義名` と記載するだけで AI 生成コードの先頭に自動挿入
+- イベントエディタの右パネルで定義名を選ぶだけで、AI 生成コードの先頭に自動挿入
 - AI がバリデーションロジックを書く必要がなく、ローカル LLM でも安定動作
 
 ---
@@ -488,37 +494,67 @@ Bun.js メインプロセス
 vja/
 ├── electrobun.config.ts       # Electrobun ビルド設定
 ├── package.json
+├── docs/                      # ドキュメント（ユーザーガイド・YAMLガイド・サンプル等）
+├── mcp/                       # デザイナーのテスト自動化（MCPサーバー・E2E・測定スクリプト）
+├── icon/                      # アプリのアイコン（Windows / Mac / Linux）
+├── scripts/                   # ビルド補助スクリプト（Windowsのアイコン埋め込み等）
 └── src/
-    ├── bun/
+    ├── bun/                   # Bun.js で動くコード（メインプロセス）
     │   ├── index.ts                 # メインプロセス（ウィンドウ生成・RPC定義）
-    │   ├── project-runner.ts       # プロジェクト実行ウィンドウの共通処理（index.ts・standalone-index.tsで共有）
-    │   ├── fs-rpc-handlers.ts      # ファイル/ディレクトリ操作RPCハンドラ共通実装
-    │   ├── bun-utils.ts            # CSVパース・gzip展開等の共通ユーティリティ
+    │   ├── project-runner.ts        # プロジェクト実行ウィンドウの共通処理（index.ts・standalone-index.ts 共通）
+    │   ├── standalone-index.ts      # コンパイル済みアプリのエントリポイント
+    │   ├── fs-rpc-handlers.ts       # ファイル/ディレクトリ操作RPCハンドラ共通実装
+    │   ├── bun-utils.ts             # CSVパース・gzip展開・起動フォーム選択・定数初期化スクリプト等の共通ユーティリティ
+    │   ├── runtime-error-snippet.ts # 実行時エラー報告用のスニペット
     │   ├── logger.ts                # ロガー
-    │   ├── db-manager.ts           # SQLite 管理
-    │   ├── copy-compile-assets.ts  # コンパイル資材コピー
-    │   └── standalone-index.ts     # コンパイル済みアプリのエントリポイント
-    ├── mainview/
-    │   ├── index.html              # フォームデザイナー（静的HTML・スクリプト読み込み）
-    │   ├── init-params.js          # 静的定義値の集約（全ファイルで最初に読み込む）
-    │   ├── vja-defs.js             # 状態管理・ウィジェット定義・共通ユーティリティ
-    │   ├── vja-designer.js         # デザイナー本体（描画・選択・プロパティパネル）
-    │   ├── vja-modal.js            # モーダル基盤・Undo/Redo・削除/複製
-    │   ├── vja-yaml-editor.js      # YAML/JSエディタ・AI生成
+    │   ├── db-manager.ts            # SQLite 管理
+    │   └── copy-compile-assets.ts   # コンパイル資材コピー
+    ├── mainview/              # WebView で動くコード
+    │   ├── index.html               # フォームデザイナー（メニュー・ツールバー・画面一覧・各パネル）
+    │   ├── style.css                # スタイル
+    │   ├── templates/               # 画面のHTMLテンプレート（モーダル・パネル・ヘルプ等）
+    │   ├── prompts/                 # AIプロンプト本文（.md）
+    │   ├── help/                    # アプリ内ヘルプの本文（.md）とスクリーンショット
+    │   ├── init-params.js           # 静的定義値の集約（全ファイルで最初に読み込む）
+    │   ├── vja-defs.js              # 状態管理・ウィジェット定義・共通ユーティリティ
+    │   ├── vja-html.js              # HTML文字列組み立て用の安全なテンプレート
+    │   ├── vja-templates-loader.js  # templates/ の読み込み
+    │   ├── vja-designer.js          # デザイナー本体（描画・選択・プロパティパネル）
+    │   ├── vja-modal.js             # モーダル基盤・Undo/Redo・削除/複製・AI呼び出し（runAiGenerate / aiChatOnce）
+    │   ├── vja-yaml-editor.js       # YAML/JSエディタ
+    │   ├── vja-editor-search.js     # エディタ内検索・置換
+    │   ├── vja-editor-completion.js # エディタ入力補完・対応括弧ハイライト
+    │   ├── vja-editor-utils.js      # エディタ共通ユーティリティ
+    │   ├── vja-ai-gen-core.js       # イベントJS/YAMLドラフトのAI生成の中核
+    │   ├── vja-form-design-ai.js    # 画面デザインのAI生成
+    │   ├── vja-form-layout-fix.js   # AI生成レイアウトの座標の機械的な補正
     │   ├── form-design-templates.js # 画面デザイン依頼（YAML）テンプレート定義
-    │   ├── vja-editor-utils.js     # エディタ共通ユーティリティ
-    │   ├── vja-mock-runtime.js     #モック共通ユーティリティ
-    │   ├── vja-save.js             # 保存・開く・実行・マルチフォーム管理
-    │   ├── vja-table-validation.js # 定数・テーブル・バリデーション編集
-    │   ├── vja-app-config.js       # フォーム定数・アプリイベント・クラウド設定等
-    │   ├── vja-ui.js               # キーボード・ルーラー・INIT（最後に読み込む）
-    │   ├── bridge.ts               # Webview RPC ブリッジ
-    │   ├── bridge-common.ts        # RPC ブリッジ共通処理
-    │   ├── project-bridge.ts       # プロジェクト実行ウィンドウ RPC
-    │   ├── vja-runtime.js          # vja.* API ランタイム
-    │   └── prompt-def.js           # AI プロンプト定義
-    └── shared/
-        └── types.ts                # Bun ↔ Webview 共有 RPC 型定義
+    │   ├── form-layout-patterns.js  # レイアウトイメージ選択の構造パターン
+    │   ├── vja-mock-check.js        # AI生成コードの検証・モック実行・スナップショット履歴
+    │   ├── vja-mock-runtime.js      # モック共通ユーティリティ
+    │   ├── vja-ai-config.js         # AI接続設定・プリセット管理
+    │   ├── vja-learned-fixes-ui.js  # 学習ノウハウ管理
+    │   ├── vja-save.js              # 保存・開く・実行・マルチフォーム管理（画面一覧）
+    │   ├── vja-table-validation.js  # 定数・テーブル・バリデーション編集
+    │   ├── vja-app-config.js        # アプリイベント・クラウド設定・拡張ランタイム等
+    │   ├── vja-wizard.js            # プロジェクト新規作成ウィザード
+    │   ├── vja-wizard-actions.js    # ウィザード生成画面のボタン補完
+    │   ├── vja-help.js              # ヘルプ画面とAI質問応答
+    │   ├── vja-runtime-errors.js    # 実行時エラーの一覧
+    │   ├── vja-ui.js                # キーボード・ルーラー・パネルのリサイズ・INIT（最後に読み込む）
+    │   ├── prompt-def.js            # AI プロンプトの組み立て
+    │   ├── bridge.ts                # Webview RPC ブリッジ
+    │   ├── bridge-common.ts         # RPC ブリッジ共通処理
+    │   ├── project-bridge.ts        # プロジェクト実行ウィンドウ RPC
+    │   ├── vja-runtime.js           # vja.* API ランタイム
+    │   ├── aws-runtime.ts           # vja.aws.*（AWS）
+    │   ├── slack-runtime.ts         # vja.slack.*
+    │   ├── chatwork-runtime.ts      # vja.chatwork.*
+    │   └── webhook-runtime.ts       # vja.webhook.*
+    ├── shared/                # Bun ↔ Webview の共有コード
+    │   ├── types.ts                 # RPC 型定義
+    │   └── csv-utils.ts             # CSVパース共通処理
+    └── wizard-system-models/  # ウィザードのシステムモデル定義（AIヒント用）
 ```
 
 ---
