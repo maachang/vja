@@ -12,6 +12,7 @@
 - **定数が`vja.const.get`で常に既定値(null)だった**: `vja.const.init()`を呼ぶ箇所がソースのどこにも無かった（履歴にも一度も無い）。AIは`vja.const.get('名前')`を使うコードを生成していたので、実行すると常にnullだった。修正: `buildFormHtml`（`bun/index.ts`）が各フォームのHTMLに`vja.const.init(全体の定数, そのフォームの定数)`を埋め込む（`bun-utils.ts`の`buildConstInitScript`。`</script>`等はエスケープ）。全体の定数は`_updateProjectData`で`_currentProjectConstants`に保持。コンパイルも同じ`buildFormHtml`を使うので両方に効く。
 - **起動フォーム（★）が実行時に効かず、常に先頭のフォームだった**: `bun/index.ts`と`standalone-index.ts`が`forms[0]`を起動していた（`startFormId`はBun側に渡っていなかった）。修正: `pickStartForm`（`bun-utils.ts`）で★のフォームを選び、無ければ先頭。実行用データ（`_getProjectData`）に`startFormId`を追加。★を押したら画面一覧とプロパティパネル（「全体に反映/トップに合わせる」）が即時更新される。
 - **教訓**: 「画面で設定できる」と「実行時に効く」は別。設定項目を足したら、保存→実行ウィンドウ→コンパイル後アプリまで、値が届くことを実機で通して確認する（どちらも、設定画面とAI生成のコードは動いていたため気づけなかった）。
+  - 調べ方: 設定項目の値が実行時に届くかは、実行用データの経路（`_getProjectData`→Bun側の`_updateProjectData`→`buildFormHtml`）と、コンパイル後アプリ（`standalone-index.ts`）の両方を、呼び出し元の検索で追う。「呼ぶ所が最初から無い」可能性を疑い、ソース全体と履歴（`git log -S"文字列"`）で検索する。`vja-runtime.js`はNULバイトを含み、`grep`が無言で0件になるので`grep -a`か`Read`で裏取りする。
 
 ## 未対応・既知
 - 画面一覧の右クリックメニューと「画面の複製」は未実装（複製はイベントの記録・オーバーライドの扱いが絡むため別機能）。
