@@ -11,7 +11,7 @@
   - クリップボードからdatagridへの直接貼り付け（Excel貼り付け的操作）
   - 汎用モーダルダイアログ（alert/confirm以外の、入力付きプロンプトや子ウィンドウ）
   - 外部プログラム起動（生成したPDFを既定アプリで開く等）
-  - バーコード/QR対応、画像サムネイル生成、ドラッグ&ドロップファイル入力
+  - バーコード対応（QRはウィジェット`qrcode`で実装済み）、画像サムネイル生成、ドラッグ&ドロップファイル入力
     （QR生成用に `src/mainview/qrcode.js` を配置済み。実装時はこれを利用する。
     文字数が多いとQRコードが生成されなくなるため、生成時は
     `correctLevel: QRCode.CorrectLevel.L` を指定する必要がある）
@@ -31,7 +31,7 @@
 
 ## ヘルプ機能（2026-10-09、c31cbe0）
 - 本文は`src/mainview/help/*.md`（`_list.txt`で順序、各mdの先頭に`<!-- summary: ... -->`）。`vja-help.js`の`openHelp(file?)`/`openHelpTopic(file)`、`templates/help.html`、ツールバー「ヘルプ」とF1。同期XHRで読み込み、`marked.parse()`で表示（`ensureWebviewLib`、known-constraints.md参照）。`electrobun.config.ts`で`help`をコピー登録。RAGは使わない。
-- 現状4トピック（画面構成/イベントエディタ/JS生成/AI設定）。残り約20トピック（はじめに/画面/イベント/データ/アプリ/連携/AI/仕上げ/リファレンス）は未執筆。
+- 現状15トピック（01画面構成〜15通知の送信。`docs/user-guide.md`の全章に相当）。スクリーンショットは`help/screenshot.jpg`（docs/と同じ画像のコピー、md内は`help/screenshot.jpg`の相対パス）。書く時は`docs/user-guide.md`を写さず、ボタン名・APIの戻り値などを実装（index.html、prompts/、WIDGET_DEFS）で裏取りすること。ガイドには古い記述が残っている（ウィジェット一覧の「水平線/垂直線」＝実際は水平/垂直scroll・QR/マークダウン抜け、定数/テーブル/拡張ランタイムを「左サイドバー」とする位置説明、`vja.db.query`の`result.rows`＝実際は配列を直接返す、ボタン名「▶実行」等＝実際は「実行」、アプリイベントの開き方＝実際は［ファイル］メニュー）。ガイド側は未修正。
+- 意図的に載せていない内容（実装で確認できていないため）: AWS SDKを自分でCDNから読み込む使い方、`~/vja/credential.json`（アプリ側入力）、`vja.getCloudInfraCredential`、コンパイル出力のOS別ファイル名、「配布先にBun不要」、OpenAIの具体的なモデルID（`gpt-6-luna`）。
 - 将来のAI質問応答: 2段階（summary索引からAIが節番号を選ぶ→選ばれた節のみで回答、出典節を表示、該当なしは「ドキュメントに無い」）。節選択の精度は先にqwen7bで測る。`docs/`と`help/`の正本は、help/をアプリ内の正本・docs/はGitHub用とする案（未決）。
 - 画面の目視確認（色・スクロール・トピッククリック・F1・ボタン位置）は未了。
-- 「バーコード/QR対応」: QRウィジェット(`qrcode`)は実装済み。バーコードのみ未実装（上の記載の文言を直すこと）。
