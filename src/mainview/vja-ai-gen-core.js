@@ -518,7 +518,7 @@ function buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowConte
         }
     );
 
-    return { sysPrompt, userPrompt, validationName, wtag: w?.tag, allWidgetsCtx, tablesCtx };
+    return { sysPrompt, userPrompt, validationName, wtag: w?.tag, allWidgetsCtx, tablesCtx, imagesCtx };
 }
 
 // async function handleXxx() { ... } のラッパーを自動除去
@@ -782,14 +782,30 @@ function _applyGeneratedEventYaml(wid, evName, yamlText, docText) {
 // showLoadingModal()呼び出しより前に取得した{yamlCur, addPrompt}（詳細はgenerateEventJs()の
 // AIメモ参照）。省略時は$("yaml-ta")等から直接読む。
 // 戻り値: 生成されたYAML文字列（失敗時はnull）。
+// ウィジェット名が種別名と大文字小文字しか違わない場合（既定名の Picture/Button 等）、
+// AIが名前を種別名（picture/button）の小文字に崩して書くことがある（イベントYAMLドラフトで
+// 「Pictureの画像を…」が「picture の画像を…」になった）。YAML中の該当の語を、
+// ウィジェットの実際の名前へ機械的に戻す。対象は「名前と種別名が大文字小文字だけ違う」
+// ウィジェットに限る（それ以外の名前は、一般語と衝突しにくく、書き換える根拠も無いため触らない）。
+// 前後が識別子文字[A-Za-z0-9_$]でない語だけを対象にする（isImageなど別の語の一部は触らない）。
+function _fixWidgetNameCase(text, widgets) {
+    let result = text;
+    (widgets || []).forEach((w) => {
+        if (!w.name || !w.tag || w.name === w.tag || w.name.toLowerCase() !== String(w.tag).toLowerCase()) return;
+        const re = new RegExp("(?<![A-Za-z0-9_$])" + escapeRegExp(w.name) + "(?![A-Za-z0-9_$])", "gi");
+        result = result.replace(re, w.name);
+    });
+    return result;
+}
+
 async function generateTextToYaml(wid, evName, inputText, domOverride = null) {
     const isAppEvent = (wid === "appev");
     const isFormEvent = (wid === "form");
     // YAMLドラフト生成時は依頼文にウィジェット名が出てこないケースが多いため、
     // 絞り込みを行わず常にフォーム全体のウィジェット一覧をAIへ渡す
-    const { allWidgetsCtx, tablesCtx } = buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, false, domOverride);
+    const { allWidgetsCtx, tablesCtx, imagesCtx } = buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, false, domOverride);
 
-    const sysPrompt = _PROMPT_DEF.TEXT_TO_YAML_SYS_PROMPT({ widgetsCtx: allWidgetsCtx, tablesCtx: tablesCtx, extRuntimeDoc: getProjectData().extRuntime?.doc });
+    const sysPrompt = _PROMPT_DEF.TEXT_TO_YAML_SYS_PROMPT({ widgetsCtx: allWidgetsCtx, tablesCtx: tablesCtx, extRuntimeDoc: getProjectData().extRuntime?.doc, imagesCtx: imagesCtx });
     const userPrompt = _PROMPT_DEF.TEXT_TO_YAML_USER_PROMPT(inputText);
 
     let result = null;
@@ -803,7 +819,9 @@ async function generateTextToYaml(wid, evName, inputText, domOverride = null) {
             // AIへの出力キー指示は英語表記（description/tables等）にしているため
             // （日本語キーだと一部ローカルLLM＋サーバー環境で応答パースエラーが
             // 発生する事象への対策）、実際のVJAイベントYAML仕様（日本語キー）へ変換する
-            const stripped = _convertTextToYamlEngKeysToJp(stripped0);
+            // さらに、ウィジェット名が種別名と同じ綴り（例: Picture）のとき、AIが小文字（picture）へ
+            // 崩した箇所を正しい名前へ機械的に戻す（詳細は_fixWidgetNameCase）
+            const stripped = _fixWidgetNameCase(_convertTextToYamlEngKeysToJp(stripped0), getProjectData().widgets);
 
             // モーダルを再表示する前にデータモデルに新YAMLと依頼テキストを書き込み
             _applyGeneratedEventYaml(wid, evName, stripped, inputText);

@@ -543,12 +543,17 @@ ${_safeYamlFence(yamlDef)}
     // 画面デザイン側のfields/actionsのような分類判断が不要な単純な構造。
     // 出力は生YAMLのみ、コードブロック・説明文禁止。
     // extRuntimeDoc: [任意]拡張ランタイムのyaml定義。空なら拡張関数のセクション自体を出さない（従来と同一のプロンプトになる）。
-    const ENG_TEXT_TO_YAML_SYS_PROMPT = function ({ widgetsCtx, tablesCtx, extRuntimeDoc }) {
+    // imagesCtx: [任意]画像管理に登録した画像名の一覧。空ならセクション自体を出さない。
+    const ENG_TEXT_TO_YAML_SYS_PROMPT = function ({ widgetsCtx, tablesCtx, extRuntimeDoc, imagesCtx }) {
         const extRuntimeSection = (extRuntimeDoc && extRuntimeDoc.trim())
             ? _fillTpl(_loadPromptTpl("text-to-yaml.ext-runtime.eng.md"), { extRuntimeDoc: extRuntimeDoc.trim() })
             : "";
         return _fillTpl(_loadPromptTpl("text-to-yaml.sys.eng.md"), {
             widgetsCtx: widgetsCtx || "(No widgets)",
+            // 画像管理に登録した画像がある時だけ出す（無ければ空文字）。「画像一覧」はこの画像管理の一覧を指す
+            imagesSection: imagesCtx
+                ? "[Available Images Context]\nImages registered in the project's image manager (\"画像一覧\" in a request means this list, NOT a database table). To change the image of a picture widget, write the action as: <widget name> の画像を「<image name>」に切り替える\n" + imagesCtx + "\n\n"
+                : "",
             tablesCtx: tablesCtx || "(No DB tables)",
             extRuntimeSection,
         }).trim() + "\n";
