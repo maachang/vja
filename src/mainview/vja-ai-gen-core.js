@@ -193,6 +193,33 @@ function stripTsTypeAnnotations(code) {
         .replace(/\b(var|let|const)(\s+[A-Za-z_$][\w$]*)\s*\[\]\s*=/g, "$1$2 =");
 }
 
+// AIサーバーが、UTF-8の0x80以上のバイトを「U+FF00＋バイト値」の文字（例: ロ(E3 83 AD)→￣ﾃﾭ）として
+// 返す文字化け（Foundry Local 0.11.0で確認）を、自動で検出して元の文字へ戻す。
+// 対象は U+FF80〜U+FFF4（UTF-8に現れる0x80〜0xF4のバイト）の連続。連続の先頭から1文字(1〜4バイト)ずつ、
+// UTF-8として正しく戻せる並びだけを戻し、戻せない文字（途中で壊れた・欠けたバイト等）はその文字だけ元のまま残す
+// （連続の途中に不正なバイトが1つあっても、残りは戻す）。
+// 半角カタカナ(U+FF66〜FF9F)だけの文字列は、先頭が継続バイト(0x80〜0xBF)になり戻せないので変換されない。
+// 化けていない返答では何もしない。
+function fixByteMojibake(text) {
+    if (typeof text !== "string" || !/[\uFF80-\uFFF4]/.test(text)) return text;
+    const dec = new TextDecoder("utf-8", { fatal: true });
+    return text.replace(/[\uFF80-\uFFF4]+/g, (run) => {
+        const chars = Array.from(run);
+        const bytes = chars.map((c) => c.codePointAt(0) - 0xFF00);
+        let out = "";
+        for (let i = 0; i < chars.length;) {
+            const lead = bytes[i];
+            const len = lead >= 0xF0 ? 4 : lead >= 0xE0 ? 3 : lead >= 0xC2 ? 2 : 1;
+            let done = false;
+            if (len > 1 && i + len <= chars.length) {
+                try { out += dec.decode(Uint8Array.from(bytes.slice(i, i + len))); i += len; done = true; } catch (e) { /* 戻せない */ }
+            }
+            if (!done) { out += chars[i]; i++; }
+        }
+        return out;
+    });
+}
+
 // AI生成コード（1行べた書き・インデント不揃い等）をPrettier(bun側)で整形する。
 // Prettierが構文エラー等で失敗した場合は、整形前のコードをそのまま返す
 // （整形は品質向上のための後処理であり、失敗しても検証フロー自体は止めない）。
@@ -953,7 +980,7 @@ async function jsToYamlGenerate(wid, evName) {
 
 Object.assign(window, {
     buildTablesCtxText, getVjaApiWhitelist, narrowTablesByRequest, buildGenPromptContext,
-    findMissingAwaits, fixMissingAwaits, stripTsTypeAnnotations, findUnknownWidgetNames, formatJsCode, escapeRegExp,
+    findMissingAwaits, fixMissingAwaits, stripTsTypeAnnotations, fixByteMojibake, findUnknownWidgetNames, formatJsCode, escapeRegExp,
     generateEventJs, yamlAiGenerate,
     generateTextToYaml, textToYamlGenerate,
     generateJsToYaml, jsToYamlGenerate, findWidgetNamesInCode, isYamlActionsEmpty,

@@ -140,7 +140,8 @@ async function aiChatOnce(systemPrompt, userPrompt, temperatureOverride) {
     }
     const data = await res.json();
     const msg = data.choices?.[0]?.message || {};
-    const raw = (msg.content || msg.reasoning_content || "");
+    // 返答の文字化け（バイトがU+FF00+値で返る）を自動で戻す。化けていなければ何もしない
+    const raw = fixByteMojibake(msg.content || msg.reasoning_content || "");
     return raw.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/<\|[a-zA-Z0-9_]+\|>/g, "").trim();
 }
 
@@ -194,7 +195,10 @@ async function runAiGenerate(options) {
         }
         const data = await res.json();
         const msg = data.choices?.[0]?.message || {};
-        const raw = (msg.content || msg.reasoning_content || "");
+        const rawOrig = (msg.content || msg.reasoning_content || "");
+        // 返答の文字化け（バイトがU+FF00+値で返る。Foundry Local 0.11.0で確認）を自動で戻す。化けていなければ何もしない
+        const raw = fixByteMojibake(rawOrig);
+        if (raw !== rawOrig) window.vja?.log?.debug?.("[AI] 返答の文字化け（U+FF00+バイト値）を復元しました");
 
         // トークン使用量ログ（圧縮・キャッシュ効果の測定用。usageはOpenAI互換、timingsはllama-server拡張）
         const u = data.usage || {};

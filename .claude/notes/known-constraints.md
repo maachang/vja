@@ -24,6 +24,8 @@
 
 - **Foundry Localは0.8.119.102に固定する**（2026-09-26）: Windows/Snapdragon X向けローカルLLMのセットアップ手順`docs/localLlm/win-foundry-setup.md`は、Foundry Local 0.8.119.102を対象バージョンとして固定している（`winget install Microsoft.FoundryLocal --version 0.8.119.102`で明示指定）。0.10.3では、NPUで動作しない・ドキュメント記載のコマンド体系（`foundry model`/`foundry service`等）が変更されている、という問題を確認済み。そのため、検証結果が出るまでは最新版への更新を案内せず、手順書・案内は0.8.119.102のままにする
 
+- **Foundry Local 0.11.0は、日本語の返答が文字化けする**（2026-10-10確認）: UTF-8の0x80以上のバイトが「U+FF00＋バイト値」の文字（例: ロ=E3 83 AD → `￣ﾃﾭ`）で返る。ASCIIは正常で、送信側（vja→Foundry）は問題ない。vjaは`fixByteMojibake()`（`vja-ai-gen-core.js`）で、`runAiGenerate`/`aiChatOnce`の返答を自動で検出して戻す（U+FF80〜FFEFの連続のうちUTF-8として戻せるものだけ。化けていなければ何もしない。復元時はデバッグログに1行出る）。0.8.119.102に戻せば発生しないため、この固定も有効。0.11.0の根本の修正はFoundry Local側の問題。
+
 - **Snapdragon X（Win11 ARM64）では動作する**（2026-10-07再確認）: 以前はElectrobunのBunがx64版（エミュレーション）で動くことに起因する不安定さがあったが、最近のWin11 ARM64では解消しており、何度起動・操作しても再現しない（2026-09-25報告、2026-10-07再確認）。x86版Bunの導入手順も不要。**ドキュメントや説明に、不安定さ・未対応・エミュレーション問題を欠点として書かない**（過去の経緯も含む。AIがドキュメントを読んで過去の不安定さを欠点として拾うのを避けるため）。README.mdの「動作環境」は「Snapdragon X（ARM64）でも動作します」の1行のみ
 
 - **macOSで`bun run dev`が何も出力せず即終了する（Electrobun CLIバイナリの署名破損）**（2026-09-24、macOS 27.0で確認）: npm配布のElectrobun(v1.18.1)のCLIバイナリ（`node_modules/electrobun/bin/electrobun`）は、GitHubリリース物（`electrobun-cli-darwin-arm64.tar.gz`）自体のコード署名が壊れており（`codesign --verify`で`invalid signature`）、起動直後にOSからSIGKILL(exit 137)される。`bun run dev`側はこれを拾えずexit 0で終了するため原因が見えにくい。ad-hoc再署名（`codesign --force --sign -`）で起動できることを確認済み。Macでは`bun install`の代わりにプロジェクト直下の`setup-mac.sh`でセットアップする（bun install→CLIバイナリ未ダウンロードなら取得→`bin/`と`.cache/`の両方を再署名→起動確認）
