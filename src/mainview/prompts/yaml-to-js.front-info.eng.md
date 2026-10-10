@@ -33,7 +33,7 @@
 ---
 {{tablesCtx}}
 ---
-{{optionalApiSection}}
+{{imagesSection}}{{optionalApiSection}}
 {{learnedFixesSection}}
 ### Extended Runtime(yaml)
 ---

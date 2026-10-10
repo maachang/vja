@@ -430,6 +430,15 @@ function buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowConte
         ? formConstsForCtx.map(c => "  - " + c.name + " = " + c.value).join("\n")
         : "  (none)";
 
+    // ── 画像管理の画像名（フロントのみ。アプリイベントにはimageウィジェットが無い） ──
+    // 定数と同様、YAML本文＋追加指示に名前が出現する画像のみに絞り込む（マッチ0件なら全件）。
+    // 画像データ本体は渡さず、名前だけを渡す（トークン削減）。0件なら空文字（プロンプトに何も足さない）。
+    const imagesFull = isAppEvent ? [] : (getProjectData().images || []);
+    const imagesForCtx = (narrowContext && imagesFull.length > 0)
+        ? (() => { const m = _extractMentionedByName(scanText, imagesFull); return m.length > 0 ? m : imagesFull; })()
+        : imagesFull;
+    const imagesCtx = imagesForCtx.map(im => "  - " + im.name).join("\n");
+
     // ── ⑤ テーブル定義（利用テーブルのカラム情報） ──
     // 以前はYAML本文の「利用テーブル:」から正規表現で抽出していたが、
     // タイポ防止のため右パネルでのON/OFF方式に変更した
@@ -505,6 +514,7 @@ function buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowConte
             extRuntimeDoc: getProjectData().extRuntime.doc,
             optionalApiDocCtx: optionalApiDocCtx,
             learnedFixesCtx: learnedFixesCtx,
+            imagesCtx: imagesCtx,
         }
     );
 
@@ -552,9 +562,9 @@ async function generateEventJs(wid, evName, isAppEvent, isFormEvent, temperature
             // ※temperatureの自動引き上げは行わない（通常のtemperature設定を
             //   そのまま使う）。ランダム性を上げて試したい場合は、エディタの
             //   「🎲 ランダム性を上げて再生成」ボタンを使う。
-            let validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag, wid);
+            let validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag, wid, { checkNoTableDb: true });
             if (isAutoMockCheckEnabled(wid, evName)) {
-                validation = await augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid);
+                validation = await augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid, { checkNoTableDb: true });
                 if (validation.code) unwrapped = validation.code;
             }
             if (!validation.ok) {
@@ -579,9 +589,9 @@ async function generateEventJs(wid, evName, isAppEvent, isFormEvent, temperature
                 });
                 if (retryCode) {
                     unwrapped = retryCode;
-                    validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag, wid);
+                    validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag, wid, { checkNoTableDb: true });
                     if (isAutoMockCheckEnabled(wid, evName)) {
-                        validation = await augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid);
+                        validation = await augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid, { checkNoTableDb: true });
                         if (validation.code) unwrapped = validation.code;
                     }
                     window.vja?.log?.debug?.(validation.ok

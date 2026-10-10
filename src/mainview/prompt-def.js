@@ -312,6 +312,7 @@
     // - formConstCtx: [任意]対処ウィジットを設置してるフォーム定数を設定します.
     // - tablesCtx: [任意]テーブル定義内容を設定します.
     // - extRuntimeDoc: [任意]拡張ランタイムのyaml定義を設定します.
+    // - imagesCtx: [任意]画像管理に登録した画像名の一覧を設定します（フロントのみ。空なら出力しない）.
     // 戻り値: ユーザプロンプトが返却されます.
     //
     // [日本語対訳メモ]（AIには送られない。内容確認用の要約）
@@ -340,6 +341,7 @@
             extRuntimeDoc,
             optionalApiDocCtx,
             learnedFixesCtx,
+            imagesCtx,
         },
     ) {
         const programType = "JavaScript";
@@ -377,6 +379,8 @@
             : _fillTpl(_loadPromptTpl("yaml-to-js.front-info.eng.md"), {
                 formName, widgetLineEn, eventName, eventTypeHintEn,
                 allWidgetsCtx, formConstCtx, inputParamsCtx, formsCtx, globalConstCtx, tablesCtx,
+                // 画像管理の画像名（0件なら空文字＝画像を登録していないプロジェクトのプロンプトは従来と同一）
+                imagesSection: imagesCtx ? "\n### Image Names (registered in the image manager; use as the value of vja.widget.set on a picture widget)\n---\n" + imagesCtx + "\n---\n" : "",
                 optionalApiSection: optionalApiDocCtx ? "\n### Additional Available APIs (enabled for this event)\n---\n" + optionalApiDocCtx + "\n---\n" : "",
                 learnedFixesSection: learnedFixesCtx ? "\n### Project-Specific Notes\n---\n" + learnedFixesCtx + "\n---\n" : "",
                 extFence: _safeYamlFence(extRuntimeDoc), extRuntimeDoc,

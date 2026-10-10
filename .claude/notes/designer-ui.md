@@ -37,4 +37,5 @@
 - 実行時: 各フォームHTMLに`buildImageInitScript`で`vja.image.init({名前:data})`を埋め込む（定数の`buildConstInitScript`と同じ方式。全フォームHTMLに全画像が入る）。`vja.image.get(名前)`はdata URIかnullを返す。`vja.widget.set`のpictureは値を判定する（`http(s)://`/`data:image/`はそのまま、それ以外は画像名として`vja.image.get`で解決。ローカルLLMが`set(.., vja.image.get(..))`の入れ子で誤動作する恐れがあるため、AIプロンプトには`vja.image.get`を載せず`set("ウィジェット名", "画像名")`だけを教える）。保存・復元・実行用データは`snapshot()`/`applyProjectData()`/`_getProjectData()`の3か所に`images`を足してある
 - `vja.widget.set/get`はpictureの`div`（`data-vja-type="picture"`）の中の`<img>`を差し替える。以前の`vja.widget.setSrc/getSrc`は、名前が付く外側の`div`に対して`tagName==="img"`を見ていたため動かず、廃止した
 - 外部URLはサーバー側のReferer制限で表示できない場合がある（pixiv等。コードではなく配信元の制限）
+- YAMLエディタの右パネルに「🖼️ 画像」セクション（`_rpBuildImageSection`、クリックで画像名を挿入）。AIのイベントJS生成には、画像名だけを`imagesCtx`として渡す（`buildGenPromptContext`→`ENG_YAML_TO_JS_USER_PROMPT`→`yaml-to-js.front-info.eng.md`の`{{imagesSection}}`）。定数と同じく、YAML本文＋追加指示に名前が出る画像に絞り込み（0件なら全件）、フロントのみ。画像が0件のプロジェクトのプロンプトは従来と一字一句同じ（確認済み）
 - 既知: Undoスナップショット（最大60個）に`images`も含まれるため、画像を多く登録するとメモリを使う

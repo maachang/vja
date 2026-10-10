@@ -757,7 +757,9 @@ function _checkJsSyntax(code) {
 // 存在しないもの、または「無効化された任意APIカテゴリ」に属するものを
 // 行番号付きで検出する。
 // 戻り値: [{ line: 1-indexed行番号, api: "vja.xxx.yyy", reason: "unknown"|"disabled" }, ...]
-function _findUnknownApis(code, isAppEvent, disabledCategories) {
+// noTableDb: trueの場合、vja.db.* の呼び出しを reason:"noTable" として検出する
+// （このイベントの利用テーブルが0件なのにDBを使っているコード。フロント/アプリイベント共通）。
+function _findUnknownApis(code, isAppEvent, disabledCategories, noTableDb) {
     const whitelist = isAppEvent ? getVjaApiWhitelist().back : getVjaApiWhitelist().front;
     const lines = code.split("\n");
     const found = [];
@@ -773,6 +775,11 @@ function _findUnknownApis(code, isAppEvent, disabledCategories) {
             if (!whitelist.has(api)) {
                 seen.add(key);
                 found.push({ line: idx + 1, api, reason: "unknown" });
+                continue;
+            }
+            if (noTableDb && api.startsWith("vja.db.")) {
+                seen.add(key);
+                found.push({ line: idx + 1, api, reason: "noTable" });
                 continue;
             }
             // ホワイトリストには存在するが、このイベントで任意カテゴリが
@@ -966,10 +973,16 @@ function _getDisabledApiCategories(wid, evName, isAppEvent) {
 }
 
 // 生成コードを検証する。戻り値: { ok, syntaxError, unknownApis, forbiddenPatterns, ... }
-function validateGeneratedJs(code, isAppEvent, evName, wtag, wid) {
+// opts.checkNoTableDb: trueの場合、利用テーブルが0件なのにvja.db.*を使っているコードをNGにする。
+//   AI生成・AI修正の経路でのみ指定する（人が書いたコードのモック実行等では、利用テーブルを
+//   指定しなくても正当に動くDB呼び出しがあり得るため指定しない）。
+//   利用テーブルの状態が未初期化（undefined）の場合は判定しない。
+function validateGeneratedJs(code, isAppEvent, evName, wtag, wid, opts) {
     const syntaxError = _checkJsSyntax(code);
     const disabledCategories = _getDisabledApiCategories(wid, evName, isAppEvent);
-    const unknownApis = _findUnknownApis(code, isAppEvent, disabledCategories);
+    const tableState = (getProjectData().tableOptOverrides || {})[wid + "_" + evName];
+    const noTableDb = !!(opts && opts.checkNoTableDb) && Array.isArray(tableState) && tableState.length === 0;
+    const unknownApis = _findUnknownApis(code, isAppEvent, disabledCategories, noTableDb);
     const forbiddenPatterns = _findForbiddenPatterns(code).concat(_findSelfTriggerRecursion(code, wid, evName));
     const missingAwaits = findMissingAwaits(code, isAppEvent);
     const unknownWidgets = findUnknownWidgetNames(code);
@@ -992,9 +1005,11 @@ function annotateUnknownApis(code, unknownApis, forbiddenPatterns, missingAwaits
     (unknownApis || []).forEach(({ line, api, reason }) => {
         if (!byLine.has(line)) byLine.set(line, []);
         byLine.get(line).push(
-            reason === "disabled"
-                ? "無効化されたAPI: " + api + " は、このイベントでは無効化されています（右パネルの「利用API」で有効にしてください）"
-                : "未知のAPI: " + api + " は存在しません（VJAランタイムを確認してください）"
+            reason === "noTable"
+                ? "利用テーブル未指定: " + api + " は使えません（右パネルの「テーブル一覧」でテーブルをONにしてください）"
+                : reason === "disabled"
+                    ? "無効化されたAPI: " + api + " は、このイベントでは無効化されています（右パネルの「利用API」で有効にしてください）"
+                    : "未知のAPI: " + api + " は存在しません（VJAランタイムを確認してください）"
         );
     });
     (forbiddenPatterns || []).forEach(({ line, message }) => {
@@ -1045,7 +1060,7 @@ function getBoostedTemperature() {
 function formatValidationIssuesForLog(validation) {
     const parts = [];
     if (validation.syntaxError) parts.push("構文エラー: " + validation.syntaxError);
-    validation.unknownApis.forEach(({ line, api, reason }) => parts.push(line + "行目: " + (reason === "disabled" ? "無効化されたAPI " : "未知のAPI ") + api));
+    validation.unknownApis.forEach(({ line, api, reason }) => parts.push(line + "行目: " + (reason === "noTable" ? "利用テーブル未指定のDB呼び出し " : reason === "disabled" ? "無効化されたAPI " : "未知のAPI ") + api));
     validation.forbiddenPatterns.forEach(({ line, message }) => parts.push(line + "行目: " + message));
     validation.missingAwaits.forEach(({ line, api }) => parts.push(line + "行目: await漏れ " + api));
     validation.unknownWidgets.forEach(({ line, api, name }) => parts.push(line + "行目: 未知のウィジェット名 " + name + "（" + api + "）"));
@@ -1058,7 +1073,10 @@ function buildAiFixPrompt(originalUserPrompt, code, validation) {
     const issues = [];
     if (validation.syntaxError) issues.push("- 構文エラー: " + validation.syntaxError);
     validation.unknownApis.forEach(({ line, api, reason }) => {
-        if (reason === "disabled") {
+        if (reason === "noTable") {
+            issues.push("- " + line + "行目付近: 利用テーブルが指定されていないため、API \"" + api + "\" は使えません。DB（vja.db.*）を使わない実装にしてください。"
+                + "YAMLの指示にDB操作の記述が無い場合は、DB処理そのものを書かないでください。");
+        } else if (reason === "disabled") {
             issues.push("- " + line + "行目付近: API \"" + api + "\" は、このイベントでは現在無効化されています。このAPIを使用せず、有効化されているAPIの範囲内で実装してください。");
         } else {
             issues.push("- " + line + "行目付近: 存在しないAPI \"" + api + "\" が使用されています。VJAランタイムに実在するAPIのみを使用してください。");
@@ -1135,9 +1153,11 @@ function showAiValidationWarningBanner(validation, wid, evName, isAppEvent, isFo
     if (validation.syntaxError) items.push("・構文エラーの可能性: " + esc(validation.syntaxError));
     validation.unknownApis.forEach(({ line, api, reason }) => {
         items.push(
-            reason === "disabled"
-                ? "・" + line + "行目付近: 無効化されたAPI「" + esc(api) + "」（右パネルの「利用API」で有効にできます）"
-                : "・" + line + "行目付近: 未知のAPI「" + esc(api) + "」"
+            reason === "noTable"
+                ? "・" + line + "行目付近: 利用テーブルが未指定のため使えないAPI「" + esc(api) + "」（右パネルの「テーブル一覧」でONにできます）"
+                : reason === "disabled"
+                    ? "・" + line + "行目付近: 無効化されたAPI「" + esc(api) + "」（右パネルの「利用API」で有効にできます）"
+                    : "・" + line + "行目付近: 未知のAPI「" + esc(api) + "」"
         );
     });
     validation.forbiddenPatterns.forEach(({ line, message }) => {
@@ -1385,8 +1405,8 @@ async function retryAiFix(wid, evName, isAppEvent, isFormEvent, currentCode, run
     let code = _stripValidationWrapper(currentCode || "", validationName);
     code = fixMissingAwaits(stripWidgetValueAccess(code), isAppEvent);
 
-    let validation = validateGeneratedJs(code, isAppEvent, evName, wtag, wid);
-    validation = await augmentWithMockCheck(validation, code, isAppEvent, evName, wtag, wid);
+    let validation = validateGeneratedJs(code, isAppEvent, evName, wtag, wid, { checkNoTableDb: true });
+    validation = await augmentWithMockCheck(validation, code, isAppEvent, evName, wtag, wid, { checkNoTableDb: true });
     const normalizedCode = validation.code || code;
     if (runtimeError) validation = { ...validation, runtimeError };
     if (validation.ok && !runtimeError) {
@@ -1405,8 +1425,8 @@ async function retryAiFix(wid, evName, isAppEvent, isFormEvent, currentCode, run
         loadingMsg: "検出した問題を自動修正中…",
         onSuccess: async (fixed) => {
             fixed = await formatJsCode(fixMissingAwaits(stripWidgetValueAccess(stripTsTypeAnnotations(fixed)), isAppEvent));
-            let revalidated = validateGeneratedJs(fixed, isAppEvent, evName, wtag, wid);
-            revalidated = await augmentWithMockCheck(revalidated, fixed, isAppEvent, evName, wtag, wid);
+            let revalidated = validateGeneratedJs(fixed, isAppEvent, evName, wtag, wid, { checkNoTableDb: true });
+            revalidated = await augmentWithMockCheck(revalidated, fixed, isAppEvent, evName, wtag, wid, { checkNoTableDb: true });
             const fixedCode = revalidated.code || fixed;
             window.vja?.log?.debug?.(revalidated.ok
                 ? "[AI検証] 手動修正で解消しました。"
@@ -1482,14 +1502,14 @@ async function manualRetryAiFix(wid, evName, isAppEvent, isFormEvent, runtimeErr
 // 問題」とみなし、変換後コードをvalidation.codeとして返す（呼び出し元は
 // 以後この値を採用コードとして使う）。3B以下の小型モデルはAIに指摘しても
 // varへ直しきれないことが多いため、この機械的な変換で救済する。
-async function augmentWithMockCheck(validation, code, isAppEvent, evName, wtag, wid) {
+async function augmentWithMockCheck(validation, code, isAppEvent, evName, wtag, wid, opts) {
     const mockError = await _runMockSmokeTest(code, isAppEvent, evName, wtag, wid);
     if (!mockError) return { ...validation, styleWarnings: [] };
     if ((validation.styleWarnings || []).length > 0) {
         const varCode = _convertStyleWarningsToVar(code, isAppEvent);
         const varMockError = await _runMockSmokeTest(varCode, isAppEvent, evName, wtag, wid);
         if (!varMockError) {
-            const revalidated = validateGeneratedJs(varCode, isAppEvent, evName, wtag, wid);
+            const revalidated = validateGeneratedJs(varCode, isAppEvent, evName, wtag, wid, opts);
             return { ...revalidated, styleWarnings: [], code: varCode };
         }
     }

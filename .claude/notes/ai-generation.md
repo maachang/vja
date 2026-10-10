@@ -134,3 +134,9 @@ vjaの中核コンセプトである「AIに雛形を作ってもらい、それ
 
 - イベントごとの設定は`getProjectData()`配下の`apiOptOverrides["wid_evName"]`（任意APIカテゴリ）、`tableOptOverrides`、`validationOverrides`、`mockCheckOverrides`、`learnedFixes`、`mockOverrides`、`snapshotHistory`などに`wid_evName`キー方式で持つ
 - `getProjectData()`配下に新しく持たせるデータは、`vja-modal.js`の`snapshot()`/`applyProjectData()`へ必ず登録する（漏れると保存・再読込で黙って失われる）。ウィジェット/イベント削除時の自動クリーンアップが必要なものは`OVERRIDE_MAP_NAMES`にも追加する
+
+## 利用テーブル0件のとき vja.db.* を使ったコードはNGにする（2026-10-11）
+- きっかけ: 画像ウィジェットの切り替えを依頼したところ、YAMLドラフトが「『領収書』という名前で保存する」と誤解し、JS生成がSQLを書いた（利用テーブルは未指定。フロントは利用テーブル0件ならvja.dbの説明をプロンプトに出さないが、AIが推測で書いた）
+- 実装: `validateGeneratedJs(..., opts)`の`opts.checkNoTableDb`がtrueで、そのイベントの`tableOptOverrides["wid_evName"]`が空配列のとき、`_findUnknownApis`が`vja.db.*`を`reason:"noTable"`として検出する（フロント・アプリイベント共通）。検出すると既存のNG扱い（自動リトライ・警告バナー・行コメント）に乗る。状態が未初期化(undefined)なら判定しない
+- 指定する経路は、AI生成(`yamlAiGenerate`)とAI修正(`retryAiFix`)のみ。人が書いたコードのモック実行（`manualMockCheck`）は指定しない（利用テーブル未指定でも正当に動くDB呼び出しがあり得るため）。`augmentWithMockCheck`の再検証にも`opts`を引き継ぐ
+- 未対応: アプリイベントのプロンプトは、テーブル0件でも`vja.db.*`の説明を常に載せている（検証だけで対応）。YAMLドラフト生成（text-to-yaml）への画像名の連携と、ウィジェット名・画像名の優先順位（`Picture`→`picture`の小文字化）は別途検討中
