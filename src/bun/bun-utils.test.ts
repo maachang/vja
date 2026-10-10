@@ -1,7 +1,7 @@
 // src/bun/bun-utils.test.ts
 // parseCsvLine / decompressGzip の純粋ロジックに対するユニットテスト。
 import { describe, test, expect } from "bun:test";
-import { parseCsvLine, decompressGzip, execFetch, buildConstInitScript, pickStartForm, encryptAiKeys, decryptAiKeys, stripAiKeys, AI_KEY_PREFIX } from "./bun-utils";
+import { parseCsvLine, decompressGzip, execFetch, buildConstInitScript, pickStartForm, encryptAiKeys, decryptAiKeys, stripAiKeys, AI_KEY_PREFIX, stripCloudCredentials, omitAppInputCredentials } from "./bun-utils";
 
 describe("parseCsvLine", () => {
     test("単純なカンマ区切り", () => {
@@ -219,5 +219,35 @@ describe("AI接続設定のAPIキーの暗号化・復号・除去", () => {
         expect(p.aiConfig.apiKey).toBe("");
         expect(p.aiPresets[0].config.apiKey).toBe("");
         expect(p.other.apiKey).toBe("not-target");
+    });
+});
+
+describe("クラウド認証情報の除去・アプリ側入力項目の除外", () => {
+    test("omitAppInputCredentialsは、アプリ側入力ONの項目の値を除く", () => {
+        const out = omitAppInputCredentials({ A: "1", B: "2", C: "3" }, { B: true, C: false });
+        expect(out).toEqual({ A: "1", C: "3" });
+    });
+    test("omitAppInputCredentialsは、未定義の入力でも空のオブジェクトを返す", () => {
+        expect(omitAppInputCredentials(undefined, undefined)).toEqual({});
+        expect(omitAppInputCredentials({ A: "1" }, undefined)).toEqual({ A: "1" });
+    });
+    test("stripCloudCredentialsは、値を全て消し、全項目をアプリ側入力ONにする", () => {
+        const proj: any = {
+            aiConfig: { apiKey: "x" },
+            cloudInfras: [{
+                infra: "AWS", credentials: { AWS_ACCESS_KEY_ID: "enc1", AWS_SECRET_ACCESS_KEY: "enc2" },
+                credDefs: ["AWS_REGION", { name: "AWS_SECRET_ACCESS_KEY", secret: true }],
+                appInput: { AWS_REGION: false }, credentialsJson: "{\"a\":1}",
+            }],
+        };
+        stripCloudCredentials(proj);
+        const inf = proj.cloudInfras[0];
+        expect(inf.credentials).toEqual({});
+        expect(inf.appInput).toEqual({ AWS_ACCESS_KEY_ID: true, AWS_SECRET_ACCESS_KEY: true, AWS_REGION: true });
+        expect(inf.credentialsJson).toBe("");
+        expect(proj.aiConfig.apiKey).toBe("x"); // 対象外は変えない
+    });
+    test("stripCloudCredentialsは、cloudInfrasが無くても例外にならない", () => {
+        expect(() => stripCloudCredentials({})).not.toThrow();
     });
 });

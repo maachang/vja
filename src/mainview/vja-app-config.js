@@ -89,6 +89,8 @@ function openProjectInfo() {
             company: getProjectData().projectInfo.company,
             // 未設定（古いプロジェクト）はON扱い
             clearAiKeyChecked: getProjectData().projectInfo.clearAiKeyOnCompile !== false ? "checked" : "",
+            // 未設定はOFF扱い（認証情報を含める。従来どおりの動作）
+            clearCloudCredChecked: getProjectData().projectInfo.clearCloudCredOnCompile === true ? "checked" : "",
             attrCancel: evtAttr("onmousedown", "piCancel()"),
         })
     );
@@ -122,6 +124,7 @@ function saveProjectInfo() {
         author: $("pi-author")?.value || "",
         company: $("pi-company")?.value || "",
         clearAiKeyOnCompile: $("pi-clear-aikey")?.checked !== false,
+        clearCloudCredOnCompile: $("pi-clear-cloudcred")?.checked === true,
     };
     applyProjectInfo();
     closeModal();
@@ -475,6 +478,8 @@ function updateCloudAppInput(i, key, checked) {
     if (!CLOUD_MODAL.draft[i]) return;
     if (!CLOUD_MODAL.draft[i].appInput) CLOUD_MODAL.draft[i].appInput = {};
     CLOUD_MODAL.draft[i].appInput[key] = checked;
+    // 「アプリ側入力」にした項目は、画面に残っている値も消す（保存されないようにする）
+    if (checked && CLOUD_MODAL.draft[i].credentials) delete CLOUD_MODAL.draft[i].credentials[key];
     refreshCloudList();
 }
 // インフラプリセット（AWS/GCP等）を選択し、サービス・クレデンシャル欄を更新する。

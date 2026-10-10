@@ -121,3 +121,34 @@ export const stripAiKeys = (proj: any): void => {
         if (typeof h.apiKey === "string") h.apiKey = "";
     }
 };
+
+// ── クラウド認証情報の除去・「アプリ側入力」項目の値の除外 ───────────────
+// 「アプリ側入力」がONの項目は、実行時に各PCの credential.json から読むので、プロジェクトには値を残さない
+export const omitAppInputCredentials = (
+    credentials: Record<string, any> | undefined,
+    appInput: Record<string, boolean> | undefined,
+): Record<string, any> => {
+    const out: Record<string, any> = {};
+    for (const [k, v] of Object.entries(credentials || {})) {
+        if (!appInput?.[k]) out[k] = v;
+    }
+    return out;
+};
+
+// 配布アプリへコピーする.vjaproj用。クラウドの認証情報の値を全て消し、全項目を「アプリ側入力」ONにする
+// （配布先PCの credential.json から読む形にする）。credDefsは項目名の文字列か{name,...}のオブジェクト
+export const stripCloudCredentials = (proj: any): void => {
+    if (!Array.isArray(proj?.cloudInfras)) return;
+    for (const inf of proj.cloudInfras) {
+        if (!inf || typeof inf !== "object") continue;
+        const names = new Set<string>(Object.keys(inf.credentials || {}));
+        for (const cd of (Array.isArray(inf.credDefs) ? inf.credDefs : [])) {
+            const n = typeof cd === "string" ? cd : cd?.name;
+            if (n) names.add(n);
+        }
+        inf.appInput = { ...(inf.appInput || {}) };
+        for (const n of names) inf.appInput[n] = true;
+        inf.credentials = {};
+        if ("credentialsJson" in inf) inf.credentialsJson = "";
+    }
+};

@@ -120,6 +120,9 @@ style="width:70px;height:28px;background:var(--bg3);border:1px solid var(--borde
 <div class="ai-cfg-row"><label>AIキー</label>
 <label style="display:flex;align-items:center;gap:6px;font-size:13px;flex:1"><input id="pi-clear-aikey" type="checkbox" <%= clearAiKeyChecked %>>コンパイル時にAIのAPIキーを配布アプリへ含めない</label>
 </div>
+<div class="ai-cfg-row"><label>クラウド認証情報</label>
+<label style="display:flex;align-items:center;gap:6px;font-size:13px;flex:1"><input id="pi-clear-cloudcred" type="checkbox" <%= clearCloudCredChecked %>>コンパイル時にクラウドの認証情報を配布アプリへ含めない（配布先PCの credential.json から読む）</label>
+</div>
 </div>
 <div class="mfoot">
 <button <%- attrCancel %>>キャンセル</button>

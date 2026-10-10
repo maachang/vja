@@ -37,7 +37,7 @@ function doActNew() {
     getEditHistory().lastOpenPath = null;
     getProjectData().projectInfo = {
         name: "", description: "", version: "1.0.0",
-        author: "", company: "", clearAiKeyOnCompile: true,
+        author: "", company: "", clearAiKeyOnCompile: true, clearCloudCredOnCompile: false,
         appEvents: { onStart: "", onExit: "", onStart_yaml: "", onExit_yaml: "" },
     };
     applyProjectData({});

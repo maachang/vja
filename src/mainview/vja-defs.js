@@ -960,6 +960,7 @@ var CTX = {
             author: "",
             company: "",
             clearAiKeyOnCompile: true,
+            clearCloudCredOnCompile: false,
             appEvents: { onStart: "", onExit: "", onStart_yaml: "", onExit_yaml: "" },
         },
     },

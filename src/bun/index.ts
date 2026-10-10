@@ -23,7 +23,7 @@ import { initLogger, writeLog } from "./logger";
 import electrobunPkg from "electrobun/package.json";
 import { copyCompileAssets, getVersion, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH, WEBVIEW_RUNTIME_LIBS, ELECTROBUN_PIN_VERSION, ELECTROBUN_BUN_VERSION, ELECTROBUN_PATCH_FILE } from "./copy-compile-assets";
 import { clearProjectDb, closeProjectDb } from "./db-manager";
-import { execFetch, buildConstInitScript, pickStartForm, encryptAiKeys, decryptAiKeys, stripAiKeys } from "./bun-utils";
+import { execFetch, buildConstInitScript, pickStartForm, encryptAiKeys, decryptAiKeys, stripAiKeys, stripCloudCredentials, omitAppInputCredentials } from "./bun-utils";
 import { RUNTIME_ERROR_SNIPPET } from "./runtime-error-snippet";
 import {
     fileReadHandler, fileWriteHandler, fileReadBytesHandler, fileWriteBytesHandler,
@@ -232,7 +232,8 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 try {
                     const decrypted = await Promise.all((infras ?? _cloudInfras).map(async (inf: any) => {
                         const creds: Record<string, string> = {};
-                        for (const [k, v] of Object.entries(inf.credentials || {})) {
+                        // 「アプリ側入力」ONの項目は、残っている値も保存しない（各PCのcredential.jsonから読むため）
+                        for (const [k, v] of Object.entries(omitAppInputCredentials(inf.credentials, inf.appInput))) {
                             creds[k] = v ? await decryptCredential(v as string) : "";
                         }
                         return { ...inf, credentials: creds };
@@ -956,12 +957,17 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
         if (_currentProjectFilePath && existsSync(_currentProjectFilePath)) {
             // src/ 直下にコピー → electrobun.config.ts の copy で Resources/app/ に配置される
             // プロジェクト情報の「コンパイル時にAIのAPIキーを含めない」（未設定はON）の場合は、
-            // 配布アプリへコピーする側だけAIキーを空にする（元のプロジェクトファイルは変えない）
+            // 配布アプリへコピーする側だけ、次の設定に従って秘密情報を除く（元のプロジェクトファイルは変えない）。
+            //  - AIのAPIキー: 未設定はON（含めない）
+            //  - クラウドの認証情報: 未設定はOFF（含める）。ONなら全項目を「アプリ側入力」にして値を消す
             const destProj = join(distPath, "src", "project.vjaproj");
-            // 除去に失敗した場合に、キーが残ったままコピーされないよう、例外はそのまま上へ伝える
+            // 除去に失敗した場合に、秘密情報が残ったままコピーされないよう、例外はそのまま上へ伝える
             const projForDist = JSON.parse(readFileSync(_currentProjectFilePath, "utf-8"));
-            if (projForDist.projectInfo?.clearAiKeyOnCompile !== false) {
-                stripAiKeys(projForDist);
+            const clearAi = projForDist.projectInfo?.clearAiKeyOnCompile !== false;
+            const clearCloud = projForDist.projectInfo?.clearCloudCredOnCompile === true;
+            if (clearAi || clearCloud) {
+                if (clearAi) stripAiKeys(projForDist);
+                if (clearCloud) stripCloudCredentials(projForDist);
                 await Bun.write(destProj, JSON.stringify(projForDist));
             } else {
                 copyFileSync(_currentProjectFilePath, destProj);
