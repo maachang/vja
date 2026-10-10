@@ -1,7 +1,7 @@
 // src/bun/bun-utils.test.ts
 // parseCsvLine / decompressGzip の純粋ロジックに対するユニットテスト。
 import { describe, test, expect } from "bun:test";
-import { parseCsvLine, decompressGzip, execFetch, buildConstInitScript, pickStartForm } from "./bun-utils";
+import { parseCsvLine, decompressGzip, execFetch, buildConstInitScript, pickStartForm, encryptAiKeys, decryptAiKeys, stripAiKeys, AI_KEY_PREFIX } from "./bun-utils";
 
 describe("parseCsvLine", () => {
     test("単純なカンマ区切り", () => {
@@ -165,5 +165,59 @@ describe("pickStartForm", () => {
     });
     test("フォームが無ければundefined", () => {
         expect(pickStartForm([], "a")).toBeUndefined();
+    });
+});
+
+describe("AI接続設定のAPIキーの暗号化・復号・除去", () => {
+    // テスト用の簡易な暗号化（実物はAES-GCM）。往復で元に戻ることだけを見る
+    const enc = async (s: string) => "X" + s.split("").reverse().join("");
+    const dec = async (s: string) => s.slice(1).split("").reverse().join("");
+    const make = () => ({
+        aiConfig: { apiKey: "sk-main", endpoint: "http://x" },
+        aiPresets: [{ name: "a", config: { apiKey: "sk-a" } }, { name: "b", config: { apiKey: "" } }],
+        other: { apiKey: "not-target" },
+    });
+
+    test("暗号化すると先頭にenc:が付き、復号で元に戻る", async () => {
+        const p = make();
+        await encryptAiKeys(p, enc);
+        expect(p.aiConfig.apiKey.startsWith(AI_KEY_PREFIX)).toBe(true);
+        expect(p.aiConfig.apiKey).not.toContain("sk-main");
+        expect(p.aiPresets[0].config.apiKey.startsWith(AI_KEY_PREFIX)).toBe(true);
+        await decryptAiKeys(p, dec);
+        expect(p.aiConfig.apiKey).toBe("sk-main");
+        expect(p.aiPresets[0].config.apiKey).toBe("sk-a");
+    });
+    test("空のキー・対象外の項目・他のフィールドは変えない", async () => {
+        const p = make();
+        await encryptAiKeys(p, enc);
+        expect(p.aiPresets[1].config.apiKey).toBe("");
+        expect(p.other.apiKey).toBe("not-target");
+        expect(p.aiConfig.endpoint).toBe("http://x");
+    });
+    test("二重に暗号化しない（enc:付きはそのまま）", async () => {
+        const p = make();
+        await encryptAiKeys(p, enc);
+        const once = p.aiConfig.apiKey;
+        await encryptAiKeys(p, enc);
+        expect(p.aiConfig.apiKey).toBe(once);
+    });
+    test("enc:が付いていない（旧版の平文）値は復号せずそのまま読める", async () => {
+        const p = make();
+        await decryptAiKeys(p, dec);
+        expect(p.aiConfig.apiKey).toBe("sk-main");
+    });
+    test("復号に失敗したキーは空にする", async () => {
+        const p = make();
+        await encryptAiKeys(p, enc);
+        await decryptAiKeys(p, async () => { throw new Error("bad"); });
+        expect(p.aiConfig.apiKey).toBe("");
+    });
+    test("stripAiKeysは全てのAIキーを空にする（対象外は変えない）", () => {
+        const p = make();
+        stripAiKeys(p);
+        expect(p.aiConfig.apiKey).toBe("");
+        expect(p.aiPresets[0].config.apiKey).toBe("");
+        expect(p.other.apiKey).toBe("not-target");
     });
 });

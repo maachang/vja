@@ -959,6 +959,7 @@ var CTX = {
             version: "1.0.0",
             author: "",
             company: "",
+            clearAiKeyOnCompile: true,
             appEvents: { onStart: "", onExit: "", onStart_yaml: "", onExit_yaml: "" },
         },
     },

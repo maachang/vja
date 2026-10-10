@@ -23,7 +23,7 @@ import { initLogger, writeLog } from "./logger";
 import electrobunPkg from "electrobun/package.json";
 import { copyCompileAssets, getVersion, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH, WEBVIEW_RUNTIME_LIBS, ELECTROBUN_PIN_VERSION, ELECTROBUN_BUN_VERSION, ELECTROBUN_PATCH_FILE } from "./copy-compile-assets";
 import { clearProjectDb, closeProjectDb } from "./db-manager";
-import { execFetch, buildConstInitScript, pickStartForm } from "./bun-utils";
+import { execFetch, buildConstInitScript, pickStartForm, encryptAiKeys, decryptAiKeys, stripAiKeys } from "./bun-utils";
 import { RUNTIME_ERROR_SNIPPET } from "./runtime-error-snippet";
 import {
     fileReadHandler, fileWriteHandler, fileReadBytesHandler, fileWriteBytesHandler,
@@ -298,7 +298,15 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                     await saveLastDir(path);
                     console.log("[open]", path);
                     await _updateProjectData(content, path);
-                    return { content, path };
+                    // AIのAPIキーは暗号化されて保存されているので、画面へ渡す前に平文へ戻す
+                    // （_updateProjectDataで合言葉が確定した後に行う）
+                    let contentForView = content;
+                    try {
+                        const proj = JSON.parse(content);
+                        await decryptAiKeys(proj, decryptCredential);
+                        contentForView = JSON.stringify(proj);
+                    } catch (e) { console.debug("[vja] decryptAiKeys skipped:", e); }
+                    return { content: contentForView, path };
                 } catch (e: any) {
                     console.error("[open error]", e.message);
                     return { content: null, path: null };
@@ -315,7 +323,11 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                     return { ok: false, path: null, cancelled: true };
                 }
                 try {
-                    const contentWithPass = await _injectVjaPass(content);
+                    let contentWithPass = await _injectVjaPass(content);
+                    // AIのAPIキーは暗号化して保存する（画面のメモリ上は平文のまま）
+                    const projToSave = JSON.parse(contentWithPass);
+                    await encryptAiKeys(projToSave, encryptCredential);
+                    contentWithPass = JSON.stringify(projToSave);
                     await Bun.write(savePath, contentWithPass);
                     _lastDir = dirname(savePath);
                     await saveLastDir(savePath);
@@ -573,12 +585,15 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
             },
 
             // ── AI接続設定「プロジェクト共通」プリセット読み込み ──
-            loadAiGlobalPresetsRequest: () => {
+            loadAiGlobalPresetsRequest: async () => {
                 try {
                     const configPath = join(_configDir, "ai-global-presets.json");
                     if (existsSync(configPath)) {
                         const cfg = JSON.parse(readFileSync(configPath, "utf-8"));
-                        return { presets: Array.isArray(cfg.presets) ? cfg.presets : [] };
+                        const wrap = { aiPresets: Array.isArray(cfg.presets) ? cfg.presets : [] };
+                        // プロジェクトに属さないファイルなので、固定パスフレーズで復号する
+                        await decryptAiKeys(wrap, (b64) => _decrypt(b64, _VJA_PASSPHRASE));
+                        return { presets: wrap.aiPresets };
                     }
                 } catch (e) { console.error("[vja] loadAiGlobalPresets failed:", e); }
                 return { presets: [] };
@@ -723,7 +738,10 @@ const vjaRPC = BrowserView.defineRPC<VjaRPCType>({
                 try {
                     const configPath = join(_configDir, "ai-global-presets.json");
                     if (!existsSync(_configDir)) mkdirSync(_configDir, { recursive: true });
-                    await Bun.write(configPath, JSON.stringify({ presets }, null, 2));
+                    // 呼び出し元の配列は変えないよう複製してから、APIキーを暗号化して保存する
+                    const wrap = { aiPresets: JSON.parse(JSON.stringify(presets || [])) };
+                    await encryptAiKeys(wrap, (plain) => _encrypt(plain, _VJA_PASSPHRASE));
+                    await Bun.write(configPath, JSON.stringify({ presets: wrap.aiPresets }, null, 2));
                 } catch (e) { console.error("[vja] saveAiGlobalPresets failed:", e); }
             },
         },
@@ -937,7 +955,17 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
         // ── .vjaproj を出力先にコピー ─────────────────
         if (_currentProjectFilePath && existsSync(_currentProjectFilePath)) {
             // src/ 直下にコピー → electrobun.config.ts の copy で Resources/app/ に配置される
-            copyFileSync(_currentProjectFilePath, join(distPath, "src", "project.vjaproj"));
+            // プロジェクト情報の「コンパイル時にAIのAPIキーを含めない」（未設定はON）の場合は、
+            // 配布アプリへコピーする側だけAIキーを空にする（元のプロジェクトファイルは変えない）
+            const destProj = join(distPath, "src", "project.vjaproj");
+            // 除去に失敗した場合に、キーが残ったままコピーされないよう、例外はそのまま上へ伝える
+            const projForDist = JSON.parse(readFileSync(_currentProjectFilePath, "utf-8"));
+            if (projForDist.projectInfo?.clearAiKeyOnCompile !== false) {
+                stripAiKeys(projForDist);
+                await Bun.write(destProj, JSON.stringify(projForDist));
+            } else {
+                copyFileSync(_currentProjectFilePath, destProj);
+            }
         }
 
         // ── package.json を生成 ───────────────────────

@@ -117,6 +117,9 @@ style="width:70px;height:28px;background:var(--bg3);border:1px solid var(--borde
 <div class="ai-cfg-row"><label>会社名</label>
 <input id="pi-company" class="pv-input" style="height:28px;font-size:13px" value="<%= company %>" placeholder="会社・組織名">
 </div>
+<div class="ai-cfg-row"><label>AIキー</label>
+<label style="display:flex;align-items:center;gap:6px;font-size:13px;flex:1"><input id="pi-clear-aikey" type="checkbox" <%= clearAiKeyChecked %>>コンパイル時にAIのAPIキーを配布アプリへ含めない</label>
+</div>
 </div>
 <div class="mfoot">
 <button <%- attrCancel %>>キャンセル</button>

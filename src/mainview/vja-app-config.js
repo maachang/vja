@@ -87,6 +87,8 @@ function openProjectInfo() {
             attrVerDown: evtAttr("onmousedown", "piVerStep(-1)"),
             author: getProjectData().projectInfo.author,
             company: getProjectData().projectInfo.company,
+            // 未設定（古いプロジェクト）はON扱い
+            clearAiKeyChecked: getProjectData().projectInfo.clearAiKeyOnCompile !== false ? "checked" : "",
             attrCancel: evtAttr("onmousedown", "piCancel()"),
         })
     );
@@ -117,6 +119,7 @@ function saveProjectInfo() {
         version: $("pi-ver")?.value || "1.0.0",
         author: $("pi-author")?.value || "",
         company: $("pi-company")?.value || "",
+        clearAiKeyOnCompile: $("pi-clear-aikey")?.checked !== false,
     };
     applyProjectInfo();
     closeModal();

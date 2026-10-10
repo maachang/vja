@@ -85,3 +85,39 @@ export const buildConstInitScript = (globalConsts: any, formConsts: any): string
 // 以前は常に先頭のフォーム（forms[0]）を起動していたため、★の設定が実行時に効いていなかった。
 export const pickStartForm = <T extends { id?: string }>(forms: T[], startFormId?: string): T | undefined =>
     (startFormId ? forms.find((f) => f && f.id === startFormId) : undefined) ?? forms[0];
+
+
+// ── AI接続設定のAPIキーの暗号化・復号・除去 ───────────────────
+// .vjaproj（aiConfig / aiPresets[*].config）と、プロジェクト共通プリセットファイル（presets[*].config）の
+// apiKeyが対象。保存時は先頭に"enc:"を付けた暗号文にし、読み込み時に平文へ戻す（画面のメモリ上は平文）。
+// "enc:"が付いていない値は、以前の版で保存された平文として扱い、次の保存で暗号化される。
+export const AI_KEY_PREFIX = "enc:";
+
+const _aiKeyHolders = (proj: any): any[] =>
+    [proj?.aiConfig, ...(Array.isArray(proj?.aiPresets) ? proj.aiPresets.map((p: any) => p?.config) : [])]
+        .filter((o) => o && typeof o === "object");
+
+export const encryptAiKeys = async (proj: any, encrypt: (plain: string) => Promise<string>): Promise<void> => {
+    for (const h of _aiKeyHolders(proj)) {
+        if (typeof h.apiKey === "string" && h.apiKey && !h.apiKey.startsWith(AI_KEY_PREFIX)) {
+            h.apiKey = AI_KEY_PREFIX + await encrypt(h.apiKey);
+        }
+    }
+};
+
+// 復号に失敗した場合（合言葉が違う等）は、不正な値を画面へ渡さないよう空にする
+export const decryptAiKeys = async (proj: any, decrypt: (b64: string) => Promise<string>): Promise<void> => {
+    for (const h of _aiKeyHolders(proj)) {
+        if (typeof h.apiKey === "string" && h.apiKey.startsWith(AI_KEY_PREFIX)) {
+            try { h.apiKey = await decrypt(h.apiKey.slice(AI_KEY_PREFIX.length)); }
+            catch { h.apiKey = ""; }
+        }
+    }
+};
+
+// 配布アプリへコピーする.vjaproj用。AIキーを全て空にする
+export const stripAiKeys = (proj: any): void => {
+    for (const h of _aiKeyHolders(proj)) {
+        if (typeof h.apiKey === "string") h.apiKey = "";
+    }
+};
