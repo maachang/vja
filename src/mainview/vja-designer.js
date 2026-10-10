@@ -802,12 +802,16 @@ function pinput(d, val, wid) {
                 attr: evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")"),
             });
         case "img": {
-            const hasImg = val && val.startsWith("data:");
+            // 画像管理に登録した画像から名前で選ぶ（登録は メニュー「プロジェクト」→「画像管理」）
+            const imgs = getProjectData().images || [];
+            const opts = [{ value: "", label: "（なし）" }].concat(imgs.map(i => ({ value: i.name, label: i.name })));
+            const cur = imgs.some(i => i.name === val) ? val : "";
             const iid = "pvimg_" + w2;
             return render("pv-tpl-img", {
-                iid, val, hasImg,
-                attrUpload: evtAttr("onmousedown", "openImgUpload(" + w2 + ")"),
-                attrClear: evtAttr("onmousedown", "clearImg(" + w2 + ")"),
+                iid,
+                data: resolveImageSrc(cur),
+                sel: makePvSel("pvs_" + iid, opts, cur, "setProp('" + d.k + "','" + (d.sp || "") + "',{value}," + w2 + ")"),
+                attrManage: evtAttr("onmousedown", "openImageManager()"),
             });
         }
         case "coldef":
@@ -997,44 +1001,6 @@ function _updateFormThemeActionIndicator() {
     btn.outerHTML = _formThemeActionHtml();
 }
 
-// ── 画像アップロード ─────────────────────────────
-function openImgUpload(wid) {
-    const inp = document.createElement("input");
-    inp.type = "file";
-    inp.accept = "image/jpeg,image/png,image/gif";
-    inp.onchange = () => {
-        const file = inp.files?.[0];
-        if (!file) return;
-        const MAX = 300 * 1024; // 300KB
-        if (file.size > MAX) {
-            showVjaAlert(`画像サイズが上限(300KB)を超えています。\n現在: ${(file.size / 1024).toFixed(1)}KB`);
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const b64 = e.target.result;
-            const w = getWidget(wid);
-            if (!w) return;
-            editorUndoPush(getEditorContext().yu, JSON.stringify(w));
-            setProp("src", "", b64, wid);
-            renderProps();
-            fullRedraw();
-            pushUndo();
-        };
-        reader.readAsDataURL(file);
-    };
-    inp.click();
-}
-
-function clearImg(wid) {
-    const w = getWidget(wid);
-    if (!w) return;
-    setProp("src", "", "", wid);
-    renderProps();
-    fullRedraw();
-    pushUndo();
-}
-
 function commitWidget(w, opts = {}) {
     renderWidget(w, false);
     applyWPos($("w" + w.id), w);
@@ -1205,7 +1171,7 @@ Object.assign(window, {
     applyWPos, fullRedraw, updateSelVisual, select, deselect, selectMultiple,
     updateStatusSel, initFormBodyEvents, addWidget, bindWidget, applyAiFormDesign,
     startMove, startResize, renderProps, makeSec, makeProw,
-    pinput, setProp, openImgUpload, clearImg, resetWidgetTheme,
+    pinput, setProp, resetWidgetTheme,
     applyThemeToAllForms, resetFormThemeToTop,
     commitWidget, getWidget, pvNumStep, setFontFamilyProp,
     syncPropXY, syncPropWH, setFormCfg, deleteYaml, renderEvents,

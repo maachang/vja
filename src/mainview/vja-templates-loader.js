@@ -26,6 +26,7 @@
         "templates/app-config.html",
         "templates/yaml-editor.html",
         "templates/table-validation.html",
+        "templates/image-manager.html",
         "templates/wizard.html",
         "templates/widget-preview.html",
         "templates/editor-utils.html",

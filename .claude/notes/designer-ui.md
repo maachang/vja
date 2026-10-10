@@ -30,3 +30,11 @@
 - 以前は、確認で「はい」を選ぶと`closeModal()`で元の画面を閉じてからAI設定を開いたため、反映後に元の画面へ戻れず、エディタに入力中の内容も失われる恐れがあった（ウィザードだけ`WIZARD_STATE.resumeAfterAiConfig`で戻る専用の仕組みがあった）。ウィザードは従来のまま（引数なしの`openAiConfig()`＋`resumeAfterAiConfig`）。
 - AI設定画面の再描画（プリセットの切り替え・保存・削除）は`aiCfgRender()`を使う（層と続きの処理を保つ）。`openAiConfig()`を再描画に使うと、層がrootに戻るので使わないこと。
 - 新しいAI機能を足す時は、`aiConfig.enabled`を自前で見ず、`if (!(await ensureAiEnabled())) return;`を使う。
+
+## 画像管理（2026-10-11）
+- メニュー［プロジェクト］→「画像管理…」（`vja-image-manager.js`、テンプレート`templates/image-manager.html`）。プロジェクトデータの`images: [{name, data}]`（`data`はdata URI）に保存する。1枚300KBまで、png/jpg/gif/webpのみ。大きな画像は外部URL（https）を`vja.widget.set`へ渡す方針（ユーザー決定）
+- imageウィジェットの`props.src`には**画像名**を保存し、プロパティパネルは管理画像のドロップダウンで選ぶ。デザイナーの描画は`resolveImageSrc`（`vja-defs.js`）、実行時HTMLは`resolvePictureSrc`（`bun-utils.ts`）で名前をdata URIへ解決する。旧形式（srcに直接data URI）は、`applyProjectData`から呼ぶ`migrateLegacyPictureSrc`が画像管理へ自動で移す（名前はimage1, image2…、同じデータは1つにまとめる）
+- 実行時: 各フォームHTMLに`buildImageInitScript`で`vja.image.init({名前:data})`を埋め込む（定数の`buildConstInitScript`と同じ方式。全フォームHTMLに全画像が入る）。`vja.image.get(名前)`はdata URIかnullを返す。保存・復元・実行用データは`snapshot()`/`applyProjectData()`/`_getProjectData()`の3か所に`images`を足してある
+- `vja.widget.set/get`はpictureの`div`（`data-vja-type="picture"`）の中の`<img>`を差し替える。以前の`vja.widget.setSrc/getSrc`は、名前が付く外側の`div`に対して`tagName==="img"`を見ていたため動かず、廃止した
+- 外部URLはサーバー側のReferer制限で表示できない場合がある（pixiv等。コードではなく配信元の制限）
+- 既知: Undoスナップショット（最大60個）に`images`も含まれるため、画像を多く登録するとメモリを使う

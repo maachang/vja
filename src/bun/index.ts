@@ -23,7 +23,7 @@ import { initLogger, writeLog } from "./logger";
 import electrobunPkg from "electrobun/package.json";
 import { copyCompileAssets, getVersion, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH, WEBVIEW_RUNTIME_LIBS, ELECTROBUN_PIN_VERSION, ELECTROBUN_BUN_VERSION, ELECTROBUN_PATCH_FILE } from "./copy-compile-assets";
 import { clearProjectDb, closeProjectDb } from "./db-manager";
-import { execFetch, buildConstInitScript, pickStartForm, encryptAiKeys, decryptAiKeys, stripAiKeys, stripCloudCredentials, omitAppInputCredentials } from "./bun-utils";
+import { execFetch, buildConstInitScript, buildImageInitScript, resolvePictureSrc, pickStartForm, encryptAiKeys, decryptAiKeys, stripAiKeys, stripCloudCredentials, omitAppInputCredentials } from "./bun-utils";
 import { RUNTIME_ERROR_SNIPPET } from "./runtime-error-snippet";
 import {
     fileReadHandler, fileWriteHandler, fileReadBytesHandler, fileWriteBytesHandler,
@@ -139,6 +139,8 @@ const encryptCredential = async (plain: string): Promise<string> => {
 let _currentProjectExtRuntime: string = "";
 // 現在のプロジェクトの全体（グローバル）定数。フォームの定数は各フォームのデータ(form.constants)にある
 let _currentProjectConstants: any[] = [];
+// 現在のプロジェクトの画像管理（{name, data}）。imageウィジェットの表示とvja.image.getに使う
+let _currentProjectImages: any[] = [];
 // 起動フォームのid（デザイナーの★）。実行・コンパイル時に先頭ではなくこのフォームを起動する
 let _currentProjectStartFormId: string = "";
 let _devToolsOpen: boolean = false;
@@ -776,6 +778,7 @@ const _updateProjectData = async (jsonStr: string, filePath?: string, keepPass: 
         _currentProjectDbDir = join(_projectWorkDir, name, "db");
         _currentProjectExtRuntime = proj.extRuntime?.js || "";
         _currentProjectConstants = Array.isArray(proj.constants) ? proj.constants : [];
+        _currentProjectImages = Array.isArray(proj.images) ? proj.images : [];
         _currentProjectStartFormId = proj.startFormId || "";
         // vjaPass を読み込む（setProjectDataに渡す前に確定させる）
         if (!keepPass) {
@@ -849,7 +852,7 @@ const buildProjectFiles = async (): Promise<{
         // 各フォームのHTMLを生成
         const extRuntimeJs = (_currentProjectExtRuntime || "").trim();
         for (const form of _currentProjectForms) {
-            const html = buildFormHtml(form, _currentProjectForms, extRuntimeJs, _currentProjectConstants);
+            const html = buildFormHtml(form, _currentProjectForms, extRuntimeJs, _currentProjectConstants, _currentProjectImages);
             const fileName = (form.cfg.name || form.cfg.title) + ".html";
             await Bun.write(join(outDir, fileName), html);
         }
@@ -948,7 +951,7 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
         }
         for (const form of _currentProjectForms) {
             const htmlFileName = `${form.cfg.name || form.cfg.title}.html`;
-            const html = buildFormHtml(form, _currentProjectForms, extRuntimeJs, _currentProjectConstants);
+            const html = buildFormHtml(form, _currentProjectForms, extRuntimeJs, _currentProjectConstants, _currentProjectImages);
             await Bun.write(join(srcMainviewDir, htmlFileName), html);
             copyEntries[`src/mainview/${htmlFileName}`] = `views/mainview/${htmlFileName}`;
         }
@@ -1082,13 +1085,13 @@ export default {
 };
 
 // フォームのHTMLを生成
-const buildFormHtml = (form: any, allForms: any[], extRuntimeJs: string = "", globalConsts: any[] = []): string => {
+const buildFormHtml = (form: any, allForms: any[], extRuntimeJs: string = "", globalConsts: any[] = [], images: any[] = []): string => {
     const cfg = form.cfg;
     const widgets = form.widgets || [];
     const events = form.events || {};
 
     // ウィジェットHTML生成
-    const widgetsHtml = widgets.map((w: any) => buildWidgetHtml(w)).join("\n");
+    const widgetsHtml = widgets.map((w: any) => buildWidgetHtml(w, images)).join("\n");
 
     // イベントJS生成
     const eventsJs = buildEventsJs(form, allForms);
@@ -1179,6 +1182,7 @@ ${widgetsHtml}
 <script src="./marked.umd.js"></script>
 <script src="./project-bridge.js"></script>
 <script>${buildConstInitScript(globalConsts, form.constants)}</script>
+<script>${buildImageInitScript(images)}</script>
 ${extRuntimeJs ? `<script>\n${extRuntimeJs}\n</script>` : ""}
 <script>
 ${eventsJs}
@@ -1196,7 +1200,7 @@ const esc2 = (s: any): string =>
         .replace(/"/g, "&quot;");
 
 // ウィジェット1つのHTMLを生成
-const buildWidgetHtml = (w: any): string => {
+const buildWidgetHtml = (w: any, images: any[] = []): string => {
     const p = w.props;
     const vis = p.visible === false ? "visibility:hidden;" : "";
     const base = `position:absolute;left:${w.x}px;top:${w.y}px;width:${w.w}px;height:${w.h}px;box-sizing:border-box;${vis}`;
@@ -1234,7 +1238,7 @@ const buildWidgetHtml = (w: any): string => {
         case "groupbox":
             return `<fieldset ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border}"><legend>${esc2(p.text)}</legend></fieldset>`;
         case "picture":
-            return `<div ${id} data-vja-type="picture" style="${base}background:${p.bg};${border};display:flex;align-items:center;justify-content:center">${p.src ? `<img src="${esc2(p.src)}" style="max-width:100%;max-height:100%;object-fit:${p.objectFit || "contain"}">` : ""}</div>`;
+            return `<div ${id} data-vja-type="picture" style="${base}background:${p.bg};${border};display:flex;align-items:center;justify-content:center">${resolvePictureSrc(p.src, images) ? `<img src="${esc2(resolvePictureSrc(p.src, images))}" style="max-width:100%;max-height:100%;object-fit:${p.objectFit || "contain"}">` : ""}</div>`;
         case "qrcode":
             // QRCode.js はコンテナへ直接DOMを書き込む方式のため、初期HTMLはプレースホルダーのみ返し、
             // 実際の描画はDOMContentLoaded後のinit処理（window._vjaRenderQr）で行う。

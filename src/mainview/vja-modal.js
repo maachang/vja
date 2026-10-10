@@ -317,6 +317,7 @@ function snapshot() {
         forms: p.forms,
         curFormIdx: p.curFormIdx,
         constants: p.constants,
+        images: p.images,
         startFormId: p.startFormId,
         aiConfig: p.aiConfig,
         cloudInfras: p.cloudInfras,
@@ -365,6 +366,7 @@ function applyProjectData(d) {
     getProjectData().cloudInfras = d.cloudInfras || [];
     getProjectData().extRuntime = d.extRuntime || { js: "", doc: "" };
     getProjectData().constants = d.constants || [];
+    getProjectData().images = d.images || [];
     getProjectData().startFormId = d.startFormId || (d.forms?.[0]?.id ?? "");
     getProjectData().tables = d.tables || [];
     // 旧形式互換: 画面デザイン依頼ドラフトがプロジェクト直下の単一値だった頃の
@@ -402,6 +404,8 @@ function applyProjectData(d) {
         maxTokens: _ac.maxTokens || "",
         temperature: _ac.temperature !== "" && _ac.temperature != null ? _ac.temperature : "",
     };
+    // 旧形式（imageウィジェットのsrcに直接data URIが入っている）を画像管理へ移す（vja-image-manager.js）
+    migrateLegacyPictureSrc();
 }
 
 // JSON 文字列からプロジェクト全体を復元し、画面を再描画する。

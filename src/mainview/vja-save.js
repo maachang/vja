@@ -158,6 +158,7 @@ window._getProjectData = function () {
         projectInfo: p.projectInfo,
         forms: p.forms,
         constants: p.constants,
+        images: p.images, // 画像管理。実行時のvja.image.getとimageウィジェットの表示に使う
         startFormId: p.startFormId, // 起動フォーム（★）。実行時の最初の画面に使う
         tables: p.tables,
         extRuntime: p.extRuntime,

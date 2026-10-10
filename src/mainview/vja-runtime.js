@@ -356,6 +356,23 @@ import { parseCsvLine } from "../shared/csv-utils";
     };
 
     // ════════════════════════════════════════════════
+    // vja.image.* — 画像管理（デザイナーの「画像管理」に登録した画像）
+    // ════════════════════════════════════════════════
+    vja.image = {
+        _images: {},
+
+        // 初期化（各フォームHTMLの中でBun側が呼ぶ。引数は { 名前: data URI }）
+        init(images) {
+            this._images = images || {};
+        },
+
+        // 画像名からdata URIを取得（無ければnull）。vja.widget.set('imgX', vja.image.get('ロゴ')) のように使う
+        get(name) {
+            return Object.prototype.hasOwnProperty.call(this._images, name) ? this._images[name] : null;
+        },
+    };
+
+    // ════════════════════════════════════════════════
     // vja.const.* — 定数管理
     // ════════════════════════════════════════════════
     vja.const = {

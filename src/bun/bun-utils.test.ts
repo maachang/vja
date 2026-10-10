@@ -1,7 +1,7 @@
 // src/bun/bun-utils.test.ts
 // parseCsvLine / decompressGzip の純粋ロジックに対するユニットテスト。
 import { describe, test, expect } from "bun:test";
-import { parseCsvLine, decompressGzip, execFetch, buildConstInitScript, pickStartForm, encryptAiKeys, decryptAiKeys, stripAiKeys, AI_KEY_PREFIX, stripCloudCredentials, omitAppInputCredentials } from "./bun-utils";
+import { parseCsvLine, decompressGzip, execFetch, buildConstInitScript, buildImageInitScript, resolvePictureSrc, pickImages, pickStartForm, encryptAiKeys, decryptAiKeys, stripAiKeys, AI_KEY_PREFIX, stripCloudCredentials, omitAppInputCredentials } from "./bun-utils";
 
 describe("parseCsvLine", () => {
     test("単純なカンマ区切り", () => {
@@ -150,6 +150,34 @@ describe("buildConstInitScript", () => {
 
     test("vja.constが無い環境でも例外を出さない", () => {
         expect(() => new Function("window", buildConstInitScript([{ name: "a", value: "1" }], []))({})).not.toThrow();
+    });
+});
+
+describe("画像管理（pickImages / resolvePictureSrc / buildImageInitScript）", () => {
+    const png = "data:image/png;base64,AAAA";
+    const images = [{ name: "ロゴ", data: png }, { name: "", data: png }, { name: "bad", data: "http://x" }, null];
+
+    test("pickImagesは名前が有り、data:image/のデータだけを{名前:data}にまとめる", () => {
+        expect(pickImages(images)).toEqual({ "ロゴ": png });
+        expect(pickImages(undefined)).toEqual({});
+    });
+
+    test("resolvePictureSrcは画像名をdata URIに解決し、無ければ空文字、旧形式(data URI)は素通し", () => {
+        expect(resolvePictureSrc("ロゴ", images)).toBe(png);
+        expect(resolvePictureSrc("無い", images)).toBe("");
+        expect(resolvePictureSrc("", images)).toBe("");
+        expect(resolvePictureSrc("data:image/gif;base64,BBBB", [])).toBe("data:image/gif;base64,BBBB");
+    });
+
+    test("buildImageInitScriptの結果をvja.image.initへ渡せ、HTMLを壊す文字は含まない", () => {
+        const calls: any[] = [];
+        const w: any = { vja: { image: { init: (m: any) => calls.push(m) } } };
+        const evil = [{ name: "a</script>", data: "data:image/png;base64,</script>" }];
+        const src = buildImageInitScript(evil);
+        expect(src.includes("<")).toBe(false);
+        new Function("window", src)(w);
+        expect(calls).toEqual([{ "a</script>": "data:image/png;base64,</script>" }]);
+        expect(() => new Function("window", buildImageInitScript(images))({})).not.toThrow();
     });
 });
 

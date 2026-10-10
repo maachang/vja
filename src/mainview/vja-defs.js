@@ -641,8 +641,8 @@ const WIDGET_DEFS = {
         preview: (p, base, vis) => render("wp-tpl-picture", {
             base, vis, bg: p.bg,
             border: (p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc"),
-            inner: p.src
-                ? render("wp-tpl-picture-img", { src: p.src, objectFit: p.objectFit || "contain" })
+            inner: resolveImageSrc(p.src)
+                ? render("wp-tpl-picture-img", { src: resolveImageSrc(p.src), objectFit: p.objectFit || "contain" })
                 : "📷",
         }),
     },
@@ -920,6 +920,7 @@ var CTX = {
         curFormIdx: 0,
         startFormId: "",
         constants: [],
+        images: [], // 画像管理（{name, data:"data:image/...;base64,..."}）。image(picture)ウィジェットのsrcは名前で参照する
         tables: [],
         cloudInfras: [],
         extRuntime: { js: "", doc: "" },
@@ -1007,6 +1008,14 @@ var CTX = {
 // ── CTX getter 関数 ──────────────────────────
 function getDesignerState() { return CTX._state; }
 function getProjectData() { return CTX._project; }
+// 画像管理の名前からdata URIを返す。無ければ空文字。
+// 旧形式（srcに直接data URIが入っている）は、画像管理へ移す前でもそのまま表示できるよう素通しする
+function resolveImageSrc(src) {
+    if (!src) return "";
+    if (String(src).startsWith("data:")) return src;
+    const im = (getProjectData().images || []).find(i => i.name === src);
+    return im ? im.data : "";
+}
 function getEditHistory() { return CTX._history; }
 function getEditorContext() { return CTX._editor; }
 function getAiContext() { return CTX._ai; }
@@ -1252,7 +1261,7 @@ Object.assign(window, {
     ensureWebviewLib,
     // 状態管理オブジェクト・getter
     CTX,
-    getDesignerState, getProjectData, getEditHistory,
+    getDesignerState, getProjectData, resolveImageSrc, getEditHistory,
     getEditorContext, getAiContext, getUiConfig,
     // 機能別ローカル状態オブジェクト
     CLOUD_MODAL, APPEVENT_MODAL, EXTRT_EDITOR, ITEMSDEF_EDITOR, FORMDESIGN_EDITOR,

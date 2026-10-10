@@ -81,6 +81,36 @@ export const buildConstInitScript = (globalConsts: any, formConsts: any): string
     return `window.vja?.const?.init?.(${lit(pick(globalConsts))}, ${lit(pick(formConsts))});`;
 };
 
+// 画像管理（プロジェクトの images: [{name, data}]）の有効な項目だけを { 名前: data URI } にまとめる。
+// dataはdata:image/で始まるものだけ受け付ける（それ以外はHTMLや実行コードへ埋め込まない）
+export const pickImages = (images: any): Record<string, string> => {
+    const map: Record<string, string> = {};
+    (Array.isArray(images) ? images : []).forEach((i: any) => {
+        if (i && typeof i.name === "string" && i.name !== "" && typeof i.data === "string" && i.data.startsWith("data:image/")) {
+            map[i.name] = i.data;
+        }
+    });
+    return map;
+};
+
+// imageウィジェットのsrc（画像名）をdata URIに解決する。見つからなければ空文字。
+// 旧形式（srcに直接data URIが入っている）はそのまま返す。
+export const resolvePictureSrc = (src: any, images: any): string => {
+    if (typeof src !== "string" || src === "") return "";
+    if (src.startsWith("data:")) return src;
+    return pickImages(images)[src] ?? "";
+};
+
+// 実行用/コンパイル用のフォームHTMLに埋め込む「画像の初期化」スクリプトの本文を作る（vja.image.get用）。
+// 値に「</script>」等が含まれてもHTMLが壊れないよう、buildConstInitScriptと同じエスケープをする。
+export const buildImageInitScript = (images: any): string => {
+    const json = JSON.stringify(pickImages(images))
+        .replace(/</g, "\\u003c")
+        .replace(/\u2028/g, "\\u2028")
+        .replace(/\u2029/g, "\\u2029");
+    return `window.vja?.image?.init?.(${json});`;
+};
+
 // 起動フォームを選ぶ。デザイナーの★（startFormId）のフォームを返し、無い・見つからない場合は先頭のフォーム。
 // 以前は常に先頭のフォーム（forms[0]）を起動していたため、★の設定が実行時に効いていなかった。
 export const pickStartForm = <T extends { id?: string }>(forms: T[], startFormId?: string): T | undefined =>
