@@ -113,7 +113,9 @@ function piVerStep(dir) {
 }
 
 function saveProjectInfo() {
+    // 画面にない項目（アプリイベントappEvents等）を消さないよう、今の内容を引き継いで上書きする
     getProjectData().projectInfo = {
+        ...getProjectData().projectInfo,
         name: $("pi-name")?.value || "",
         description: $("pi-desc")?.value || "",
         version: $("pi-ver")?.value || "1.0.0",
