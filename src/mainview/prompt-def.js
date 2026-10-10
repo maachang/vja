@@ -171,10 +171,10 @@
     const ENG_TO_LAST_PHRASE_ENG = "\nRespond in English.\n";
 
     // プログラムタイプを取得.
+    // アプリイベントも実行側はJavaScriptとして実行する（TypeScript変換は無い）ため、
+    // 「TypeScript」と指示すると型注釈（var x: any[] 等）が出て構文エラーになる。常にJavaScript。
     const _program_type = function (isAppEvent) {
-        return isAppEvent
-            ? "TypeScript"
-            : "JavaScript";
+        return "JavaScript";
     }
 
     // プログラム出力ルールを出力.
@@ -257,7 +257,7 @@
             ? VJA_USE_BACK_JS_INFO_ENG
             : VJA_FRONT_API_MANDATORY_ENG;
 
-        const codeType = isAppEvent ? "TypeScript" : "JavaScript";
+        const codeType = "JavaScript";
 
         // 共通テンプレート（yaml-to-js.rule.eng.md）に、front/backで異なる箇所だけを
         // 差分ファイル（yaml-to-js.rule-part.{front,back}.eng.md）から差し込む。
@@ -342,7 +342,7 @@
             learnedFixesCtx,
         },
     ) {
-        const programType = isAppEvent ? "TypeScript" : "JavaScript";
+        const programType = "JavaScript";
         const widgetLineEn = wname ? `- Current widget: ${wname}\n` : "";
 
         // このコード生成が対象とする具体的なイベント名に基づき、

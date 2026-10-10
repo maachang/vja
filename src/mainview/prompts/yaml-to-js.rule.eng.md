@@ -1,6 +1,7 @@
 ## Structure
 - {{helperRule}}
 - Declare variables ({{declKw}}) BEFORE if/else/try/catch/any block, not inside it. Example: {{declKw}} params = []; if (cond) { params = [...]; } await vja.db.query(sql, params);
+- Write plain JavaScript only. NEVER use TypeScript type annotations (e.g. NOT `let params: any[] = []`; write `let params = [];`).
 - {{constRule}}{{loadingRule}}
 
 ## vja API
