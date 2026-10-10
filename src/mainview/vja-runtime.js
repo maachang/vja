@@ -75,6 +75,11 @@ import { parseCsvLine } from "../shared/csv-utils";
                 return el.textContent;
             }
             if (tag === "div") {
+                // picture: 中の<img>のsrcを返す（未設定ならnull）
+                if (el.dataset.vjaType === "picture") {
+                    const img = el.querySelector("img");
+                    return img ? img.src : null;
+                }
                 // progressbar: data-val 属性から値を返す
                 if (el.dataset.val !== undefined) return Number(el.dataset.val);
                 return el.textContent;
@@ -149,8 +154,20 @@ import { parseCsvLine } from "../shared/csv-utils";
                     el.textContent = value ?? "";
                 }
             } else if (tag === "div") {
-                // progressbar: data-val/data-min/data-max で管理
-                if (el.dataset.val !== undefined) {
+                if (el.dataset.vjaType === "picture") {
+                    // picture: 中の<img>のsrcを差し替える。画像未設定の場合は
+                    // <img>自体が無いため作る（bun/index.tsの描画時スタイルと揃える）
+                    let img = el.querySelector("img");
+                    if (!img) {
+                        img = document.createElement("img");
+                        img.style.maxWidth = "100%";
+                        img.style.maxHeight = "100%";
+                        img.style.objectFit = "contain";
+                        el.appendChild(img);
+                    }
+                    img.src = value ?? "";
+                } else if (el.dataset.val !== undefined) {
+                    // progressbar: data-val/data-min/data-max で管理
                     const min = Number(el.dataset.min ?? 0);
                     const max = Number(el.dataset.max ?? 100);
                     const val = Math.min(max, Math.max(min, Number(value ?? 0)));
@@ -221,16 +238,6 @@ import { parseCsvLine } from "../shared/csv-utils";
         setSelectedIndex(name, idx) {
             const el = _getEl(name);
             if (el) el.selectedIndex = idx;
-        },
-
-        // image の src
-        setSrc(name, src) {
-            const el = _getEl(name);
-            if (el && el.tagName.toLowerCase() === "img") el.src = src;
-        },
-        getSrc(name) {
-            const el = _getEl(name);
-            return (el && el.tagName.toLowerCase() === "img") ? el.src : null;
         },
 
         ///////////////////////////////////////

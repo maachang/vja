@@ -1234,7 +1234,7 @@ const buildWidgetHtml = (w: any): string => {
         case "groupbox":
             return `<fieldset ${id} style="${base}background:${p.bg};color:${p.fg};${font};${border}"><legend>${esc2(p.text)}</legend></fieldset>`;
         case "picture":
-            return `<div ${id} style="${base}background:${p.bg};${border};display:flex;align-items:center;justify-content:center">${p.src ? `<img src="${esc2(p.src)}" style="max-width:100%;max-height:100%;object-fit:${p.objectFit || "contain"}">` : ""}</div>`;
+            return `<div ${id} data-vja-type="picture" style="${base}background:${p.bg};${border};display:flex;align-items:center;justify-content:center">${p.src ? `<img src="${esc2(p.src)}" style="max-width:100%;max-height:100%;object-fit:${p.objectFit || "contain"}">` : ""}</div>`;
         case "qrcode":
             // QRCode.js はコンテナへ直接DOMを書き込む方式のため、初期HTMLはプレースホルダーのみ返し、
             // 実際の描画はDOMContentLoaded後のinit処理（window._vjaRenderQr）で行う。

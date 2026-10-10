@@ -1,5 +1,5 @@
 vja.widget.get: { args: [name:string], return: "string|number|boolean|null", desc: "Gets current value from UI Widget. CRITICAL: The returned value is READ-ONLY. Modifying the returned object/array WILL NOT update the UI. To update, you MUST explicitly use vja.widget.set()." }
-vja.widget.set: { args: [name:string, value:any, options?:object], return: "void", desc: "Sets value to UI Widget (text:str, checkbox:bool, select:array, datagrid:object[]). MANDATORY: This is the ONLY way to update UI data. Never mutate objects retrieved from get()." }
+vja.widget.set: { args: [name:string, value:any, options?:object], return: "void", desc: "Sets value to UI Widget (text:str, checkbox:bool, select:array, datagrid:object[], picture:image URL/data URI string). MANDATORY: This is the ONLY way to update UI data. Never mutate objects retrieved from get()." }
 vja.widget.getAllInputs: { args: [], return: "Record<string,any>", desc: "Gets all active UI inputs in a form as {name: value}." }
 vja.widget.setVisible: { args: [name:string, visible:boolean], return: "void", desc: "Toggles UI display (true=show, false=hide)." }
 vja.widget.show: { args: [name:string], return: "void", desc: "Shows the widget. Same argument pattern for vja.widget.hide(name), vja.widget.enable(name), vja.widget.disable(name)." }
