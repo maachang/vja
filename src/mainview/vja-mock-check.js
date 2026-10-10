@@ -1404,7 +1404,7 @@ async function retryAiFix(wid, evName, isAppEvent, isFormEvent, currentCode, run
         userPrompt: fixUserPrompt,
         loadingMsg: "検出した問題を自動修正中…",
         onSuccess: async (fixed) => {
-            fixed = await formatJsCode(fixMissingAwaits(stripWidgetValueAccess(fixed), isAppEvent));
+            fixed = await formatJsCode(fixMissingAwaits(stripWidgetValueAccess(stripTsTypeAnnotations(fixed)), isAppEvent));
             let revalidated = validateGeneratedJs(fixed, isAppEvent, evName, wtag, wid);
             revalidated = await augmentWithMockCheck(revalidated, fixed, isAppEvent, evName, wtag, wid);
             const fixedCode = revalidated.code || fixed;

@@ -181,6 +181,18 @@ function fixMissingAwaits(code, isAppEvent) {
     });
 }
 
+// 変数宣言に付いたTypeScriptの型注釈・配列記号を取り除く（例: var params: any[] = [] → var params = []、
+// var params[] = [] → var params = []）。実行・検証はJavaScriptとして行うため、型注釈は構文エラーになる。
+// 一部のモデル（Foundry LocalのNPU版qwen2.5-coder-7b等）が、YAMLドラフト経由の生成で型注釈を出すことがあり、
+// 原因を特定できていないため、生成直後に機械的に除去する。
+// 対象は「var/let/const 名前 の直後」の形に限る（三項演算子・オブジェクトのキーには影響しない）。
+function stripTsTypeAnnotations(code) {
+    return code
+        .replace(/\b(var|let|const)(\s+[A-Za-z_$][\w$]*)\s*:\s*[^=;\n]+?(\s*=)/g, "$1$2$3")
+        .replace(/\b(var|let|const)(\s+[A-Za-z_$][\w$]*)\s*:\s*[\w.<>\[\]|, ]+?\s*;/g, "$1$2;")
+        .replace(/\b(var|let|const)(\s+[A-Za-z_$][\w$]*)\s*\[\]\s*=/g, "$1$2 =");
+}
+
 // AI生成コード（1行べた書き・インデント不揃い等）をPrettier(bun側)で整形する。
 // Prettierが構文エラー等で失敗した場合は、整形前のコードをそのまま返す
 // （整形は品質向上のための後処理であり、失敗しても検証フロー自体は止めない）。
@@ -503,7 +515,7 @@ async function generateEventJs(wid, evName, isAppEvent, isFormEvent, temperature
         userPrompt: userPrompt,
         temperatureOverride: temperatureOverride,
         onSuccess: async (clean) => {
-            let unwrapped = fixMissingAwaits(stripWidgetValueAccess(_unwrapAiFunctionWrapper(clean)), isAppEvent);
+            let unwrapped = fixMissingAwaits(stripWidgetValueAccess(stripTsTypeAnnotations(_unwrapAiFunctionWrapper(clean))), isAppEvent);
             // 1行べた書き・インデント不揃いを、検証（行番号ベース）の前に整形しておく
             unwrapped = await formatJsCode(unwrapped);
 
@@ -533,7 +545,7 @@ async function generateEventJs(wid, evName, isAppEvent, isFormEvent, temperature
                     loadingMsg: "検出した問題を自動修正中…",
                     temperatureOverride: temperatureOverride,
                     onSuccess: async (fixed) => {
-                        retryCode = await formatJsCode(fixMissingAwaits(stripWidgetValueAccess(_unwrapAiFunctionWrapper(fixed)), isAppEvent));
+                        retryCode = await formatJsCode(fixMissingAwaits(stripWidgetValueAccess(stripTsTypeAnnotations(_unwrapAiFunctionWrapper(fixed))), isAppEvent));
                     },
                     onCancel: async () => { },
                     onError: async () => { },
@@ -941,7 +953,7 @@ async function jsToYamlGenerate(wid, evName) {
 
 Object.assign(window, {
     buildTablesCtxText, getVjaApiWhitelist, narrowTablesByRequest, buildGenPromptContext,
-    findMissingAwaits, fixMissingAwaits, findUnknownWidgetNames, formatJsCode, escapeRegExp,
+    findMissingAwaits, fixMissingAwaits, stripTsTypeAnnotations, findUnknownWidgetNames, formatJsCode, escapeRegExp,
     generateEventJs, yamlAiGenerate,
     generateTextToYaml, textToYamlGenerate,
     generateJsToYaml, jsToYamlGenerate, findWidgetNamesInCode, isYamlActionsEmpty,
