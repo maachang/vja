@@ -57,8 +57,10 @@
     <span style="color:var(--text3);font-size:11px">画像なし</span>
     <% } %>
     </div>
-    <%- sel %>
-    <button class="pv-input" style="cursor:pointer;color:var(--accent)" <%- attrManage %>>🖼️ 画像管理…</button>
+    <% if (name) { %>
+    <div style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><%= name %></div>
+    <% } %>
+    <button class="pv-input" style="cursor:pointer;color:var(--accent)" <%- attrPick %>>🖼️ 選択…</button>
 </div>
 </script>
 

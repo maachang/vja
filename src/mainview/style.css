@@ -2761,3 +2761,70 @@ select.pv-input option {
 #image-modal .image-table .del-btn:hover {
     background: #ff6b6b22
 }
+
+/* ── 画像の選択ポップアップ ── */
+#image-picker .image-pick-filter {
+    width: 100%;
+    box-sizing: border-box;
+    height: 26px;
+    background: var(--bg4);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: var(--ui-font-size);
+    padding: 0 6px;
+    border-radius: 3px;
+    outline: none
+}
+
+#image-picker .image-pick-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+    gap: 8px;
+    max-height: 380px;
+    overflow-y: auto;
+    padding: 2px
+}
+
+#image-picker .image-pick-item {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px;
+    cursor: pointer;
+    background: var(--bg3)
+}
+
+#image-picker .image-pick-item:hover {
+    border-color: var(--accent)
+}
+
+#image-picker .image-pick-item.sel {
+    border: 2px solid var(--accent);
+    padding: 3px
+}
+
+#image-picker .image-pick-thumb {
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg4);
+    overflow: hidden;
+    color: var(--text3);
+    font-size: 11px
+}
+
+#image-picker .image-pick-thumb img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain
+}
+
+#image-picker .image-pick-name {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--text2);
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap
+}

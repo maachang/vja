@@ -27,3 +27,18 @@
 <script type="text/vja-tpl" id="im-tpl-empty">
 <tr><td colspan="4" style="text-align:center;color:var(--text3);padding:14px">画像がありません。「＋ 画像を追加」から登録してください。</td></tr>
 </script>
+
+<script type="text/vja-tpl" id="im-tpl-picker">
+<div id="image-picker">
+<%- header %>
+<div class="mbody" style="gap:6px">
+<input type="text" class="image-pick-filter" placeholder="🔍 画像名で絞り込み..." <%- attrFilter %>>
+<div class="image-pick-grid" id="image-pick-grid"><%- grid %></div>
+</div>
+<div class="mfoot"><%- footBtns %></div>
+</div>
+</script>
+
+<script type="text/vja-tpl" id="im-tpl-pick-item">
+<div class="image-pick-item <%= sel %>" <%- attr %> title="<%= name %>"><div class="image-pick-thumb"><% if (data) { %><img src="<%= data %>"><% } else { %><span><%= name %></span><% } %></div><div class="image-pick-name"><%= name %></div></div>
+</script>

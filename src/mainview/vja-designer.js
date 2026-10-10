@@ -802,16 +802,15 @@ function pinput(d, val, wid) {
                 attr: evtAttr("onchange", "setProp('" + d.k + "','" + (d.sp || "") + "',this.value," + w2 + ")"),
             });
         case "img": {
-            // 画像管理に登録した画像から名前で選ぶ（登録は メニュー「プロジェクト」→「画像管理」）
+            // 画像管理に登録した画像から、ポップアップ（サムネイル一覧）で選ぶ
+            // （画像が増えても探しやすいよう、ドロップダウンではなくポップアップにしている。登録は 画像管理）
             const imgs = getProjectData().images || [];
-            const opts = [{ value: "", label: "（なし）" }].concat(imgs.map(i => ({ value: i.name, label: i.name })));
             const cur = imgs.some(i => i.name === val) ? val : "";
-            const iid = "pvimg_" + w2;
             return render("pv-tpl-img", {
-                iid,
+                iid: "pvimg_" + w2,
                 data: resolveImageSrc(cur),
-                sel: makePvSel("pvs_" + iid, opts, cur, "setProp('" + d.k + "','" + (d.sp || "") + "',{value}," + w2 + ")"),
-                attrManage: evtAttr("onmousedown", "openImageManager()"),
+                name: cur,
+                attrPick: evtAttr("onmousedown", "openImagePicker(" + w2 + ",'" + d.k + "','" + (d.sp || "") + "')"),
             });
         }
         case "coldef":

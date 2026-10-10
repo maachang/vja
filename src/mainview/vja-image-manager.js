@@ -170,7 +170,54 @@ function imageMgrSave() {
     }
 }
 
+// ── 画像の選択ポップアップ（imageウィジェットのプロパティパネルから開く） ──
+// IMAGE_PICK: 選択先（ウィジェットid・プロパティキー・サブキー）。選ぶとsetPropで名前を反映して閉じる
+const IMAGE_PICK = { wid: null, key: "src", sp: "" };
+
+function _imagePickGridHtml(filter) {
+    const images = getProjectData().images || [];
+    const cur = getWidget(IMAGE_PICK.wid)?.props?.[IMAGE_PICK.key] || "";
+    const f = (filter || "").trim().toLowerCase();
+    // 先頭は「（なし）」（画像を外す）。絞り込み中は出さない
+    const items = f ? [] : [render("im-tpl-pick-item", {
+        sel: cur ? "" : "sel", attr: evtAttr("onmousedown", "imagePickChoose(-1)"), name: "（なし）", data: "",
+    })];
+    images.forEach((im, i) => {
+        if (f && !im.name.toLowerCase().includes(f)) return;
+        items.push(render("im-tpl-pick-item", {
+            sel: im.name === cur ? "sel" : "", attr: evtAttr("onmousedown", "imagePickChoose(" + i + ")"), name: im.name, data: im.data,
+        }));
+    });
+    if (images.length === 0) return "<div style='padding:14px;color:var(--text3)'>画像がありません。「画像管理…」から登録してください。</div>";
+    if (items.length === 0) return "<div style='padding:14px;color:var(--text3)'>該当する画像がありません</div>";
+    return items.join("");
+}
+
+function openImagePicker(wid, key, sp) {
+    IMAGE_PICK.wid = wid; IMAGE_PICK.key = key || "src"; IMAGE_PICK.sp = sp || "";
+    showModal(render("im-tpl-picker", {
+        header: mhdrHTML("🖼️ 画像を選択"),
+        attrFilter: evtAttr("oninput", "imagePickFilter(this.value)"),
+        grid: _imagePickGridHtml(""),
+        footBtns: mfootHTML([{ label: "画像管理…", action: "openImageManager()" }, { label: "閉じる", action: "closeModal()" }]),
+    }));
+}
+
+function imagePickFilter(v) {
+    const el = document.getElementById("image-pick-grid");
+    if (el) el.innerHTML = _imagePickGridHtml(v);
+}
+
+// i: 登録画像の番号（-1は「（なし）」）
+function imagePickChoose(i) {
+    const images = getProjectData().images || [];
+    const value = i < 0 ? "" : (images[i]?.name ?? "");
+    closeModal();
+    setProp(IMAGE_PICK.key, IMAGE_PICK.sp, value, IMAGE_PICK.wid);
+}
+
 Object.assign(window, {
+    openImagePicker, imagePickFilter, imagePickChoose,
     openImageManager, renderImageModal, imageSizeLabel, imageMgrRename, imageMgrDel, imageMgrAdd, imageMgrSave,
     migrateLegacyPictureSrc,
 });
