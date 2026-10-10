@@ -181,6 +181,16 @@ function _rpRowWrap(headerInner, rowsHtml, headerStyle) {
     });
 }
 
+// ── 右パネル: 画像セクション ──
+// 画像管理に登録した画像名を一覧表示する。行クリックで画像名をエディタへ挿入する
+// （vja.widget.set('ウィジェット名', '画像名') の画像名に使う）。
+function _rpBuildImageSection() {
+    const images = getProjectData().images || [];
+    if (images.length === 0) return "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>画像なし</div>";
+    const rows = images.map(im => render("ye-tpl-rp-const-row", { n: im.name, v: imageSizeLabel(im.data), tag: "" })).join("");
+    return render("ye-tpl-rp-const-section", { rows });
+}
+
 function _rpBuildConstSection() {
     const curForm = getProjectData().forms[getProjectData().curFormIdx];
     const _formConsts = curForm?.constants || [];
@@ -669,6 +679,7 @@ function yamlBuildRightPanel(showWidgets = true, wid = null, evName = null, isAp
         (!isAppEvent && wid && evName) ? yamlRpSection("🧪 自動モック検証", _rpBuildMockCheckSection(wid, evName), false) : "",
         (wid && evName) ? yamlRpSection("🧠 学習履歴", _rpBuildLearnedFixesSection(wid, evName), false) : "",
         yamlRpSection("📌 定数", _rpBuildConstSection(), false),
+        !isAppEvent ? yamlRpSection("🖼️ 画像", _rpBuildImageSection(), false) : "",
         yamlRpSection("📋 画面一覧", _rpBuildFormSection(), false),
         showWidgets ? yamlRpSection("🔲 現在フォームのウィジェット", _rpBuildWidgetSection(), true) : "",
         yamlRpSection("✅ 検証", _rpBuildValidationSection(wid, evName), true),

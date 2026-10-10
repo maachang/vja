@@ -28,7 +28,7 @@ function _imageDataBytes(data) {
     const b64 = i >= 0 ? data.slice(i + 1) : data;
     return Math.floor(b64.length * 3 / 4) - (b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0);
 }
-function _imageSizeLabel(data) {
+function imageSizeLabel(data) {
     return (_imageDataBytes(data) / 1024).toFixed(1) + "KB";
 }
 
@@ -80,7 +80,7 @@ function renderImageModal() {
             data: r.data,
             name: r.name,
             attrName: evtAttr("oninput", "imageMgrRename(" + i + ",this.value)"),
-            size: _imageSizeLabel(r.data),
+            size: imageSizeLabel(r.data),
             attrDel: evtAttr("onmousedown", "imageMgrDel(" + i + ")"),
         })).join("")
         : render("im-tpl-empty", {});
@@ -171,6 +171,6 @@ function imageMgrSave() {
 }
 
 Object.assign(window, {
-    openImageManager, renderImageModal, imageMgrRename, imageMgrDel, imageMgrAdd, imageMgrSave,
+    openImageManager, renderImageModal, imageSizeLabel, imageMgrRename, imageMgrDel, imageMgrAdd, imageMgrSave,
     migrateLegacyPictureSrc,
 });
