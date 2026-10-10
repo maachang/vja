@@ -574,6 +574,7 @@ vja/
 ## 📖 ドキュメント
 
 - [VJA の位置づけ: 何に向いていて、何に向かないか](docs/positioning.md)
+- [導入のための確認事項（IT 担当向け）: 通信先・データの保存場所・AI のデータの流れ・制限](docs/it-overview.md)
 - [ユーザーガイド](docs/user-guide.md)
 - [VJAでのアプリ開発フロー: ウィザードから機能仕上げまでの一連の流れ](docs/development-workflow.md)
 - [VJA YAML プログラム命令ガイド（startup）](docs/yaml-guide-startup.md)
