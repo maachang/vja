@@ -165,7 +165,9 @@ import { parseCsvLine } from "../shared/csv-utils";
                         img.style.objectFit = "contain";
                         el.appendChild(img);
                     }
-                    img.src = value ?? "";
+                    // 値の判定: http:// https:// data:image/ はそのまま、それ以外は画像管理の画像名（vja.image.get）
+                    const v = value ?? "";
+                    img.src = /^(https?:\/\/|data:image\/)/i.test(v) ? v : (vja.image.get(v) ?? "");
                 } else if (el.dataset.val !== undefined) {
                     // progressbar: data-val/data-min/data-max で管理
                     const min = Number(el.dataset.min ?? 0);
@@ -366,7 +368,7 @@ import { parseCsvLine } from "../shared/csv-utils";
             this._images = images || {};
         },
 
-        // 画像名からdata URIを取得（無ければnull）。vja.widget.set('imgX', vja.image.get('ロゴ')) のように使う
+        // 画像名からdata URIを取得（無ければnull）。vja.widget.set('imgX', '画像名') でも同じ画像を表示できる
         get(name) {
             return Object.prototype.hasOwnProperty.call(this._images, name) ? this._images[name] : null;
         },

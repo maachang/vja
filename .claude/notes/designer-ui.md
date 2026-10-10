@@ -34,7 +34,7 @@
 ## 画像管理（2026-10-11）
 - メニュー［プロジェクト］→「画像管理…」（`vja-image-manager.js`、テンプレート`templates/image-manager.html`）。プロジェクトデータの`images: [{name, data}]`（`data`はdata URI）に保存する。1枚300KBまで、png/jpg/gif/webpのみ。大きな画像は外部URL（https）を`vja.widget.set`へ渡す方針（ユーザー決定）
 - imageウィジェットの`props.src`には**画像名**を保存し、プロパティパネルは管理画像のドロップダウンで選ぶ。デザイナーの描画は`resolveImageSrc`（`vja-defs.js`）、実行時HTMLは`resolvePictureSrc`（`bun-utils.ts`）で名前をdata URIへ解決する。旧形式（srcに直接data URI）は、`applyProjectData`から呼ぶ`migrateLegacyPictureSrc`が画像管理へ自動で移す（名前はimage1, image2…、同じデータは1つにまとめる）
-- 実行時: 各フォームHTMLに`buildImageInitScript`で`vja.image.init({名前:data})`を埋め込む（定数の`buildConstInitScript`と同じ方式。全フォームHTMLに全画像が入る）。`vja.image.get(名前)`はdata URIかnullを返す。保存・復元・実行用データは`snapshot()`/`applyProjectData()`/`_getProjectData()`の3か所に`images`を足してある
+- 実行時: 各フォームHTMLに`buildImageInitScript`で`vja.image.init({名前:data})`を埋め込む（定数の`buildConstInitScript`と同じ方式。全フォームHTMLに全画像が入る）。`vja.image.get(名前)`はdata URIかnullを返す。`vja.widget.set`のpictureは値を判定する（`http(s)://`/`data:image/`はそのまま、それ以外は画像名として`vja.image.get`で解決。ローカルLLMが`set(.., vja.image.get(..))`の入れ子で誤動作する恐れがあるため、AIプロンプトには`vja.image.get`を載せず`set("ウィジェット名", "画像名")`だけを教える）。保存・復元・実行用データは`snapshot()`/`applyProjectData()`/`_getProjectData()`の3か所に`images`を足してある
 - `vja.widget.set/get`はpictureの`div`（`data-vja-type="picture"`）の中の`<img>`を差し替える。以前の`vja.widget.setSrc/getSrc`は、名前が付く外側の`div`に対して`tagName==="img"`を見ていたため動かず、廃止した
 - 外部URLはサーバー側のReferer制限で表示できない場合がある（pixiv等。コードではなく配信元の制限）
 - 既知: Undoスナップショット（最大60個）に`images`も含まれるため、画像を多く登録するとメモリを使う

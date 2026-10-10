@@ -77,23 +77,16 @@
       - selectBox/listBox（選択）: string（value値を指定）
       - selectBox/listBox（項目更新）: array（例: ['項目1', '項目2'] または [{label:'表示名', value:'値'}]）
       - datagrid（データグリッド）: object[]（行データの配列）
-      - picture（画像）: string（画像のURLまたはdata URI）
+      - picture（画像）: string（画像管理に登録した画像名、またはhttp(s)のURL・data:image/で始まるdata URI）
     - options?: object - オプション（datagrid時のみ有効）
       - startNo?: number - No列の自動採番開始値（省略時は1）
   - 戻り値: なし
   - 使用例: "vja.widget.setValue('txtResult', '処理完了');"
   - 使用例（データグリッド）: "vja.widget.setValue('tblUsers', rows, { startNo: 1 });"
   - 使用例（選択肢更新）: "vja.widget.setValue('selCategory', ['食品', '電化製品', '衣類']);"
-  - 使用例（画像）: "vja.widget.set('imgPhoto', 'https://example.com/a.png');"
+  - 使用例（画像）: "vja.widget.set('imgLogo', 'ロゴ');"（画像管理に登録した画像名）
+  - 使用例（画像のURL）: "vja.widget.set('imgPhoto', 'https://example.com/a.png');"
   - 使用例説明: ウィジェットの種類に応じて値・データ・選択肢をセットする
-
-- 関数名: vja.image.get(name):
-  - 説明: 画像管理に登録した画像のdata URIを取得する（見つからなければnull）。同期関数のためawaitを付けない
-  - 引数:
-    - name: string - 画像管理に登録した画像名
-  - 戻り値: string|null
-  - 使用例: "vja.widget.set('imgLogo', vja.image.get('ロゴ'));"
-  - 使用例説明: picture（画像）ウィジェットへ、登録済みの画像を表示する
 
 - 関数名: vja.widget.setItems(name, items[]):
   - 説明: selectBoxまたはlistBoxのアイテムをセットする
