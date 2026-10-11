@@ -181,14 +181,14 @@ function _rpRowWrap(headerInner, rowsHtml, headerStyle) {
     });
 }
 
-// ── 右パネル: 画像セクション ──
-// 画像管理に登録した画像名を一覧表示する。行クリックで画像名をエディタへ挿入する
+// ── 右パネル: 画像 ──
+// 開閉しない見出し1行。押すとサムネイル付きの選択ポップアップが開き、選んだ画像名をエディタへ挿入する
 // （vja.widget.set('ウィジェット名', '画像名') の画像名に使う）。
-function _rpBuildImageSection() {
-    const images = getProjectData().images || [];
-    if (images.length === 0) return "<div style='padding:8px 10px;font-size:11px;color:var(--text3)'>画像なし</div>";
-    const rows = images.map(im => render("ye-tpl-rp-const-row", { n: im.name, v: imageSizeLabel(im.data), tag: "" })).join("");
-    return render("ye-tpl-rp-const-section", { rows });
+function _rpBuildImageEntry() {
+    return render("ye-tpl-rp-image-pick", {
+        n: (getProjectData().images || []).length,
+        attr: evtAttr("onmousedown", "openImagePickerForInsert()"),
+    });
 }
 
 function _rpBuildConstSection() {
@@ -679,7 +679,7 @@ function yamlBuildRightPanel(showWidgets = true, wid = null, evName = null, isAp
         (!isAppEvent && wid && evName) ? yamlRpSection("🧪 自動モック検証", _rpBuildMockCheckSection(wid, evName), false) : "",
         (wid && evName) ? yamlRpSection("🧠 学習履歴", _rpBuildLearnedFixesSection(wid, evName), false) : "",
         yamlRpSection("📌 定数", _rpBuildConstSection(), false),
-        !isAppEvent ? yamlRpSection("🖼️ 画像", _rpBuildImageSection(), false) : "",
+        !isAppEvent ? _rpBuildImageEntry() : "",
         yamlRpSection("📋 画面一覧", _rpBuildFormSection(), false),
         showWidgets ? yamlRpSection("🔲 現在フォームのウィジェット", _rpBuildWidgetSection(), true) : "",
         yamlRpSection("✅ 検証", _rpBuildValidationSection(wid, evName), true),
@@ -736,7 +736,8 @@ function yamlInitRpanelEvents() {
         // ① アコーディオンヘッダー（最優先）
         const hdr = e.target.closest(".yaml-rpanel-hdr");
         if (hdr) {
-            if (e.type === "click") yamlToggleRpSection(hdr);
+            // data-action付きは開閉せず、自身のonmousedownで動く見出し（画像）
+            if (e.type === "click" && !hdr.dataset.action) yamlToggleRpSection(hdr);
             return;
         }
         if (e.type !== "click") return;

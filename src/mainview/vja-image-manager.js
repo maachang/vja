@@ -172,14 +172,15 @@ function imageMgrSave() {
 
 // ── 画像の選択ポップアップ（imageウィジェットのプロパティパネルから開く） ──
 // IMAGE_PICK: 選択先（ウィジェットid・プロパティキー・サブキー）。選ぶとsetPropで名前を反映して閉じる
-const IMAGE_PICK = { wid: null, key: "src", sp: "" };
+// layer: 表示先のroot（YAMLエディタの上へ重ねる時は"modal-layer-1"）。insert: trueなら選んだ名前をYAMLエディタへ挿入する
+const IMAGE_PICK = { wid: null, key: "src", sp: "", layer: "modal-root", insert: false };
 
 function _imagePickGridHtml(filter) {
     const images = getProjectData().images || [];
-    const cur = getWidget(IMAGE_PICK.wid)?.props?.[IMAGE_PICK.key] || "";
+    const cur = IMAGE_PICK.insert ? "" : (getWidget(IMAGE_PICK.wid)?.props?.[IMAGE_PICK.key] || "");
     const f = (filter || "").trim().toLowerCase();
     // 先頭は「（なし）」（画像を外す）。絞り込み中は出さない
-    const items = f ? [] : [render("im-tpl-pick-item", {
+    const items = (f || IMAGE_PICK.insert) ? [] : [render("im-tpl-pick-item", {
         sel: cur ? "" : "sel", attr: evtAttr("onmousedown", "imagePickChoose(-1)"), name: "（なし）", data: "",
     })];
     images.forEach((im, i) => {
@@ -195,12 +196,28 @@ function _imagePickGridHtml(filter) {
 
 function openImagePicker(wid, key, sp) {
     IMAGE_PICK.wid = wid; IMAGE_PICK.key = key || "src"; IMAGE_PICK.sp = sp || "";
+    IMAGE_PICK.layer = "modal-root"; IMAGE_PICK.insert = false;
+    _showImagePicker();
+}
+
+// YAMLエディタの右パネルから開く。エディタを残すため重ね表示し、選んだ画像名をカーソル位置へ挿入する
+function openImagePickerForInsert() {
+    IMAGE_PICK.layer = "modal-layer-1"; IMAGE_PICK.insert = true;
+    _showImagePicker();
+}
+
+function _showImagePicker() {
+    const layer = IMAGE_PICK.layer;
+    // 重ね表示中は画像管理を開かない（モーダルがさらに重なるため）
+    const foot = IMAGE_PICK.insert
+        ? [{ label: "閉じる", action: "closeModal(\"" + layer + "\")" }]
+        : [{ label: "画像管理…", action: "openImageManager()" }, { label: "閉じる", action: "closeModal()" }];
     showModal(render("im-tpl-picker", {
-        header: mhdrHTML("🖼️ 画像を選択"),
+        header: mhdrHTML("🖼️ 画像を選択", layer),
         attrFilter: evtAttr("oninput", "imagePickFilter(this.value)"),
         grid: _imagePickGridHtml(""),
-        footBtns: mfootHTML([{ label: "画像管理…", action: "openImageManager()" }, { label: "閉じる", action: "closeModal()" }]),
-    }));
+        footBtns: mfootHTML(foot),
+    }), "", layer);
 }
 
 function imagePickFilter(v) {
@@ -212,12 +229,13 @@ function imagePickFilter(v) {
 function imagePickChoose(i) {
     const images = getProjectData().images || [];
     const value = i < 0 ? "" : (images[i]?.name ?? "");
-    closeModal();
+    closeModal(IMAGE_PICK.layer);
+    if (IMAGE_PICK.insert) { yamlInsert(value); return; }
     setProp(IMAGE_PICK.key, IMAGE_PICK.sp, value, IMAGE_PICK.wid);
 }
 
 Object.assign(window, {
-    openImagePicker, imagePickFilter, imagePickChoose,
+    openImagePicker, openImagePickerForInsert, imagePickFilter, imagePickChoose,
     openImageManager, renderImageModal, imageSizeLabel, imageMgrRename, imageMgrDel, imageMgrAdd, imageMgrSave,
     migrateLegacyPictureSrc,
 });
