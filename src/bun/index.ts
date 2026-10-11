@@ -1585,6 +1585,10 @@ const buildEventsJs = (form: any, allForms: any[]): string => {
                 // （フォームのLoadと同じ扱い。ウィジェットループはフォームイベント
                 // ループより先に生成されるため、フォームのLoadより必ず先に実行される）。
                 lines.push(`    _vjaRun(${JSON.stringify(w.name)}, ${JSON.stringify(evName)}, null);`);
+            } else if (w.tag === "datagrid" && (evName === "RowClick" || evName === "HeaderClick")) {
+                // datagridのRowClick/HeaderClickは、行/見出しのクリック処理（_buildDatagridHtml）が
+                // row/columnを付けて直接_vjaRunを呼ぶ。DOMのclickとしても登録すると、行・見出し以外
+                // （0件時の空白など）のクリックがイベントデータ無しで届き、ev.column等がundefinedになる
             } else {
                 const domEv = evNameToDom(evName);
                 lines.push(`    el.addEventListener(${JSON.stringify(domEv)}, function(event) { _vjaRun(${JSON.stringify(w.name)}, ${JSON.stringify(evName)}, event); });`);
