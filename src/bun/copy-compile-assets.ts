@@ -43,9 +43,34 @@ export const COPY_BUILD_FILES: [string, string][] = [
     ["mainview/project-bridge.ts", "mainview/project-bridge.ts"],
     ["mainview/bridge-common.ts", "mainview/bridge-common.ts"],
     ["mainview/form-design-templates.js", "mainview/form-design-templates.js"],
-    // WEBVIEW_RUNTIME_LIBS（vja-runtime.js/qrcode.js/marked.umd.js等）から自動生成
-    ...WEBVIEW_RUNTIME_LIBS.map((f): [string, string] => [`mainview/${f}`, `mainview/${f}`]),
+    // 実行時ライブラリのうちvja-runtime.jsだけは、ここ（src/mainview/）に置く。qrcode.js等は下のresolveWebviewLibPathで別扱い
+    ["mainview/vja-runtime.js", "mainview/vja-runtime.js"],
 ];
+
+// 実行時ライブラリ（WEBVIEW_RUNTIME_LIBS）の実体の場所を返す。
+// ビルド後は electrobun.config.ts が views/mainview/ へ置く（同じコピー元を src/mainview/ にも
+// 登録すると上書きされて消えるため、COPY_BUILD_FILESには含めない）。ソースから直接実行する
+// 場合は src/mainview/ にある。どちらにも無ければ null。
+export const resolveWebviewLibPath = (root: string, libName: string): string | null => {
+    for (const rel of [join("views", "mainview", libName), join("src", "mainview", libName)]) {
+        const p = join(root, rel);
+        if (existsSync(p)) return p;
+    }
+    return null;
+};
+
+// COPY_BUILD_FILESとは別に、バンドルされない実行時ライブラリ（vja-runtime.jsはproject-bridge.jsに
+// バンドル済みのため除く）を探して返す。[ファイル名, 実体パス]
+export const listWebviewLibFiles = (root: string): [string, string][] => {
+    const out: [string, string][] = [];
+    for (const libName of WEBVIEW_RUNTIME_LIBS) {
+        if (libName === "vja-runtime.js") continue;
+        const p = resolveWebviewLibPath(root, libName);
+        if (p) out.push([libName, p]);
+        else console.warn(`[vja] 実行用ライブラリが見つかりません: ${libName}（${root}）`);
+    }
+    return out;
+};
 
 // build後のsrcパスを取得.
 export const BUILD_VJA_SRC_PATH = join(process.cwd(), "..", "Resources/app");
@@ -81,6 +106,14 @@ export const copyCompileAssets = (vjaRoot?: string): void => {
     }
     if (copied > 0) {
         console.log(`[copy-compile-assets] ${copied} ファイルをコピーしました → ${DEST}`);
+    }
+    // 実行時ライブラリ（qrcode.js/marked.umd.js等）
+    for (const [libName, src] of listWebviewLibFiles(root)) {
+        const dst = join(DEST, "mainview", libName);
+        const dstDir = dirname(dst);
+        if (!existsSync(dstDir)) mkdirSync(dstDir, { recursive: true });
+        copyFileSync(src, dst);
+        copied++;
     }
     console.debug("`## [copy-compile-assets] end");
 };

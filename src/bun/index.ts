@@ -21,7 +21,7 @@ import { type VjaRPCType, type DbRow, type DbResult } from "../shared/types";
 import { initLogger, writeLog } from "./logger";
 // 実際にインストール(ビルド)されているElectrobunのバージョンを取得する（ビルド時にバンドルされる）.
 import electrobunPkg from "electrobun/package.json";
-import { copyCompileAssets, getVersion, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH, WEBVIEW_RUNTIME_LIBS, ELECTROBUN_PIN_VERSION, ELECTROBUN_BUN_VERSION, ELECTROBUN_PATCH_FILE } from "./copy-compile-assets";
+import { copyCompileAssets, getVersion, resolveWebviewLibPath, listWebviewLibFiles, COPY_BUILD_FILES, BUILD_VJA_SRC_PATH, WEBVIEW_RUNTIME_LIBS, ELECTROBUN_PIN_VERSION, ELECTROBUN_BUN_VERSION, ELECTROBUN_PATCH_FILE } from "./copy-compile-assets";
 import { clearProjectDb, closeProjectDb } from "./db-manager";
 import { execFetch, buildConstInitScript, buildImageInitScript, resolvePictureSrc, pickStartForm, encryptAiKeys, decryptAiKeys, stripAiKeys, stripCloudCredentials, omitAppInputCredentials } from "./bun-utils";
 import { RUNTIME_ERROR_SNIPPET } from "./runtime-error-snippet";
@@ -841,11 +841,11 @@ const buildProjectFiles = async (): Promise<{
         if (existsSync(BUILD_VJA_SRC_PATH)) vjaRootForLibs = BUILD_VJA_SRC_PATH;
         for (const libName of WEBVIEW_RUNTIME_LIBS) {
             if (libName === "vja-runtime.js") continue; // project-bridge.jsにバンドル済み
-            const libSrc = join(vjaRootForLibs, "src", "mainview", libName);
-            if (existsSync(libSrc)) {
+            const libSrc = resolveWebviewLibPath(vjaRootForLibs, libName);
+            if (libSrc) {
                 copyFileSync(libSrc, join(outDir, libName));
             } else {
-                console.warn(`[vja] 実行用ライブラリコピー失敗（見つかりません）: ${libSrc}`);
+                console.warn(`[vja] 実行用ライブラリコピー失敗（見つかりません）: ${libName}（${vjaRootForLibs}）`);
             }
         }
 
@@ -919,6 +919,11 @@ const compileProject = async (): Promise<{ ok: boolean; error?: string; distPath
             if (!destDir) continue;
             const fileName = srcRel.split("/").slice(1).join("/");
             copyFileSync(join(vjaRoot, "src", srcRel), join(destDir, fileName));
+        }
+
+        // 実行時ライブラリ（qrcode.js/marked.umd.js等）。COPY_BUILD_FILESとは場所の解決が別
+        for (const [libName, src] of listWebviewLibFiles(vjaRoot)) {
+            copyFileSync(src, join(srcMainviewDir, libName));
         }
 
         // ── project-bridge.js（ビルド済み）をコピー ──
