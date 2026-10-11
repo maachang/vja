@@ -78,7 +78,6 @@ style="height:30px;background:var(--bg3);border:1px solid var(--border);border-r
 <button class="modal-btn" style="font-size:12px;padding:4px 10px;white-space:nowrap" onclick="openFormDesignTemplateModal()">📋 テンプレート選択…</button>
 <input id="fd-prompt-in" placeholder="AIへの補足指示（任意）" style="flex:1">
 <button class="yaml-ai-btn" id="fd-gen-yaml-btn" title="依頼文章から画面デザインYAMLを作成します" <%- attrYaml %>>✨ YAMLドラフト生成</button>
-<button class="yaml-ai-btn" id="ai-js-to-yaml-btn" title="JSタブのコードの内容からイベントYAMLを書き起こします" <%- attrJsToYaml %>>📖 JSからYAML化</button>
 <button class="yaml-ai-btn" id="fd-gen-btn" <%- attrGen %>>🤖 画面反映</button>
 </div>
 </script>
@@ -303,6 +302,7 @@ style="height:30px;background:var(--bg3);border:1px solid var(--border);border-r
 <div style="display:flex;align-items:center;gap:4px">
 <input id="ai-prompt-in" placeholder="AIへの補足指示（任意）" style="flex:1">
 <button class="yaml-ai-btn" id="ai-gen-yaml-btn" title="依頼内容からイベントYAMLドラフトを作成します" <%- attrGenYaml %>>✨ YAMLドラフト生成</button>
+<button class="yaml-ai-btn" id="ai-js-to-yaml-btn" title="JSタブのコードの内容からイベントYAMLを書き起こします" <%- attrJsToYaml %>>📖 JSからYAML化</button>
 <button class="yaml-ai-btn" id="ai-gen-random-btn" title="temperatureを一時的に上げて再生成します（同じ間違いを繰り返す場合に）" <%- attrGenRandom %>>🎲 再生成</button>
 <button class="yaml-ai-btn" id="ai-gen-btn" <%- attrGen %>><%= genLabel %></button>
 <span class="yaml-ai-right-spacer" id="ai-status"></span>
