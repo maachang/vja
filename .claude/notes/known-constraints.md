@@ -46,3 +46,7 @@
   - **対策**: `vja-defs.js`の`ensureWebviewLib(src, globalName)`が素の`<script>`を動的に追加して読み込む（失敗しても解決する）。`vja-ui.js`のINIT末尾で`marked`/`qrcode`を読み込み、終わったらmarkdown/QRウィジェットを`renderWidget`で再描画。`vja-help.js`の`openHelp`も同関数を使う。`electrobun.config.ts`の`build.copy`に`marked.umd.js`と`qrcode.js`の両方を登録する。
   - 新しい外部ライブラリをwebviewのグローバルとして使う時も同様に`ensureWebviewLib`経由にすること。`ensureWebviewLib`は`Object.assign(window,{...})`への追加が必要（コメント中の同名文字列を置換して公開漏れを起こした実例あり。`openHelp`が無言でハングした）。
   - 確認: `testGetWidgetHtml`が`libs:{marked,QRCode}`を返す
+
+## electrobun.configのcopyは「コピー元」がキー（同じ元を2回登録すると後が前を上書き）（2026-10-11）
+- `conf.build.copy`は`{コピー元: コピー先}`のマップ。`COPY_BUILD_FILES`（`src/mainview/qrcode.js`→`src/mainview/qrcode.js`）と、後半の`views/mainview/`への登録が同じキーで衝突し、`Resources/app/src/mainview/`へ`qrcode.js`/`marked.umd.js`が置かれなかった（実行時「実行用ライブラリコピー失敗」、ビルド後のコンパイルは`copyFileSync`が例外）。
+- 対処: 実行時ライブラリは`COPY_BUILD_FILES`から外し（`vja-runtime.js`だけは残す）、場所は`resolveWebviewLibPath`（`views/mainview/`→`src/mainview/`の順）で解決。`listWebviewLibFiles`を`buildProjectFiles`/`compileProject`/`copyCompileAssets`で使う。新しい実行時ライブラリは`WEBVIEW_RUNTIME_LIBS`へ足すだけでよい。

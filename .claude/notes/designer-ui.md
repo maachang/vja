@@ -39,3 +39,8 @@
 - 外部URLはサーバー側のReferer制限で表示できない場合がある（pixiv等。コードではなく配信元の制限）
 - YAMLエディタの右パネルに「🖼️ 画像」セクション（`_rpBuildImageEntry`）。開閉しない見出し1行「🖼️ 画像（N件）…」（`data-action`付き。アコーディオンの開閉処理から除外）で、押すとピッカーと同じサムネイルのポップアップ（`openImagePickerForInsert`）を`modal-layer-1`へ重ねて開く（YAMLエディタは`modal-root`にあり、同じ層だと消えるため）。選ぶと`yamlInsert`で画像名をカーソル位置へ挿入。重ね表示中は「画像管理…」を出さない（画像が増えても、画像が見えない問題を避けるため）。AIのイベントJS生成には、画像名だけを`imagesCtx`として渡す（`buildGenPromptContext`→`ENG_YAML_TO_JS_USER_PROMPT`→`yaml-to-js.front-info.eng.md`の`{{imagesSection}}`）。定数と同じく、YAML本文＋追加指示に名前が出る画像に絞り込み（0件なら全件）、フロントのみ。画像が0件のプロジェクトのプロンプトは従来と一字一句同じ（確認済み）
 - 既知: Undoスナップショット（最大60個）に`images`も含まれるため、画像を多く登録するとメモリを使う
+
+## 2026-10-11〜14の不具合と教訓
+- **テンプレートの置き場所を間違えた**: 「📖 JSからYAML化」ボタンが、`attrJsToYaml`を渡さないフォーム設計用バー（`ye-tpl-formdesign-ai-bar`）に入っており、「AIでフォーム設計」を開くと`attrJsToYaml is not defined`。正しい場所はイベント用バー（`ye-tpl-default-ai-bar`）。ボタンを足す時は、`render`に渡している値を持つテンプレートか確認する。
+- **datagridのRowClick/HeaderClick**: 行（`tr`）/見出し（`th`）のクリック処理が`row`/`column`を付けて`_vjaRun`を呼ぶ。以前はこの2つをDOMの`click`としても登録していたため、行・見出し以外（0件時の空白）をクリックするとイベントデータ無しで実行され、`ev.column`が`undefined`になっていた。現在はdatagridの`RowClick`/`HeaderClick`はDOM登録しない（`src/bun/index.ts`のイベント登録部）。**0件のとき`RowClick`は動かない**（仕様）。`HeaderClick`はヘッダーがあれば0件でも動く。
+- 調査に使えるログ: 実行ウィンドウのログは`build/dev-linux-x64/vja-dev/bin/logs/app.YYYY-MM-DD.log`（vja再起動で書き直される。再現後すぐ読む）。
