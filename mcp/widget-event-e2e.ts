@@ -25,6 +25,24 @@ const call = async (m: string, p: any = {}) => {
 };
 
 type Call = [string, ...any[]];
+// 実際のボタン操作フロー(yamlAiGenerate)で生成する。testYamlAiGenerateはYAMLをエディタ欄(#yaml-ta)から
+// 読むため、エディタを開かずに呼ぶとYAML本文がプロンプトに入らない（2026-10-15、これで偽OKが出た）。
+// 生成後のJSはウィジェットのjsCodeへ保存されるので、それを取り出す。送信プロンプトにYAMLの要点(marker)が
+// 入っているかも確認する。戻り値: { ok, code, error }
+const generateViaEditor = async (wid: number, evName: string, marker: string) => {
+    await call("testOpenYamlEditor", { wid, evName });
+    const f = await call("testYamlAiGenerateFull", { wid, evName });
+    if (!f.ok) return { ok: false, error: f.error };
+    if (!(f.prompt?.userPrompt || "").includes(marker)) return { ok: false, error: "プロンプトにYAML本文が入っていない: " + marker };
+    for (let i = 0; i < 40; i++) {
+        const ws = (await call("testGetWidgets")).widgets || [];
+        const code = ws.find((w: any) => w.id === wid)?.jsCode?.[evName];
+        if (code) return { ok: true, code };
+        await new Promise((r) => setTimeout(r, 250));
+    }
+    return { ok: false, error: "生成コードが保存されなかった（タイムアウト）" };
+};
+
 let ng = 0;
 const check = (label: string, cond: boolean, detail = "") => {
     console.log((cond ? "  OK " : "  NG ") + label + (cond ? "" : "  " + detail));
@@ -63,13 +81,13 @@ if (AI) {
         // testApplyProjectDataはaiConfigも置き換えるため、適用の後に接続先を設定する
         await call("testApplyProjectData", { data: base });
         await call("testSetAiConfig", LLM);
-        const g = await call("testYamlAiGenerate", { wid: 2, evName: "Click" });
+        const g = await generateViaEditor(2, "Click", "testSearchInput");
         if (!g.ok) { check(`#${i} 生成`, false, g.error); continue; }
-        const r = await call("testMockRunRecord", { code: g.finalCode, evName: "Click", wtag: "button", wid: 2 });
+        const r = await call("testMockRunRecord", { code: g.code, evName: "Click", wtag: "button", wid: 2 });
         const c: Call[] = r.calls || [];
         console.log(`#${i} calls=` + JSON.stringify(c).slice(0, 300));
         check(`#${i} モック実行が成功`, r.ok && !r.error, JSON.stringify(r.error));
-        check(`#${i} 結果をtestResultGridへ渡している`, ["widget.set", "widget.setValue", "widget.setTableData"].some((api) => find(c, api, "testResultGrid").length >= 1), JSON.stringify(c) + "\n" + g.finalCode);
+        check(`#${i} 結果をtestResultGridへ渡している`, ["widget.set", "widget.setValue", "widget.setTableData"].some((api) => find(c, api, "testResultGrid").length >= 1), JSON.stringify(c) + "\n" + g.code);
         const names = new Set(["testSearchInput", "testSearchSelect", "testResultGrid", "testSearchButton"]);
         check(`#${i} 宛先が実在するウィジェットのみ`, c.filter((x) => x[0].startsWith("widget.")).every((x) => names.has(x[1])), JSON.stringify(c));
     }

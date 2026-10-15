@@ -116,3 +116,10 @@
 - `bun run mcp/widget-event-e2e.ts [--ai --runs N]`: 手書きコードで記録を検証(A)／実LLMで`testSearchButton`のClickを生成し、結果が`testResultGrid`へ渡っているか・宛先が実在するかを判定(B)。2026-10-15、Aは全項目OK、B(qwen2.5-coder-7b)は5回とも`vja.widget.set('testResultGrid', result)`でOK
 - 判定できるのは「どのウィジェットへ・どの値を・どのAPIで渡したか」まで。画面が実際に変わるか（描画）は対象外で、実行ウィンドウの目視確認が要る。画像(Image)のような描画依存のものも同様
 - 教訓: `testApplyProjectData`は`aiConfig`も置き換える。実LLMで回すときは、適用の**後**に`testSetAiConfig`を呼ぶ（先に呼ぶと既定の`localhost:8080`へ接続して`error`になる）
+- **全ウィジェット種別版**（2026-10-15）: `bun run mcp/widget-event-all-e2e.ts [--part E|T] [--only 名前の一部] [--runs N]`。E=18種×全イベント（msgLabelへ目印文字列を設定）、T=ボタンClickで各種別へ値を反映。結果は`.claudeWork/widget-event-all-result.json`。qwen2.5-coder-7b・各1回で77/79 OK。NGの2件: `E:checkbox.CheckedChanged`（YAMLに無い「チェック状態での分岐」をAIが足し、モックのcheckbox既定値falseでelse側へ入った）、`T:textarea`（「複数行に設定」の指示の文字列を使わず、取得値の再設定＋架空のoptionsを書いた）。pictureの差し替えは対象外
+- **【教訓・偽OK】`testYamlAiGenerate`はYAMLをエディタ欄(`#yaml-ta`)から読むため、エディタを開かずに呼ぶとYAML本文がプロンプトに入らない**。この状態でも、テーブル定義だけから「それらしいコード」が生成され、判定が偶然通った（widget-event-e2e.tsのBパートが一度偽OKになった）。生成は`testOpenYamlEditor`→`testYamlAiGenerateFull`で行い、生成コードはウィジェットの`jsCode`から取り出す。送信プロンプトにYAMLの要点が入っているかも確認する（`generateViaEditor`）
+- **全ウィジェット版の2件のNGの原因調査（2026-10-16）**:
+  - `T:textarea`は**題材の不備**。指示の値「複数行」を、AIは設定する文字列ではなくtextareaの性質（改行処理）と読んだ（0/10）。「こんにちは」に変えると8/8。**テストの値は、ウィジェット種別の性質を連想させる語（複数行・数値等）にしない**
+  - `E:checkbox.CheckedChanged`（0/10、radioの同構成は10/10）は**モデルの先入観**で、YAMLに無い「チェック状態での分岐（外れたら空）」を足す。直接LLMへ送る切り分けで、Input Parameters欄・説明文・種別名/ウィジェット名/YAML中の語を1つだけradioへ置換しても直らず、checkboxの語を**全部**radioへ置換した時だけ0/8になった。システムプロンプトへの「指示にない分岐・getの禁止」追記や、既存の禁止例へのCheckedChanged追記では、どちらも直らなかった（7B、temperature 0）。既存の「Fidelity to YAML」ルールは、イベント名からの推測を既に禁じている
+  - 対応: 既知の制約として記録のみ（製品は変更しない）。実際の利用で条件が必要なら、YAMLに「チェックされた場合:」の見出しを書く。コード側で「見出し無しなのに`if`」を検出する案は、`rows.length`等の正当な`if`で誤検出する恐れがあり、誤検出率を測ってから判断する（未着手）
+  - 切り分け方法: `testGetLastPrompt`で実際のプロンプトを保存→要素を1つずつ置換して直接LLMへ送る。システム/ユーザーの置換が効いたか（元の文字列が存在したか）を必ず確認する
