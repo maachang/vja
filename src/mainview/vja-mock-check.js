@@ -457,35 +457,38 @@ function _buildFrontMock(evName, wtag, overrides, widgets) {
         }
         return fallback;
     }
+    // 書き込み系APIの呼び出し履歴（テスト用。__calls経由で取り出す）.
+    const _calls = [];
     return {
+        __calls: _calls,
         widget: {
             get: (name) => _widgetGetValue(name),
-            set: () => {},
+            set: (...a) => { _calls.push(["widget.set", ...a]); },
             getValue: (name) => _widgetGetValue(name),
-            setValue: () => {},
-            setItems: () => {},
-            setSuggestions: () => {},
-            setTableData: () => {},
+            setValue: (...a) => { _calls.push(["widget.setValue", ...a]); },
+            setItems: (...a) => { _calls.push(["widget.setItems", ...a]); },
+            setSuggestions: (...a) => { _calls.push(["widget.setSuggestions", ...a]); },
+            setTableData: (...a) => { _calls.push(["widget.setTableData", ...a]); },
             getAllInputs: () => ({}),
-            setVisible: () => {},
-            show: () => {},
-            hide: () => {},
-            enable: () => {},
-            disable: () => {},
+            setVisible: (...a) => { _calls.push(["widget.setVisible", ...a]); },
+            show: (...a) => { _calls.push(["widget.show", ...a]); },
+            hide: (...a) => { _calls.push(["widget.hide", ...a]); },
+            enable: (...a) => { _calls.push(["widget.enable", ...a]); },
+            disable: (...a) => { _calls.push(["widget.disable", ...a]); },
         },
         const: {
             get: (name) => _constGetValue(name),
             getAll: () => ({}),
         },
         form: {
-            navigate: async () => {},
+            navigate: async (...a) => { _calls.push(["form.navigate", ...a]); },
             back: () => {},
-            setParam: () => {},
+            setParam: (...a) => { _calls.push(["form.setParam", ...a]); },
             getParam: () => "",
         },
         session: {
             get: async (key) => _sessionGetValue(key),
-            set: async () => true,
+            set: async (...a) => { _calls.push(["session.set", ...a]); return true; },
             delete: async () => true,
             clear: async () => true,
         },
@@ -667,7 +670,9 @@ function _getMockWorkerUrl() {
         "    if (capturedError) {",
         "      postMessage({ ok: false, caught: true, message: capturedError.message || String(capturedError), line: capturedError.line, stack: capturedError.stack });",
         "    } else {",
-        "      postMessage({ ok: true });",
+        "      let calls = [];",
+        "      try { calls = JSON.parse(JSON.stringify(vjaMock.__calls || [])); } catch (_e) {}",
+        "      postMessage({ ok: true, calls });",
         "    }",
         "  } catch (e) {",
         "    postMessage({ ok: false, message: (e && e.message) ? e.message : String(e), line: e && e.line, stack: e && e.stack });",
@@ -695,8 +700,9 @@ function _getMockWorkerUrl() {
 // 実行すると、そのままUI全体がフリーズし復帰不能になる。Web Worker内で実行すれば、
 // タイムアウト時にterminate()でスレッドごと強制終了できるため、無限ループでも
 // UIは固まらず、エディタ側にタイムアウトエラーとして通知できる。
-async function _runMockSmokeTest(code, isAppEvent, evName, wtag, wid) {
-    if (getProjectData().aiConfig.mockCheckEnabled === false) return null;
+// recorder: 配列を渡すと、実行完了時の書き込み系API呼び出し履歴（["widget.setValue", 引数...]）を追加する（テスト用）.
+async function _runMockSmokeTest(code, isAppEvent, evName, wtag, wid, recorder) {
+    if (!recorder && getProjectData().aiConfig.mockCheckEnabled === false) return null;
     if (typeof Worker === "undefined") return null; // Worker非対応環境では検証をスキップ
     const overrides = wid !== undefined ? _computeMockOverrides(wid, evName) : undefined;
     const extMock = _buildExtRuntimeMock();
@@ -725,6 +731,7 @@ async function _runMockSmokeTest(code, isAppEvent, evName, wtag, wid) {
         worker.onmessage = (ev) => {
             const r = ev.data;
             if (!r || r.ok) {
+                if (r && recorder && Array.isArray(r.calls)) recorder.push(...r.calls);
                 finish(null);
                 return;
             }
@@ -1516,8 +1523,16 @@ async function augmentWithMockCheck(validation, code, isAppEvent, evName, wtag, 
     return { ...validation, ok: false, mockError };
 }
 
+// テスト用: コードをモックで実行し、書き込み系API(widget.setValue等)の呼び出し履歴を返す.
+// 戻り値: { error: モック実行エラー(無ければnull), calls: [["widget.setValue", 引数...], ...] }
+async function runMockRecord(code, evName, wtag, wid) {
+    const calls = [];
+    const error = await _runMockSmokeTest(code, false, evName, wtag, wid, calls);
+    return { error, calls };
+}
+
 Object.assign(window, {
-    validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
+    runMockRecord, validateGeneratedJs, annotateUnknownApis, showAiValidationWarningBanner,
     openAiValidationDetailModal,
     dismissAiValidationBanner, manualRetryAiFix, retryAiFix, manualMockCheck,
     openMockOverrideEditor, saveMockOverrides, mockEditorAddRow, mockEditorOnTypeChange,

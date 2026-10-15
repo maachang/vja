@@ -125,35 +125,38 @@
             return fallback;
         }
 
+        // 書き込み系APIの呼び出し履歴（テスト用。__calls経由で取り出す）.
+        const _calls = [];
         return {
+            __calls: _calls,
             widget: {
                 get: (name) => _widgetGetValue(name),
-                set: () => {},
+                set: (...a) => { _calls.push(["widget.set", ...a]); },
                 getValue: (name) => _widgetGetValue(name), // 旧エイリアス（ランタイムには残存）
-                setValue: () => {},
-                setItems: () => {},
-                setSuggestions: () => {},
-                setTableData: () => {},
+                setValue: (...a) => { _calls.push(["widget.setValue", ...a]); },
+                setItems: (...a) => { _calls.push(["widget.setItems", ...a]); },
+                setSuggestions: (...a) => { _calls.push(["widget.setSuggestions", ...a]); },
+                setTableData: (...a) => { _calls.push(["widget.setTableData", ...a]); },
                 getAllInputs: () => ({}),
-                setVisible: () => {},
-                show: () => {},
-                hide: () => {},
-                enable: () => {},
-                disable: () => {},
+                setVisible: (...a) => { _calls.push(["widget.setVisible", ...a]); },
+                show: (...a) => { _calls.push(["widget.show", ...a]); },
+                hide: (...a) => { _calls.push(["widget.hide", ...a]); },
+                enable: (...a) => { _calls.push(["widget.enable", ...a]); },
+                disable: (...a) => { _calls.push(["widget.disable", ...a]); },
             },
             const: {
                 get: (name) => _constGetValue(name),
                 getAll: () => ({}),
             },
             form: {
-                navigate: async () => {},
+                navigate: async (...a) => { _calls.push(["form.navigate", ...a]); },
                 back: () => {},
-                setParam: () => {},
+                setParam: (...a) => { _calls.push(["form.setParam", ...a]); },
                 getParam: () => "",
             },
             session: {
                 get: async (key) => _sessionGetValue(key),
-                set: async () => true,
+                set: async (...a) => { _calls.push(["session.set", ...a]); return true; },
                 delete: async () => true,
                 clear: async () => true,
             },

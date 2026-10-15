@@ -554,6 +554,17 @@ const _testYamlAiGenerate = async (p: { wid: number | string; evName: string; is
         return { ok: false, error: e.message };
     }
 };
+// コードをモックで実行し、書き込み系API(vja.widget.setValue等)の呼び出し履歴を返す（記録型モック）.
+// 「どのウィジェットへ・どの値を・どのAPIで渡したか」の確認用。画面が実際に変わるかは対象外.
+const _testMockRunRecord = async (p: { code: string; evName: string; wtag?: string; wid?: number | string }) => {
+    const g = window as any;
+    try {
+        const r = await g.runMockRecord(p.code, p.evName, p.wtag, p.wid);
+        return { ok: true, error: r.error, calls: r.calls };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
 // window.__vjaTestAutoConfirm（showVjaDialogのテスト自動応答フラグ、vja-runtime.js）を
 // 設定する。実際のyamlAiGenerate()等（showConfirm()を経由する本物の呼び出し経路）を
 // 自動テストで丸ごと実行するために使う。valueを省略/nullにすると元の通常動作
@@ -796,6 +807,7 @@ const rpc = Electroview.defineRPC({
             testManualRetryAiFix: _testManualRetryAiFix,
             testFormDesignTextToYamlGenerate: _testFormDesignTextToYamlGenerate,
             testYamlAiGenerate: _testYamlAiGenerate,
+            testMockRunRecord: _testMockRunRecord,
             testSetAutoConfirm: _testSetAutoConfirm,
             testGetLastPrompt: _testGetLastPrompt,
             testYamlAiGenerateFull: _testYamlAiGenerateFull,

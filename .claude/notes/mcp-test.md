@@ -108,3 +108,11 @@
 
 - `bun run mcp/js-to-yaml-e2e.ts [--runs N] [--preset <共通AIプリセット名の一部>]`。テスト用ハンドラ`testJsToYamlGenerateFull`（`bridge.ts`、要`testSetAutoConfirm`）がボタン操作フロー全体を実行する。条件分岐/繰り返し/単純の3シナリオ＋ウィジェット名の保持を判定
 - **起動中のアプリはprompts/*.mdを起動時のコピーで使う**。プロンプトを直したら`bun run mcp`を再起動しないと反映されない。停止は`ps`でPIDを取って`kill`（`pkill -f`/`pgrep -f`は自分のシェルに一致して自殺する）
+
+# 記録型モック（書き込み系APIの呼び出し履歴）とwidget-event-e2e（2026-10-15）
+
+- モック(`vja-mock-runtime.js`と、Worker用複製`vja-mock-check.js`の`_MOCK_WORKER_RUNTIME_SRC`部)の書き込み系API（`widget.set/setValue/setItems/setSuggestions/setTableData/setVisible/show/hide/enable/disable`、`form.navigate/setParam`、`session.set`）は、挙動は従来どおり（何もしない）のまま、`["widget.setValue", 引数...]`を`__calls`へ記録する。**2か所は手動同期**（片方だけ直さない）
+- Workerは成功時に`postMessage({ok:true, calls})`を返す。本番の検証(`_runMockSmokeTest`)は`recorder`引数を渡さない限り履歴を使わない。テスト入口は`runMockRecord(code, evName, wtag, wid)`（`vja-mock-check.js`）→`_testMockRunRecord`（`bridge.ts`）→`testMockRunRecord`（`src/bun/index.ts`のtestMethods）
+- `bun run mcp/widget-event-e2e.ts [--ai --runs N]`: 手書きコードで記録を検証(A)／実LLMで`testSearchButton`のClickを生成し、結果が`testResultGrid`へ渡っているか・宛先が実在するかを判定(B)。2026-10-15、Aは全項目OK、B(qwen2.5-coder-7b)は5回とも`vja.widget.set('testResultGrid', result)`でOK
+- 判定できるのは「どのウィジェットへ・どの値を・どのAPIで渡したか」まで。画面が実際に変わるか（描画）は対象外で、実行ウィンドウの目視確認が要る。画像(Image)のような描画依存のものも同様
+- 教訓: `testApplyProjectData`は`aiConfig`も置き換える。実LLMで回すときは、適用の**後**に`testSetAiConfig`を呼ぶ（先に呼ぶと既定の`localhost:8080`へ接続して`error`になる）
