@@ -544,7 +544,7 @@ const WIDGET_DEFS = {
             const rfg = p.rowFg || "#000000";
             const bc = p.borderColor || "#cccccc";
             const fs = p.fontSize || 12;
-            const vis2 = p.visible === false ? "visibility:hidden" : "";
+            const vis2 = p.visible === false ? "opacity:.35;outline:1px dashed #888;outline-offset:-1px" : "";
             const ff = p.fontFamily || "";
             const fw = p.fontBold ? "bold" : "normal";
             const fontStyle = (ff ? `font-family:${ff};` : "") + `font-weight:${fw};`;

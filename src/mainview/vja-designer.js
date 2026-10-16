@@ -92,9 +92,11 @@ function applyForm() {
 /* ═══════════════════════════════════════════
   WIDGET HTML
 ═══════════════════════════════════════════ */
+const DESIGN_HIDDEN_STYLE = "opacity:.35;outline:1px dashed #888;outline-offset:-1px";
 function makeInner(w) {
     const p = w.props;
-    const vis = p.visible === false ? "visibility:hidden" : "";
+    // デザイン時は非表示設定でも消さず、半透明＋点線で「非表示設定」と分かるようにする（実行時の非表示とは別）
+    const vis = p.visible === false ? DESIGN_HIDDEN_STYLE : "";
     const base = `width:100%;height:100%;box-sizing:border-box;font-family:'Yu Gothic UI','Meiryo UI','Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased;`;
     return WIDGET_DEFS[w.tag]?.preview?.(p, base, vis) || "";
 }
@@ -128,7 +130,7 @@ function renderWidget(w, isNew) {
 
 function applyWPos(el, w) {
     el.style.cssText = `left:${w.x}px;top:${w.y}px;width:${w.w}px;height:${w.h}px;z-index:${w.z || 0}`;
-    el.className = "widget" + (getDesignerState().selIds.includes(w.id) ? " sel" : "");
+    el.className = "widget" + (getDesignerState().selIds.includes(w.id) ? " sel" : "") + (w.props.visible === false ? " vhid" : "");
 }
 
 function fullRedraw() {
