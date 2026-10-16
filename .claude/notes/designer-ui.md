@@ -44,3 +44,6 @@
 - **テンプレートの置き場所を間違えた**: 「📖 JSからYAML化」ボタンが、`attrJsToYaml`を渡さないフォーム設計用バー（`ye-tpl-formdesign-ai-bar`）に入っており、「AIでフォーム設計」を開くと`attrJsToYaml is not defined`。正しい場所はイベント用バー（`ye-tpl-default-ai-bar`）。ボタンを足す時は、`render`に渡している値を持つテンプレートか確認する。
 - **datagridのRowClick/HeaderClick**: 行（`tr`）/見出し（`th`）のクリック処理が`row`/`column`を付けて`_vjaRun`を呼ぶ。以前はこの2つをDOMの`click`としても登録していたため、行・見出し以外（0件時の空白）をクリックするとイベントデータ無しで実行され、`ev.column`が`undefined`になっていた。現在はdatagridの`RowClick`/`HeaderClick`はDOM登録しない（`src/bun/index.ts`のイベント登録部）。**0件のとき`RowClick`は動かない**（仕様）。`HeaderClick`はヘッダーがあれば0件でも動く。
 - 調査に使えるログ: 実行ウィンドウのログは`build/dev-linux-x64/vja-dev/bin/logs/app.YYYY-MM-DD.log`（vja再起動で書き直される。再現後すぐ読む）。
+
+## Visible=falseの表示（2026-10-17）
+- デザイナー上では、Visible=falseのウィジェットを消さず、半透明（opacity .35）＋点線の枠＋左上の「非表示」バッジで表示する（以前は`visibility:hidden`で完全に見えなくなり、配置・選択の手がかりが無かった）。実装は`vja-designer.js`の`DESIGN_HIDDEN_STYLE`（プレビューの`vis`へ渡す）、`applyWPos`が付ける`vhid`クラス、`style.css`の`.widget.vhid::before`（バッジ）。datagridは`vja-defs.js`の`vis2`で同じ文字列を持つ（変えるときは両方）。実行時の非表示（`vja.widget.setVisible`等）は別で、この変更の対象外。実機で見た目を確認済み。
