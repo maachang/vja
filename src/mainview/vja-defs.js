@@ -185,6 +185,17 @@ function _wpBuildOptions(items) {
     新しいウィジェットを追加する場合は、ここに1エントリ
     追加するだけでよい（以前のように複数箇所への追記は不要）。
 ═══════════════════════════════════════════ */
+// プレビュー用: disabled/readonly属性（実行時のel.disabled等と同じ見え方にする）.
+function _previewAttrs(p) {
+    return [p.disabled ? "disabled" : "", p.readonly ? "readonly" : ""].filter(Boolean).join(" ");
+}
+// プレビュー用: scrollのつまみ位置(%)。つまみ長さは30%固定なので、動ける範囲は70%.
+function _scrollThumbPos(p) {
+    const min = Number(p.min) || 0, max = p.max === undefined || p.max === "" ? 100 : Number(p.max) || 0;
+    const ratio = max > min ? Math.min(1, Math.max(0, ((Number(p.val) || 0) - min) / (max - min))) : 0;
+    return Math.round(ratio * 70 * 100) / 100;
+}
+
 const WIDGET_DEFS = {
     button: {
         label: "button", icon: "⬜",
@@ -212,7 +223,7 @@ const WIDGET_DEFS = {
             ...PP_TAIL,
         ],
         preview: (p, base, vis) => render("wp-tpl-button", {
-            base, vis, bg: p.bg, fg: p.fg, fontSize: p.fontSize,
+            base, vis, attrs: _previewAttrs(p), bg: p.bg, fg: p.fg, fontSize: p.fontSize,
             fontFamily: p.fontFamily || "",
             fontWeight: p.fontBold ? "bold" : "normal",
             border: (p.borderSize || 0) + "px solid " + (p.borderColor || "#cccccc"),
@@ -323,6 +334,7 @@ const WIDGET_DEFS = {
             return render("wp-tpl-input", {
                 itype, text: p.text, placeholder: p.placeholder || "",
                 maxlen: p.maxLength ? `maxlength="${p.maxLength}"` : "",
+                attrs: _previewAttrs(p),
                 base, vis, bg: p.bg, fg: p.fg, fontSize: p.fontSize, fontFamily, fontWeight, border,
             });
         },
@@ -355,7 +367,7 @@ const WIDGET_DEFS = {
             ...PP_TAIL,
         ],
         preview: (p, base, vis) => render("wp-tpl-textarea", {
-            base, vis, bg: p.bg || "#fff", fg: p.fg || "#000", fontSize: p.fontSize || 12,
+            base, vis, attrs: _previewAttrs(p), bg: p.bg || "#fff", fg: p.fg || "#000", fontSize: p.fontSize || 12,
             fontFamily: p.fontFamily || "",
             fontWeight: p.fontBold ? "bold" : "normal",
             border: (p.borderSize || 1) + "px solid " + (p.borderColor || "#cccccc"),
@@ -753,6 +765,7 @@ const WIDGET_DEFS = {
             itype: p.inputType || "date", value: p.value || "",
             attrMin: p.min ? `min="${esc(p.min)}"` : "",
             attrMax: p.max ? `max="${esc(p.max)}"` : "",
+            attrs: _previewAttrs(p),
             base, vis, bg: p.bg, fg: p.fg, fontSize: p.fontSize,
             fontFamily: p.fontFamily || "",
             fontWeight: p.fontBold ? "bold" : "normal",
@@ -783,7 +796,7 @@ const WIDGET_DEFS = {
             ...PP_TAIL,
         ],
         preview: (p, base, vis) => render("wp-tpl-slider", {
-            base, vis, min: p.min || 0, max: p.max || 100, value: p.value || 0, step: p.step || 1,
+            base, vis, attrs: p.disabled ? "disabled" : "", min: p.min || 0, max: p.max || 100, value: p.value || 0, step: p.step || 1,
         }),
     },
     hscroll: {
@@ -802,7 +815,7 @@ const WIDGET_DEFS = {
             { k: "val", lb: "Value", t: "num" },
             ...PP_TAIL,
         ],
-        preview: (p, base, vis) => render("wp-tpl-hscroll", { base, vis, bg: p.bg || "#ddd" }),
+        preview: (p, base, vis) => render("wp-tpl-hscroll", { base, vis, bg: p.bg || "#ddd", pos: _scrollThumbPos(p) }),
     },
     vscroll: {
         label: "垂直scroll", icon: "↕️",
@@ -820,7 +833,7 @@ const WIDGET_DEFS = {
             { k: "val", lb: "Value", t: "num" },
             ...PP_TAIL,
         ],
-        preview: (p, base, vis) => render("wp-tpl-vscroll", { base, vis, bg: p.bg || "#ddd" }),
+        preview: (p, base, vis) => render("wp-tpl-vscroll", { base, vis, bg: p.bg || "#ddd", pos: _scrollThumbPos(p) }),
     },
     // フォーム自体（ツールボックスには表示されないため label/icon/def は持たない）
     form: {

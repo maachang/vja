@@ -11,7 +11,7 @@
     - 要素のテキストコンテンツ・value/placeholder等のユーザー入力由来の値は <%= %>（自動エスケープ）を使うこと。
 -->
 <script type="text/vja-tpl" id="wp-tpl-button">
-<button style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;border-radius:<%- borderRadius %>px;cursor:default;pointer-events:none;<%- vis %>"><%= text %></button>
+<button <%- attrs %> style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;border-radius:<%- borderRadius %>px;cursor:default;pointer-events:none;<%- vis %>"><%= text %></button>
 </script>
 
 <script type="text/vja-tpl" id="wp-tpl-label">
@@ -23,7 +23,7 @@
 </script>
 
 <script type="text/vja-tpl" id="wp-tpl-input">
-<input type="<%= itype %>" value="<%= text %>" placeholder="<%= placeholder %>" <%- maxlen %> style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;padding:0 4px;pointer-events:none;<%- vis %>">
+<input type="<%= itype %>" value="<%= text %>" placeholder="<%= placeholder %>" <%- maxlen %> <%- attrs %> style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;padding:0 4px;pointer-events:none;<%- vis %>">
 </script>
 
 <script type="text/vja-tpl" id="wp-tpl-checkbox">
@@ -91,21 +91,21 @@
 </script>
 
 <script type="text/vja-tpl" id="wp-tpl-datepicker">
-<input type="<%= itype %>" value="<%= value %>" <%- attrMin %> <%- attrMax %> style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;padding:0 4px;pointer-events:none;<%- vis %>">
+<input type="<%= itype %>" value="<%= value %>" <%- attrMin %> <%- attrMax %> <%- attrs %> style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;padding:0 4px;pointer-events:none;<%- vis %>">
 </script>
 
 <script type="text/vja-tpl" id="wp-tpl-slider">
-<div style="<%- base %>display:flex;align-items:center;<%- vis %>"><input type="range" min="<%= min %>" max="<%= max %>" value="<%= value %>" step="<%= step %>" style="width:100%;pointer-events:none;accent-color:#5b7bfa"></div>
+<div style="<%- base %>display:flex;align-items:center;<%- vis %>"><input type="range" min="<%= min %>" max="<%= max %>" value="<%= value %>" step="<%= step %>" <%- attrs %> style="width:100%;pointer-events:none;accent-color:#5b7bfa"></div>
 </script>
 
 <script type="text/vja-tpl" id="wp-tpl-hscroll">
-<div style="<%- base %>background:<%- bg %>;border:1px solid #999;border-radius:2px;display:flex;align-items:center;justify-content:space-between;padding:0 2px;<%- vis %>"><span style="font-size:9px">◀</span><div style="flex:1;height:50%;background:#999;margin:0 3px;border-radius:1px"></div><span style="font-size:9px">▶</span></div>
+<div style="<%- base %>background:<%- bg %>;border:1px solid #999;border-radius:2px;display:flex;align-items:center;justify-content:space-between;padding:0 2px;<%- vis %>"><span style="font-size:9px">◀</span><div style="flex:1;height:50%;margin:0 3px;position:relative"><div style="position:absolute;top:0;bottom:0;left:<%- pos %>%;width:30%;background:#999;border-radius:1px"></div></div><span style="font-size:9px">▶</span></div>
 </script>
 
 <script type="text/vja-tpl" id="wp-tpl-vscroll">
-<div style="<%- base %>background:<%- bg %>;border:1px solid #999;border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;<%- vis %>"><span style="font-size:9px">▲</span><div style="width:50%;flex:1;background:#999;margin:3px 0;border-radius:1px"></div><span style="font-size:9px">▼</span></div>
+<div style="<%- base %>background:<%- bg %>;border:1px solid #999;border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:2px 0;<%- vis %>"><span style="font-size:9px">▲</span><div style="width:50%;flex:1;margin:3px 0;position:relative"><div style="position:absolute;left:0;right:0;top:<%- pos %>%;height:30%;background:#999;border-radius:1px"></div></div><span style="font-size:9px">▼</span></div>
 </script>
 
 <script type="text/vja-tpl" id="wp-tpl-textarea">
-<textarea style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;resize:none;padding:4px;box-sizing:border-box;pointer-events:none;<%- vis %>" placeholder="<%= placeholder %>"><%= text %></textarea>
+<textarea <%- attrs %> style="<%- base %>background:<%- bg %>;color:<%- fg %>;font-size:<%- fontSize %>px;font-family:<%- fontFamily %>;font-weight:<%- fontWeight %>;border:<%- border %>;resize:none;padding:4px;box-sizing:border-box;pointer-events:none;<%- vis %>" placeholder="<%= placeholder %>"><%= text %></textarea>
 </script>
