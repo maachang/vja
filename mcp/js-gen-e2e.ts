@@ -14,7 +14,7 @@
 //   モックのdb.queryは固定のダミー値([{}])を返すため、DBの結果に依存する分岐の判定は「呼び出しの有無・SQLの形」に限る。
 //   testApplyProjectDataはaiConfigも置き換えるので、適用の後にtestSetAiConfigを呼ぶ。起動中のvjaはprompts/*.mdを起動時のコピーで使う。
 //   生成時の自動リトライを通った最終コードを検証するため、「検証NG」＝リトライしても直らなかったもの。
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, statSync } from "fs";
 import { join } from "path";
 
 const ROOT = join(import.meta.dir, "..");
@@ -24,6 +24,8 @@ const opt = (k: string, d: string) => { const i = argv.indexOf("--" + k); return
 const RUNS = Math.max(1, parseInt(opt("runs", "5"), 10) || 5);
 const ONLY = opt("only", "").split(",").filter(Boolean);
 const OUT = opt("out", join(ROOT, ".claudeWork/js-gen-result.json"));
+// アプリのログ（`bun run mcp > <このファイル>`で起動した場合）から、生成時の自動リトライの有無・初回の検出内容を読む
+const APPLOG = opt("applog", join(ROOT, ".claudeWork/mcp-run.log"));
 const base = JSON.parse(readFileSync(join(ROOT, "mcp/fixtures/prompt-integrity-test.vjaproj.json"), "utf-8"));
 const LLM = JSON.parse(readFileSync(join(ROOT, "mcp/fixtures/test-llm.local.json"), "utf-8"));
 // --preset <共通AIプリセット名の一部>: アプリの共通プリセット(~/.vja-designer/ai-global-presets.json)で接続先を上書きする
@@ -58,6 +60,22 @@ const generateViaEditor = async (wid: number, evName: string, marker: string) =>
         await new Promise((r) => setTimeout(r, 250));
     }
     return { ok: false, error: "生成コードが保存されなかった（タイムアウト）" };
+};
+
+// アプリログのサイズ（この位置以降が、その生成で出た行）
+const logSize = () => { try { return statSync(APPLOG).size; } catch { return -1; } };
+// 位置fromより後の`[AI検証]`行から、リトライの有無・初回の検出内容・解消したかを読む（ログが読めなければnull）
+const readRetryInfo = (from: number) => {
+    if (from < 0) return null;
+    try {
+        const buf = readFileSync(APPLOG);
+        const lines = buf.subarray(from).toString("utf-8").split("\n").filter((l) => l.includes("[AI検証]"));
+        const start = lines.find((l) => l.includes("自動修正リトライを実行します"));
+        if (!start) return { retried: false, firstIssues: "", resolved: null as boolean | null };
+        const issues = start.split("検出内容: ")[1] || "";
+        const resolved = lines.some((l) => l.includes("リトライで解消しました")) ? true : lines.some((l) => l.includes("未解消")) ? false : null;
+        return { retried: true, firstIssues: issues, resolved };
+    } catch { return null; }
 };
 
 // ── 題材のウィジェット（名前→id、タグ） ──
@@ -178,11 +196,13 @@ const classify = (v: any): string[] => {
 const results: any[] = [];
 const kindCount: Record<string, number> = {};
 const perScn: Record<string, { ok: number; total: number }> = {};
+const perScnRetry: Record<string, { retried: number; resolved: number }> = {};
 
 await call("testSetAutoConfirm", { value: true });
 for (const sc of SCENARIOS) {
     if (ONLY.length && !ONLY.some((o) => sc.id.includes(o))) continue;
     perScn[sc.id] = { ok: 0, total: 0 };
+    perScnRetry[sc.id] = { retried: 0, resolved: 0 };
     for (let i = 1; i <= RUNS; i++) {
         const data = JSON.parse(JSON.stringify(base));
         const ws = mkWidgets();
@@ -194,8 +214,10 @@ for (const sc of SCENARIOS) {
         data.apiOptOverrides = { ...(data.apiOptOverrides || {}), [src.id + "_" + sc.evName]: sc.apis || [] };
         await call("testApplyProjectData", { data });
         await call("testSetAiConfig", { endpoint: LLM.endpoint, model: LLM.model, apiKey: API_KEY || undefined, temperature: LLM.temperature ?? undefined });
+        const logFrom = logSize();
         const g = await generateViaEditor(src.id, sc.evName, sc.marker);
-        let res: any = { id: sc.id, run: i };
+        await new Promise((r) => setTimeout(r, 500)); // ログの書き出し待ち
+        let res: any = { id: sc.id, run: i, retry: readRetryInfo(logFrom) };
         const kinds: string[] = [];
         if (!g.ok) { kinds.push("GENFAIL"); res.error = g.error; }
         else {
@@ -211,6 +233,7 @@ for (const sc of SCENARIOS) {
         }
         res.kinds = kinds;
         res.status = kinds.length ? "NG" : "OK";
+        if (res.retry?.retried) { perScnRetry[sc.id].retried++; if (res.retry.resolved) perScnRetry[sc.id].resolved++; }
         perScn[sc.id].total++;
         if (!kinds.length) perScn[sc.id].ok++;
         for (const k of kinds) kindCount[k] = (kindCount[k] || 0) + 1;
@@ -224,8 +247,20 @@ const tot = results.length, okN = results.filter((r) => r.status === "OK").lengt
 console.log(`\n=== 合計 ${okN}/${tot} OK ===`);
 console.log("--- 依頼別 ---");
 for (const [id, v] of Object.entries(perScn)) console.log(`${id.padEnd(22)} ${v.ok}/${v.total}`);
+const withLog = results.filter((r) => r.retry);
+if (withLog.length) {
+    const retried = withLog.filter((r) => r.retry.retried).length;
+    const firstOk = results.filter((r) => r.retry && !r.retry.retried && r.status === "OK").length;
+    console.log(`--- リトライ（ログから。ログ有り ${withLog.length}/${tot}回） ---`);
+    console.log(`初回で検証OK（リトライ無し）かつ最終OK: ${firstOk}/${withLog.length}  /  リトライした: ${retried}/${withLog.length}（うち解消 ${withLog.filter((r) => r.retry.retried && r.retry.resolved).length}）`);
+    for (const [id, v] of Object.entries(perScnRetry)) if (v.retried) console.log(`  ${id.padEnd(22)} リトライ ${v.retried}/${perScn[id].total}（解消 ${v.resolved}）`);
+    const byIssue: Record<string, number> = {};
+    for (const r of withLog) if (r.retry.retried) { const k = r.retry.firstIssues.replace(/[0-9]+行目/g, "N行目").slice(0, 60); byIssue[k] = (byIssue[k] || 0) + 1; }
+    console.log("  初回の検出内容:");
+    for (const [k, n] of Object.entries(byIssue).sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(3)}  ${k}`);
+}
 console.log("--- 失敗種別（件数。1件が複数種別に当たることがある） ---");
 for (const [k, n] of Object.entries(kindCount).sort((a, b) => b[1] - a[1])) console.log(`${k.padEnd(28)} ${n}`);
-writeFileSync(OUT, JSON.stringify({ model: LLM.model, runs: RUNS, summary: { ok: okN, total: tot, perScn, kindCount }, results }, null, 2));
+writeFileSync(OUT, JSON.stringify({ model: LLM.model, runs: RUNS, summary: { ok: okN, total: tot, perScn, kindCount, perScnRetry }, results }, null, 2));
 console.log("結果: " + OUT);
 process.exit(0);
