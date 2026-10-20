@@ -8,13 +8,13 @@
 //     3) 記録型モックの実行エラー(mockError)と、依頼の意図（宛先・値・API）との一致(intent)
 // 【使い方】
 //   1. `bun run mcp`（VJA_TEST_MODE=1でvjaが起動し、4570でテストサーバーが立つ）
-//   2. bun run mcp/js-gen-e2e.ts [--runs N] [--only <idの一部>] [--out <結果JSONのパス>]
+//   2. bun run mcp/js-gen-e2e.ts [--runs N] [--only <idの一部,...>] [--out <結果JSONのパス>] [--preset <共通AIプリセット名の一部>]
 //   接続先は mcp/fixtures/test-llm.local.json。結果は既定で.claudeWork/js-gen-result.json
 // 【AIメモ】題材はprompt-integrity-test.vjaproj.jsonのテーブルtest_items(id,name,category)。ウィジェットはスクリプト内で組み立てる。
 //   モックのdb.queryは固定のダミー値([{}])を返すため、DBの結果に依存する分岐の判定は「呼び出しの有無・SQLの形」に限る。
 //   testApplyProjectDataはaiConfigも置き換えるので、適用の後にtestSetAiConfigを呼ぶ。起動中のvjaはprompts/*.mdを起動時のコピーで使う。
 //   生成時の自動リトライを通った最終コードを検証するため、「検証NG」＝リトライしても直らなかったもの。
-import { readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 
 const ROOT = join(import.meta.dir, "..");
@@ -26,6 +26,20 @@ const ONLY = opt("only", "").split(",").filter(Boolean);
 const OUT = opt("out", join(ROOT, ".claudeWork/js-gen-result.json"));
 const base = JSON.parse(readFileSync(join(ROOT, "mcp/fixtures/prompt-integrity-test.vjaproj.json"), "utf-8"));
 const LLM = JSON.parse(readFileSync(join(ROOT, "mcp/fixtures/test-llm.local.json"), "utf-8"));
+// --preset <共通AIプリセット名の一部>: アプリの共通プリセット(~/.vja-designer/ai-global-presets.json)で接続先を上書きする
+// （APIキーありならOpenAI公式APIとして扱い、temperatureは送らない。キーは表示しない）
+let API_KEY = "";
+const PRESET = opt("preset", "");
+if (PRESET) {
+    const pf = join(process.env.HOME || "", ".vja-designer/ai-global-presets.json");
+    const list: any[] = existsSync(pf) ? (JSON.parse(readFileSync(pf, "utf-8")).presets || []) : [];
+    const hit = list.filter((p) => (p.name || "").includes(PRESET));
+    if (hit.length !== 1) { console.error("共通プリセットが一意に決まらない: " + PRESET); process.exit(2); }
+    const c = hit[0].config || {};
+    if (c.apiKey) { API_KEY = c.apiKey; LLM.endpoint = "https://api.openai.com"; LLM.model = c.model || "gpt-4o-mini"; LLM.temperature = undefined; }
+    else { LLM.endpoint = c.endpoint; LLM.model = c.model || ""; LLM.temperature = c.temperature; }
+    console.log("接続: プリセット「" + hit[0].name + "」 model=" + LLM.model + (API_KEY ? " (APIキーあり)" : ""));
+}
 const call = async (m: string, p: any = {}) => {
     const r = await fetch("http://localhost:" + PORT + "/" + m, { method: "POST", body: JSON.stringify(p) });
     return await r.json() as any;
@@ -179,7 +193,7 @@ for (const sc of SCENARIOS) {
         data.tableOptOverrides = { ...(data.tableOptOverrides || {}), [src.id + "_" + sc.evName]: sc.tables ? ["test_items"] : [] };
         data.apiOptOverrides = { ...(data.apiOptOverrides || {}), [src.id + "_" + sc.evName]: sc.apis || [] };
         await call("testApplyProjectData", { data });
-        await call("testSetAiConfig", LLM);
+        await call("testSetAiConfig", { endpoint: LLM.endpoint, model: LLM.model, apiKey: API_KEY || undefined, temperature: LLM.temperature ?? undefined });
         const g = await generateViaEditor(src.id, sc.evName, sc.marker);
         let res: any = { id: sc.id, run: i };
         const kinds: string[] = [];
