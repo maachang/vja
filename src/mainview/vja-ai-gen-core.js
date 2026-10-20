@@ -517,7 +517,7 @@ function buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowConte
         }
     );
 
-    return { sysPrompt, userPrompt, validationName, wtag: w?.tag, allWidgetsCtx, tablesCtx, imagesCtx };
+    return { sysPrompt, userPrompt, validationName, wtag: w?.tag, allWidgetsCtx, tablesCtx, imagesCtx, yamlCur };
 }
 
 // async function handleXxx() { ... } のラッパーを自動除去
@@ -543,7 +543,9 @@ function _unwrapAiFunctionWrapper(code) {
 // 戻り値: { finalCode, validation }（失敗時はnull）。
 async function generateEventJs(wid, evName, isAppEvent, isFormEvent, temperatureOverride, domOverride = null) {
     const w = (isAppEvent || isFormEvent) ? null : getWidget(wid);
-    const { sysPrompt, userPrompt, validationName } = buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, true, domOverride);
+    const { sysPrompt, userPrompt, validationName, yamlCur } = buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, true, domOverride);
+    // 検証へ渡すオプション。yamlTextはモーダルが生きているこの時点で読んだYAML（onSuccess内でDOMを読まないため）
+    const validateOpts = { checkNoTableDb: true, yamlText: yamlCur };
 
     let result = null;
     await runAiGenerate({
@@ -561,9 +563,9 @@ async function generateEventJs(wid, evName, isAppEvent, isFormEvent, temperature
             // ※temperatureの自動引き上げは行わない（通常のtemperature設定を
             //   そのまま使う）。ランダム性を上げて試したい場合は、エディタの
             //   「🎲 ランダム性を上げて再生成」ボタンを使う。
-            let validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag, wid, { checkNoTableDb: true });
+            let validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag, wid, validateOpts);
             if (isAutoMockCheckEnabled(wid, evName)) {
-                validation = await augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid, { checkNoTableDb: true });
+                validation = await augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid, validateOpts);
                 if (validation.code) unwrapped = validation.code;
             }
             if (!validation.ok) {
@@ -588,9 +590,9 @@ async function generateEventJs(wid, evName, isAppEvent, isFormEvent, temperature
                 });
                 if (retryCode) {
                     unwrapped = retryCode;
-                    validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag, wid, { checkNoTableDb: true });
+                    validation = validateGeneratedJs(unwrapped, isAppEvent, evName, w?.tag, wid, validateOpts);
                     if (isAutoMockCheckEnabled(wid, evName)) {
-                        validation = await augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid, { checkNoTableDb: true });
+                        validation = await augmentWithMockCheck(validation, unwrapped, isAppEvent, evName, w?.tag, wid, validateOpts);
                         if (validation.code) unwrapped = validation.code;
                     }
                     window.vja?.log?.debug?.(validation.ok

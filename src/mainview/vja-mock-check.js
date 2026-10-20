@@ -900,6 +900,19 @@ function _findMisusedSetSuggestions(code, wid, evName) {
     return found;
 }
 
+// YAMLに「確認ダイアログ」の手順があるのに、コードにvja.app.showConfirmの呼び出しが無いものを検出する。
+// 実測（2026-10-20、qwen2.5-coder-7b）: DB削除を含む依頼で、YAMLの確認ダイアログの手順が抜け、
+// 依頼に無い入力チェックが足されることがあった。検出して指摘すると、リトライで解消した（20/20）。
+// 検出対象は「確認ダイアログ」の語のみ（範囲を広げる場合は要相談）。yamlTextが無い呼び出しでは検査しない。
+function _findMissingConfirm(code, yamlText) {
+    if (!yamlText || !/確認ダイアログ/.test(yamlText)) return [];
+    if (/\bvja\.app\.showConfirm\s*\(/.test(code)) return [];
+    return [{
+        line: 1,
+        message: "YAMLに「確認ダイアログを出す」手順がありますが、コードに vja.app.showConfirm の呼び出しがありません。YAMLの手順どおりに実装してください",
+    }];
+}
+
 // 変数宣言スタイル（var/let/const）の警告を検出する。
 // フロントエンド: varのみ許可（let/constは違反）
 // バックエンド: constのみ禁止（letは許可）
@@ -1009,13 +1022,15 @@ function _getDisabledApiCategories(wid, evName, isAppEvent) {
 //   AI生成・AI修正の経路でのみ指定する（人が書いたコードのモック実行等では、利用テーブルを
 //   指定しなくても正当に動くDB呼び出しがあり得るため指定しない）。
 //   利用テーブルの状態が未初期化（undefined）の場合は判定しない。
+// opts.yamlText: 指定された場合のみ、YAMLの手順（確認ダイアログ）がコードに実装されているかも検査する。
 function validateGeneratedJs(code, isAppEvent, evName, wtag, wid, opts) {
     const syntaxError = _checkJsSyntax(code);
     const disabledCategories = _getDisabledApiCategories(wid, evName, isAppEvent);
     const tableState = (getProjectData().tableOptOverrides || {})[wid + "_" + evName];
     const noTableDb = !!(opts && opts.checkNoTableDb) && Array.isArray(tableState) && tableState.length === 0;
     const unknownApis = _findUnknownApis(code, isAppEvent, disabledCategories, noTableDb);
-    const forbiddenPatterns = _findForbiddenPatterns(code).concat(_findSelfTriggerRecursion(code, wid, evName)).concat(_findMisusedSetSuggestions(code, wid, evName));
+    const forbiddenPatterns = _findForbiddenPatterns(code).concat(_findSelfTriggerRecursion(code, wid, evName)).concat(_findMisusedSetSuggestions(code, wid, evName))
+        .concat(_findMissingConfirm(code, opts && opts.yamlText));
     const missingAwaits = findMissingAwaits(code, isAppEvent);
     const unknownWidgets = findUnknownWidgetNames(code);
     const eventTypeMismatches = _findEventTypeMismatch(code, evName, wtag);
