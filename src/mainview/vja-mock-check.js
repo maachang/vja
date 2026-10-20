@@ -506,6 +506,8 @@ function _buildFrontMock(evName, wtag, overrides, widgets) {
             openJson: async () => ({}),
             saveCsv: async () => {},
             saveJson: async () => {},
+            parseCsv: () => [{}],
+            toCsv: () => "",
         },
         file: {
             read: async () => "",

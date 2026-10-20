@@ -125,3 +125,13 @@
   - 切り分け方法: `testGetLastPrompt`で実際のプロンプトを保存→要素を1つずつ置換して直接LLMへ送る。システム/ユーザーの置換が効いたか（元の文字列が存在したか）を必ず確認する
 - **イベント以外のウィジェット動作**（2026-10-16）: `bun run mcp/widget-props-e2e.ts`（LLM不要・決定的）。P=17種のプロパティ値がデザイナーの描画(`testGetWidgetHtml`)に反映されるか、L=追加→選択→削除でデータ・描画・プロパティパネルが整合するか。34/34 OK。2026-10-16に、以前プレビュー未反映だった`disabled`/`readonly`（button/inputtype/textarea/datepicker/slider）と、hscroll/vscrollのつまみ位置（つまみ長30%固定、位置は(val-min)/(max-min)×70%）をプレビューへ反映し、判定項目へ移した（`templates/widget-preview.html`の`attrs`/`pos`、`vja-defs.js`の`_previewAttrs`/`_scrollThumbPos`）。pictureは対象外
 - **【教訓】テスト用vjaの停止**: `bun run mcp`のPID(`.pid`に控えたもの)をkillしても、子のvja本体(`build/dev-linux-x64/.../bin/bun`)が残り、ポート4570を握り続ける。次の起動は`EADDRINUSE`で失敗し、**変更前のコードのvjaへ接続して「直したのに反映されない」ように見える**。停止は`ss -ltnp | grep :4570`でリッスン中のPIDを取ってkillし、`ss -ltn | grep -c :4570`が0になるのを確認する
+
+# イベントJS生成の失敗パターン集計 js-gen-e2e（2026-10-20）
+
+- `bun run mcp/js-gen-e2e.ts [--runs N] [--only id,id] [--out path]`。業務寄りの24依頼（DB検索/登録/更新/削除、入力チェック、ウィジェット連携、繰り返し、確認ダイアログ、画面遷移、セッション、CSV、ローディング、エラー処理）を、YAML固定で実LLMへ生成させ、①生成成否 ②本番の`validateGeneratedJs`の種別 ③モック実行エラー ④意図一致、を集計する。結果は`.claudeWork/js-gen-result.json`。製品側に追加したのはテスト用ハンドラ`testValidateJs`（`bridge.ts`/`src/bun/index.ts`）のみ
+- 任意APIカテゴリ（form/session/io/file等）は**既定で無効**。依頼で使うならシナリオの`apis`で有効にする（有効化を忘れると、AIはそのAPIを知らされないまま書かされ、失敗が生成の問題に見える）。判定のAPI名は`prompts/vja-front-api-*.md`で裏取りする（`vja.ui.loading`を`showLoading`と思い込み、判定を誤った）
+- 実測（qwen2.5-coder-7b、temperature 0、各5回）。`temperature 0`のため同一依頼は5回ほぼ同じ結果になり、5回は独立な標本ではない（依頼の数が実質の標本数）
+  - 判定修正後: 24依頼中、全5回OKが20依頼、残りの失敗は次のとおり
+  - 生成の失敗（実際の誤り）: D5=存在しないウィジェット名`testResultGrid.selectedId`を創作、W4=「クリア」に指示のない`if (name || category)`を付けて条件付きにした、W5=selectBoxの選択肢にsetSuggestions（inputtype用）を使用、D4=1/5でUPDATEが無い
+  - **検証側の誤検知（2026-10-20修正済み）**: `vja.form.setParam('itemId', ...)`のキー名が`findUnknownWidgetNames`（`vja-ai-gen-core.js`、`_WIDGET_NAME_ARG_APIS`にform.setParam/getParamを含む）でウィジェット名として検査され、正しいコードがNGになる（`_WIDGET_NAME_ARG_APIS`からform.setParam/getParamを外して解消）
+  - **モックの欠落（2026-10-20修正済み）**: `vja.io.toCsv`が実ランタイム（`vja-runtime.js`）にはあるのにモック側に無く、正しいコードがmockErrorになる（`vja-mock-runtime.js`と`vja-mock-check.js`のioへparseCsv/toCsvを追加して解消。saveText/print/printElementは未追加）。修正後の再測定でN2・X1とも5/5 OK

@@ -174,6 +174,8 @@
                 openJson: async () => ({}),
                 saveCsv: async () => {},
                 saveJson: async () => {},
+                parseCsv: () => [{}],
+                toCsv: () => "",
             },
             file: {
                 read: async () => "",

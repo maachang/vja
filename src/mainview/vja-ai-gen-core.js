@@ -239,7 +239,6 @@ async function formatJsCode(code) {
 // 判定不能なため対象外とする。
 const _WIDGET_NAME_ARG_APIS = [
     "vja.widget.get", "vja.widget.set", "vja.widget.setSuggestions",
-    "vja.form.setParam", "vja.form.getParam",
 ];
 // コード内で、上記API群に対して「現在のフォームに存在しないウィジェット名」が
 // 文字列リテラルで渡されている箇所を検出する。vja.trigger.* も対象に含める
@@ -249,7 +248,7 @@ function findUnknownWidgetNames(code) {
     const widgetNames = new Set((getProjectData().widgets || []).map((w) => w.name));
     const found = [];
     const seen = new Set();
-    // vja.widget.get/set, vja.form.setParam/getParam
+    // vja.widget.get/set/setSuggestions（form.setParam/getParamの第1引数はパラメータ名なので対象外）
     _WIDGET_NAME_ARG_APIS.forEach((api) => {
         const re = new RegExp(api.replace(/\./g, "\\.") + "\\s*\\(\\s*['\"]([^'\"]+)['\"]", "g");
         let m;

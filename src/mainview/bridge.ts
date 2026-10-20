@@ -565,6 +565,15 @@ const _testMockRunRecord = async (p: { code: string; evName: string; wtag?: stri
         return { ok: false, error: e.message };
     }
 };
+// 生成コードを本番と同じ検証(validateGeneratedJs)に通した結果を返す（失敗種別の集計用）
+const _testValidateJs = (p: { code: string; evName: string; wtag?: string; wid?: number | string; isAppEvent?: boolean }) => {
+    const g = window as any;
+    try {
+        return { ok: true, result: g.validateGeneratedJs(p.code, !!p.isAppEvent, p.evName, p.wtag, p.wid, { checkNoTableDb: true }) };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
 // window.__vjaTestAutoConfirm（showVjaDialogのテスト自動応答フラグ、vja-runtime.js）を
 // 設定する。実際のyamlAiGenerate()等（showConfirm()を経由する本物の呼び出し経路）を
 // 自動テストで丸ごと実行するために使う。valueを省略/nullにすると元の通常動作
@@ -808,6 +817,7 @@ const rpc = Electroview.defineRPC({
             testFormDesignTextToYamlGenerate: _testFormDesignTextToYamlGenerate,
             testYamlAiGenerate: _testYamlAiGenerate,
             testMockRunRecord: _testMockRunRecord,
+            testValidateJs: _testValidateJs,
             testSetAutoConfirm: _testSetAutoConfirm,
             testGetLastPrompt: _testGetLastPrompt,
             testYamlAiGenerateFull: _testYamlAiGenerateFull,
