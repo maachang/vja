@@ -135,3 +135,7 @@
   - 生成の失敗（実際の誤り）: D5=存在しないウィジェット名`testResultGrid.selectedId`を創作、W4=「クリア」に指示のない`if (name || category)`を付けて条件付きにした、W5=selectBoxの選択肢にsetSuggestions（inputtype用）を使用、D4=1/5でUPDATEが無い
   - **検証側の誤検知（2026-10-20修正済み）**: `vja.form.setParam('itemId', ...)`のキー名が`findUnknownWidgetNames`（`vja-ai-gen-core.js`、`_WIDGET_NAME_ARG_APIS`にform.setParam/getParamを含む）でウィジェット名として検査され、正しいコードがNGになる（`_WIDGET_NAME_ARG_APIS`からform.setParam/getParamを外して解消）
   - **モックの欠落（2026-10-20修正済み）**: `vja.io.toCsv`が実ランタイム（`vja-runtime.js`）にはあるのにモック側に無く、正しいコードがmockErrorになる（`vja-mock-runtime.js`と`vja-mock-check.js`のioへparseCsv/toCsvを追加して解消。saveText/print/printElementは未追加）。修正後の再測定でN2・X1とも5/5 OK
+  - **D4/D5は依頼の設計ミスだった（修正済み）**: 「選択行のidを取得」は、ボタンClickから取る手段がランタイムに無い（選択行は`RowClick`の`vja.event.get().row`のみ）。AIは正解を書けず誤名を出し続け（リトライでも別の誤名）、原因は7Bでもリトライでもなかった。依頼を「edtNameの値で一致する行」へ直したらD4は5/5。**テスト依頼は、実ランタイムで書ける内容か、APIドキュメントで裏取りしてから作る**。（製品側の論点: 「選択行を使う」操作を書けないことをユーザーに示せていない。必要なら別途検討）
+  - **D5は依頼修正後も0/5**: 「削除しますか?」の確認（`showConfirm`）を呼ばず、依頼に無い空チェックを足す。M1（確認→表示）は5/5なので、依頼文の構成による差の可能性。切り分けは未実施
+  - **`setSuggestions`の誤用を検証に追加（2026-10-20）**: `_findMisusedSetSuggestions`（`vja-mock-check.js`）。inputtype自身のSuggestイベント以外からの呼び出し・自分以外のウィジェット宛を`forbiddenPatterns`へ入れ、リトライ・行コメント・バナーの既存経路に乗せた。W5（Clickからselectboxへ使用）が0/5→5/5（5回とも検出→リトライで解消）
+

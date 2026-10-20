@@ -877,6 +877,29 @@ function _findSelfTriggerRecursion(code, wid, evName) {
     return found;
 }
 
+// vja.widget.setSuggestions は「inputtypeウィジェット自身のSuggestイベントからのみ」呼べるAPI
+// （prompts/vja-front-api-mandatory.eng.mdに明記）。それ以外のイベントからの呼び出しや、
+// 自分以外のウィジェット（selectBox等）を宛先にした呼び出しを検出する。
+// 実測（2026-10-20、qwen2.5-coder-7b）: ボタンClickからselectBoxの選択肢設定にsetSuggestionsを使う誤用があった。
+function _findMisusedSetSuggestions(code, wid, evName) {
+    if (!wid || !evName) return [];
+    const w = getWidget(wid);
+    const found = [];
+    const re = /\bvja\.widget\.setSuggestions\s*\(\s*['"]([^'"]+)['"]/g;
+    let m;
+    while ((m = re.exec(code)) !== null) {
+        const target = m[1];
+        if (evName === "Suggest" && w && target === w.name) continue;
+        const line = code.slice(0, m.index).split("\n").length;
+        found.push({
+            line,
+            message: "vja.widget.setSuggestions('" + target + "') の使い方が誤りです。setSuggestionsは、inputtypeウィジェット自身のSuggestイベントの中で、そのウィジェット自身にだけ使えます。"
+                + "selectBox/listboxの選択肢を設定する場合は vja.widget.set(名前, 配列) を使ってください",
+        });
+    }
+    return found;
+}
+
 // 変数宣言スタイル（var/let/const）の警告を検出する。
 // フロントエンド: varのみ許可（let/constは違反）
 // バックエンド: constのみ禁止（letは許可）
@@ -992,7 +1015,7 @@ function validateGeneratedJs(code, isAppEvent, evName, wtag, wid, opts) {
     const tableState = (getProjectData().tableOptOverrides || {})[wid + "_" + evName];
     const noTableDb = !!(opts && opts.checkNoTableDb) && Array.isArray(tableState) && tableState.length === 0;
     const unknownApis = _findUnknownApis(code, isAppEvent, disabledCategories, noTableDb);
-    const forbiddenPatterns = _findForbiddenPatterns(code).concat(_findSelfTriggerRecursion(code, wid, evName));
+    const forbiddenPatterns = _findForbiddenPatterns(code).concat(_findSelfTriggerRecursion(code, wid, evName)).concat(_findMisusedSetSuggestions(code, wid, evName));
     const missingAwaits = findMissingAwaits(code, isAppEvent);
     const unknownWidgets = findUnknownWidgetNames(code);
     const eventTypeMismatches = _findEventTypeMismatch(code, evName, wtag);
