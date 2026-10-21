@@ -1565,9 +1565,9 @@ async function augmentWithMockCheck(validation, code, isAppEvent, evName, wtag, 
 
 // テスト用: コードをモックで実行し、書き込み系API(widget.setValue等)の呼び出し履歴を返す.
 // 戻り値: { error: モック実行エラー(無ければnull), calls: [["widget.setValue", 引数...], ...] }
-async function runMockRecord(code, evName, wtag, wid) {
+async function runMockRecord(code, evName, wtag, wid, isAppEvent) {
     const calls = [];
-    const error = await _runMockSmokeTest(code, false, evName, wtag, wid, calls);
+    const error = await _runMockSmokeTest(code, !!isAppEvent, evName, wtag, wid, calls);
     return { error, calls };
 }
 

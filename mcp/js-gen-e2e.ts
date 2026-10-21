@@ -78,6 +78,21 @@ const readRetryInfo = (from: number) => {
     } catch { return null; }
 };
 
+// アプリイベント版の生成（エディタを開いてから本物のボタン操作フローで生成し、データモデルのJSを取り出す）
+const generateAppEvent = async (evName: string, marker: string) => {
+    const o = await call("testOpenAppEvents", { evName });
+    if (!o.ok) return { ok: false, error: o.error };
+    const f = await call("testYamlAiGenerateFull", { wid: "appev", evName });
+    if (!f.ok) return { ok: false, error: f.error };
+    if (!(f.prompt?.userPrompt || "").includes(marker)) return { ok: false, error: "プロンプトにYAML本文が入っていない: " + marker };
+    for (let i = 0; i < 40; i++) {
+        const r = await call("testGetAppEvent", { evName });
+        if (r.js) return { ok: true, code: r.js };
+        await new Promise((r2) => setTimeout(r2, 250));
+    }
+    return { ok: false, error: "生成コードが保存されなかった（タイムアウト）" };
+};
+
 // ── 題材のウィジェット（名前→id、タグ） ──
 const WIDGETS: [string, string][] = [
     ["testResultGrid", "datagrid"], ["testSearchButton", "button"], ["testSearchInput", "inputtype"], ["testSearchSelect", "selectBox"],
@@ -100,10 +115,15 @@ const yamlOf = (desc: string, check: string, actions: string[], ok = "なし", n
 interface Scenario {
     id: string; widget: string; evName: string; yaml: string; marker: string;
     tables: boolean;                                   // 利用テーブル(test_items)を指定するか
+    app?: boolean;                                     // アプリイベント(widget="appev"、Bun側で実行)
     apis?: string[];                                   // 有効にする任意APIカテゴリ（form/session/io/file等。既定は全て無効）
     intent: (code: string, calls: Call[]) => string;   // 空文字ならOK。NGなら理由
 }
 const S = (s: Scenario) => s;
+// アプリイベント(Bun側)の実行環境（src/bun/project-runner.tsの_runAppEventCode）に実際は無いAPI。
+// プロンプト(vja-back-api-full)にもモックにも載っているが、実行環境のvjaは session.get/set/delete、db.query/execute/clearTable、log.* のみ（2026-10-21確認）。
+// ※バック側のvja.*は同期関数だがawaitを付けても無害（AsyncFunctionで実行）なので、awaitの有無は判定しない。
+const backMissing = (code: string) => { const m = code.match(/vja\.(db\.(importCsv|importJson)|session\.clear)\s*\(/); return m ? "実行環境に無いAPI: " + m[0].replace(/\s*\($/, "") : ""; };
 const hasDb = (code: string, re: RegExp) => /vja\.db\.(query|execute)\s*\(/.test(code) && re.test(code);
 
 const SCENARIOS: Scenario[] = [
@@ -263,6 +283,35 @@ const SCENARIOS: Scenario[] = [
     S({ id: "Z5-複数分岐", widget: "btnSave", evName: "Click", tables: false, marker: "ランク",
         yaml: yamlOf("分類の値によってランクを表示する", "なし", ["edtCategoryの値を取得する", "「A」の場合: msgLabelに「ランク1」と表示する", "「B」の場合: msgLabelに「ランク2」と表示する", "それ以外の場合: msgLabelに「ランク3」と表示する"]),
         intent: (code, c) => ["ランク1", "ランク2", "ランク3"].every((v) => code.includes(v)) && toW(c, "msgLabel").length ? "" : "3つの文言またはmsgLabel設定が無い" }),
+
+    // ── アプリイベント（Bun側で実行。vja.db.query/execute/session.*/log.*は同期、importCsv/importJsonのみawait） ──
+    S({ id: "A1-起動件数保存", app: true, widget: "appev", evName: "onStart", tables: true, marker: "itemCount",
+        yaml: yamlOf("起動時にテーブルの件数をセッションへ保存する", "なし", ["test_itemsの件数を取得する", "セッションに「itemCount」として件数を保存する"]),
+        intent: (code) => (!hasDb(code, /COUNT/i) ? "COUNTが無い" : /vja\.session\.set\s*\(\s*['"]itemCount['"]/.test(code) ? "" : "session.set('itemCount')が無い") }),
+    S({ id: "A2-初期データ投入", app: true, widget: "appev", evName: "onStart", tables: true, marker: "初期データ",
+        yaml: yamlOf("テーブルが空なら初期データを登録する", "なし", ["test_itemsの件数を取得する", "0件の場合: name「サンプル1」「サンプル2」「サンプル3」の3件を登録する"]),
+        intent: (code) => (!hasDb(code, /COUNT/i) ? "COUNTが無い" : /INSERT\s+INTO\s+test_items/i.test(code) && /サンプル3/.test(code) ? "" : "INSERTまたはサンプル3が無い") }),
+    S({ id: "A3-起動ログ", app: true, widget: "appev", evName: "onStart", tables: false, marker: "起動しました",
+        yaml: yamlOf("起動したことをログに残す", "なし", ["「起動しました」を情報ログに出力する"]),
+        intent: (code) => (/vja\.log\.info\s*\(/.test(code) && /起動しました/.test(code) ? "" : "log.info('起動しました')が無い") }),
+    S({ id: "A4-セッション初期化", app: true, widget: "appev", evName: "onStart", tables: false, marker: "startedAt",
+        yaml: yamlOf("前回のセッションを消して、起動時刻を保存する", "なし", ["セッションを全て消す", "セッションに「startedAt」として現在の日時（ISO形式の文字列）を保存する"]),
+        intent: (code) => (!/vja\.session\.clear\s*\(/.test(code) ? "session.clearが無い" : /vja\.session\.set\s*\(\s*['"]startedAt['"]/.test(code) ? "" : "session.set('startedAt')が無い") }),
+    S({ id: "A5-CSV取込", app: true, widget: "appev", evName: "onStart", tables: true, marker: "items.csv",
+        yaml: yamlOf("起動時にCSVファイルをテーブルへ取り込む", "なし", ["/data/items.csvをtest_itemsへ取り込む"]),
+        intent: (code) => /await\s+vja\.db\.importCsv\s*\(\s*['"]test_items['"]/.test(code) && /items\.csv/.test(code) ? "" : "awaitつきのdb.importCsv('test_items', …items.csv)が無い" }),
+    S({ id: "A7-終了セッション", app: true, widget: "appev", evName: "onExit", tables: false, marker: "セッション",
+        yaml: yamlOf("終了時にセッションを全て消す", "なし", ["セッションを全て消す"]),
+        intent: (code) => (/vja\.session\.clear\s*\(/.test(code) ? "" : "session.clearが無い") }),
+    S({ id: "A8-終了ログ件数", app: true, widget: "appev", evName: "onExit", tables: true, marker: "終了時",
+        yaml: yamlOf("終了時の件数をログに残す", "なし", ["test_itemsの件数を取得する", "「終了時の件数: N」の形式で情報ログに出力する"]),
+        intent: (code) => (!hasDb(code, /COUNT/i) ? "COUNTが無い" : /vja\.log\.info\s*\(/.test(code) && /終了時の件数/.test(code) ? "" : "log.info('終了時の件数')が無い") }),
+    S({ id: "A9-空分類削除", app: true, widget: "appev", evName: "onExit", tables: true, marker: "分類が空",
+        yaml: yamlOf("終了時に分類が空のレコードを削除する", "なし", ["test_itemsのうち、categoryが空（NULLまたは空文字）のレコードを削除する"]),
+        intent: (code) => (hasDb(code, /DELETE\s+FROM\s+test_items[\s\S]*category/i) ? "" : "category条件のDELETEが無い") }),
+    S({ id: "A10-起動時エラーログ", app: true, widget: "appev", evName: "onStart", tables: true, marker: "失敗",
+        yaml: yamlOf("件数の取得に失敗したら警告ログを出す", "なし", ["test_itemsの件数を取得する", "取得できなかった場合: 「件数の取得に失敗しました」を警告ログに出力する"]),
+        intent: (code) => (/vja\.log\.warn\s*\(/.test(code) && /件数の取得に失敗しました/.test(code) ? "" : "log.warn('件数の取得に失敗しました')が無い") }),
 ];
 
 // 検証結果から失敗種別へ（1つのコードが複数種別に当たることがあるので配列で返す）
@@ -291,8 +340,9 @@ for (const sc of SCENARIOS) {
     for (let i = 1; i <= RUNS; i++) {
         const data = JSON.parse(JSON.stringify(base));
         const ws = mkWidgets();
-        const src = ws.find((w) => w.name === sc.widget)!;
-        src.events[sc.evName] = sc.yaml;
+        const src = sc.app ? { id: "appev", tag: undefined as string | undefined } : ws.find((w) => w.name === sc.widget)!;
+        if (sc.app) { data.projectInfo = { ...(data.projectInfo || {}), appEvents: { [sc.evName + "_yaml"]: sc.yaml } }; }
+        else (src as any).events[sc.evName] = sc.yaml;
         data.forms[0].widgets = ws;
         data.forms[0].idCnt = ws.length + 1;
         data.tableOptOverrides = { ...(data.tableOptOverrides || {}), [src.id + "_" + sc.evName]: sc.tables ? ["test_items"] : [] };
@@ -300,19 +350,20 @@ for (const sc of SCENARIOS) {
         await call("testApplyProjectData", { data });
         await call("testSetAiConfig", { endpoint: LLM.endpoint, model: LLM.model, apiKey: API_KEY || undefined, temperature: LLM.temperature ?? undefined });
         const logFrom = logSize();
-        const g = await generateViaEditor(src.id, sc.evName, sc.marker);
+        const g = sc.app ? await generateAppEvent(sc.evName, sc.marker) : await generateViaEditor(src.id as number, sc.evName, sc.marker);
         await new Promise((r) => setTimeout(r, 500)); // ログの書き出し待ち
         let res: any = { id: sc.id, run: i, retry: readRetryInfo(logFrom) };
         const kinds: string[] = [];
         if (!g.ok) { kinds.push("GENFAIL"); res.error = g.error; }
         else {
             res.code = g.code;
-            const v = await call("testValidateJs", { code: g.code, evName: sc.evName, wtag: src.tag, wid: src.id });
+            const v = await call("testValidateJs", { code: g.code, evName: sc.evName, wtag: src.tag, wid: src.id, isAppEvent: !!sc.app });
             res.validation = v.result || null;
             kinds.push(...classify(v.ok ? v.result : null));
-            const r = await call("testMockRunRecord", { code: g.code, evName: sc.evName, wtag: src.tag, wid: src.id });
+            const r = await call("testMockRunRecord", { code: g.code, evName: sc.evName, wtag: src.tag, wid: src.id, isAppEvent: !!sc.app });
             res.calls = r.calls || [];
             if (r.error) { kinds.push("mockError"); res.mockError = r.error; }
+            if (sc.app) { const bm = backMissing(g.code); if (bm) { kinds.push("runtimeMissing"); res.runtimeMissing = bm; } }
             const why = sc.intent(g.code, res.calls);
             if (why) { kinds.push("intent"); res.intent = why; }
         }

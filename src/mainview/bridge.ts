@@ -169,6 +169,22 @@ const _testOpenYamlEditor = (p: { wid: number; evName: string }) => {
         return { ok: false, error: e.message };
     }
 };
+// アプリイベント（onStart/onExit）のエディタを開く（生成前にYAML欄を用意するため。DOM非依存の生成はYAMLが空になる）
+const _testOpenAppEvents = (p: { evName: string }) => {
+    const g = window as any;
+    try {
+        g.openAppEvents(p.evName);
+        return { ok: true };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+// アプリイベントのデータモデル上のYAML/JSを返す（生成後のJSの取り出し用）
+const _testGetAppEvent = (p: { evName: string }) => {
+    const g = window as any;
+    const ae = g.getProjectData().projectInfo?.appEvents || {};
+    return { ok: true, js: ae[p.evName] || "", yaml: ae[p.evName + "_yaml"] || "" };
+};
 // テーブル編集モーダル（新規作成/idx指定編集）を開き、描画結果のHTMLを返す
 // （jhtmlテンプレート移行の検証用）
 const _testOpenTableEdit = (p: { idx: number }) => {
@@ -556,10 +572,10 @@ const _testYamlAiGenerate = async (p: { wid: number | string; evName: string; is
 };
 // コードをモックで実行し、書き込み系API(vja.widget.setValue等)の呼び出し履歴を返す（記録型モック）.
 // 「どのウィジェットへ・どの値を・どのAPIで渡したか」の確認用。画面が実際に変わるかは対象外.
-const _testMockRunRecord = async (p: { code: string; evName: string; wtag?: string; wid?: number | string }) => {
+const _testMockRunRecord = async (p: { code: string; evName: string; wtag?: string; wid?: number | string; isAppEvent?: boolean }) => {
     const g = window as any;
     try {
-        const r = await g.runMockRecord(p.code, p.evName, p.wtag, p.wid);
+        const r = await g.runMockRecord(p.code, p.evName, p.wtag, p.wid, !!p.isAppEvent);
         return { ok: true, error: r.error, calls: r.calls };
     } catch (e: any) {
         return { ok: false, error: e.message };
@@ -787,6 +803,8 @@ const rpc = Electroview.defineRPC({
             testGetWidgetHtml: _testGetWidgetHtml,
             testGetPropsHtml: _testGetPropsHtml,
             testOpenYamlEditor: _testOpenYamlEditor,
+            testOpenAppEvents: _testOpenAppEvents,
+            testGetAppEvent: _testGetAppEvent,
             testJsToYamlGenerateFull: _testJsToYamlGenerateFull,
             testOpenTableEdit: _testOpenTableEdit,
             testOpenValidationEdit: _testOpenValidationEdit,
