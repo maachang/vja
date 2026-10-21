@@ -68,3 +68,14 @@ describe("モックランタイムとドキュメント・Worker複製のズレ�
         expect(listNames(worker.build(true, "onStart")).sort()).toEqual(listNames(main.build(true, "onStart")).sort());
     });
 });
+
+describe("モックのダミー値（解析されうる値）", () => {
+    // 2026-10-21: getSecretが""だと、正しいコード JSON.parse(secret) が「Unexpected EOF」で失敗扱いになり、不要なリトライが走った
+    test("secretsmanager.getSecretは、JSON.parseできる値を返す（本体・Worker複製の両方）", async () => {
+        for (const m of [main, worker]) {
+            const vja = m.build(false, "Click", "button", {}, [], []);
+            const secret = await vja.aws.secretsmanager.getSecret("x");
+            expect(() => JSON.parse(secret)).not.toThrow();
+        }
+    });
+});

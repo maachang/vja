@@ -194,5 +194,5 @@
 - `js-gen-e2e.ts`にCL1〜CL18（S3 put/get/list/delete、DynamoDB put/get/query、SQS send/receive+delete、SNS、Lambda、SES、Secrets Manager、STS、CloudWatch、Slack、Chatwork、Webhook）を追加。モックでの生成検証のみで、実際のAWS等へは通信しない。任意APIカテゴリはシナリオの`apis`（`aws_s3`等）で有効にする
 - 結果（7B、各3回）: 最終54/54。初回成功48/54、リトライ6回（全て解消）
   - **CL7（DynamoDBのquery）**: 7Bが最初`vja.db.query`（SQLite）で書く（「query」の語に引っ張られる）。利用テーブル0件の規則（`noTable`）が検出し、リトライで`vja.aws.dynamodb.query`へ直った
-  - **CL13（Secrets Manager）**: 正しいコード`JSON.parse(secret)`が、モックの`getSecret`が`""`を返すため`JSON.parse("")`の例外（`Unexpected EOF`）として失敗扱い→不要なリトライ（3/3回。リトライで通ったが、正しいコードが書き換えられている）。**モックのダミー値による誤検知**（`db.query`と同じ種類）。対応案: モックの`getSecret`を、JSONとして解析できる値（例: `"{}"`）にする。未対応（`vja-mock-runtime.js`と`vja-mock-check.js`のWorker複製の2か所＋テストが要る。要相談）
+  - **CL13（Secrets Manager）**: 正しいコード`JSON.parse(secret)`が、モックの`getSecret`が`""`を返すため`JSON.parse("")`の例外（`Unexpected EOF`）として失敗扱い→不要なリトライ（3/3回。リトライで通ったが、正しいコードが書き換えられている）。**モックのダミー値による誤検知**（`db.query`と同じ種類）。対応案: モックの`getSecret`を、JSONとして解析できる値（例: `"{}"`）にする。**修正済み（2026-10-21）**: 両方のモックの`getSecret`を`"{}"`にし、`vja-mock-runtime.test.ts`に「JSON.parseできる値」のテストを追加。CL13は3/3リトライ→5/5リトライ無し。他の`""`を返すモック（`s3.get`・`file.read`・`session.get`・`const.get`・`widget.get`）も`JSON.parse`されうるが、`""`のままにしている（`{}`にすると「空なら」の分岐が逆に倒れるため。実測で問題が出ていない限り変えない）
 - 拡張ランタイム（ext-runtime）は、上の節のとおり既に doc/event/pipeline/実機E2E/gpt系までの測定が揃っているため、今回は追加していない

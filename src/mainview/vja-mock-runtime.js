@@ -307,7 +307,7 @@
                 lambda: { invoke: async () => ({}) },
                 ses: { sendEmail: async () => "" },
                 sts: { getCallerIdentity: async () => ({ account: "", arn: "", userId: "" }) },
-                secretsmanager: { getSecret: async () => "" },
+                secretsmanager: { getSecret: async () => "{}" }, // JSON.parse(secret)する正しいコードが、空文字だと例外で失敗扱いになるため、JSONとして解析できる値にする（2026-10-21）
                 cloudwatch: { putLog: async () => {} },
             },
             slack: { send: async () => {} },
