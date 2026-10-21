@@ -8,6 +8,7 @@
 import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync, copyFileSync, rmSync } from "fs";
 import { join } from "path";
+import { parseCsvLine } from "../shared/csv-utils";
 
 // ── 型定義 ────────────────────────────────────────────
 export interface TableColumn {
@@ -286,4 +287,30 @@ export const restoreProjectDb = (dbDir: string, srcPath: string): void => {
     const dbPath = join(dbDir, "app.db");
     copyFileSync(srcPath, dbPath);
     console.log(`[db] バックアップから復元: ${dbPath}`);
+};
+
+// ── CSV/JSONの一括取り込み（アプリイベントのvja.db.importCsv/importJson用） ─────
+// 以前はindex.tsにあったが、project runnerへの統合（524451b）で失われていたものを復活した。
+// 1行目（JSONは先頭要素のキー）を列名としてテーブルへ登録する。全件を1トランザクションで登録する。
+// 列名・テーブル名はそのままSQLへ連結する（ローカルアプリのため。CLAUDE.md「あえてやってないこと」）。
+const _importRows = (dbDir: string, tableName: string, headers: string[], rows: any[][]): void => {
+    const db = getProjectDb(dbDir);
+    const sql = "INSERT INTO " + tableName + " (" + headers.join(",") + ") VALUES (" + headers.map(() => "?").join(",") + ")";
+    const stmt = db.prepare(sql);
+    db.transaction((rs: any[][]) => { for (const r of rs) stmt.run(...r); })(rows);
+};
+
+// CSV（1行目=列名）。改行はCRLF/LFの両方に対応する（以前はLFのみで、CRLFだと最終列に\rが残っていた）
+export const importCsvText = (dbDir: string, tableName: string, text: string): void => {
+    const lines = text.split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length < 2) return;
+    const headers = parseCsvLine(lines[0]);
+    _importRows(dbDir, tableName, headers, lines.slice(1).map((l) => parseCsvLine(l)));
+};
+
+// JSON（オブジェクトの配列。先頭要素のキーを列名とし、無いキーはNULL）
+export const importJsonData = (dbDir: string, tableName: string, data: any): void => {
+    if (!Array.isArray(data) || data.length === 0) return;
+    const headers = Object.keys(data[0]);
+    _importRows(dbDir, tableName, headers, data.map((row: any) => headers.map((h) => row[h] ?? null)));
 };

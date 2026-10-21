@@ -7,7 +7,7 @@ import { existsSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { writeLog } from "./logger";
 import { decompressGzip, parseCsvLine, execFetch } from "./bun-utils";
-import { initProjectDb, clearProjectDb, getProjectDb, closeProjectDb, backupProjectDb, restoreProjectDb } from "./db-manager";
+import { initProjectDb, clearProjectDb, getProjectDb, closeProjectDb, backupProjectDb, restoreProjectDb, importCsvText, importJsonData } from "./db-manager";
 import type { VjaRPCType, TableDef } from "../shared/types";
 import {
     fileReadHandler, fileWriteHandler, fileReadBytesHandler, fileWriteBytesHandler,
@@ -137,11 +137,16 @@ const _runAppEventCode = async (name: string, code: string): Promise<void> => {
                 get: (key: string) => _session.get(key) ?? null,
                 set: (key: string, val: string) => { _session.set(key, val); },
                 delete: (key: string) => { _session.delete(key); },
+                // 内部キー（"__"始まり。__onStart_done__等）は残す。消すとrunOnStartの二重実行防止が外れるため
+                clear: () => { for (const k of [..._session.keys()]) if (!k.startsWith("__")) _session.delete(k); },
             },
             db: {
                 query: (sql: string, params?: any[]) => _dbQuery(sql, params),
                 execute: (sql: string, params?: any[]) => _dbExecute(sql, params),
                 clearTable: (tableName: string) => _dbExecute(`DELETE FROM ${tableName}`),
+                // 失敗時は例外（プロンプトの仕様どおり。実行エラーとしてデザイナーへ報告される）
+                importCsv: async (tableName: string, filePath: string) => importCsvText(_currentProjectDbDir, tableName, await Bun.file(filePath).text()),
+                importJson: async (tableName: string, filePath: string) => importJsonData(_currentProjectDbDir, tableName, await Bun.file(filePath).json()),
             },
             log: {
                 info: (msg: string) => console.info("[app]", msg),
