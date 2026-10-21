@@ -8,7 +8,8 @@
 //     3) 記録型モックの実行エラー(mockError)と、依頼の意図（宛先・値・API）との一致(intent)
 // 【使い方】
 //   1. `bun run mcp`（VJA_TEST_MODE=1でvjaが起動し、4570でテストサーバーが立つ）
-//   2. bun run mcp/js-gen-e2e.ts [--runs N] [--only <idの一部,...>] [--out <結果JSONのパス>] [--preset <共通AIプリセット名の一部>]
+//   2. bun run mcp/js-gen-e2e.ts [--runs N] [--only <idの一部,...>] [--out <結果JSONのパス>] [--preset <共通AIプリセット名の一部>] [--from-text]
+//      --from-text: YAML固定ではなく、日本語の依頼文(TEXTS)→YAMLドラフト生成→JS生成の全経路を通す（結果はtext-to-js-result.json。各結果にtext/draftYamlを残す）
 //   接続先は mcp/fixtures/test-llm.local.json。結果は既定で.claudeWork/js-gen-result.json
 // 【AIメモ】題材はprompt-integrity-test.vjaproj.jsonのテーブルtest_items(id,name,category)。ウィジェットはスクリプト内で組み立てる。
 //   モックのdb.queryは固定のダミー値([{}])を返すため、DBの結果に依存する分岐の判定は「呼び出しの有無・SQLの形」に限る。
@@ -25,7 +26,9 @@ const RUNS = Math.max(1, parseInt(opt("runs", "5"), 10) || 5);
 // 実験用: YAMLの既定の「エラー終了: ログにエラーを出力」の行を消して生成する（この行が生成の忠実さに影響するかの比較用）
 const DROP_ERR_LINE = argv.includes("--drop-default-error-line");
 const ONLY = opt("only", "").split(",").filter(Boolean);
-const OUT = opt("out", join(ROOT, ".claudeWork/js-gen-result.json"));
+// --from-text: YAMLを固定せず、TEXTS（人が書きそうな日本語の依頼文）から「YAMLドラフト生成→JS生成」を通して判定する
+const FROM_TEXT = argv.includes("--from-text");
+const OUT = opt("out", join(ROOT, FROM_TEXT ? ".claudeWork/text-to-js-result.json" : ".claudeWork/js-gen-result.json"));
 // アプリのログ（`bun run mcp > <このファイル>`で起動した場合）から、生成時の自動リトライの有無・初回の検出内容を読む
 const APPLOG = opt("applog", join(ROOT, ".claudeWork/mcp-run.log"));
 const base = JSON.parse(readFileSync(join(ROOT, "mcp/fixtures/prompt-integrity-test.vjaproj.json"), "utf-8"));
@@ -437,7 +440,38 @@ const classify = (v: any): string[] => {
     return k;
 };
 
-const yamlText = (sc: Scenario) => DROP_ERR_LINE ? sc.yaml.replace("\nエラー終了: ログにエラーを出力", "") : sc.yaml;
+// --from-text用の依頼文（シナリオidごと。判定のintentが見る文言・名前（メッセージ、キー名、バケット名等）は、人も依頼文に書く前提で含める）
+const TEXTS: Record<string, string> = {
+    "D2-条件検索": "検索入力欄に入力された名前で検索して、結果を一覧に表示したい",
+    "D3-登録": "名前と分類の入力内容をテーブルに登録して、「登録しました」とトースト表示したい",
+    "D5-削除確認": "削除ボタンを押したら「削除しますか?」と確認して、OKなら名前が一致する行を削除したい",
+    "D6-件数表示": "テーブルの件数を数えて、「N件」の形でラベルに出したい",
+    "C1-空入力チェック": "名前が空だったら「名前を入力してください」とダイアログで警告して終わりたい。入力されていれば、その名前をmsgLabelに表示したい",
+    "W1-コピー": "名前の入力欄の値を、分類の入力欄にコピーしたい",
+    "W3-表示切替": "チェックボックスがONなら一覧を表示、OFFなら隠したい",
+    "W4-クリア": "名前と分類の入力欄とmsgLabelを空にしたい",
+    "W5-選択肢": "テーブルの分類を重複なしで取り出して、選択ボックスの選択肢にしたい",
+    "L1-繰り返し集計": "一覧の全行を数えて、件数をmsgLabelに出したい",
+    "N2-画面遷移パラメータ": "一覧で選んだ行のidを「itemId」として渡して、MenuForm画面に移動したい",
+    "M1-確認ダイアログ": "実行する前に「実行しますか?」と確認して、OKならmsgLabelに「実行しました」と出したい",
+    "M2-セッション保存": "検索入力欄の値を、「lastKeyword」という名前でセッションに覚えておきたい",
+    "X4-エラー処理": "テーブルの全件を一覧に表示したい。失敗したら「検索に失敗しました」とダイアログで知らせたい",
+    "S2-分類で絞込": "選択ボックスで選んだ分類で、テーブルを絞り込んで一覧に表示したい",
+    "Q2-0件分岐": "テーブルを全件取得して、0件なら「データがありません」とダイアログを出し、あれば一覧に表示したい",
+    "Q4-重複チェック": "登録前に、同じ名前がすでにあれば「重複しています」とダイアログを出して登録しない。なければ登録したい",
+    "Z4-登録クリア再検索": "名前と分類をテーブルに登録して、入力欄を空にして、一覧を最新の全件に更新したい",
+    "Z5-複数分岐": "分類が「A」ならランク1、「B」ならランク2、それ以外はランク3とmsgLabelに表示したい",
+    "A1-起動件数保存": "起動時にテーブルの件数を数えて、「itemCount」という名前でセッションに保存したい",
+    "A9-空分類削除": "終了時に、分類が空のレコードをテーブルから削除したい",
+    "FE1-表示時一覧": "画面が表示されたら、テーブルの全件を一覧に表示したい",
+    "FE4-F5検索": "F5キーを押したら、検索ボタンをクリックしたことにしたい",
+    "CL1-S3保存": "msgLabelの内容を、S3のバケット「my-bucket」にキー「memo.txt」で保存したい",
+    "CL16-Slack": "名前の入力値を使って「〇〇を保存しました」とSlackに通知したい",
+};
+// 生成YAMLの「説明」行の先頭を、プロンプトにYAML本文が入っているかの目印にする（無ければ「アクション」）
+const draftMarker = (y: string) => ((y.match(/^説明:\s*(.+)$/m) || [])[1] || "アクション").trim().slice(0, 15);
+
+const yamlText = (sc: Scenario) => FROM_TEXT ? "" : DROP_ERR_LINE ? sc.yaml.replace("\nエラー終了: ログにエラーを出力", "") : sc.yaml;
 const results: any[] = [];
 const kindCount: Record<string, number> = {};
 const perScn: Record<string, { ok: number; total: number }> = {};
@@ -446,6 +480,7 @@ const perScnRetry: Record<string, { retried: number; resolved: number }> = {};
 await call("testSetAutoConfirm", { value: true });
 for (const sc of SCENARIOS) {
     if (ONLY.length && !ONLY.some((o) => sc.id.includes(o))) continue;
+    if (FROM_TEXT && !TEXTS[sc.id]) continue;
     perScn[sc.id] = { ok: 0, total: 0 };
     perScnRetry[sc.id] = { retried: 0, resolved: 0 };
     for (let i = 1; i <= RUNS; i++) {
@@ -462,9 +497,16 @@ for (const sc of SCENARIOS) {
         await call("testApplyProjectData", { data });
         await call("testSetAiConfig", { endpoint: LLM.endpoint, model: LLM.model, apiKey: API_KEY || undefined, temperature: LLM.temperature ?? undefined });
         const logFrom = logSize();
-        const g = sc.app ? await generateAppEvent(sc.evName, sc.marker) : sc.form ? await generateFormEvent(sc.evName, sc.marker) : await generateViaEditor(src.id as number, sc.evName, sc.marker);
+        let marker = sc.marker, draftYaml = "", draftErr = "";
+        if (FROM_TEXT) {
+            const t = await call("testTextToYamlGenerate", { wid: src.id, evName: sc.evName, inputText: TEXTS[sc.id] });
+            if (t.ok) { draftYaml = t.yaml; marker = draftMarker(t.yaml); } else draftErr = t.error || "YAMLドラフト生成に失敗";
+        }
+        const g = draftErr ? { ok: false, error: "YAMLドラフト生成に失敗: " + draftErr, code: undefined as string | undefined }
+            : sc.app ? await generateAppEvent(sc.evName, marker) : sc.form ? await generateFormEvent(sc.evName, marker) : await generateViaEditor(src.id as number, sc.evName, marker);
         await new Promise((r) => setTimeout(r, 500)); // ログの書き出し待ち
         let res: any = { id: sc.id, run: i, retry: readRetryInfo(logFrom) };
+        if (FROM_TEXT) { res.text = TEXTS[sc.id]; res.draftYaml = draftYaml; }
         const kinds: string[] = [];
         if (!g.ok) { kinds.push("GENFAIL"); res.error = g.error; }
         else {
