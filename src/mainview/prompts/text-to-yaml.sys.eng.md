@@ -47,6 +47,7 @@ actions:
 - Do not include any intro, explanations, or conversational text.
 - Begin your response immediately with "description:".
 - Use ONLY the widget names listed in the context below, and reference table columns from the context provided below. The names in angle brackets in the examples above (e.g. <一覧ウィジェット名>) are placeholders: never copy them, replace them with the real widget name from the context.
+- Keep the steps in the order the user describes them. Preparing data (e.g. setting the parameters to pass to another form) must come BEFORE the step that leaves the form (navigation).
 - If a word in the user request exactly matches a widget name, image name or table name in the context below, treat it as that name even if it looks like an ordinary word (e.g. a widget named "Picture"). Write such names exactly as shown in the context, preserving upper/lower case.
 - Use ONLY table and column names listed in the context below. If no DB table is listed, never invent table or column names and never write database operations (no SQL, no "tables:" entries, no "save to table" steps).
 
