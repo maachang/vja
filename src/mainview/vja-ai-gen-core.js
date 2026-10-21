@@ -806,7 +806,8 @@ async function generateTextToYaml(wid, evName, inputText, domOverride = null) {
     // 絞り込みを行わず常にフォーム全体のウィジェット一覧をAIへ渡す
     const { allWidgetsCtx, tablesCtx, imagesCtx } = buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, false, domOverride);
 
-    const sysPrompt = _PROMPT_DEF.TEXT_TO_YAML_SYS_PROMPT({ widgetsCtx: allWidgetsCtx, tablesCtx: tablesCtx, extRuntimeDoc: getProjectData().extRuntime?.doc, imagesCtx: imagesCtx });
+    // アプリイベントには画面が無いため、ウィジェット一覧は渡さず、環境の制約をプロンプトで伝える
+    const sysPrompt = _PROMPT_DEF.TEXT_TO_YAML_SYS_PROMPT({ widgetsCtx: isAppEvent ? "" : allWidgetsCtx, tablesCtx: tablesCtx, extRuntimeDoc: getProjectData().extRuntime?.doc, imagesCtx: imagesCtx, isAppEvent: isAppEvent });
     const userPrompt = _PROMPT_DEF.TEXT_TO_YAML_USER_PROMPT(inputText);
 
     let result = null;
