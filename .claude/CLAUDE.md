@@ -36,7 +36,7 @@ CLAUDE.mdは毎セッション全文が読み込まれるため、規約・全�
 
 - `bun test`（追加設定不要、`package.json`に`test`スクリプトあり）でユニットテストが実行できる
 - 対象は「Electrobunのウィンドウ/DOMに依存しない純粋なロジック」のみ（`src/mainview/bridge-common.ts`、`src/mainview/aws-runtime.ts`、`src/bun/bun-utils.ts`、`src/bun/fs-rpc-handlers.ts`、`src/bun/db-manager.ts`が対象。各ファイルと同じディレクトリに`*.test.ts`を置く）
-- `src/bun/project-runner.ts`は`electrobun/bun`をトップレベルでimportしており、単体でimportするとハングするため、現状テスト対象外（モック化すればテスト可能だが未対応）
+- `src/bun/project-runner.ts`は`electrobun/bun`をトップレベルでimportしており、単体でimportするとハングする。`project-runner.test.ts`は、importの前に`mock.module("electrobun/bun", …)`で差し替えてから動的importすることでテストしている（2026-10-21。対象はアプリイベントの実行環境`_runAppEventCode`のvja.*。ウィンドウ関連は対象外）
 - `src/mainview/*.js`（vja-yaml-editor.js等）はモジュールシステムを使わない素の`<script>`読み込みのため、現状テスト対象外（`export`追加等の小さなリファクタが必要）
 - ロジック以外（ウィジェット配置・描画・ダイアログ操作等、DOM/ネイティブウィンドウに依存する部分）は引き続き人の目視確認に頼る
 
