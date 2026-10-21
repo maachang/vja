@@ -196,3 +196,13 @@
   - **CL7（DynamoDBのquery）**: 7Bが最初`vja.db.query`（SQLite）で書く（「query」の語に引っ張られる）。利用テーブル0件の規則（`noTable`）が検出し、リトライで`vja.aws.dynamodb.query`へ直った
   - **CL13（Secrets Manager）**: 正しいコード`JSON.parse(secret)`が、モックの`getSecret`が`""`を返すため`JSON.parse("")`の例外（`Unexpected EOF`）として失敗扱い→不要なリトライ（3/3回。リトライで通ったが、正しいコードが書き換えられている）。**モックのダミー値による誤検知**（`db.query`と同じ種類）。対応案: モックの`getSecret`を、JSONとして解析できる値（例: `"{}"`）にする。**修正済み（2026-10-21）**: 両方のモックの`getSecret`を`"{}"`にし、`vja-mock-runtime.test.ts`に「JSON.parseできる値」のテストを追加。CL13は3/3リトライ→5/5リトライ無し。他の`""`を返すモック（`s3.get`・`file.read`・`session.get`・`const.get`・`widget.get`）も`JSON.parse`されうるが、`""`のままにしている（`{}`にすると「空なら」の分岐が逆に倒れるため。実測で問題が出ていない限り変えない）
 - 拡張ランタイム（ext-runtime）は、上の節のとおり既に doc/event/pipeline/実機E2E/gpt系までの測定が揃っているため、今回は追加していない
+
+# 依頼文→YAMLドラフト→JSの全経路テスト `js-gen-e2e.ts --from-text`（2026-10-22）
+
+- `bun run mcp/js-gen-e2e.ts --from-text [--runs N] [--only id]`。`TEXTS`（人が書きそうな日本語の依頼文。27依頼）を`testTextToYamlGenerate`でYAMLにし、そのまま既存の生成・検証・モック判定（`js-gen-e2e`と同じintent）へ繋ぐ。結果は`.claudeWork/text-to-js-result.json`（各結果に`text`/`draftYaml`を残す）。YAML固定の`js-gen-e2e`では測れない「依頼文→YAML」の段階の失敗が見える
+- 初回測定（7B・temp0・各3回）: 65/75。固定YAMLでは全てOKだった依頼でも、YAML段階の失敗で落ちる。その後の修正と結果:
+  - **例文のウィジェット名の写し（案1）**: `text-to-yaml.sys.eng.md`の例文の`tableView1`/`selMode`と、ルールの`(e.g. txtName, btnSearch, tblUsers)`を7Bが実在しないウィジェット名として写していた（75件中20件）。例文を`<一覧ウィジェット名>`等のプレースホルダーにし、「例文の名前は写さず、一覧の実名を使う」へ変更→創作名3件、リトライ32→23/75回。W3・S2が0/3→3/3
+  - **アプリイベント（案2）**: YAMLドラフトのプロンプトにアプリイベント（Bun側、画面・ダイアログ・トースト無し）の情報が渡っておらず、A9のYAMLが例文の確認ダイアログを写し、JSが存在しないAPIを書いた。`isAppEvent`でウィジェット一覧を外し、環境の制約（`appEventSection`）を渡す→A1・A3・A9・A10が全て3/3
+  - **手順の順序（案3）**: 依頼は「渡して→移動」なのにYAMLが「移動→設定」へ入れ替え、JSが`navigate(form, {itemId})`と書いた（第2引数は`save`のみで、パラメータは渡らない）。「手順は依頼の順序を保ち、データ準備は画面遷移より前」のルールを追加→N2が0/3→3/3。以上で合計78/81
+  - **Q4（残り）**: 「…登録しない。なければ登録したい」は、YAMLが「登録処理を行う」（INSERT省略）や「登録フォームを表示する」になった。依頼文に「テーブルに」を明記すると3/3（YAMLも`test_items に INSERT`）。依頼文の曖昧さが原因と判断し、依頼文のほうを直した（製品プロンプトは変更していない）
+- 教訓: 依頼文は、人も書く語（登録先のテーブル・メッセージ・キー名）をintentの判定対象と揃える。「登録」だけだと7Bはフォーム表示と解釈することがある
