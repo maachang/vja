@@ -188,3 +188,11 @@
 - **「エラー終了」の行を消す案は全体では得にならない**: 全65依頼×各2回（temp0）で、行あり=初回成功120/130・最終128/130（失敗はW4のみ）、行なし=初回122/130・最終126/130。W4とD5は直るが、**H1（http）とFE4（F5）が新たに0/2になる**（トレードオフ）。`mcp/js-gen-e2e.ts`の`--drop-default-error-line`で再現できる
 - **「YAMLに条件語が無いのにコードにifがある」を機械検出する案は不適**: 既存の生成コード（65依頼）で当てはめると、本物はW4だけで、N2・A1・A8（nullガード・件数チェックなど正当な`if`）が誤検出（誤検出3/4）。誤検出すると正しいコードに不要なリトライが走る
 - 影響: W4は「クリアが条件付きになる」だけで、入力が空でなければクリアされる。利用者がYAMLに「必ず」「無条件で」などと書く運用で回避できるかは未検証
+
+# クラウド・通知（AWS/Slack/Chatwork/Webhook）のjs-gen-e2e（2026-10-21）
+
+- `js-gen-e2e.ts`にCL1〜CL18（S3 put/get/list/delete、DynamoDB put/get/query、SQS send/receive+delete、SNS、Lambda、SES、Secrets Manager、STS、CloudWatch、Slack、Chatwork、Webhook）を追加。モックでの生成検証のみで、実際のAWS等へは通信しない。任意APIカテゴリはシナリオの`apis`（`aws_s3`等）で有効にする
+- 結果（7B、各3回）: 最終54/54。初回成功48/54、リトライ6回（全て解消）
+  - **CL7（DynamoDBのquery）**: 7Bが最初`vja.db.query`（SQLite）で書く（「query」の語に引っ張られる）。利用テーブル0件の規則（`noTable`）が検出し、リトライで`vja.aws.dynamodb.query`へ直った
+  - **CL13（Secrets Manager）**: 正しいコード`JSON.parse(secret)`が、モックの`getSecret`が`""`を返すため`JSON.parse("")`の例外（`Unexpected EOF`）として失敗扱い→不要なリトライ（3/3回。リトライで通ったが、正しいコードが書き換えられている）。**モックのダミー値による誤検知**（`db.query`と同じ種類）。対応案: モックの`getSecret`を、JSONとして解析できる値（例: `"{}"`）にする。未対応（`vja-mock-runtime.js`と`vja-mock-check.js`のWorker複製の2か所＋テストが要る。要相談）
+- 拡張ランタイム（ext-runtime）は、上の節のとおり既に doc/event/pipeline/実機E2E/gpt系までの測定が揃っているため、今回は追加していない
