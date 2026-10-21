@@ -22,6 +22,8 @@ const PORT = process.env.VJA_TEST_PORT || "4570";
 const argv = process.argv.slice(2);
 const opt = (k: string, d: string) => { const i = argv.indexOf("--" + k); return i >= 0 ? argv[i + 1] : d; };
 const RUNS = Math.max(1, parseInt(opt("runs", "5"), 10) || 5);
+// 実験用: YAMLの既定の「エラー終了: ログにエラーを出力」の行を消して生成する（この行が生成の忠実さに影響するかの比較用）
+const DROP_ERR_LINE = argv.includes("--drop-default-error-line");
 const ONLY = opt("only", "").split(",").filter(Boolean);
 const OUT = opt("out", join(ROOT, ".claudeWork/js-gen-result.json"));
 // アプリのログ（`bun run mcp > <このファイル>`で起動した場合）から、生成時の自動リトライの有無・初回の検出内容を読む
@@ -361,6 +363,7 @@ const classify = (v: any): string[] => {
     return k;
 };
 
+const yamlText = (sc: Scenario) => DROP_ERR_LINE ? sc.yaml.replace("\nエラー終了: ログにエラーを出力", "") : sc.yaml;
 const results: any[] = [];
 const kindCount: Record<string, number> = {};
 const perScn: Record<string, { ok: number; total: number }> = {};
@@ -375,9 +378,9 @@ for (const sc of SCENARIOS) {
         const data = JSON.parse(JSON.stringify(base));
         const ws = mkWidgets();
         const src = sc.app ? { id: "appev", tag: undefined as string | undefined } : sc.form ? { id: "form", tag: undefined as string | undefined } : ws.find((w) => w.name === sc.widget)!;
-        if (sc.form) { data.forms[0].events = { ...(data.forms[0].events || {}), [sc.evName]: sc.yaml }; }
-        if (sc.app) { data.projectInfo = { ...(data.projectInfo || {}), appEvents: { [sc.evName + "_yaml"]: sc.yaml } }; }
-        else if (!sc.form) (src as any).events[sc.evName] = sc.yaml;
+        if (sc.form) { data.forms[0].events = { ...(data.forms[0].events || {}), [sc.evName]: yamlText(sc) }; }
+        if (sc.app) { data.projectInfo = { ...(data.projectInfo || {}), appEvents: { [sc.evName + "_yaml"]: yamlText(sc) } }; }
+        else if (!sc.form) (src as any).events[sc.evName] = yamlText(sc);
         data.forms[0].widgets = ws;
         data.forms[0].idCnt = ws.length + 1;
         data.tableOptOverrides = { ...(data.tableOptOverrides || {}), [src.id + "_" + sc.evName]: sc.tables ? ["test_items"] : [] };
