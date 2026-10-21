@@ -22,7 +22,7 @@ on_error: <Error handling policy, e.g. "ログとトーストにエラーを出�
 
 Example (conditional branch):
 actions:
-  - selMode の選択値を取得する
+  - <選択ボックス名> の選択値を取得する
   - 選択値が「新規」の場合: users テーブルに INSERT する
   - 選択値が「更新」の場合: users テーブルの該当レコードを UPDATE する
   - それ以外の場合: 「不正な操作です」とダイアログを表示して処理を終了する
@@ -33,12 +33,12 @@ actions:
       - YES の場合:
           - ローディングを表示する
           - 選択行の id で users テーブルから DELETE する
-          - 一覧を再取得して tableView1 に表示する
+          - 一覧を再取得して <一覧ウィジェット名> に表示する
       - NO の場合: 何もしない
 
 Example (loop):
 actions:
-  - tableView1 の全行データを取得する
+  - <一覧ウィジェット名> の全行データを取得する
   - 各行に対して以下を繰り返す:
       - status が「未処理」の場合: orders テーブルの該当レコードを「処理済」に UPDATE する
 
@@ -46,7 +46,7 @@ actions:
 - Output ONLY the raw YAML text. Do NOT wrap response in markdown code blocks (```yaml).
 - Do not include any intro, explanations, or conversational text.
 - Begin your response immediately with "description:".
-- Use actual widget names (e.g. txtName, btnSearch, tblUsers) and reference table columns from the context provided below.
+- Use ONLY the widget names listed in the context below, and reference table columns from the context provided below. The names in angle brackets in the examples above (e.g. <一覧ウィジェット名>) are placeholders: never copy them, replace them with the real widget name from the context.
 - If a word in the user request exactly matches a widget name, image name or table name in the context below, treat it as that name even if it looks like an ordinary word (e.g. a widget named "Picture"). Write such names exactly as shown in the context, preserving upper/lower case.
 - Use ONLY table and column names listed in the context below. If no DB table is listed, never invent table or column names and never write database operations (no SQL, no "tables:" entries, no "save to table" steps).
 
