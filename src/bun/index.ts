@@ -1706,7 +1706,7 @@ if (process.env.VJA_TEST_MODE === "1") {
         "testAddWidget", "testDeleteWidget", "testGetWidgets",
         "testSelectWidget", "testSwitchTab", "testGetWidgetHtml", "testGetPropsHtml", "testRenderCloudModal", "testOpenModal",
         "testFormatJs",
-        "testOpenYamlEditor", "testOpenAppEvents", "testGetAppEvent", "testOpenTableEdit", "testOpenValidationEdit",
+        "testOpenYamlEditor", "testOpenAppEvents", "testGetAppEvent", "testOpenFormYaml", "testGetFormEvent", "testOpenTableEdit", "testOpenValidationEdit",
         "testSaveYaml", "testDeleteYaml", "testGetOverrides",
         "testGetValidations", "testSaveValidation", "testDeleteValidation",
         "testGetTables", "testSaveTable", "testDeleteTable", "testGenerateDdl",

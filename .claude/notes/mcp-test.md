@@ -157,3 +157,10 @@
 - **対応（2026-10-21、案1）**: アプリイベントの実行環境（`project-runner.ts`の`_runAppEventCode`）へ`vja.session.clear`・`vja.db.importCsv`・`vja.db.importJson`を実装。取り込み本体は単体テストできる`db-manager.ts`の`importCsvText`/`importJsonData`（`db-manager.test.ts`に6件追加、`bun test`は263件合格）。`session.clear`は`__`始まりの内部キー（`__onStart_done__`）を残す（消すと`runOnStart`の二重実行防止が外れるため）。CSVはCRLFにも対応（以前の実装はLFのみで最終列に`\r`が残った）。取り込みは全件1トランザクションで、失敗時は例外（ロールバック）。**実機（デザイナーでOnStartにimportCsv/session.clearを書いて実行）での確認は未実施**
 - **実機相当のテストを自動化（2026-10-21）**: `src/bun/project-runner.test.ts`（5件）。`electrobun/bun`を`mock.module`で空のスタブへ差し替えてから動的importし、`setProjectData`→`runOnStart`で、実際のSQLiteに対して`importCsv`（CRLFのCSV）・`importJson`・存在しないファイル（`[app] onStart 実行エラー`が出て`runOnStart`は落ちない）・`session.clear`（ユーザーキーは消え`__`始まりは残る）・OnStart内の`session.clear`後も二重実行されないこと、を検証。内部キー保持を外すと2件失敗することを確認済み。未確認なのは実ウィンドウ上の動作（実行エラーのバッジ表示など）のみ
 
+
+# 2026-10-21 続き: アプリイベント再測定・ズレ防止テスト・フォームイベント
+
+- **アプリイベント再測定（`importCsv`/`session.clear`実装後、7B各3回）**: 26/27。「実行環境に無いAPI」の検出（`backMissing`）は実装済みになったため外した。残り1件（A1）は**モックのダミー値による誤検知**: `db.query`が`[{}]`を返すため`COUNT(*) AS count`の値がundefinedになり、正しいコード`itemCount[0].count.toString()`がTypeErrorとしてmockError扱い→リトライ（A1は3回ともリトライ、2回解消）。実運用でも、正しいコードに不要なリトライ・警告が出る恐れがある。対応は未着手（ダミー値の作り方を変える等は要相談）
+- **ドキュメントと実行環境のズレ防止**: `project-runner.test.ts`に、`vja-back-api-full.eng.md`の全API名が実行環境のvja（OnStartのコードから列挙）に存在することを確認するテストを追加。`session.clear`を消すと失敗することを確認済み。**フロント側（`vja-runtime.js`）と、モックとの同様の突き合わせは未実施**
+- **フォームイベント（Load/KeyDown/Click）のE2E**: テスト専用ハンドラ`testOpenFormYaml`/`testGetFormEvent`を追加（JSは`forms[idx].events["_js_<イベント名>"]`）。依頼6本（FE1〜FE6）、7B各3回で全て合格（FE3は判定の誤り＝「あれば」の分岐の中身を、モックの履歴（空の値）で判定していた→コードの有無で判定に修正）。FE4（F5）は初回に`e`未定義（モック実行例外）が出て、リトライで3回とも解消
+- 教訓（再掲）: 条件分岐の中の呼び出しは、モックのダミー値で通らないことがある。判定は呼び出し履歴ではなくコードで行う

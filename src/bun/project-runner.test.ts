@@ -85,3 +85,20 @@ describe("アプリイベントのvja.session.clear", () => {
         expect(rows().length).toBe(1);
     });
 });
+
+describe("ドキュメント(プロンプト)と実行環境のズレ防止", () => {
+    // 2026-10-21: vja-back-api-full.eng.mdに載っているvja.db.importCsv/importJson・session.clearが、実行環境に無かった
+    // （project runnerへ統合した524451bで失われ、プロンプトとモックだけに残っていた）。名前の一致を機械的に確認する。
+    test("プロンプトに載っているバック側APIは、実行環境のvjaに全て存在する", async () => {
+        const { readFileSync } = await import("fs");
+        const doc = readFileSync(join(import.meta.dir, "../mainview/prompts/vja-back-api-full.eng.md"), "utf-8");
+        const documented = [...doc.matchAll(/^(?:await )?vja\.(\w+)\.(\w+):/gm)].map((m) => m[1] + "." + m[2]);
+        expect(documented.length).toBeGreaterThan(5);
+        // 実行環境のvjaが持つ名前を、OnStartのコードからセッションへ書き出して取り出す
+        setup(`const names = []; for (const ns of Object.keys(vja)) for (const k of Object.keys(vja[ns])) names.push(ns + '.' + k); vja.session.set('names', JSON.stringify(names));`);
+        await runner.runOnStart();
+        const actual: string[] = JSON.parse(runner._session.get("names") || "[]");
+        const missing = documented.filter((n) => !actual.includes(n));
+        expect(missing).toEqual([]);
+    });
+});

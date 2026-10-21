@@ -93,6 +93,21 @@ const generateAppEvent = async (evName: string, marker: string) => {
     return { ok: false, error: "生成コードが保存されなかった（タイムアウト）" };
 };
 
+// フォームイベント版の生成（エディタを開いてから本物のボタン操作フローで生成し、データモデルのJSを取り出す）
+const generateFormEvent = async (evName: string, marker: string) => {
+    const o = await call("testOpenFormYaml", { evName });
+    if (!o.ok) return { ok: false, error: o.error };
+    const f = await call("testYamlAiGenerateFull", { wid: "form", evName });
+    if (!f.ok) return { ok: false, error: f.error };
+    if (!(f.prompt?.userPrompt || "").includes(marker)) return { ok: false, error: "プロンプトにYAML本文が入っていない: " + marker };
+    for (let i = 0; i < 40; i++) {
+        const r = await call("testGetFormEvent", { evName });
+        if (r.js) return { ok: true, code: r.js };
+        await new Promise((r2) => setTimeout(r2, 250));
+    }
+    return { ok: false, error: "生成コードが保存されなかった（タイムアウト）" };
+};
+
 // ── 題材のウィジェット（名前→id、タグ） ──
 const WIDGETS: [string, string][] = [
     ["testResultGrid", "datagrid"], ["testSearchButton", "button"], ["testSearchInput", "inputtype"], ["testSearchSelect", "selectBox"],
@@ -115,15 +130,12 @@ const yamlOf = (desc: string, check: string, actions: string[], ok = "なし", n
 interface Scenario {
     id: string; widget: string; evName: string; yaml: string; marker: string;
     tables: boolean;                                   // 利用テーブル(test_items)を指定するか
+    form?: boolean;                                    // フォームイベント(widget="form"。Load/KeyDown等)
     app?: boolean;                                     // アプリイベント(widget="appev"、Bun側で実行)
     apis?: string[];                                   // 有効にする任意APIカテゴリ（form/session/io/file等。既定は全て無効）
     intent: (code: string, calls: Call[]) => string;   // 空文字ならOK。NGなら理由
 }
 const S = (s: Scenario) => s;
-// アプリイベント(Bun側)の実行環境（src/bun/project-runner.tsの_runAppEventCode）に実際は無いAPI。
-// プロンプト(vja-back-api-full)にもモックにも載っているが、実行環境のvjaは session.get/set/delete、db.query/execute/clearTable、log.* のみ（2026-10-21確認）。
-// ※バック側のvja.*は同期関数だがawaitを付けても無害（AsyncFunctionで実行）なので、awaitの有無は判定しない。
-const backMissing = (code: string) => { const m = code.match(/vja\.(db\.(importCsv|importJson)|session\.clear)\s*\(/); return m ? "実行環境に無いAPI: " + m[0].replace(/\s*\($/, "") : ""; };
 const hasDb = (code: string, re: RegExp) => /vja\.db\.(query|execute)\s*\(/.test(code) && re.test(code);
 
 const SCENARIOS: Scenario[] = [
@@ -312,6 +324,28 @@ const SCENARIOS: Scenario[] = [
     S({ id: "A10-起動時エラーログ", app: true, widget: "appev", evName: "onStart", tables: true, marker: "失敗",
         yaml: yamlOf("件数の取得に失敗したら警告ログを出す", "なし", ["test_itemsの件数を取得する", "取得できなかった場合: 「件数の取得に失敗しました」を警告ログに出力する"]),
         intent: (code) => (/vja\.log\.warn\s*\(/.test(code) && /件数の取得に失敗しました/.test(code) ? "" : "log.warn('件数の取得に失敗しました')が無い") }),
+
+    // ── フォームイベント（Load/KeyDown/Click。widget="form"） ──
+    S({ id: "FE1-表示時一覧", form: true, widget: "form", evName: "Load", tables: true, marker: "画面が表示",
+        yaml: yamlOf("画面が表示された時に一覧を表示する", "なし", ["test_itemsの全件を取得する", "testResultGridに表示する"]),
+        intent: (code, c) => !hasDb(code, /SELECT[\s\S]*FROM\s+test_items/i) ? "SELECTが無い" : toW(c, "testResultGrid").length ? "" : "testResultGridへ渡していない" }),
+    S({ id: "FE2-表示時日付", form: true, widget: "form", evName: "Load", tables: false, marker: "今日の日付",
+        yaml: yamlOf("画面が表示された時に今日の日付をラベルに表示する", "なし", ["今日の日付を取得する", "msgLabelに表示する"]),
+        apis: ["util"],
+        intent: (_c, c) => toW(c, "msgLabel").length ? "" : "msgLabelへ設定していない" }),
+    S({ id: "FE3-表示時復元", form: true, widget: "form", evName: "Load", tables: false, marker: "lastKeyword",
+        yaml: yamlOf("画面が表示された時に、前回の検索語を入力欄へ戻す", "なし", ["セッションから「lastKeyword」を取得する", "あれば testSearchInputに設定する"]),
+        apis: ["session"],
+        intent: (code, c) => !/await\s+vja\.session\.get\s*\(\s*['"]lastKeyword['"]/.test(code) ? "awaitつきsession.get('lastKeyword')が無い" : /vja\.widget\.(set|setValue)\s*\(\s*['"]testSearchInput['"]/.test(code) ? "" : "testSearchInputへ設定するコードが無い（「あれば」の分岐内のため、モックの履歴ではなくコードで判定）" }),
+    S({ id: "FE4-F5検索", form: true, widget: "form", evName: "KeyDown", tables: false, marker: "F5",
+        yaml: yamlOf("F5キーで検索ボタンをクリックする", "なし", ["F5キーが押された場合: testSearchButtonをクリックする"]),
+        intent: (code) => !/vja\.event\.getKey\s*\(/.test(code) ? "getKeyが無い" : !/['"]F5['"]/.test(code) ? "'F5'の判定が無い" : /vja\.trigger\.click\s*\(\s*['"]testSearchButton['"]/.test(code) ? "" : "trigger.click('testSearchButton')が無い" }),
+    S({ id: "FE5-Esc閉じる", form: true, widget: "form", evName: "KeyDown", tables: false, marker: "Escape",
+        yaml: yamlOf("Escapeキーでアプリを閉じる", "なし", ["Escapeキーが押された場合: アプリの画面を閉じる"]),
+        intent: (code) => !/vja\.event\.(isEscape|getKey)\s*\(/.test(code) ? "isEscape/getKeyが無い" : /vja\.app\.closeWindow\s*\(/.test(code) ? "" : "closeWindowが無い" }),
+    S({ id: "FE6-背景クリア", form: true, widget: "form", evName: "Click", tables: false, marker: "背景",
+        yaml: yamlOf("画面の背景をクリックしたらメッセージ欄を空にする", "なし", ["msgLabelを空にする"]),
+        intent: (code, c) => toW(c, "msgLabel").length ? "" : "msgLabelを空にしていない" }),
 ];
 
 // 検証結果から失敗種別へ（1つのコードが複数種別に当たることがあるので配列で返す）
@@ -340,9 +374,10 @@ for (const sc of SCENARIOS) {
     for (let i = 1; i <= RUNS; i++) {
         const data = JSON.parse(JSON.stringify(base));
         const ws = mkWidgets();
-        const src = sc.app ? { id: "appev", tag: undefined as string | undefined } : ws.find((w) => w.name === sc.widget)!;
+        const src = sc.app ? { id: "appev", tag: undefined as string | undefined } : sc.form ? { id: "form", tag: undefined as string | undefined } : ws.find((w) => w.name === sc.widget)!;
+        if (sc.form) { data.forms[0].events = { ...(data.forms[0].events || {}), [sc.evName]: sc.yaml }; }
         if (sc.app) { data.projectInfo = { ...(data.projectInfo || {}), appEvents: { [sc.evName + "_yaml"]: sc.yaml } }; }
-        else (src as any).events[sc.evName] = sc.yaml;
+        else if (!sc.form) (src as any).events[sc.evName] = sc.yaml;
         data.forms[0].widgets = ws;
         data.forms[0].idCnt = ws.length + 1;
         data.tableOptOverrides = { ...(data.tableOptOverrides || {}), [src.id + "_" + sc.evName]: sc.tables ? ["test_items"] : [] };
@@ -350,7 +385,7 @@ for (const sc of SCENARIOS) {
         await call("testApplyProjectData", { data });
         await call("testSetAiConfig", { endpoint: LLM.endpoint, model: LLM.model, apiKey: API_KEY || undefined, temperature: LLM.temperature ?? undefined });
         const logFrom = logSize();
-        const g = sc.app ? await generateAppEvent(sc.evName, sc.marker) : await generateViaEditor(src.id as number, sc.evName, sc.marker);
+        const g = sc.app ? await generateAppEvent(sc.evName, sc.marker) : sc.form ? await generateFormEvent(sc.evName, sc.marker) : await generateViaEditor(src.id as number, sc.evName, sc.marker);
         await new Promise((r) => setTimeout(r, 500)); // ログの書き出し待ち
         let res: any = { id: sc.id, run: i, retry: readRetryInfo(logFrom) };
         const kinds: string[] = [];
@@ -363,7 +398,6 @@ for (const sc of SCENARIOS) {
             const r = await call("testMockRunRecord", { code: g.code, evName: sc.evName, wtag: src.tag, wid: src.id, isAppEvent: !!sc.app });
             res.calls = r.calls || [];
             if (r.error) { kinds.push("mockError"); res.mockError = r.error; }
-            if (sc.app) { const bm = backMissing(g.code); if (bm) { kinds.push("runtimeMissing"); res.runtimeMissing = bm; } }
             const why = sc.intent(g.code, res.calls);
             if (why) { kinds.push("intent"); res.intent = why; }
         }

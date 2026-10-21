@@ -179,6 +179,23 @@ const _testOpenAppEvents = (p: { evName: string }) => {
         return { ok: false, error: e.message };
     }
 };
+// フォームイベント（Load/KeyDown等）のエディタを開く（現在のフォーム。生成前にYAML欄を用意するため）
+const _testOpenFormYaml = (p: { evName: string }) => {
+    const g = window as any;
+    try {
+        g.openFormYaml(p.evName);
+        return { ok: true };
+    } catch (e: any) {
+        return { ok: false, error: e.message };
+    }
+};
+// 現在のフォームのイベントのYAML/JSを返す（生成後のJSの取り出し用。JSは`_js_<イベント名>`キー）
+const _testGetFormEvent = (p: { evName: string }) => {
+    const g = window as any;
+    const f = g.getProjectData().forms[g.getProjectData().curFormIdx];
+    const ev = f?.events || {};
+    return { ok: true, js: ev["_js_" + p.evName] || "", yaml: ev[p.evName] || "" };
+};
 // アプリイベントのデータモデル上のYAML/JSを返す（生成後のJSの取り出し用）
 const _testGetAppEvent = (p: { evName: string }) => {
     const g = window as any;
@@ -804,6 +821,8 @@ const rpc = Electroview.defineRPC({
             testGetPropsHtml: _testGetPropsHtml,
             testOpenYamlEditor: _testOpenYamlEditor,
             testOpenAppEvents: _testOpenAppEvents,
+            testOpenFormYaml: _testOpenFormYaml,
+            testGetFormEvent: _testGetFormEvent,
             testGetAppEvent: _testGetAppEvent,
             testJsToYamlGenerateFull: _testJsToYamlGenerateFull,
             testOpenTableEdit: _testOpenTableEdit,
