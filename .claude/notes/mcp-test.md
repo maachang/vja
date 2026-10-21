@@ -172,3 +172,11 @@
 - **Workerには関数の文字列(`toString`)を埋め込む**（`_getMockWorkerUrl`）ので、関数の実体は1か所のみ。自己完結にすること（外部の変数を参照させない）。`tables`は`postMessage`で渡す。ユニットテストは`mock-query-rows.test.ts`（11件）
 - 検証: A1が3/3リトライ→5/5リトライ無し。全65依頼×各2回で128/130（失敗はW4のみ）、リトライしたのは8回（D5・W5・A5・FE4。全て正当な検出で解消）で、モック変更による新たな失敗は無い
 - 既知の限界: `SELECT`の最初の`FROM`先だけを見る（JOINの2つ目のテーブルの列は"x"）。MIN/MAXをTEXT列に使っても1（数値）
+
+# ドキュメントと実行環境・モックのズレ防止テスト（2026-10-21）
+
+- 背景: バック側で、プロンプトとモックにだけ載り実行環境に無いAPI（`vja.db.importCsv/importJson`・`session.clear`）が見つかった。同種のズレを機械的に防ぐ、次の3つのテスト
+  - `src/bun/project-runner.test.ts`: バック（アプリイベント）のプロンプトの全API名が、実行環境のvjaに存在する
+  - `src/mainview/project-bridge.test.ts`（新規）: フロントのプロンプト（mandatory/db/optional.*）の全API名（74個）が、実行ウィンドウのvja（`vja-runtime.js`＋`project-bridge.ts`＋aws/slack/chatwork/webhook）に存在する。`electrobun/view`を`mock.module`で差し替え、window/documentをスタブして動的importする（importの前に用意すること）。結果: ズレは無かった（`dir`を空にすると失敗することを確認）
+  - `src/mainview/vja-mock-runtime.test.ts`（新規）: プロンプトの全API名がモック（フロント・バック）に存在する／`vja-mock-runtime.js`とWorker用の複製（`vja-mock-check.js`の`_MOCK_WORKER_RUNTIME_SRC`、テンプレート文字列を取り出して評価）が同じ名前を持つ（「2か所の手動同期」の確認。値の中身の一致までは見ない）。結果: ズレは無かった（Worker側の`toCsv`を消すと失敗することを確認）
+- 限界: 名前の有無のみ。引数や戻り値の形の一致は見ない（`vja.http.get`の戻り値の件のような記述の誤りは検出できない）。モック本体の値の妥当性も対象外
