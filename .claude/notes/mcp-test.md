@@ -164,3 +164,11 @@
 - **ドキュメントと実行環境のズレ防止**: `project-runner.test.ts`に、`vja-back-api-full.eng.md`の全API名が実行環境のvja（OnStartのコードから列挙）に存在することを確認するテストを追加。`session.clear`を消すと失敗することを確認済み。**フロント側（`vja-runtime.js`）と、モックとの同様の突き合わせは未実施**
 - **フォームイベント（Load/KeyDown/Click）のE2E**: テスト専用ハンドラ`testOpenFormYaml`/`testGetFormEvent`を追加（JSは`forms[idx].events["_js_<イベント名>"]`）。依頼6本（FE1〜FE6）、7B各3回で全て合格（FE3は判定の誤り＝「あれば」の分岐の中身を、モックの履歴（空の値）で判定していた→コードの有無で判定に修正）。FE4（F5）は初回に`e`未定義（モック実行例外）が出て、リトライで3回とも解消
 - 教訓（再掲）: 条件分岐の中の呼び出しは、モックのダミー値で通らないことがある。判定は呼び出し履歴ではなくコードで行う
+
+# モックの`vja.db.query`をSELECT文からダミー行を作る形に変更（2026-10-21）
+
+- 原因: モックの`db.query`が常に`[{}]`（項目が全てundefined）を返し、`rows[0].count.toString()`のような正しいコードがTypeErrorで失敗扱い→不要なリトライ（実測243回中3回、全てA1。値に対してメソッドを呼ぶコードだけが影響）
+- 対応: `buildMockQueryRows(sql, tables)`（`vja-mock-runtime.js`、`window`へグローバル展開）。集計（COUNT/SUM/AVG/MIN/MAX/TOTALを含む式。`COALESCE(SUM(x),0)`も）→1（別名があれば別名のキー、無ければ式の文字列のキー）、`SELECT *`・列名指定→テーブル定義の型（INTEGER=1、REAL=1.5、他="x"）、定義に無い列→"x"、SQLを読めない・項目が作れない→従来の`[{}]`。フロント・Bun側（アプリイベント）のモック両方で使う
+- **Workerには関数の文字列(`toString`)を埋め込む**（`_getMockWorkerUrl`）ので、関数の実体は1か所のみ。自己完結にすること（外部の変数を参照させない）。`tables`は`postMessage`で渡す。ユニットテストは`mock-query-rows.test.ts`（11件）
+- 検証: A1が3/3リトライ→5/5リトライ無し。全65依頼×各2回で128/130（失敗はW4のみ）、リトライしたのは8回（D5・W5・A5・FE4。全て正当な検出で解消）で、モック変更による新たな失敗は無い
+- 既知の限界: `SELECT`の最初の`FROM`先だけを見る（JOINの2つ目のテーブルの列は"x"）。MIN/MAXをTEXT列に使っても1（数値）

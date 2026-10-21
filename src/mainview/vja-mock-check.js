@@ -421,7 +421,7 @@ const _MOCK_SMOKE_TIMEOUT_MS = 3000;
 // ロジックそのものを埋め込んでいる。vja-mock-runtime.jsの_buildFrontMock() /
 // _buildBackMock()を変更した場合は、必ずこちらも同じ内容に追従させること。
 const _MOCK_WORKER_RUNTIME_SRC = `
-function _buildFrontMock(evName, wtag, overrides, widgets) {
+function _buildFrontMock(evName, wtag, overrides, widgets, tables) {
     const ov = overrides || {};
     const isRowClickCtx = evName === "RowClick" || (evName === "Click" && wtag === "datagrid");
     const isHeaderClickCtx = evName === "HeaderClick";
@@ -594,7 +594,7 @@ function _buildFrontMock(evName, wtag, overrides, widgets) {
             run: async () => true,
         },
         db: {
-            query: async () => [{}],
+            query: async (sql) => buildMockQueryRows(sql, tables),
             execute: async () => ({ changes: 0, lastInsertRowid: 0 }),
             transaction: async () => true,
             backup: async () => {},
@@ -607,10 +607,10 @@ function _buildFrontMock(evName, wtag, overrides, widgets) {
         },
     };
 }
-function _buildBackMock() {
+function _buildBackMock(tables) {
     return {
         db: {
-            query: () => [{}],
+            query: (sql) => buildMockQueryRows(sql, tables),
             execute: () => ({ changes: 0, lastInsertRowid: 0 }),
             clearTable: () => {},
             importCsv: async () => {},
@@ -630,8 +630,8 @@ function _buildBackMock() {
     };
 }
 self.VJA_MOCK_RUNTIME = {
-    build(isAppEvent, evName, wtag, overrides, widgets) {
-        return isAppEvent ? _buildBackMock() : _buildFrontMock(evName, wtag, overrides, widgets);
+    build(isAppEvent, evName, wtag, overrides, widgets, tables) {
+        return isAppEvent ? _buildBackMock(tables) : _buildFrontMock(evName, wtag, overrides, widgets, tables);
     },
 };
 `;
@@ -640,10 +640,14 @@ self.VJA_MOCK_RUNTIME = {
 let _mockWorkerUrl = null;
 function _getMockWorkerUrl() {
     if (_mockWorkerUrl) return _mockWorkerUrl;
+    // db.queryのダミー行を作る関数は、vja-mock-runtime.jsの1か所だけに置き、文字列(toString)でWorkerへ埋め込む
+    // （自己完結の関数のみ。外部の変数を参照させないこと）
+    const queryRowsSrc = "const buildMockQueryRows = (" + window.buildMockQueryRows.toString() + ");\n";
     const src = [
+        queryRowsSrc,
         _MOCK_WORKER_RUNTIME_SRC,
         "self.onmessage = async (ev) => {",
-        "  const { code, isAppEvent, evName, wtag, overrides, widgets, extNames } = ev.data;",
+        "  const { code, isAppEvent, evName, wtag, overrides, widgets, extNames, tables } = ev.data;",
         "  let capturedError = null;",
         // 生成コードが「業務上想定内のエラー」として自ら throw new Error(...) した
         // ものを、TypeError等の「本当のバグに起因する例外」と区別するため、
@@ -662,7 +666,7 @@ function _getMockWorkerUrl() {
         "    },",
         "  };",
         "  try {",
-        "    const vjaMock = self.VJA_MOCK_RUNTIME.build(isAppEvent, evName, wtag, overrides, widgets);",
+        "    const vjaMock = self.VJA_MOCK_RUNTIME.build(isAppEvent, evName, wtag, overrides, widgets, tables);",
         // extMockは「関数名だけの一覧から、常に{}を返す非同期関数を生成する」だけの
         // 単純なものなので、関数そのもの(構造化複製不可)ではなく名前のみ受け取り
         // Worker内で組み立て直す。
@@ -746,7 +750,7 @@ async function _runMockSmokeTest(code, isAppEvent, evName, wtag, wid, recorder) 
         worker.onerror = (ev) => {
             finish({ message: ev.message || "モック実行中に不明なエラーが発生しました", line: null });
         };
-        worker.postMessage({ code, isAppEvent, evName, wtag, overrides, widgets, extNames });
+        worker.postMessage({ code, isAppEvent, evName, wtag, overrides, widgets, extNames, tables: getProjectData().tables || [] });
     });
 }
 

@@ -16,6 +16,7 @@
 
    【モック値の設計原則（誤検知＝偽陽性を減らすため）】
    - 配列を返すAPIは、空配列 [] ではなく [{}]（ダミー1件）を返す。
+     　例外: vja.db.query はSELECT文からダミーの行を作る（buildMockQueryRows。集計は1、列は型に応じた値）。
      　理由: `rows[0]` のようなアクセスで undefined にならないようにするため。
    - オブジェクトを返すAPIは、null ではなく {} を返す。
    - vja.event.get() のように戻り値の形がイベント種別で変わる「多相API」は、
@@ -58,6 +59,53 @@
 (function () {
     "use strict";
 
+    // vja.db.query のダミー結果を、SELECT文から作る（2026-10-21）。
+    // 従来は常に [{}]（項目が全てundefined）で、`rows[0].count.toString()` のような正しいコードが
+    // TypeErrorとして失敗扱いになっていた（実測: アプリイベントの件数保存で3/3回リトライ）。
+    //   - 集計（COUNT/SUM/AVG/MIN/MAX/TOTALを含む式。COALESCE(SUM(x),0)等も）→ 1（別名があれば別名のキー、無ければ式の文字列のキー）
+    //   - SELECT * / 列名指定 → テーブル定義の型から: INTEGER→1、REAL→1.5、それ以外（TEXT等）→"x"
+    //   - FROM先のテーブル定義が無い・列が見つからない項目 → "x"。SQLを読み取れない・項目が1つも作れない → [{}]
+    // 【要点】この関数は外部の変数を参照しない自己完結にすること。vja-mock-check.jsが、関数の文字列(toString)を
+    // Workerのソースへ埋め込んで使う（Workerは外部ファイルを読み込めないため）。
+    function buildMockQueryRows(sql, tables) {
+        const fallback = [{}];
+        try {
+            const m = /^\s*SELECT\s+(?:DISTINCT\s+)?([\s\S]+?)\s+FROM\s+["`]?(\w+)["`]?/i.exec(String(sql));
+            if (!m) return fallback;
+            const table = (tables || []).find((t) => t.name === m[2]);
+            const cols = (table && table.columns) || [];
+            const typedValue = (colName) => {
+                const c = cols.find((cc) => cc.name === colName);
+                const t = c ? String(c.type || "").toUpperCase() : "";
+                return t === "INTEGER" ? 1 : t === "REAL" ? 1.5 : "x";
+            };
+            // 選択リストを、カッコの外のカンマで分割する
+            const items = [];
+            let depth = 0, cur = "";
+            for (const ch of m[1]) {
+                if (ch === "(") depth++;
+                else if (ch === ")") depth--;
+                if (ch === "," && depth === 0) { items.push(cur); cur = ""; } else cur += ch;
+            }
+            items.push(cur);
+            const row = {};
+            for (const raw of items) {
+                const it = raw.trim();
+                if (!it) continue;
+                if (it === "*" || /^\w+\.\*$/.test(it)) { cols.forEach((c) => { row[c.name] = typedValue(c.name); }); continue; }
+                const alias = /\bAS\s+["`]?(\w+)["`]?\s*$/i.exec(it);
+                const isAgg = /\b(?:COUNT|SUM|AVG|MIN|MAX|TOTAL)\s*\(/i.test(it); // COALESCE(SUM(x),0)のように他の関数で包まれていても集計とみなす
+                if (isAgg) { row[alias ? alias[1] : it] = 1; continue; }
+                const plain = /^(?:\w+\.)?(\w+)(?:\s+AS\s+["`]?(\w+)["`]?)?$/i.exec(it);
+                if (plain) { row[plain[2] || plain[1]] = typedValue(plain[1]); continue; }
+                if (alias) row[alias[1]] = "x";
+            }
+            return Object.keys(row).length ? [row] : fallback;
+        } catch (e) {
+            return fallback;
+        }
+    }
+
     // フロントエンド（ウィジェット/フォームイベント）用モック。
     // evName: 生成対象のイベント名（例: "Click", "RowClick", "KeyDown"）
     // wtag  : 生成対象ウィジェットのタグ（例: "datagrid"）。フォーム/アプリ
@@ -66,7 +114,7 @@
     //   { widgets: {名前: 値}, event: 値|undefined, consts: {名前: 値},
     //     session: {キー: 値}, util: {関数名: 値} }
     //   未指定の項目は、従来通りのデフォルトのダミー値にフォールバックする。
-    function _buildFrontMock(evName, wtag, overrides, widgets) {
+    function _buildFrontMock(evName, wtag, overrides, widgets, tables) {
         const ov = overrides || {};
         // vja.event.get() 等のコンテキスト判定。
         // ・RowClick / HeaderClick イベントなら、そのままの形を返す。
@@ -269,7 +317,7 @@
                 run: async () => true,
             },
             db: {
-                query: async () => [{}],
+                query: async (sql) => buildMockQueryRows(sql, tables),
                 execute: async () => ({ changes: 0, lastInsertRowid: 0 }),
                 transaction: async () => true,
                 backup: async () => {},
@@ -288,10 +336,10 @@
     // 存在しない（ホワイトリストにも含まれない）ため、ここには含めない。
     // また vja.db.* / vja.session.* / vja.log.* はバックエンドでは
     // NEVER await（同期呼び出し）というルールのため、同期関数として実装する。
-    function _buildBackMock() {
+    function _buildBackMock(tables) {
         return {
             db: {
-                query: () => [{}],
+                query: (sql) => buildMockQueryRows(sql, tables),
                 execute: () => ({ changes: 0, lastInsertRowid: 0 }),
                 clearTable: () => {},
                 importCsv: async () => {},
@@ -312,14 +360,15 @@
     }
 
     const _global = (typeof window !== "undefined") ? window : self;
+    _global.buildMockQueryRows = buildMockQueryRows; // vja-mock-check.jsがWorkerへ埋め込む／テストから呼ぶ（`_`無しでグローバル展開）
     _global.VJA_MOCK_RUNTIME = {
         // isAppEvent: true=バックエンド(アプリイベント) / false=フロントエンド
         // evName: 生成対象のイベント名（フロント/フォームイベント時のみ意味を持つ）
         // wtag: 生成対象ウィジェットのタグ（ウィジェットイベント時のみ意味を持つ）
         // overrides: ユーザーが「⚙ モック値を編集」で指定した上書き値（フロントのみ有効）
         // widgets: getProjectData().widgets相当の配列（フロントのvja.widget.get()判定用）
-        build(isAppEvent, evName, wtag, overrides, widgets) {
-            return isAppEvent ? _buildBackMock() : _buildFrontMock(evName, wtag, overrides, widgets);
+        build(isAppEvent, evName, wtag, overrides, widgets, tables) {
+            return isAppEvent ? _buildBackMock(tables) : _buildFrontMock(evName, wtag, overrides, widgets, tables);
         },
     };
 })();
