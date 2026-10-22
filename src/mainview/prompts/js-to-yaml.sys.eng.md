@@ -29,7 +29,6 @@ actions:
 [Rules for describing the code]
 - Describe ONLY what the code actually does, in execution order. Do NOT add steps, validations, or error handling that are not in the code.
 - Write each step as a natural Japanese sentence that a non-programmer can read. Do NOT write JavaScript local variable names, function names, or API names (e.g. vja.xxx); describe the behavior instead. (Widget names, table names and column names are NOT variable names: always keep them as written in the code.)
-- Use the actual widget names (e.g. txtName, btnSearch, tblUsers) and DB table/column names that appear in the code and the context below.
 - Write widget names, table names and column names EXACTLY as they appear in the code, character by character (e.g. write "testSearchInput", never a Japanese rewording such as "検索入力" or "検索入力ウィジェット"). Do NOT translate or rephrase them.
 
 Example (names kept as-is):

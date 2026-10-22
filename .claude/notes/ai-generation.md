@@ -100,7 +100,9 @@ vjaの中核コンセプトである「AIに雛形を作ってもらい、それ
 - プロンプトは`prompts/js-to-yaml.{sys,user}.eng.md`。出力キーは英語指示→`_convertTextToYamlEngKeysToJp`で日本語化（text-to-yamlと同じ）。書き込みは共通の`_applyGeneratedEventYaml`
 - コードで機械抽出したウィジェット名（`findWidgetNamesInCode`）をユーザープロンプトへ渡し、生成後にYAMLに無い名前があればトーストで警告（自動書き換えはしない）
 - **既存不具合を修正**: `buildGenPromptContext()`が`allWidgetsCtx`/`tablesCtx`を返しておらず、「✨ YAMLドラフト生成」にウィジェット・テーブル情報が一度も渡っていなかった（初期実装から）。戻り値へ追加済み
-- 実機測定（`mcp/js-to-yaml-e2e.ts`）: gpt-6-luna 9/9。qwen2.5-coder-7bは繰り返し・単純は5/5だが、条件分岐＋showLoading＋DB検索の長めのコードでウィジェット名を日本語へ言い換える（プロンプト文言の追加や名前一覧の受け渡しでは直らず、単一の原因は特定できていない。トースト警告で検知）
+- 実機測定（`mcp/js-to-yaml-e2e.ts`）: gpt-6-luna 9/9。qwen2.5-coder-7bは繰り返し・単純は5/5だが、条件分岐＋showLoading＋DB検索の長めのコードでウィジェット名を日本語へ言い換える（プロンプト文言の追加や名前一覧の受け渡しでは直らなかった。トースト警告で検知）
+  - **原因の一部を特定（2026-10-22）**: `js-to-yaml.sys.eng.md`のルール行`Use the actual widget names (e.g. txtName, btnSearch, tblUsers)…`の例の名前が、実在の名前の言い換えを誘っていた。S1（条件分岐）の実プロンプトを直接LLM（temp0.3、各20回）へ送って1要素ずつ変えた切り分けで、この1行の削除により名前がそのまま出る回数が2/20→12/20（製品の`js-to-yaml-e2e`はS1 0/3→5/5）。
+  - やって悪化したこと（繰り返さない）: 繰り返しの例（`tableView1`/`orders`）の削除はS1が17/20になるがS2（繰り返し）が14/20（製品測定0/5）へ悪化（JSの`vja.notify.toast(..)`がYAMLへ漏れる）。例の名前をプレースホルダー化しても効かない（7/20）。「names kept as-is」の例の削除は0/20（必要）。コードからshowLoading/hideLoadingを除くと16/20になる（長いコードほど言い換えやすい傾向）。
 - 未確認: アプリイベント側の実機、YAML→JS再生成の往復
 
 # Mockスモークテストの意図的Error誤検知の修正（2026-08-15）
