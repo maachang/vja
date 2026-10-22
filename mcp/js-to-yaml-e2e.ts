@@ -60,6 +60,28 @@ const SCENARIOS = [
         regen: (j: string) => /\b(for|forEach)\b/.test(j) && /UPDATE\s+test_items/i.test(j) && /testResultGrid/.test(j),
     },
     {
+        // S1と同じ型（ローディング＋条件分岐＋DB）の別題材。S1だけで効いた修正になっていないかを見る
+        id: "S5-分類絞込",
+        names: ["testSearchSelect", "testResultGrid"],
+        js: "vja.notify.showLoading();\nvar sel = vja.widget.getValue('testSearchSelect');\nif (sel === '') {\n    vja.notify.toast('分類を選択してください');\n} else {\n    var rows = await vja.db.query('SELECT * FROM test_items WHERE category = ?', [sel]);\n    vja.widget.setValue('testResultGrid', rows);\n}\nvja.notify.hideLoading();",
+        ok: (y: string) => (y.match(/場合\s*:/g) || []).length >= 2 && /testSearchSelect/.test(y) && /test_items/.test(y),
+        regen: (j: string) => /testSearchSelect/.test(j) && /test_items/.test(j) && /\bif\b/.test(j) && /testResultGrid/.test(j),
+    },
+    {
+        id: "S6-件数集計",
+        names: ["testResultGrid", "testSearchInput"],
+        js: "vja.notify.showLoading();\nvar rows = vja.widget.getValue('testResultGrid');\nvar n = 0;\nfor (const row of rows) {\n    if (row.category === '') {\n        n = n + 1;\n    }\n}\nvja.widget.setValue('testSearchInput', String(n));\nvja.notify.hideLoading();",
+        ok: (y: string) => /繰り返(し|す)\s*:/.test(y) && /場合\s*:/.test(y) && /testResultGrid/.test(y) && /testSearchInput/.test(y),
+        regen: (j: string) => /\b(for|forEach)\b/.test(j) && /testResultGrid/.test(j) && /testSearchInput/.test(j),
+    },
+    {
+        id: "S7-登録再表示",
+        names: ["testSearchInput", "testSearchSelect", "testResultGrid"],
+        js: "vja.notify.showLoading();\nvar name = vja.widget.getValue('testSearchInput');\nvar cat = vja.widget.getValue('testSearchSelect');\nif (name === '') {\n    vja.notify.toast('名前を入力してください');\n} else {\n    await vja.db.execute('INSERT INTO test_items (name, category) VALUES (?, ?)', [name, cat]);\n    var rows = await vja.db.query('SELECT * FROM test_items');\n    vja.widget.setValue('testResultGrid', rows);\n}\nvja.notify.hideLoading();",
+        ok: (y: string) => /場合\s*:/.test(y) && /test_items/.test(y) && /testSearchInput/.test(y),
+        regen: (j: string) => /INSERT\s+INTO\s+test_items/i.test(j) && /testResultGrid/.test(j) && /\bif\b/.test(j),
+    },
+    {
         id: "S3-単純",
         names: [] as string[],
         js: "vja.notify.toast('こんにちは');",
