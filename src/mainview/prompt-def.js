@@ -586,8 +586,19 @@ ${_safeYamlFence(yamlDef)}
             usedWidgets: (usedWidgetNames && usedWidgetNames.length > 0) ? usedWidgetNames.join(", ") : "(none)",
         });
     };
+    // [日本語対訳メモ]（AIには送られない）生成したYAMLにコード中のウィジェット名が欠けていた時の、1回だけのやり直し用。
+    // 元のユーザー文に、前回の出力と「欠けた名前」の指摘を足す（systemは元のまま）。
+    // originalUser: 元のJS_TO_YAML_USER_PROMPTの結果 / previousYaml: 前回のAI出力 / missingNames: 欠けた名前の配列
+    const ENG_JS_TO_YAML_RETRY_USER_PROMPT = function (originalUser, previousYaml, missingNames) {
+        return _fillTpl(_loadPromptTpl("js-to-yaml.retry.user.eng.md"), {
+            originalUser: originalUser.trim(),
+            previousYaml: previousYaml.trim(),
+            missingNames: missingNames.join(", "),
+        });
+    };
     o.JS_TO_YAML_SYS_PROMPT = ENG_JS_TO_YAML_SYS_PROMPT;
     o.JS_TO_YAML_USER_PROMPT = ENG_JS_TO_YAML_USER_PROMPT;
+    o.JS_TO_YAML_RETRY_USER_PROMPT = ENG_JS_TO_YAML_RETRY_USER_PROMPT;
 
     // [プロンプト]自然言語要求からフォームデザインYAMLを生成
     // [日本語対訳メモ]（AIには送られない。内容確認用の要約）

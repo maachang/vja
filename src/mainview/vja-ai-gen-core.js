@@ -939,7 +939,25 @@ async function generateJsToYaml(wid, evName, jsCode, domOverride = null) {
         userPrompt: userPrompt,
         loadingMsg: "JSコードからYAML作成中…",
         onSuccess: async (cleanYaml) => {
-            const stripped0 = cleanYaml.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+            const stripFence = (t) => t.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+            let stripped0 = stripFence(cleanYaml);
+            // コード中のウィジェット名がYAMLから欠けていたら（「分類の値」のような言い換え。プロンプト文言の調整では
+            // 直らなかった）、欠けた名前を指摘して1回だけやり直す。やり直しで欠けが減った時だけ採用する（悪化させない）
+            const namesInCode = findWidgetNamesInCode(jsCode);
+            const missing0 = namesInCode.filter(n => !stripped0.includes(n));
+            if (missing0.length > 0) {
+                window.vja?.log?.debug?.("[AI検証] JS→YAMLでウィジェット名が欠けたため、やり直します: " + missing0.join(", "));
+                let retryYaml = null;
+                await runAiGenerate({
+                    systemPrompt: sysPrompt,
+                    userPrompt: _PROMPT_DEF.JS_TO_YAML_RETRY_USER_PROMPT(userPrompt, stripped0, missing0),
+                    loadingMsg: "ウィジェット名を修正して再生成中…",
+                    onSuccess: async (fixed) => { retryYaml = stripFence(fixed); },
+                    onCancel: async () => {},
+                    onError: async () => {},
+                });
+                if (retryYaml && namesInCode.filter(n => !retryYaml.includes(n)).length < missing0.length) stripped0 = retryYaml;
+            }
             const stripped = _convertTextToYamlEngKeysToJp(stripped0);
             let docText;
             if (!_getEventDocText(wid, evName).trim()) {
