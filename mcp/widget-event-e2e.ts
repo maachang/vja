@@ -37,7 +37,14 @@ const generateViaEditor = async (wid: number, evName: string, marker: string) =>
     for (let i = 0; i < 40; i++) {
         const ws = (await call("testGetWidgets")).widgets || [];
         const code = ws.find((w: any) => w.id === wid)?.jsCode?.[evName];
-        if (code) return { ok: true, code };
+        if (code) {
+            // 生成直後にjsCodeは入るが、yamlAiGenerateはその後にrequestAnimationFrame×2待ちでsaveYamlData（非同期）を呼び、
+            // 画面(#yaml-ta等)の内容を同じウィジェット/イベントのデータへ書き戻す。次のテストがtestApplyProjectDataで
+            // データを差し替えた後にこれが走ると、前のテストのYAMLで上書きされ「プロンプトにYAML本文が入っていない」になる。
+            // 同じウィジェット(btn Click)を続けて使うテストで起きる（2026-10-22）。遅延保存が終わるまで待つ
+            await new Promise((r) => setTimeout(r, 500));
+            return { ok: true, code };
+        }
         await new Promise((r) => setTimeout(r, 250));
     }
     return { ok: false, error: "生成コードが保存されなかった（タイムアウト）" };
