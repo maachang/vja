@@ -466,12 +466,19 @@ function buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowConte
     const formsCtxGated = (!isAppEvent && !enabledApiOptSet.has("form")) ? "  （vja.formは現在このイベントで無効化されています）" : formsCtx;
     // 有効化された任意カテゴリ・利用テーブル指定時のvja.dbのAPI説明を、ユーザープロンプト側に追加する
     let optionalApiDocCtx = "";
+    // 有効な任意カテゴリのサービス名（ラベルから「(vja.x.*)」の括弧を除いたもの）。YAMLドラフト生成（text-to-yaml）へ渡す用
+    // （渡さないと、SNS/Lambda/SES等を使えることを知らないまま依頼文をYAMLにして、意図が落ちる）。
+    // API定義文（vja.xxx: { args... }）は渡さない: YAMLへそのまま写って、API名・コード混じりのYAMLになる（2026-10-23、混入69/84）
+    let optionalApiLabels = [];
     if (!isAppEvent) {
         const blocks = [];
         enabledApiOpts.forEach(key => {
             const label = _PROMPT_DEF.VJA_FRONT_API_OPTIONAL_LABELS?.[key];
             const doc = _PROMPT_DEF.VJA_FRONT_API_OPTIONAL_ENG?.[key];
-            if (label && doc) blocks.push("## " + label + "\n" + doc);
+            if (label && doc) {
+                blocks.push("## " + label + "\n" + doc);
+                optionalApiLabels.push(label.replace(/\s*\(.*\)\s*$/, "").trim());
+            }
         });
         if (targetTables.length > 0 && _PROMPT_DEF.VJA_FRONT_API_DB_ENG) {
             blocks.push("## データベース (vja.db.*)\n" + _PROMPT_DEF.VJA_FRONT_API_DB_ENG);
@@ -517,7 +524,7 @@ function buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowConte
         }
     );
 
-    return { sysPrompt, userPrompt, validationName, wtag: w?.tag, allWidgetsCtx, tablesCtx, imagesCtx, yamlCur };
+    return { sysPrompt, userPrompt, validationName, wtag: w?.tag, allWidgetsCtx, tablesCtx, imagesCtx, optionalApiLabels, yamlCur };
 }
 
 // async function handleXxx() { ... } のラッパーを自動除去
@@ -817,10 +824,10 @@ async function generateTextToYaml(wid, evName, inputText, domOverride = null) {
     const isFormEvent = (wid === "form");
     // YAMLドラフト生成時は依頼文にウィジェット名が出てこないケースが多いため、
     // 絞り込みを行わず常にフォーム全体のウィジェット一覧をAIへ渡す
-    const { allWidgetsCtx, tablesCtx, imagesCtx } = buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, false, domOverride);
+    const { allWidgetsCtx, tablesCtx, imagesCtx, optionalApiLabels } = buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, false, domOverride);
 
     // アプリイベントには画面が無いため、ウィジェット一覧は渡さず、環境の制約をプロンプトで伝える
-    const sysPrompt = _PROMPT_DEF.TEXT_TO_YAML_SYS_PROMPT({ widgetsCtx: isAppEvent ? "" : allWidgetsCtx, tablesCtx: tablesCtx, extRuntimeDoc: getProjectData().extRuntime?.doc, imagesCtx: imagesCtx, isAppEvent: isAppEvent });
+    const sysPrompt = _PROMPT_DEF.TEXT_TO_YAML_SYS_PROMPT({ widgetsCtx: isAppEvent ? "" : allWidgetsCtx, tablesCtx: tablesCtx, extRuntimeDoc: getProjectData().extRuntime?.doc, imagesCtx: imagesCtx, isAppEvent: isAppEvent, optionalApiServices: optionalApiLabels });
     const userPrompt = _PROMPT_DEF.TEXT_TO_YAML_USER_PROMPT(inputText);
 
     let result = null;

@@ -51,7 +51,7 @@ actions:
 - If a word in the user request exactly matches a widget name, image name or table name in the context below, treat it as that name even if it looks like an ordinary word (e.g. a widget named "Picture"). Write such names exactly as shown in the context, preserving upper/lower case.
 - Use ONLY table and column names listed in the context below. If no DB table is listed, never invent table or column names and never write database operations (no SQL, no "tables:" entries, no "save to table" steps).
 
-{{appEventSection}}[Available Widgets Context]
+{{appEventSection}}{{optionalApiSection}}[Available Widgets Context]
 {{widgetsCtx}}
 
 {{imagesSection}}[Available Database Tables Context]

@@ -545,7 +545,10 @@ ${_safeYamlFence(yamlDef)}
     // extRuntimeDoc: [任意]拡張ランタイムのyaml定義。空なら拡張関数のセクション自体を出さない（従来と同一のプロンプトになる）。
     // imagesCtx: [任意]画像管理に登録した画像名の一覧。空ならセクション自体を出さない。
     // isAppEvent: [任意]アプリイベント（Bun側で起動・終了時に実行。画面・ダイアログ・トーストが無い）の時true。環境の制約をセクションで伝える。
-    const ENG_TEXT_TO_YAML_SYS_PROMPT = function ({ widgetsCtx, tablesCtx, extRuntimeDoc, imagesCtx, isAppEvent }) {
+    // optionalApiServices: [任意]このイベントで有効な任意APIカテゴリ（AWS/通知/ファイル等）のサービス名の配列。空ならセクション自体を出さない。
+    //   YAMLドラフト段階で、依頼文の「SNSへ通知」「Lambdaを呼ぶ」等を、そのサービスを使うこととして書かせるために渡す。
+    //   API定義文は渡さない（YAMLへそのまま写って、API名・コード混じりのYAMLになる。2026-10-23）。
+    const ENG_TEXT_TO_YAML_SYS_PROMPT = function ({ widgetsCtx, tablesCtx, extRuntimeDoc, imagesCtx, isAppEvent, optionalApiServices }) {
         const extRuntimeSection = (extRuntimeDoc && extRuntimeDoc.trim())
             ? _fillTpl(_loadPromptTpl("text-to-yaml.ext-runtime.eng.md"), { extRuntimeDoc: extRuntimeDoc.trim() })
             : "";
@@ -553,6 +556,9 @@ ${_safeYamlFence(yamlDef)}
             widgetsCtx: widgetsCtx || "(No widgets)",
             appEventSection: isAppEvent
                 ? "[App Event Environment]\nThis event runs in the background when the application starts or exits. It is NOT on a form: there are no widgets, dialogs, confirmations, toasts or loading indicators. Only database operations, session (get/set/delete/clear) and log output are available. Never write steps that use widgets, dialogs, confirmations, toasts or loading. For on_success / on_error write only log output (e.g. \"ログにエラーを出力\") or \"なし\".\n\n"
+                : "",
+            optionalApiSection: (optionalApiServices && optionalApiServices.length > 0)
+                ? "[Enabled Services]\nThese services can be used from this event: " + optionalApiServices.join(", ") + ". When the request mentions one of them, write the step in Japanese naming that service and the values from the request.\n\n"
                 : "",
             // 画像管理に登録した画像がある時だけ出す（無ければ空文字）。「画像一覧」はこの画像管理の一覧を指す
             imagesSection: imagesCtx
