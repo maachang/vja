@@ -799,6 +799,19 @@ function _fixWidgetNameCase(text, widgets) {
     return result;
 }
 
+// text-to-yaml.sys.eng.mdの例文で、実名を入れる場所に書いているプレースホルダー。AIがそのまま出力してしまう
+// ことがある（2026-10-23、全83依頼で4/166回。CL3は実在しないウィジェットへ書くJSになった）。例文側と必ず揃えること
+const _TEXT_TO_YAML_PLACEHOLDERS = ["<一覧ウィジェット名>", "<選択ボックス名>"];
+function _findLeakedPlaceholders(yamlText) {
+    return _TEXT_TO_YAML_PLACEHOLDERS.filter((p) => yamlText.includes(p));
+}
+// AIが実名を山括弧で囲んで書く（<testResultGrid>）ことがある（例文のプレースホルダー化の副作用。全83依頼で20/166回）。
+// 山括弧の中身が、実在するウィジェット名・テーブル名・画像名に完全一致する時だけ、括弧を外す（それ以外は触らない）
+function _stripBracketsAroundKnownNames(yamlText, names) {
+    const known = new Set(names.filter(Boolean));
+    return yamlText.replace(/<([^<>\n]+)>/g, (m, inner) => known.has(inner.trim()) ? inner.trim() : m);
+}
+
 async function generateTextToYaml(wid, evName, inputText, domOverride = null) {
     const isAppEvent = (wid === "appev");
     const isFormEvent = (wid === "form");
@@ -817,13 +830,31 @@ async function generateTextToYaml(wid, evName, inputText, domOverride = null) {
         loadingMsg: "YAMLドラフト作成中…",
         onSuccess: async (cleanYaml) => {
             // マークダウンコードブロック (```yaml) を除去
-            const stripped0 = cleanYaml.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+            const stripFence = (t) => t.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+            let stripped0 = stripFence(cleanYaml);
+            // 例文のプレースホルダーがそのまま出力されたら、指摘して1回だけやり直す。やり直しで減った時だけ採用する（悪化させない）
+            const leaked0 = _findLeakedPlaceholders(stripped0);
+            if (leaked0.length > 0) {
+                window.vja?.log?.debug?.("[AI検証] YAMLドラフトにプレースホルダーが残ったため、やり直します: " + leaked0.join(", "));
+                let retryYaml = null;
+                await runAiGenerate({
+                    systemPrompt: sysPrompt,
+                    userPrompt: _PROMPT_DEF.TEXT_TO_YAML_RETRY_USER_PROMPT(userPrompt, stripped0, leaked0),
+                    loadingMsg: "プレースホルダーを実名に直して再生成中…",
+                    onSuccess: async (fixed) => { retryYaml = stripFence(fixed); },
+                    onCancel: async () => {},
+                    onError: async () => {},
+                });
+                if (retryYaml && _findLeakedPlaceholders(retryYaml).length < leaked0.length) stripped0 = retryYaml;
+            }
             // AIへの出力キー指示は英語表記（description/tables等）にしているため
             // （日本語キーだと一部ローカルLLM＋サーバー環境で応答パースエラーが
             // 発生する事象への対策）、実際のVJAイベントYAML仕様（日本語キー）へ変換する
             // さらに、ウィジェット名が種別名と同じ綴り（例: Picture）のとき、AIが小文字（picture）へ
             // 崩した箇所を正しい名前へ機械的に戻す（詳細は_fixWidgetNameCase）
-            const stripped = _fixWidgetNameCase(_convertTextToYamlEngKeysToJp(stripped0), getProjectData().widgets);
+            const pd = getProjectData();
+            const knownNames = [...(pd.widgets || []).map((w) => w.name), ...(pd.tables || []).map((t) => t.name), ...(pd.images || []).map((im) => im.name)];
+            const stripped = _stripBracketsAroundKnownNames(_fixWidgetNameCase(_convertTextToYamlEngKeysToJp(stripped0), pd.widgets), knownNames);
 
             // モーダルを再表示する前にデータモデルに新YAMLと依頼テキストを書き込み
             _applyGeneratedEventYaml(wid, evName, stripped, inputText);

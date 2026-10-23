@@ -568,8 +568,18 @@ ${_safeYamlFence(yamlDef)}
         return _fillTpl(_loadPromptTpl("text-to-yaml.user.eng.md"), { userReq: userReq.trim() });
     };
 
+    // [日本語対訳メモ]（AIには送られない）生成したYAMLに、例文のプレースホルダー（<一覧ウィジェット名>等）が
+    // そのまま残っていた時の、1回だけのやり直し用。元のユーザー文に、前回の出力と指摘を足す（systemは元のまま）。
+    const ENG_TEXT_TO_YAML_RETRY_USER_PROMPT = function (originalUser, previousYaml, leakedPlaceholders) {
+        return _fillTpl(_loadPromptTpl("text-to-yaml.retry.user.eng.md"), {
+            originalUser: originalUser.trim(),
+            previousYaml: previousYaml.trim(),
+            leakedPlaceholders: leakedPlaceholders.join(", "),
+        });
+    };
     o.TEXT_TO_YAML_SYS_PROMPT = ENG_TEXT_TO_YAML_SYS_PROMPT;
     o.TEXT_TO_YAML_USER_PROMPT = ENG_TEXT_TO_YAML_USER_PROMPT;
+    o.TEXT_TO_YAML_RETRY_USER_PROMPT = ENG_TEXT_TO_YAML_RETRY_USER_PROMPT;
 
     // [日本語対訳メモ]（AIには送られない）イベントのJSコードを読み、実際にやっていることを
     // イベントYAML（TEXT_TO_YAMLと同じ形式）へ書き起こさせるプロンプト（＝「📖 JSからYAML化」）。
