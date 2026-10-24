@@ -239,6 +239,11 @@ async function formatJsCode(code) {
 // 判定不能なため対象外とする。
 const _WIDGET_NAME_ARG_APIS = [
     "vja.widget.get", "vja.widget.set", "vja.widget.setSuggestions",
+    "vja.widget.getValue", "vja.widget.setValue", "vja.widget.setItems", "vja.widget.setTableData",
+    "vja.widget.getText", "vja.widget.setText",
+    "vja.widget.show", "vja.widget.hide", "vja.widget.setVisible", "vja.widget.isVisible",
+    "vja.widget.enable", "vja.widget.disable",
+    "vja.widget.getSelectedIndex", "vja.widget.setSelectedIndex",
 ];
 // コード内で、上記API群に対して「現在のフォームに存在しないウィジェット名」が
 // 文字列リテラルで渡されている箇所を検出する。vja.trigger.* も対象に含める
