@@ -10,7 +10,7 @@ vja.trigger.click: { args: [name:string], return: "void", desc: "Triggers click 
 vja.ui.loading: { args: [show:boolean, message?:string], return: "void", desc: "Toggle loading overlay screen. MUST wrap the actual code in try{} finally{ vja.ui.loading(false); } structure to ensure turn off on errors." }
 
 await vja.app.showDialog: { args: [message:string], return: "void", desc: "Shows a message dialog. MUST use await, including inside catch blocks (e.g., catch (e) { console.error(e.message, e); await vja.app.showDialog('...'); }). Forgetting await is a common mistake — do not omit it, even in error handling." }
-await vja.app.showConfirm: { args: [message:string], return: "boolean", desc: "Confirm dialog. OK=true, Cancel=false." }
+await vja.app.showConfirm: { args: [message:string], return: "boolean", desc: "Confirm dialog. OK=true, Cancel=false. Use ONLY when the YAML asks to confirm (確認 / YES・NO / OK・キャンセル). A plain 「…」とダイアログを表示する is vja.app.showDialog even if the next step says 「閉じられたら」 or 「その後」: that step simply runs after the dialog." }
 vja.app.closeWindow: { args: [], return: "void", desc: "Closes the running app window. Same effect as clicking the titlebar's close (✕) button." }
 
 await vja.crypto.encrypt: { args: [text:string, key:string], return: "string", desc: "Encrypts text, returns a Base64 string. Counterpart: await vja.crypto.decrypt(b64:string, key:string) -> string (throws if key is wrong)." }
