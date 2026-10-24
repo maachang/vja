@@ -36,6 +36,11 @@ actions:
           - 一覧を再取得して <一覧ウィジェット名> に表示する
       - NO の場合: 何もしない
 
+Example (plain message dialog, no confirmation):
+actions:
+  - 「保存しました」とダイアログを表示する
+  - 画面を閉じる
+
 Example (loop):
 actions:
   - <一覧ウィジェット名> の全行データを取得する
