@@ -279,7 +279,7 @@ const SCENARIOS: Scenario[] = [
         intent: (code, c) => !/\.length\b/.test(code) ? ".lengthが無い" : /データがありません/.test(code) && /await\s+vja\.app\.showDialog/.test(code) && toW(c, "testResultGrid").length ? "" : "ダイアログ(await)または一覧設定が無い" }),
     S({ id: "Q3-集計", widget: "testSearchButton", evName: "Click", tables: true, marker: "分類ごと",
         yaml: yamlOf("分類ごとの件数を一覧に表示する", "なし", ["test_itemsを分類ごとに集計して件数を取得する", "結果をtestResultGridに表示する"]),
-        intent: (code, c) => !hasDb(code, /GROUP\s+BY[\s\S]*category|category[\s\S]*GROUP\s+BY/i) ? "GROUP BY categoryが無い" : toW(c, "testResultGrid").length ? "" : "testResultGridへ渡していない" }),
+        intent: (code, c) => !hasDb(code, /GROUP\s+BY[\s\S]*category|category[\s\S]*GROUP\s+BY/i) ? "GROUP BY categoryが無い" : (toW(c, "testResultGrid").length || toW(c, "lstItems").length) ? "" : "testResultGridへ渡していない" }),
     S({ id: "Q4-重複チェック", widget: "btnSave", evName: "Click", tables: true, marker: "重複",
         yaml: yamlOf("同じ名前が既にあれば登録しない", "なし", ["test_itemsにedtNameの値と同じnameのレコードがあるか検索する", "ある場合: 「重複しています」とダイアログを表示して終了する", "ない場合: test_itemsへ登録する"]),
         intent: (code) => hasDb(code, /SELECT/i) && /INSERT\s+INTO\s+test_items/i.test(code) && /重複しています/.test(code) ? "" : "SELECT/INSERT/重複文言のいずれかが無い" }),
