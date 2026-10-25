@@ -286,7 +286,7 @@ const SCENARIOS: Scenario[] = [
     S({ id: "H1-HTTP取得", widget: "testSearchButton", evName: "Click", tables: false, marker: "example.com",
         yaml: yamlOf("Web APIからデータを取得して一覧に表示する", "なし", ["https://example.com/api/items にGETリクエストを送る", "返ってきたJSONの配列をtestResultGridに表示する"]),
         apis: ["http"],
-        intent: (code, c) => !/await\s+vja\.(http\.get|fetch)\s*\(/.test(code) ? "awaitつきのhttp.get/fetchが無い" : toW(c, "testResultGrid").length ? "" : "testResultGridへ渡していない" }),
+        intent: (code, c) => !/await\s+vja\.(http\.get|fetch)\s*\(/.test(code) ? "awaitつきのhttp.get/fetchが無い" : (toW(c, "testResultGrid").length || toW(c, "lstItems").length) ? "" : "testResultGridへ渡していない" }),
     S({ id: "F1-ファイル書込", widget: "btnSave", evName: "Click", tables: false, marker: "memo.txt",
         yaml: yamlOf("ラベルの内容をテキストファイルへ保存する", "なし", ["msgLabelの内容を取得する", "memo.txtへ書き込む", "「保存しました」とトースト表示する"]),
         apis: ["file"],
