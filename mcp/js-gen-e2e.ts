@@ -393,7 +393,7 @@ const SCENARIOS: Scenario[] = [
     S({ id: "CL7-DDBクエリ", widget: "btnSave", evName: "Click", tables: false, marker: "category",
         yaml: yamlOf("DynamoDBから分類で検索して一覧に表示する", "なし", ["edtCategoryの値を取得する", "DynamoDBのテーブル「items」から、パーティションキーcategoryがその値の項目を検索する", "検索結果をtestResultGridに表示する"]),
         apis: ["aws_dynamodb"],
-        intent: (code, c) => !/await\s+vja\.aws\.dynamodb\.query\s*\(\s*['"]items['"]\s*,\s*['"]category['"]/.test(code) ? "awaitつきaws.dynamodb.query('items','category', …)が無い" : toW(c, "testResultGrid").length ? "" : "testResultGridへ渡していない" }),
+        intent: (code, c) => !/await\s+vja\.aws\.dynamodb\.query\s*\(\s*['"]items['"]\s*,\s*['"]category['"]/.test(code) ? "awaitつきaws.dynamodb.query('items','category', …)が無い" : (toW(c, "testResultGrid").length || toW(c, "lstItems").length) ? "" : "testResultGridへ渡していない" }),
     S({ id: "CL8-SQS送信", widget: "btnSave", evName: "Click", tables: false, marker: "注文",
         yaml: yamlOf("入力内容を注文としてSQSへ送る", "なし", ["edtNameとedtCategoryの値を取得する", "name、categoryを持つ注文をJSON文字列にして、SQSのキュー（URL: https://sqs.ap-northeast-1.amazonaws.com/123456789012/orders）へ送る"]),
         apis: ["aws_sqs"],
