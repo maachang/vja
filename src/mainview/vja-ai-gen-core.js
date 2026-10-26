@@ -390,7 +390,10 @@ function buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowConte
         const mentioned = _extractMentionedByName(scanText, allWidgetsFull);
         const mentionedSet = new Set(mentioned.map(ww => ww.name));
         if (w?.name) mentionedSet.add(w.name);
-        if (mentionedSet.size > 0) {
+        // 判定は「本文に名前が出たウィジェットがあるか」（mentioned）で行う。編集中のウィジェットを足した後の
+        // mentionedSet.sizeで判定すると常に真になり、本文に名前が無い依頼（「名前の値」等）で一覧が自分1件に
+        // 縮み、7Bが存在しない名前や自分自身（btnSave）を使う不具合になっていた（2026-10-26。CL12・リトライの大半）
+        if (mentioned.length > 0) {
             widgetsForCtx = allWidgetsFull.filter(ww => mentionedSet.has(ww.name));
         }
     }
