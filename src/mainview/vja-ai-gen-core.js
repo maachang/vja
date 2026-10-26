@@ -78,7 +78,10 @@ function buildTablesCtxText(targetTables, excludeManaged) {
             const desc = t.description ? " // " + t.description : "";
             return "  " + t.name + desc + ":\n" + cols;
         }).join("\n")
-        : "  （テーブル未定義。DynamoDB等のクラウドのテーブル名は、依頼文に書かれた名前を使う）";
+        : (excludeManaged
+            ? "  （テーブル未定義）"
+            // イベント側（excludeManagedなし）のみ。gpt-6-lunaがDynamoDB依頼を「テーブル定義が無い」と放棄するのを防ぐ（2026-10-26）。画面生成には不要
+            : "  （テーブル未定義。DynamoDB等のクラウドのテーブル名は、依頼文に書かれた名前を使う）");
 }
 
 /* ═══════════════════════════════════════════
