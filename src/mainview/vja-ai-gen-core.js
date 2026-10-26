@@ -61,7 +61,8 @@
 // excludeManaged: trueなら管理系カラム（managed=true。作成日時・更新日時・削除フラグ等）を除く。
 // 画面生成（YAML・レイアウト・ウィザードの画面構成）用。イベントJS生成はINSERT/UPDATEで
 // 管理系カラムも扱うため、省略（false）のまま全カラムを渡すこと。
-function buildTablesCtxText(targetTables, excludeManaged) {
+// allowCloudTableNames: trueなら、テーブルが0件の時の文言へ「クラウド（DynamoDB等）のテーブル名は依頼文の名前を使う」を添える。
+function buildTablesCtxText(targetTables, excludeManaged, allowCloudTableNames) {
     return targetTables.length > 0
         ? targetTables.map(t => {
             const cols = (t.columns || []).filter(c => !(excludeManaged && c.managed)).map(c => {
@@ -78,10 +79,10 @@ function buildTablesCtxText(targetTables, excludeManaged) {
             const desc = t.description ? " // " + t.description : "";
             return "  " + t.name + desc + ":\n" + cols;
         }).join("\n")
-        : (excludeManaged
-            ? "  （テーブル未定義）"
-            // イベント側（excludeManagedなし）のみ。gpt-6-lunaがDynamoDB依頼を「テーブル定義が無い」と放棄するのを防ぐ（2026-10-26）。画面生成には不要
-            : "  （テーブル未定義。DynamoDB等のクラウドのテーブル名は、依頼文に書かれた名前を使う）");
+        : (allowCloudTableNames
+            // gpt-6-lunaがDynamoDB依頼を「テーブル定義が無い」と放棄するのを防ぐ（2026-10-26）。DynamoDBが有効なイベントだけに渡す
+            ? "  （テーブル未定義。DynamoDB等のクラウドのテーブル名は、依頼文に書かれた名前を使う）"
+            : "  （テーブル未定義）");
 }
 
 /* ═══════════════════════════════════════════
@@ -458,7 +459,6 @@ function buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowConte
     const targetTables = enabledTableNames.length > 0
         ? getProjectData().tables.filter(t => enabledTableNames.includes(t.name))
         : []; // 未指定の場合は何も渡さない
-    const tablesCtx = buildTablesCtxText(targetTables);
 
     // ── ⑤-2 任意API有効化: 有効カテゴリの判定・連動コンテキストのゲーティング ──
     // フロントエンドイベントのみ対象（バックエンドは全カテゴリ常時利用可能のため対象外）。
@@ -470,6 +470,8 @@ function buildGenPromptContext(wid, evName, isAppEvent, isFormEvent, narrowConte
         return arr;
     })();
     const enabledApiOptSet = new Set(enabledApiOpts);
+    // DynamoDBが有効なイベントだけ、「テーブル未定義」にクラウドのテーブル名の扱いを添える（無関係な依頼のプロンプトを変えない。RP1の悪化対策、2026-10-26）
+    const tablesCtx = buildTablesCtxText(targetTables, false, enabledApiOptSet.has("aws_dynamodb"));
     // vja.constが無効なら、定数一覧そのものを見せる意味が無いため空にする
     const globalConstCtxGated = (!isAppEvent && !enabledApiOptSet.has("const")) ? "  （vja.constは現在このイベントで無効化されています）" : globalConstCtx;
     const formConstCtxGated = (!isAppEvent && !enabledApiOptSet.has("const")) ? "  （vja.constは現在このイベントで無効化されています）" : formConstCtx;
