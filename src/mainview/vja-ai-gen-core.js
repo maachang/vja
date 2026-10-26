@@ -78,7 +78,7 @@ function buildTablesCtxText(targetTables, excludeManaged) {
             const desc = t.description ? " // " + t.description : "";
             return "  " + t.name + desc + ":\n" + cols;
         }).join("\n")
-        : "  （テーブル未定義）";
+        : "  （テーブル未定義。DynamoDB等のクラウドのテーブル名は、依頼文に書かれた名前を使う）";
 }
 
 /* ═══════════════════════════════════════════
