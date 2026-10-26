@@ -385,7 +385,7 @@ const SCENARIOS: Scenario[] = [
     S({ id: "CL5-DDB登録", widget: "btnSave", evName: "Click", tables: false, marker: "users",
         yaml: yamlOf("入力内容をDynamoDBへ登録する", "なし", ["edtNameとedtCategoryの値を取得する", "DynamoDBのテーブル「users」へ、id=edtNameの値、category=edtCategoryの値の1件を登録する"]),
         apis: ["aws_dynamodb"],
-        intent: (code) => /await\s+vja\.aws\.dynamodb\.put\s*\(\s*['"]users['"]\s*,\s*\{/.test(code) ? "" : "awaitつきaws.dynamodb.put('users', {…})が無い" }),
+        intent: (code) => !/await\s+vja\.aws\.dynamodb\.put\s*\(\s*['"]users['"]\s*,/.test(code) ? "awaitつきaws.dynamodb.put('users', …)が無い" : !(/vja\.widget\.get\s*\(\s*['"]edtName['"]/.test(code) && /vja\.widget\.get\s*\(\s*['"]edtCategory['"]/.test(code)) ? "edtName/edtCategoryを取得していない" : "" }),
     S({ id: "CL6-DDB取得", widget: "btnSave", evName: "Click", tables: false, marker: "見つかりません",
         yaml: yamlOf("DynamoDBから1件取得して表示する", "なし", ["edtNameの値を取得する", "DynamoDBのテーブル「users」から、id=edtNameの値の1件を取得する", "見つからなかった場合: msgLabelに「見つかりません」と表示する", "見つかった場合: msgLabelにcategoryを表示する"]),
         apis: ["aws_dynamodb"],
