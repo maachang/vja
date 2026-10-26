@@ -583,6 +583,15 @@ ${_safeYamlFence(yamlDef)}
             leakedPlaceholders: leakedPlaceholders.join(", "),
         });
     };
+    // 依頼文にあるのにYAMLで落ちた要件（トランザクション等）を指摘してやり直させる（droppedWords: 落ちた語の配列）
+    const ENG_TEXT_TO_YAML_RETRY_KEYWORD_USER_PROMPT = function (originalUser, previousYaml, droppedWords) {
+        return _fillTpl(_loadPromptTpl("text-to-yaml.retry-keyword.user.eng.md"), {
+            originalUser: originalUser.trim(),
+            previousYaml: previousYaml.trim(),
+            droppedWords: droppedWords.join(", "),
+        });
+    };
+    o.TEXT_TO_YAML_RETRY_KEYWORD_USER_PROMPT = ENG_TEXT_TO_YAML_RETRY_KEYWORD_USER_PROMPT;
     o.TEXT_TO_YAML_SYS_PROMPT = ENG_TEXT_TO_YAML_SYS_PROMPT;
     o.TEXT_TO_YAML_USER_PROMPT = ENG_TEXT_TO_YAML_USER_PROMPT;
     o.TEXT_TO_YAML_RETRY_USER_PROMPT = ENG_TEXT_TO_YAML_RETRY_USER_PROMPT;

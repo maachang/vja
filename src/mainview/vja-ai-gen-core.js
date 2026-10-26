@@ -817,6 +817,12 @@ function _fixWidgetNameCase(text, widgets) {
 // text-to-yaml.sys.eng.mdの例文で、実名を入れる場所に書いているプレースホルダー。AIがそのまま出力してしまう
 // ことがある（2026-10-23、全83依頼で4/166回。CL3は実在しないウィジェットへ書くJSになった）。例文側と必ず揃えること
 const _TEXT_TO_YAML_PLACEHOLDERS = ["<一覧ウィジェット名>", "<選択ボックス名>"];
+// 依頼文にあるのにYAMLで落ちやすい要件の語（7Bは「1つのトランザクションで」を落とし、INSERTを2手順に分ける。
+// 実測: 初回0/12、指摘してやり直すと12/12残る。2026-10-26）。語を足す時は全依頼の回帰で確認すること
+const _TEXT_TO_YAML_KEEP_WORDS = ["トランザクション"];
+function _findDroppedKeepWords(inputText, yamlText) {
+    return _TEXT_TO_YAML_KEEP_WORDS.filter((w) => inputText.includes(w) && !yamlText.includes(w));
+}
 function _findLeakedPlaceholders(yamlText) {
     return _TEXT_TO_YAML_PLACEHOLDERS.filter((p) => yamlText.includes(p));
 }
@@ -861,6 +867,21 @@ async function generateTextToYaml(wid, evName, inputText, domOverride = null) {
                     onError: async () => {},
                 });
                 if (retryYaml && _findLeakedPlaceholders(retryYaml).length < leaked0.length) stripped0 = retryYaml;
+            }
+            // 依頼文の要件の語（トランザクション等）がYAMLで落ちたら、指摘して1回だけやり直す。減った時だけ採用する（悪化させない）
+            const dropped0 = _findDroppedKeepWords(inputText, stripped0);
+            if (dropped0.length > 0) {
+                window.vja?.log?.debug?.("[AI検証] YAMLドラフトで依頼の要件が落ちたため、やり直します: " + dropped0.join(", "));
+                let retryYaml = null;
+                await runAiGenerate({
+                    systemPrompt: sysPrompt,
+                    userPrompt: _PROMPT_DEF.TEXT_TO_YAML_RETRY_KEYWORD_USER_PROMPT(userPrompt, stripped0, dropped0),
+                    loadingMsg: "依頼の要件を反映して再生成中…",
+                    onSuccess: async (fixed) => { retryYaml = stripFence(fixed); },
+                    onCancel: async () => {},
+                    onError: async () => {},
+                });
+                if (retryYaml && _findDroppedKeepWords(inputText, retryYaml).length < dropped0.length && _findLeakedPlaceholders(retryYaml).length === 0) stripped0 = retryYaml;
             }
             // AIへの出力キー指示は英語表記（description/tables等）にしているため
             // （日本語キーだと一部ローカルLLM＋サーバー環境で応答パースエラーが
