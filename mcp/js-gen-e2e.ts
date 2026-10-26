@@ -413,7 +413,7 @@ const SCENARIOS: Scenario[] = [
     S({ id: "CL12-SESメール", widget: "btnSave", evName: "Click", tables: false, marker: "from",
         yaml: yamlOf("入力内容をメールで送る", "なし", ["edtNameの値を取得する", "SESで、送信元「noreply@example.com」、宛先「admin@example.com」、件名「お知らせ」、本文にその値を入れて送る"]),
         apis: ["aws_ses"],
-        intent: (code) => !/await\s+vja\.aws\.ses\.sendEmail\s*\(\s*\{/.test(code) ? "awaitつきaws.ses.sendEmail({…})が無い" : /from\s*:/.test(code) && /to\s*:/.test(code) && /subject\s*:/.test(code) && /text\s*:|html\s*:/.test(code) ? "" : "from/to/subject/textのいずれかが無い" }),
+        intent: (code) => !/await\s+vja\.aws\.ses\.sendEmail\s*\(/.test(code) ? "awaitつきaws.ses.sendEmailが無い" : !(/from\s*:/.test(code) && /to\s*:/.test(code) && /subject\s*:/.test(code) && /text\s*:|html\s*:/.test(code)) ? "from/to/subject/textのいずれかが無い" : /vja\.widget\.get\s*\(\s*['"]edtName['"]/.test(code) ? "" : "本文の元のedtNameを取得していない" }),
     S({ id: "CL13-シークレット", widget: "btnSave", evName: "Click", tables: false, marker: "db-password",
         yaml: yamlOf("Secrets Managerからシークレットを取得して表示する", "なし", ["Secrets Managerからシークレット「db-password」を取得する", "JSON形式なので解析し、passwordの項目をmsgLabelに表示する"]),
         apis: ["aws_secretsmanager"],
