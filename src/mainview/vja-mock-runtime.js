@@ -277,7 +277,8 @@
                 isCtrl: () => isKeyCtx,
             },
             http: {
-                get: async () => ({}),
+                // 実ランタイムはJSONを解析済みで返す。「JSONの配列」を扱う依頼のArray.isArray判定を通すため配列を返す（vja-mock-check.jsと揃える）
+                get: async () => [{}],
                 post: async () => ({}),
                 put: async () => ({}),
                 delete: async () => ({}),

@@ -138,6 +138,7 @@ interface Scenario {
     form?: boolean;                                    // フォームイベント(widget="form"。Load/KeyDown等)
     app?: boolean;                                     // アプリイベント(widget="appev"、Bun側で実行)
     apis?: string[];                                   // 有効にする任意APIカテゴリ（form/session/io/file等。既定は全て無効）
+    mock?: Record<string, any>;                        // モックの上書き値（ウィジェット名→値。既定のモックは入力欄が空のため、値が入った状態を試す依頼で使う）
     intent: (code: string, calls: Call[]) => string;   // 空文字ならOK。NGなら理由
 }
 const S = (s: Scenario) => s;
@@ -177,7 +178,7 @@ const SCENARIOS: Scenario[] = [
     S({ id: "W3-表示切替", widget: "chkAll", evName: "CheckedChanged", tables: false, marker: "testResultGrid",
         yaml: yamlOf("チェックに応じて一覧の表示を切り替える", "なし", ["チェックされた場合: testResultGridを表示する", "それ以外の場合: testResultGridを非表示にする"]),
         intent: (code, c) => c.some((x) => /^widget\.(setVisible|show|hide)$/.test(x[0]) && x[1] === "testResultGrid") ? (/\bif\b|\?/.test(code) ? "" : "分岐が無い") : "表示切替を呼んでいない" }),
-    S({ id: "W4-クリア", widget: "btnBack", evName: "Click", tables: false, marker: "クリア",
+    S({ id: "W4-クリア", widget: "btnBack", evName: "Click", tables: false, marker: "クリア", mock: { edtName: "dummy", edtCategory: "dummy" },
         yaml: yamlOf("入力欄をクリアする", "なし", ["edtNameとedtCategoryを空にする", "msgLabelを空にする"]),
         intent: (_c, c) => ["edtName", "edtCategory", "msgLabel"].every((n) => toW(c, n).length) ? "" : "クリア対象の一部へ設定していない" }),
     S({ id: "W5-選択肢", widget: "testSearchButton", evName: "Click", tables: true, marker: "testSearchSelect",
@@ -571,6 +572,7 @@ for (const sc of SCENARIOS) {
         data.forms[0].idCnt = ws.length + 1;
         data.tableOptOverrides = { ...(data.tableOptOverrides || {}), [src.id + "_" + sc.evName]: sc.tables ? ["test_items"] : [] };
         data.apiOptOverrides = { ...(data.apiOptOverrides || {}), [src.id + "_" + sc.evName]: sc.apis || [] };
+        if (sc.mock) data.mockOverrides = { ...(data.mockOverrides || {}), [src.id + "_" + sc.evName]: Object.entries(sc.mock).map(([target, v]) => ({ type: "widget", target, json: JSON.stringify(v) })) };
         await call("testApplyProjectData", { data });
         await call("testSetAiConfig", { endpoint: LLM.endpoint, model: LLM.model, apiKey: API_KEY || undefined, temperature: LLM.temperature ?? undefined });
         const logFrom = logSize();

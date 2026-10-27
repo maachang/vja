@@ -318,3 +318,5 @@
 - **H1**: モックの`vja.http.get`が`{}`を返すため、`Array.isArray(response)`で判定する正しいコードが`else`の`throw`に入り、`widget.set`が呼ばれず「testResultGridへ渡していない」と誤判定された。`vja-mock-check.js`のモックを`[{}]`返しにした（実ランタイムはJSON解析済みを返す）。固定YAML 170→172/174、H1の`--from-text` 6/6（`d10ed46`）
 - **N2**: 実ランタイムにグリッドの「選択行」を取るAPIは無く、行を特定できるのはRowClick中の`vja.event.get()`の`ev.row`だけ。テストはボタンのClickに「選択行のidを渡す」依頼を置いており、依頼として成立しなかった（7Bが存在しない`.selectedRow.id`等を書くのはそのため。以前の「OK」も同じ誤ったコードを、判定が緩くて通していただけ）。N2を`testResultGrid`のRowClickへ移し、判定を`vja.event.get`・`.row`・`setParam`・`navigate`に強めた。固定YAML 6/6、`--from-text` 6/6
 - 教訓: ①同じ依頼が落ちたり通ったりする時は、モデルを疑う前に、依頼がそのイベントで成立するかと、モックの戻り値が実ランタイムと合っているかを見る ②判定が緩いと、誤ったコードが「OK」になっていて、環境が変わった途端に失敗として見える
+- **W4（クリア）**: 生成コードは3つのウィジェットを空にしているが、`if (name || category)`で囲んでおり、モックの`widget.get`は入力欄に既定で空文字を返すため`if`に入らず`widget.set`が呼ばれない誤検知だった。モックの既定の「空」は入力検証の経路を通すための意図なので変えず、`js-gen-e2e.ts`の`Scenario`へ任意項目`mock`（ウィジェット名→値）を足し、W4だけ`edtName`/`edtCategory`に値を入れた。固定YAML 172→**174/174**
+- モックの実装は2か所ある（`vja-mock-check.js`＝検証ワーカーに埋め込み、`vja-mock-runtime.js`＝元実装）。モックの返り値を直す時は両方を揃える（H1の`http.get`修正で`vja-mock-runtime.js`を入れ忘れ、後から揃えた）
