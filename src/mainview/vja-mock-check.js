@@ -554,7 +554,8 @@ function _buildFrontMock(evName, wtag, overrides, widgets, tables) {
             isCtrl: () => isKeyCtx,
         },
         http: {
-            get: async () => ({}),
+            // 実ランタイムはJSONを解析済みで返す。依頼が「JSONの配列」を扱う場合の Array.isArray 判定を通すため、配列を返す（2026-10-27）
+            get: async () => [{}],
             post: async () => ({}),
             put: async () => ({}),
             delete: async () => ({}),
