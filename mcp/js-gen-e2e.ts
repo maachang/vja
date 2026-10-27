@@ -192,9 +192,11 @@ const SCENARIOS: Scenario[] = [
     S({ id: "N1-画面遷移", apis: ["form"], widget: "btnBack", evName: "Click", tables: false, marker: "戻る",
         yaml: yamlOf("前の画面へ戻る", "なし", ["前の画面へ戻る"]),
         intent: (code) => /vja\.form\.back\s*\(/.test(code) ? "" : "form.backが無い" }),
-    S({ id: "N2-画面遷移パラメータ", apis: ["form"], widget: "testSearchButton", evName: "Click", tables: false, marker: "MenuForm",
-        yaml: yamlOf("MenuForm画面へ、選択行のidを渡して遷移する", "なし", ["testResultGridの選択行のidを取得する", "idをパラメータ「itemId」として設定する", "MenuForm画面へ遷移する"]),
-        intent: (code) => /vja\.form\.setParam\s*\(/.test(code) && /vja\.form\.navigate\s*\(/.test(code) ? "" : "setParam/navigateのどちらかが無い" }),
+    // 実ランタイムにグリッドの「選択行」を取るAPIは無く、行を特定できるのはRowClick中のvja.event.get()だけ。
+    // ボタンのClickに置くと依頼が成立しないため、RowClickに置く（2026-10-27）
+    S({ id: "N2-画面遷移パラメータ", apis: ["form"], widget: "testResultGrid", evName: "RowClick", tables: false, marker: "MenuForm",
+        yaml: yamlOf("クリックされた行のidを渡して、MenuForm画面へ遷移する", "なし", ["クリックされた行のidを取得する", "idをパラメータ「itemId」として設定する", "MenuForm画面へ遷移する"]),
+        intent: (code) => !/vja\.event\.get\s*\(/.test(code) ? "vja.event.getが無い" : !/\.row\b/.test(code) ? "行(.row)を特定していない" : /vja\.form\.setParam\s*\(/.test(code) && /vja\.form\.navigate\s*\(/.test(code) ? "" : "setParam/navigateのどちらかが無い" }),
     S({ id: "M1-確認ダイアログ", widget: "btnSave", evName: "Click", tables: false, marker: "確認",
         yaml: yamlOf("確認してからメッセージを表示する", "なし", ["「実行しますか?」と確認ダイアログを出す", "OKなら msgLabelに「実行しました」と表示する"]),
         intent: (code, c) => !/await\s+vja\.app\.showConfirm/.test(code) ? "awaitつきのshowConfirmが無い" : toW(c, "msgLabel").length ? "" : "msgLabelへ設定していない" }),
@@ -465,7 +467,7 @@ const TEXTS: Record<string, string> = {
     "W4-クリア": "名前と分類の入力欄とmsgLabelを空にしたい",
     "W5-選択肢": "テーブルの分類を重複なしで取り出して、選択ボックスの選択肢にしたい",
     "L1-繰り返し集計": "一覧の全行を数えて、件数をmsgLabelに出したい",
-    "N2-画面遷移パラメータ": "一覧で選んだ行のidを「itemId」として渡して、MenuForm画面に移動したい",
+    "N2-画面遷移パラメータ": "一覧の行をクリックしたら、その行のidを「itemId」として渡して、MenuForm画面に移動したい",
     "M1-確認ダイアログ": "実行する前に「実行しますか?」と確認して、OKならmsgLabelに「実行しました」と出したい",
     "M2-セッション保存": "検索入力欄の値を、「lastKeyword」という名前でセッションに覚えておきたい",
     "X4-エラー処理": "テーブルの全件を一覧に表示したい。失敗したら「検索に失敗しました」とダイアログで知らせたい",
