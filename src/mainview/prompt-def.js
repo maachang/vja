@@ -592,6 +592,14 @@ ${_safeYamlFence(yamlDef)}
         });
     };
     o.TEXT_TO_YAML_RETRY_KEYWORD_USER_PROMPT = ENG_TEXT_TO_YAML_RETRY_KEYWORD_USER_PROMPT;
+    // 依頼文が「全入力値」なのに、YAMLがウィジェットを1つずつ列挙した時の、1手順へまとめさせるやり直し
+    const ENG_TEXT_TO_YAML_RETRY_ALLINPUTS_USER_PROMPT = function (originalUser, previousYaml) {
+        return _fillTpl(_loadPromptTpl("text-to-yaml.retry-allinputs.user.eng.md"), {
+            originalUser: originalUser.trim(),
+            previousYaml: previousYaml.trim(),
+        });
+    };
+    o.TEXT_TO_YAML_RETRY_ALLINPUTS_USER_PROMPT = ENG_TEXT_TO_YAML_RETRY_ALLINPUTS_USER_PROMPT;
     o.TEXT_TO_YAML_SYS_PROMPT = ENG_TEXT_TO_YAML_SYS_PROMPT;
     o.TEXT_TO_YAML_USER_PROMPT = ENG_TEXT_TO_YAML_USER_PROMPT;
     o.TEXT_TO_YAML_RETRY_USER_PROMPT = ENG_TEXT_TO_YAML_RETRY_USER_PROMPT;

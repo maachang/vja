@@ -828,6 +828,14 @@ const _TEXT_TO_YAML_KEEP_WORDS = ["トランザクション"];
 function _findDroppedKeepWords(inputText, yamlText) {
     return _TEXT_TO_YAML_KEEP_WORDS.filter((w) => inputText.includes(w) && !yamlText.includes(w));
 }
+// 依頼文が「画面の全入力値」を求めているのに、YAMLが入力ウィジェットを1つずつ「〜の値を取得する」と列挙している時に真。
+// 7Bは全入力値を1手順にせず列挙し、JSが`getAllInputs`でなく`widget.get`の羅列になる（Z1。実測: 初回の列挙8/12、
+// 指摘してやり直すと8/8直る。2026-10-27）。列挙の下限は3行
+const _ALL_INPUTS_WORDS = ["全入力値", "全ての入力値", "すべての入力値"];
+function _isAllInputsEnumerated(inputText, yamlText) {
+    if (!_ALL_INPUTS_WORDS.some((w) => inputText.includes(w))) return false;
+    return (yamlText.match(/の(値|状態|テキスト)を取得する/g) || []).length >= 3;
+}
 function _findLeakedPlaceholders(yamlText) {
     return _TEXT_TO_YAML_PLACEHOLDERS.filter((p) => yamlText.includes(p));
 }
@@ -887,6 +895,20 @@ async function generateTextToYaml(wid, evName, inputText, domOverride = null) {
                     onError: async () => {},
                 });
                 if (retryYaml && _findDroppedKeepWords(inputText, retryYaml).length < dropped0.length && _findLeakedPlaceholders(retryYaml).length === 0) stripped0 = retryYaml;
+            }
+            // 依頼文が「全入力値」なのにYAMLがウィジェットを列挙していたら、1手順へまとめさせて1回だけやり直す。列挙が解消した時だけ採用する
+            if (_isAllInputsEnumerated(inputText, stripped0)) {
+                window.vja?.log?.debug?.("[AI検証] YAMLドラフトが全入力値をウィジェットごとに列挙したため、やり直します");
+                let retryYaml = null;
+                await runAiGenerate({
+                    systemPrompt: sysPrompt,
+                    userPrompt: _PROMPT_DEF.TEXT_TO_YAML_RETRY_ALLINPUTS_USER_PROMPT(userPrompt, stripped0),
+                    loadingMsg: "全入力値を1手順にまとめて再生成中…",
+                    onSuccess: async (fixed) => { retryYaml = stripFence(fixed); },
+                    onCancel: async () => {},
+                    onError: async () => {},
+                });
+                if (retryYaml && !_isAllInputsEnumerated(inputText, retryYaml) && _findLeakedPlaceholders(retryYaml).length === 0 && _findDroppedKeepWords(inputText, retryYaml).length <= _findDroppedKeepWords(inputText, stripped0).length) stripped0 = retryYaml;
             }
             // AIへの出力キー指示は英語表記（description/tables等）にしているため
             // （日本語キーだと一部ローカルLLM＋サーバー環境で応答パースエラーが
