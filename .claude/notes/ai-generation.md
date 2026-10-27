@@ -39,6 +39,7 @@
 - **アクセス点**: イベントYAMLエディタの **`✨ YAMLドラフト`タブ**（`tab-prompt`、旧称「✨ 依頼」タブ）に日本語のやりたいこと文章を入力し、`textToYamlGenerate(wid, evName)`を実行すると `📋 YAML`タブへドラフトが生成される（旧仕様の別モーダルボタン`openTextToYamlModal`は現在は存在せず、エディタ内タブに統合済み）
 - **プロンプト定義**: `prompt-def.js` の `ENG_TEXT_TO_YAML_SYS_PROMPT` / `ENG_TEXT_TO_YAML_USER_PROMPT`
 - **テスト**: `src/mainview/text-to-yaml-prompt.test.ts` でユニットテスト実装・検証済み
+- **生成後の後処理（`generateTextToYaml`、2026-10-27時点）**: 7Bは例やルールを足すと無関係な依頼が揺れるため、プロンプトを増やさず「検出して1回だけやり直す」形で直す。やり直しは、直った時だけ採用する（悪化させない）。①プレースホルダー流出（`_findLeakedPlaceholders`、`text-to-yaml.retry.user`）②依頼の要件の語の欠落（`_TEXT_TO_YAML_KEEP_WORDS`＝「トランザクション」、`text-to-yaml.retry-keyword.user`）③「全入力値」のウィジェット列挙（`_isAllInputsEnumerated`、`text-to-yaml.retry-allinputs.user`）④山括弧で囲まれた実名の機械除去（`_stripBracketsAroundKnownNames`、やり直しではなく書き換え）。やり直しの条件を足す時は、必ず全87依頼×2回（`mcp/js-gen-e2e.ts --from-text`、約35分）で確認する。経緯と数値は`mcp-test.md`
 - **条件分岐・繰り返しの見出し記法**（2026-09-11追加）: `アクション:`配下の`〇〇の場合:`/`それ以外の場合:`（if/else相当）、`〇〇に対して繰り返し:`（for/forEach相当）というYAML規約自体はJS変換プロンプト（`ENG_YAML_TO_JS_SYS_PROMPT`）側では以前から仕様化されていたが、ドラフト生成プロンプト（`ENG_TEXT_TO_YAML_SYS_PROMPT`）側には説明もFew-Shot例も無く、AIが条件分岐を使わずフラットな手順列挙しか生成しない問題があった。`docs/yaml-guide-engineer.md`の記法例をFew-Shotとして`ENG_TEXT_TO_YAML_SYS_PROMPT`にも追加し解消した
 
 # イベントYAML/JSロールバック機能（スナップショット履歴）
