@@ -2,7 +2,7 @@
 
 # 既知の制約
 
-- **同梱bunを1.4.3へ上げており、Electrobun 1.18.1へのパッチ（`patches/electrobun@1.18.1.patch`）が必須**（2026-09-29）
+- **同梱bunを1.4.4へ上げており、Electrobun 1.18.1へのパッチ（`patches/electrobun@1.18.1.patch`）が必須**（2026-09-29）
   - **経緯**: Electrobun 1.18.1が同梱するbunは1.3.13（`node_modules/electrobun/dist/api/shared/bun-version.ts`、`build.bunVersion`で上書き可能）。この1.3.13で、約88分稼働後に`Segmentation fault at address 0x10`（bunのクラッシュ）が1回発生したため、新しいbun（システムのbunは1.4.2）を試した。**このsegfaultが1.4.2で直るかは未検証**（再現手順も不明）。Electrobunの最新2.0.1は、Linuxの`bun run dev`が起動時に`SyntaxError`で落ちたため使えず、1.18.1に固定している（`package.json`は`"electrobun": "1.18.1"`の完全固定）
   - **`bunVersion`を1.4.2にするだけでは壊れる**: bun 1.4系では`JSCallback`の`FFIType.cstring`引数が、1.3.x（ポインタ数値）と違い変換済みのJS文字列で渡される。Electrobunの`dist/api/bun/proc/native.ts`は`new CString(引数)`でポインタ前提のため`TypeError: ptr must be a number`になる。webview→bunのRPCは通常WebSocket経由（正常）だが、WebSocketが開く前の起動直後のメッセージは`postMessage`（`bunBridgePostmessageHandler`）へフォールバックするため、そこで失敗して捨てられる。実際に、起動時に呼ぶ`loadUiConfigRequest`（UI設定）と`loadAiGlobalPresetsRequest`（AI接続設定の「プロジェクト共通」プリセット）が読み込まれず、プリセット一覧が空になる不具合が出た（ユーザーが1.3.13に戻すと表示されることで確認）。ログには`Error converting strings`/`error sending message to bun`/`error in eventBridgeHandler`が出る
   - **対応**: `native.ts`に`_cstr()`（文字列ならそのまま、ポインタなら`CString`で読む）を追加し、`JSCallback`内の`new CString(引数)`10箇所を置き換えた（1.3.13/1.4.2の両方で動く後方互換）。これを`bun patch`で`patches/electrobun@1.18.1.patch`へ永続化し、`package.json`の`patchedDependencies`に登録している
@@ -12,7 +12,7 @@
     - Electrobunのバージョンを上げるとパッチは当たらなくなる（ファイル名も`@1.18.1`固定）。新しいElectrobunがbun 1.4系に対応済みならパッチ不要、未対応なら作り直す。`bunVersion`を上げる場合も同様にJSCallbackの型変更に対応済みか確認すること
     - `node_modules/electrobun`のファイルをその場で直接編集してはならない。bunのキャッシュ（`~/.bun/install/cache/electrobun@1.18.1@@@1`）とハードリンクされており、同じバージョンを使う他プロジェクト（コンパイル先プロジェクトの`node_modules`等）のファイルまで書き換わる（実際に発生し、原本に戻して復旧した）。修正は`bun patch electrobun`→編集→`bun patch --commit 'node_modules/electrobun'`の手順で行う
     - `bun.lock`はgit管理外
-  - 検証状況: （2026-10-15）同梱bunを1.4.3へ更新し、ユーザー実機で問題なし（起動・プリセット表示・ログにエラー無し）。以前の検証: vja本体（dev）は1.4.2で起動しエラー無し・`bun test`全件通過。1.3.13でも同様に動作。コンパイル先プロジェクトの同梱bunが1.4.2になることはユーザー実機で確認済み
+  - 検証状況: （2026-10-28）同梱bunを1.4.4へ更新（`c8876bc`）。`bun test`286件通過、dev起動ログに`Error converting strings`等のエラー無し。1.4.4のリリースノートにJSCallback/cstring変更の記載は無し。プリセット表示の実機確認はユーザー実施。（2026-10-15）同梱bunを1.4.3へ更新し、ユーザー実機で問題なし（起動・プリセット表示・ログにエラー無し）。以前の検証: vja本体（dev）は1.4.2で起動しエラー無し・`bun test`全件通過。1.3.13でも同様に動作。コンパイル先プロジェクトの同梱bunが1.4.2になることはユーザー実機で確認済み
 
 - **Electrobun 2.0.1は起動不能のため使わない（1.18.1に固定）**（2026-08-27確認、2026-09-29にも再確認）: `electrobun@2.0.1`は、ビルドツールが`Hutch`（内部JSランタイム`Cottontail`）に刷新されており、`electrobun.config.ts`から**別のローカル`.ts`ファイルを1つでもimportすると、内容を問わず`error: SyntaxError`（詳細メッセージなし）で起動できない**。`export const A = 1;`だけの空に近いファイルのimportでも再現し、`~/.hutch`を削除してクリーン再インストールしても再現する（キャッシュ破損ではない）。vjaの`electrobun.config.ts`は`./src/bun/copy-compile-assets`をimportしており該当する。config内へ全設定を直書きしてimportを使わなければ動く。Linuxだけでなく、Windows x64でも同様に起動しなかった（2026-08-28報告）。2026-08-27に`bun update`で1.18.1から2.0.1へ意図せず上がって発覚したため、`package.json`の`electrobun`は`"latest"`ではなく`"1.18.1"`へ明示固定している
   - **運用**: バージョンを上げる場合は、事前に動作確認してから明示的に切り替える（latest追従はしない）。Electrobun関連のエラー調査では、まず`node_modules/electrobun/package.json`のバージョンを確認し、既知の不具合パターンと照合する
