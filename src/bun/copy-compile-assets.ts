@@ -25,7 +25,7 @@ export const WEBVIEW_RUNTIME_LIBS: string[] = [
 // 両方で使う。Electrobunを上げる時は、ここと patches/ 配下のパッチファイル名・package.jsonの
 // patchedDependenciesをあわせて更新すること(パッチ内容: bun 1.4系のJSCallback cstring引数対応)。
 export const ELECTROBUN_PIN_VERSION = "1.18.1";
-export const ELECTROBUN_BUN_VERSION = "1.4.3";
+export const ELECTROBUN_BUN_VERSION = "1.4.4";
 export const ELECTROBUN_PATCH_FILE = `electrobun@${ELECTROBUN_PIN_VERSION}.patch`;
 
 // コピー対象ファイル定義
