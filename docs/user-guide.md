@@ -981,6 +981,43 @@ const result = await vja.webhook.post({ event: 'order', id: 123 });
 - 登録できる汎用 Webhook は、今は1つです（複数登録した場合は、有効で先に登録したものを使います）。
 - AI にこの関数を使わせるには、イベントの右パネル「🧩 拡張API（任意）」で **「汎用Webhook」を ON** にします。
 
+### 署名付き URL でファイルを受け渡す（vja.fetch）
+
+クラウドのストレージ（S3 など）には、「期限付きで、特定のファイルだけを読み書きできる URL」（署名付き URL）を発行する仕組みがあります。管理側がユーザー・日付ごとの URL を発行し、vja はその URL へ GET / PUT するだけで、ファイルを受け渡せます。vja のアプリにアクセスキーを持たせずに済み、URL を渡された人は、そのファイルだけを扱えます。
+
+- URL の発行は、vja の外（管理側の仕組み）で行います。vja にはその機能はありません。
+- 通信には、**`vja.fetch`**（Bun 経由）を使ってください。ブラウザの CORS の制約を受けません。S3 以外（Azure の SAS、Google Cloud の署名付き URL など）への通信は、普通の `fetch` では CORS で止まることがあります。
+
+#### ダウンロード（CSV を取り込む）
+
+```javascript
+const res = await vja.fetch(url);          // url: 発行された署名付き URL
+if (!res.ok) {
+    await vja.app.showDialog('取得できませんでした（' + res.status + '）');
+    return;
+}
+const rows = vja.io.parseCsv(await res.text());
+vja.widget.set('grid1', rows);
+```
+
+#### アップロード（テーブルの内容を CSV で置く）
+
+```javascript
+const rows = await vja.db.query('SELECT * FROM orders');
+const csv = vja.io.toCsv(rows);
+const res = await vja.fetch(url, { method: 'PUT', body: csv });
+if (!res.ok) {
+    await vja.app.showDialog('送信できませんでした（' + res.status + '）');
+}
+```
+
+- 画像や PDF などのバイナリは、受け取る時に `{ responseType: 'binary' }` を指定して `res.bytes()` で読み、送る時は `body` に `Uint8Array` / `ArrayBuffer` を渡します。
+- 有効期限が切れた URL は、`403` などのエラーになります。
+- 業務の CSV は Shift_JIS のことがあります。その場合は、`{ responseType: 'binary' }` で受け取り、`new TextDecoder('shift_jis').decode(await res.bytes())` で文字列にしてから `vja.io.parseCsv` に渡します。
+- Excel で UTF-8 の CSV を開く場合は、CSV の先頭に BOM（`'﻿' + csv`）を付けます。
+- 配布したアプリでは、プロジェクトに書いた値（定数など）を全員が共有します。人ごとに別の URL を使いたい場合は、URL をプロジェクトに書かず、管理側が人ごとに渡す仕組みを別に用意してください。
+- 受け渡しの単位は「ファイル」です。複数人が同じファイルを同時に書き換える同期の仕組みはないので、ファイル名にユーザー ID と日付を含めて、1人1ファイルにすると衝突しません。
+
 ### アプリ側入力ファイル（~/vja/credential.json）
 
 ```json
