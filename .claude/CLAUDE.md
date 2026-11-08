@@ -15,7 +15,7 @@ CLAUDE.mdは毎セッション全文が読み込まれるため、規約・全�
 | `.claude/notes/ai-generation.md` | 学習履歴・画面デザインAI生成・イベントYAMLドラフト・ロールバック・機械的な後処理・DBテーブル/検証のAI生成・総覧 | AI生成まわり（プロンプト、後処理、各AI生成機能）を変更する前 |
 | `.claude/notes/prompts.md` | プロンプトのトークン圧縮方針と、prompt-def.js→prompts/*.mdへの外部ファイル化 | prompt-def.js・prompts/*.mdを変更する前、プロンプト文言を書く前 |
 | `.claude/notes/wizard.md` | システムモデル定義（用語の参考ヒント）と、ウィザードの現行設計・経緯・教訓 | vja-wizard.js・src/wizard-system-models/・ウィザード関連のプロンプトを変更する前 |
-| `.claude/notes/known-constraints.md` | 同梱bun 1.4.2とElectrobunパッチ、Windows/Mac/Linuxのアイコン対応、macOS/Linux/Windows固有の制約 | Electrobun・bun・ビルド/コンパイル・アイコン・プラットフォーム固有の問題に触れる前 |
+| `.claude/notes/known-constraints.md` | 同梱bun 1.4.4とElectrobunパッチ、Windows/Mac/Linuxのアイコン対応、macOS/Linux/Windows固有の制約 | Electrobun・bun・ビルド/コンパイル・アイコン・プラットフォーム固有の問題に触れる前 |
 | `.claude/notes/refactoring.md` | 大きなファイルを切り出す際の検証手順と過去の事故 | ファイル分割・大規模リファクタをする前 |
 | `.claude/notes/local-llm-setup.md` | setup-mac-llm.sh（mlx-lm/Qwen2.5-Coder-7B）の設計 | setup-mac-llm.sh・ローカルLLMのセットアップ手順に触れる前 |
 | `.claude/notes/cloud-aws.md` | クラウド（AWS）対応: AWSのみ正式対応、webviewのCDN版SDK＋AWS宛てfetchのvja.fetch差し替え、`vja.aws.*`ランタイム、拡張API、クレデンシャルの暗号化保存 | クラウド設定・`vja.aws.*`・`vja.fetch`・クレデンシャル・拡張APIに触れる前 |
